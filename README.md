@@ -1,5 +1,5 @@
 # HYDRA-UMC
-HYDRA-UMC: The Ultimate 12-Axis Dual-MCU Universal Controller
+HYDRA-UMC: The Ultimate 12-Axis Dual-MCU Universal Controller for Parol6 and Faze4 robots
 -----------------------------------------------------------------------------
 🚀 Introducing HYDRA-UMC: The Ultimate 12-Axis Dual-MCU Universal Controller
 -----------------------------------------------------------------------------
