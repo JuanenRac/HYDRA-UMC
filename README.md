@@ -1,6 +1,7 @@
-==============================================================================
+
+----------------------------------------------------------------------
 🚀 HYDRA-UMC: The Ultimate 12-Axis Dual-MCU Micro-Factory Controller
-==============================================================================
+----------------------------------------------------------------------
 
 HYDRA-UMC (Universal Multi-axis Controller) is an industrial-grade, ultra-scalable control platform powered by a synchronized dual-STM32 microcontroller architecture. Designed to overcome the processing bottlenecks of traditional single-MCU boards, it acts as the main brain of an automated manufacturing cell, seamlessly coordinating kinematics, logistics, tool-changing, and thermal processes.
 
