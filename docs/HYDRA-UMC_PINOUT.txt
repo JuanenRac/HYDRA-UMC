@@ -1,0 +1,209 @@
+================================================================================
+                    HYDRA-UMC CONTROLLER BOARD - PINOUT.TXT
+             Microcontroller: STM32H757BIT6 (Dual-Core LQFP-208)
+================================================================================
+
+--------------------------------------------------------------------------------
+1. MEMORIA SDRAM EXTERNA (IS42S16160J-6TLI - 32 MB / Bus 16-bits FMC)
+--------------------------------------------------------------------------------
+FMC_D0         : PD14    (Data Bus Bit 0)
+FMC_D1         : PD15    (Data Bus Bit 1)
+FMC_D2         : PD0     (Data Bus Bit 2)
+FMC_D3         : PD1     (Data Bus Bit 3)
+FMC_D4         : PE7     (Data Bus Bit 4)
+FMC_D5         : PE8     (Data Bus Bit 5)
+FMC_D6         : PE9     (Data Bus Bit 6)
+FMC_D7         : PE10    (Data Bus Bit 7)
+FMC_D8         : PE11    (Data Bus Bit 8)
+FMC_D9         : PE12    (Data Bus Bit 9)
+FMC_D10        : PE13    (Data Bus Bit 10)
+FMC_D11        : PE14    (Data Bus Bit 11)
+FMC_D12        : PE15    (Data Bus Bit 12)
+FMC_D13        : PD8     (Data Bus Bit 13)
+FMC_D14        : PD9     (Data Bus Bit 14)
+FMC_D15        : PD10    (Data Bus Bit 15)
+
+FMC_A0         : PF0     (Address Bus Bit 0)
+FMC_A1         : PF1     (Address Bus Bit 1)
+FMC_A2         : PF2     (Address Bus Bit 2)
+FMC_A3         : PF3     (Address Bus Bit 3)
+FMC_A4         : PF4     (Address Bus Bus Bit 4)
+FMC_A5         : PF5     (Address Bus Bit 5)
+FMC_A6         : PF12    (Address Bus Bit 6)
+FMC_A7         : PF13    (Address Bus Bit 7)
+FMC_A8         : PF14    (Address Bus Bit 8)
+FMC_A9         : PF15    (Address Bus Bit 9)
+FMC_A10        : PG0     (Address Bus Bit 10)
+FMC_A11        : PG1     (Address Bus Bit 11)
+FMC_A12        : PG2     (Address Bus Bit 12)
+
+FMC_BA0        : PG4     (Bank Address Bit 0)
+FMC_BA1        : PG5     (Bank Address Bit 1)
+FMC_SDCLK      : PG8     (SDRAM Clock Output)
+FMC_SDNCAS     : PG15    (Column Address Strobe)
+FMC_SDNRAS     : PF11    (Row Address Strobe)
+FMC_SDNWE      : PH5     (Write Enable)
+FMC_SDCKE0     : PH2     (Clock Enable - Bank 1)
+FMC_SDNE0      : PH3     (Chip Select - Bank 1)
+FMC_NBL0       : PE0     (Lower Byte Mask / LDQM)
+FMC_NBL1       : PE1     (Upper Byte Mask / UDQM)
+
+--------------------------------------------------------------------------------
+2. MEMORIA QSPI FLASH (MX25L25645GZNI-08G - 32 MB / 133 MHz Quad-SPI)
+--------------------------------------------------------------------------------
+QUADSPI_CLK    : PF10    (High Speed Clock Line)
+QUADSPI_BK1_NCS: PB6     (Chip Select Output)
+QUADSPI_BK1_IO0: PD11    (Data Line 0 / SI)
+QUADSPI_BK1_IO1: PD12    (Data Line 1 / SO)
+QUADSPI_BK1_IO2: PE2     (Data Line 2 / WP#)
+QUADSPI_BK1_IO3: PD13    (Data Line 3 / HOLD# / RESET#)
+
+--------------------------------------------------------------------------------
+3. MEMORIA PERSISTENTE FRAM (FM24CL64 - 64 KB I2C)
+--------------------------------------------------------------------------------
+I2C4_SCL       : PH11    (Serial Clock con Pull-Up 2.2k a 3.3V)
+I2C4_SDA       : PH12    (Serial Data con Pull-Up 2.2k a 3.3V)
+FRAM_WP        : PH10    (Hardware Write-Protect, Active HIGH)
+
+--------------------------------------------------------------------------------
+4. PANTALLA TÁCTIL MIPI-DSI 7" (IPS 1024x600 - GT911)
+--------------------------------------------------------------------------------
+DSI_D0P        : DSI_D0P (DSI Data Lane 0 Differential Positive)
+DSI_D0N        : DSI_D0N (DSI Data Lane 0 Differential Negative)
+DSI_D1P        : DSI_D1P (DSI Data Lane 1 Differential Positive)
+DSI_D1N        : DSI_D1N (DSI Data Lane 1 Differential Negative)
+DSI_CKP        : DSI_CKP (DSI Clock Lane Differential Positive)
+DSI_CKN        : DSI_CKN (DSI Clock Lane Differential Negative)
+
+I2C2_SCL       : PB10    (GT911 Touch Clock con Pull-Up 2.2k a 3.3V)
+I2C2_SDA       : PB11    (GT911 Touch Data con Pull-Up 2.2k a 3.3V)
+GT911_INT      : PI8     (Touch Interrupt Input)
+GT911_RST      : PI9     (Touch Hardware Reset Output)
+DISPLAY_PWM_BL : PI14    (TIM8_CH2 - Backlight Dimming PWM Output)
+
+--------------------------------------------------------------------------------
+5. ETHERNET LAN INDUSTRIAL (LAN8720A - Interfaz RMII 10/100 Mbps)
+--------------------------------------------------------------------------------
+RMII_REF_CLK   : PA1     (50 MHz Reference Clock Input)
+RMII_MDIO      : PA2     (Management Data I/O con Pull-Up 1.5k a 3.3V)
+RMII_MDC       : PC1     (Management Data Clock)
+RMII_CRS_DV    : PA7     (Carrier Sense / Data Valid)
+RMII_RXD0      : PC4     (Receive Data Bit 0)
+RMII_RXD1      : PC5     (Receive Data Bit 1)
+RMII_TX_EN     : PG11    (Transmit Enable)
+RMII_TXD0      : PG13    (Transmit Data Bit 0)
+RMII_TXD1      : PG14    (Transmit Data Bit 1)
+LAN_NRST       : PC3     (PHY Hardware Reset Output)
+
+--------------------------------------------------------------------------------
+6. HUB USB 2.0 HIGH-SPEED (USB2514B - 4 Puertos)
+--------------------------------------------------------------------------------
+USB_OTG_FS_DM  : PA11    (USB Data Negative / Upstream Host Link)
+USB_OTG_FS_DP  : PA12    (USB Data Positive / Upstream Host Link)
+USB_HUB_RESET  : PA10    (USB Hub Hardware Reset Output)
+
+--------------------------------------------------------------------------------
+7. MÓDULO INALÁMBRICO (ESP32-C3-MINI-1 - Wi-Fi / Bluetooth 5.0 LE)
+--------------------------------------------------------------------------------
+USART2_TX      : PD5     (STM32 TX -> ESP32 RX / UART High Speed)
+USART2_RX      : PD6     (STM32 RX <- ESP32 TX / UART High Speed)
+ESP_CHIP_PU    : PD4     (Enable / Reset Output)
+ESP_IO9_BOOT   : PD3     (Bootloader Mode Select Output)
+
+--------------------------------------------------------------------------------
+8. BUS TRIPLE FDCAN (CAN FD Canales Independientes)
+--------------------------------------------------------------------------------
+[FDCAN 1 - Robot 1 (Parol6 R1)]
+FDCAN1_RX      : PB8     (CAN Transceiver RX)
+FDCAN1_TX      : PB9     (CAN Transceiver TX)
+
+[FDCAN 2 - Robot 2 (Parol6 R2 / Mesa XXY)]
+FDCAN2_RX      : PB12    (CAN Transceiver RX)
+FDCAN2_TX      : PB13    (CAN Transceiver TX)
+
+[FDCAN 3 - Interconexión Hydra-to-Hydra / Cabezal URTC / Auxiliar]
+FDCAN3_RX      : PF6     (CAN Transceiver RX)
+FDCAN3_TX      : PF7     (CAN Transceiver TX)
+
+--------------------------------------------------------------------------------
+9. ETAPA DE 12 DRIVERS DE MOTOR PASO A PASO (TMC5160A)
+--------------------------------------------------------------------------------
+[Bus SPI Compartido de Configuración TMC5160]
+DRV_SPI_SCK    : PA5     (SPI1 SCK)
+DRV_SPI_MISO   : PA6     (SPI1 MISO)
+DRV_SPI_MOSI   : PD7     (SPI1 MOSI)
+
+[Señales de Habilitación y Diagnóstico Global]
+DRV_ENABLE_GLOB: PH15    (Active LOW - Hardware Global Motion Disable)
+DRV_DIAG_MUX   : PI15    (Diagnostic Interrupt Input)
+
+[Pines Individuales STEP / DIR / CS por Cada Eje]
+Eje 1 (Robot 1 - J1): STEP = PA0 (TIM2_CH1)  | DIR = PI0  | CS = PI1
+Eje 2 (Robot 1 - J2): STEP = PB0 (TIM3_CH3)  | DIR = PI2  | CS = PI3
+Eje 3 (Robot 1 - J3): STEP = PB1 (TIM3_CH4)  | DIR = PI4  | CS = PI5
+Eje 4 (Robot 1 - J4): STEP = PE5 (TIM9_CH1)  | DIR = PI6  | CS = PI7
+Eje 5 (Robot 1 - J5): STEP = PE6 (TIM9_CH2)  | DIR = PI10 | CS = PI11
+Eje 6 (Robot 1 - J6): STEP = PC6 (TIM8_CH1)  | DIR = PH6  | CS = PH7
+
+Eje 7 (Robot 2 - J1): STEP = PC7 (TIM8_CH2)  | DIR = PH8  | CS = PH9
+Eje 8 (Robot 2 - J2): STEP = PC8 (TIM8_CH3)  | DIR = PH13 | CS = PH14
+Eje 9 (Robot 2 - J3): STEP = PC9 (TIM8_CH4)  | DIR = PJ0  | CS = PJ1
+Eje 10(Robot 2 - J4): STEP = PA8 (TIM1_CH1)  | DIR = PJ2  | CS = PJ3
+Eje 11(Robot 2 - J5): STEP = PA9 (TIM1_CH2)  | DIR = PJ4  | CS = PJ5
+Eje 12(Robot 2 - J6): STEP = PA15(TIM2_CH1)  | DIR = PJ6  | CS = PJ7
+
+--------------------------------------------------------------------------------
+10. PERIFÉRICOS SECUNDARIOS (Endstops, Fans, Sensores Térmicos, Solenoides)
+--------------------------------------------------------------------------------
+[Entradas Filtro Schmitt Endstops / Limit Switches]
+ENDSTOP_1  (R1_J1_MIN) : PB7
+ENDSTOP_2  (R1_J2_MIN) : PB14
+ENDSTOP_3  (R1_J3_MIN) : PB15
+ENDSTOP_4  (R1_J4_MIN) : PC10
+ENDSTOP_5  (R1_J5_MIN) : PC11
+ENDSTOP_6  (R1_J6_MIN) : PC12
+ENDSTOP_7  (R2_J1_MIN) : PD2
+ENDSTOP_8  (R2_J2_MIN) : PE3
+ENDSTOP_9  (R2_J3_MIN) : PE4
+ENDSTOP_10 (R2_J4_MIN) : PG3
+ENDSTOP_11 (R2_J5_MIN) : PG6
+ENDSTOP_12 (R2_J6_MIN) : PG7
+ENDSTOP_13 (AUX_PROBE)  : PG9
+ENDSTOP_14 (SAFETY_DOOR): PG10
+
+[Salidas de Control Térmico y Ventiladores]
+FAN1_PWM (Placa Drivers)  : PF8  (TIM13_CH1 Output)
+FAN2_PWM (Herramienta/ATC): PF9  (TIM14_CH1 Output)
+FAN3_PWM (Extracción)     : PG12 (PWM Output)
+HEATER_BED_SSR            : PH4  (Opto-Isolated SSR Control Output)
+SOLENOID_ATC_1            : PI12 (ATC Cylinder Valve 1 Output)
+SOLENOID_ATC_2            : PI13 (ATC Cylinder Valve 2 Output)
+
+[Entradas Analógicas para Termistores NTC]
+NTC_BED_TEMP   : PC0 (ADC1_INP10)
+NTC_DRIVER_ZONE: PC2 (ADC1_INP12)
+NTC_AMB_TEMP   : PA3 (ADC1_INP15)
+NTC_AUX_SENSOR : PA4 (ADC1_INP18)
+
+--------------------------------------------------------------------------------
+11. PINES DE SISTEMA, RELOJ Y DEPURACIÓN
+--------------------------------------------------------------------------------
+OSC_IN         : PH0 (Oscilador Cristal Principal 25 MHz Input)
+OSC_OUT        : PH1 (Oscilador Cristal Principal 25 MHz Output)
+OSC32_IN       : PC14(Oscilador RTC 32.768 kHz Input)
+OSC32_OUT      : PC15(Oscilador RTC 32.768 kHz Output)
+
+SWDIO          : PA13(ARM Serial Wire Data I/O)
+SWCLK          : PA14(ARM Serial Wire Clock Output)
+SWO            : PB3 (ARM Serial Wire Viewer Trace)
+
+NRST           : NRST (Master Reset Pin con Condensador 100nF a GND)
+BOOT0          : BOOT0(Boot Select con Resistencia Pulldown 10k a GND)
+VBAT           : VBAT (Alimentación RTC / Conectado a Supercap)
+VCAP1          : VCAP1(Filtro Regulación Interna Core 1.2V -> Condensador 2.2uF)
+VCAP2          : VCAP2(Filtro Regulación Interna Core 1.2V -> Condensador 2.2uF)
+
+VDD / VSS      : Múltiples pines de alimentación lógica de 3.3V y Masa
+VDDA / VSSA    : Alimentación y Masa Analógica Aisladas por Bead de Ferrita
+VDD33USB       : 3.3V Dedicado para PHY USB
+================================================================================

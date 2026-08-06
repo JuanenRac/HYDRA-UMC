@@ -1,0 +1,35 @@
+================================================================================
+                    HYDRA-UMC CONTROLLER BOARD - BOM.TXT
+                          Bill of Materials V1.0
+================================================================================
+
+Item | Qty | Designator         | Component / Part Number         | Package / Footprint | Description / Function
+-----+-----+--------------------+---------------------------------+---------------------+---------------------------------------------------------
+ 01  |  1  | U1                 | STM32H757BIT6                   | LQFP-208 (28x28mm)  | Main Dual-Core MCU (Cortex-M7 480MHz + Cortex-M4 240MHz)
+ 02  |  1  | U2                 | ISSI IS42S16160J-6TLI           | TSOP-II-54          | 32 MB SDRAM (16-bit FMC Bus @ 166 MHz)
+ 03  |  1  | U3                 | Macronix MX25L25645GZNI-08G     | 8-WSON (8x6mm)      | 32 MB Quad-SPI Flash Memory (133 MHz)
+ 04  |  1  | U4                 | Infineon FM24CL64B-G            | SOIC-8              | 64 KB Non-Volatile FRAM (I2C4 Bus)
+ 05  |  1  | U5                 | ESP32-C3-MINI-1                 | Module (13.2x16.6)  | Wi-Fi 4 + Bluetooth 5.0 LE Wireless Co-Processor
+ 06  |  1  | U6                 | Microchip LAN8720A-CP           | QFN-24 (4x4mm)      | 10/100 Ethernet PHY (RMII Interface)
+ 07  |  1  | U7                 | Microchip USB2514B-AEZG         | QFN-36 (6x6mm)      | 4-Port USB 2.0 High-Speed Hub Controller
+ 08  |  2  | U8, U9             | Texas Instruments TPS2044BD     | SOIC-16             | Quad Power-Distribution Switch (USB Port Protection)
+ 09  |  3  | U10, U11, U12      | TI SN65HVD230D / NXP TJA1051T/3 | SOIC-8              | 3.3V CAN FD Transceivers (FDCAN1, FDCAN2, FDCAN3)
+ 10  | 12  | U13 to U24         | Trinamic TMC5160A-TA            | TQFP-48-EP          | High-Power Motion Controller / Gate Driver (SPI Bus)
+ 11  | 48  | Q1 to Q48          | N-Channel MOSFET 60V 80A        | PowerPAK SO-8       | External Power Stage H-Bridges for 12 TMC5160A drivers
+ 12  |  1  | J1                 | 22-Pin FPC 0.5mm Pitch          | FPC-22P Top/Bot     | MIPI-DSI Display Interface (2-Lane Video + GT911 I2C)
+ 13  |  1  | J2                 | RJ45 with Magnetics (HR911105A) | Through-Hole RJ45   | 10/100 Mbps Industrial Ethernet Port
+ 14  |  1  | J3                 | USB Type-C Female Connector     | Mid-Mount SMD       | Upstream USB OTG FS Port to RPi 5 / PC
+ 15  |  3  | J4, J5, J6         | Molex Micro-Fit 3.0 (2-Pin)     | Right Angle Header  | Industrial CAN FD Ports (Robot 1, Robot 2, URTC Bus)
+ 16  | 12  | J7 to J18          | 4-Pin Plug-in Screw Terminal    | 3.81mm Pitch        | Stepper Motor Phase Outputs (A1, A2, B1, B2)
+ 17  | 14  | J19 to J32         | JST-XH 3-Pin Header             | 2.54mm Pitch        | Opto/Schmitt-Triggered Endstop & Safety Door Inputs
+ 18  |  3  | Q49, Q50, Q51      | N-Channel MOSFET 40V 15A        | SOT-223             | PWM Low-Side Drivers for FAN1, FAN2, FAN3
+ 19  |  2  | Q52, Q53           | N-Channel MOSFET 60V 20A        | TO-252 (DPAK)       | Low-Side Drivers for Solenoid Valves (ATC Cylinder)
+ 20  |  1  | U25                | Optocoupler LTV-817             | DIP-4 / SMD-4       | Isolated Driver Output for Solid State Relay (Bed SSR)
+ 21  |  1  | Y1                 | 25.000 MHz Crystal SMD          | 3.2x2.5mm           | Main System Oscillator for STM32H757
+ 22  |  1  | Y2                 | 32.768 kHz Crystal SMD          | 3.2x1.5mm           | RTC Oscillator for STM32H757
+ 23  |  1  | Y3                 | 24.000 MHz Crystal SMD          | 3.2x2.5mm           | USB Hub Oscillator for USB2514B
+ 24  |  1  | Y4                 | 25.000 MHz Crystal SMD          | 3.2x2.5mm           | Ethernet PHY Clock Source for LAN8720A
+ 25  | 12  | R_SENSE1 to 12     | 0.075 Ohm 1% 2W Resistor        | 2512 SMD            | Current Sense Resistors for TMC5160A Motor Drivers
+ 26  |  6  | R_PULL1 to 6       | 2.2 kOhm 1% Resistors           | 0603 SMD            | Pull-Up Resistors for I2C2, I2C4, and RMII MDIO
+ 27  | 12  | C_VCAP1 to 12      | 2.2 uF 10V X7R Ceramic          | 0805 SMD            | Decoupling Capacitors for VCAP1 / VCAP2 Core Voltage
+================================================================================

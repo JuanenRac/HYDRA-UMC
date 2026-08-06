@@ -217,18 +217,18 @@ Communication between CM5 (Host) and STM32H745 (Co-Processor) utilizes a hardwar
 ```text
 hydra-platform/
 ├── docs/
+│   ├── datasheets/             # Datasheets of parts project
 │   ├── architecture.md
 │   └── pinout_stm32h745_lqfp144.csv
 ├── hardware/
-│   ├── schematics/             # Eagle SCH files (MCU, CM5, 2x GL3523, M.2 Hailo-8, Power)
-│   ├── board_layout/           # Eagle BRD files (4-Layer Stackup)
+│   ├── PCB/                    # Eagle SCH & BRD files (MCU, CM5, 2x GL3523, M.2 Hailo-8, Power)
 │   └── gerbers/                # Manufacturing output files
 ├── firmware/
 │   ├── cm5_host/               # Linux system services, Qt UI, IPC driver, RTSP streamer, Hailo-8 pipeline
-│   │   ├── hmi_qt6/
+│   │   ├── hmi_qt6/            # 
 │   │   ├── ai_inference/       # Hailo-8 TAPPAS / YOLOv8 pipeline
 │   │   ├── video_streamer/     # Multi-camera RTSP/WebRTC server
-│   │   └── ipc_driver/
+│   │   └── ipc_driver/         #
 │   └── mcu_stm32h745/          # STM32CubeIDE dual-core project
 │       ├── CM7/                # Motion engine, hardware timers, PID
 │       ├── CM4/                # FDCAN drivers, sensor filtering
