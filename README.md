@@ -250,10 +250,8 @@ Because this project consists of several different types of content, individual 
 
 1. The **firmware** located at `./firmware` (application and CAN bootloader alike) is available under the **GNU General Public License v3.0 (GPL-3.0)**. Full text at https://www.gnu.org/licenses/gpl-3.0.html.
 
-2. The **PC tools** at `./tools` are source code, licensed the same way and for the same reason as the firmware: **GNU General Public License v3.0 (GPL-3.0)**. This covers `urtc_flasher.py` and `urtc_tester.py` themselves and any `.exe`/binary built from either via their respective `build_exe.bat`/`build_exe.sh` — distributing a compiled tool means distributing something GPL-3.0 covers, same as distributing a compiled firmware `.bin` does.
+2. The **hardware designs** (Eagle schematic/board files, gerbers, and the 3D-printable parts under `./hardware` and `./3D`) are available under the **CERN Open Hardware Licence v2 - Strongly Reciprocal (CERN-OHL-S v2)**. Full text at https://cern-ohl.web.cern.ch/.
 
-3. The **hardware designs** (Eagle schematic/board files, gerbers, and the 3D-printable parts under `./hardware` and `./3D`) are available under the **CERN Open Hardware Licence v2 - Strongly Reciprocal (CERN-OHL-S v2)**. Full text at https://cern-ohl.web.cern.ch/.
-
-4. The **documentation** (this README, the service manual, and the reference files under `./docs`, including `./tools/flasher/V1.0/README.md` and `./tools/tester/V1.0/README.md`) is available under **Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)**. Full text at https://creativecommons.org/licenses/by-sa/4.0/.
+3. The **documentation** (this README, the service manual, and the reference files under `./docs` is available under **Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)**. Full text at https://creativecommons.org/licenses/by-sa/4.0/.
 
 If you build on this project, keep the licensing split in mind: code changes to the firmware or the flashing tool should stay GPL-3.0, hardware modifications should stay CERN-OHL-S, and documentation derivatives should stay CC BY-SA - each with attribution back to this project.
