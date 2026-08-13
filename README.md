@@ -236,12 +236,16 @@ in the robot's head, optionally with its own expansion board.
 * 🎛️ **MCU:** STMicroelectronics **STM32G474RET6** (Cortex-M4 @ 170 MHz,
   LQFP-64, 512 KB flash), using 2 of its 3 onboard FDCAN peripherals - one as
   the FDCAN uplink to the STM32H745, one as the CAN downlink to its own URTC
-  head. See `docs/architecture.md` §1/§4.
-* 📡 **CAN-OTA firmware updates:** both this board and its URTC head are
-  flashed over CAN only - no JTAG/SWD probe, no USB-CAN dongle. The
-  HYDRA-UMC-STUDIO dashboard (running on the CM5) reaches either one through
-  the full SPI → FDCAN1 → (relay) → CAN chain. Full addressing scheme and
-  protocol reuse from URTC's own proven CAN bootloader: `docs/architecture.md`.
+  head. See `docs/architecture.md` §1.
+* 📡 **CAN-OTA firmware updates, 4 tiers deep:** the STM32H745 itself (over
+  its existing SPI link to the CM5), this board, its URTC Tool Head
+  (STM32F303CCT6), and - only when installed - that head's own Advanced
+  Expansion Board (STM32F303CBT6, `expansion_board_type` 3 or 4, see URTC's
+  own `docs/EXPANSION.TXT`) can all be flashed and diagnosed from
+  HYDRA-UMC-STUDIO's Flasher/Tester with no JTAG/SWD probe and no USB-CAN
+  dongle. Full addressing scheme, the relay tunnel that reaches the last two
+  tiers without any new protocol design, and current implementation status:
+  `docs/architecture.md`.
 
 See `docs/architecture.md` for the complete tiered architecture (this section
 is a summary), including what's confirmed hardware fact vs. still a proposed
