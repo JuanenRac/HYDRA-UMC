@@ -1,4 +1,10 @@
 ================================================================================
+ ⚠️ SUPERSEDED / OUTDATED - DO NOT USE FOR NEW WORK.
+ This pinout matches the earlier STM32H757BIT6/LQFP-208 board revision, not
+ the current STM32H745ZIT6/LQFP-144 revision described in README.md and
+ docs/architecture.md (no LQFP-144 pinout CSV exists yet - see that doc's
+ own note). Kept for historical reference only.
+================================================================================
                     HYDRA-UMC CONTROLLER BOARD - PINOUT.TXT
              Microcontroller: STM32H757BIT6 (Dual-Core LQFP-208)
 ================================================================================

@@ -212,6 +212,43 @@ Communication between CM5 (Host) and STM32H745 (Co-Processor) utilizes a hardwar
 
 ---
 
+## 12. 🦾 ROBOT CONTROLLER BOARDS & URTC TOOL HEAD (DISTRIBUTED TIER)
+
+Each of the up to 8 slave modules on STACK A (section 6) is a **Robot
+Controller Board**: one per robot, driving that robot's own 6 axes
+(STEP/DIR/ENABLE), reading its endstops, and forwarding its own tool head's
+traffic one hop further over a *second* CAN connection to a **URTC** board
+(Universal Robot Tool Controller - see the sibling `URTC` repository) mounted
+in the robot's head, optionally with its own expansion board.
+
+```text
+   STM32H745 FDCAN1 (STACK A)
+             |
+             v
+   +-------------------+        CAN         +-------------------+
+   | Robot Controller  |-------------------->|   URTC Tool Head  |
+   | Board (x1 per     |<--------------------|   (+ optional      |
+   | robot, up to 8)   |                     |   expansion board) |
+   +-------------------+                     +-------------------+
+   6x STEP/DIR/EN, endstops
+```
+
+* 🎛️ **MCU:** STMicroelectronics **STM32G474RET6** (Cortex-M4 @ 170 MHz,
+  LQFP-64, 512 KB flash), using 2 of its 3 onboard FDCAN peripherals - one as
+  the FDCAN uplink to the STM32H745, one as the CAN downlink to its own URTC
+  head. See `docs/architecture.md` §1/§4.
+* 📡 **CAN-OTA firmware updates:** both this board and its URTC head are
+  flashed over CAN only - no JTAG/SWD probe, no USB-CAN dongle. The
+  HYDRA-UMC-STUDIO dashboard (running on the CM5) reaches either one through
+  the full SPI → FDCAN1 → (relay) → CAN chain. Full addressing scheme and
+  protocol reuse from URTC's own proven CAN bootloader: `docs/architecture.md`.
+
+See `docs/architecture.md` for the complete tiered architecture (this section
+is a summary), including what's confirmed hardware fact vs. still a proposed
+design pending implementation.
+
+---
+
 ## 📂 REPOSITORY DIRECTORY STRUCTURE
 
 ```text

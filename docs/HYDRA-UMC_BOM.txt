@@ -1,4 +1,10 @@
 ================================================================================
+ ⚠️ SUPERSEDED / OUTDATED - DO NOT USE FOR NEW WORK.
+ This BOM matches the earlier STM32H757BIT6/LQFP-208 board revision (onboard
+ TMC5160A drivers, ESP32-C3, USB hub, Ethernet PHY, external SDRAM/QSPI flash),
+ not the current STM32H745ZIT6/LQFP-144 revision described in README.md and
+ docs/architecture.md. Kept for historical reference only.
+================================================================================
                     HYDRA-UMC CONTROLLER BOARD - BOM.TXT
                           Bill of Materials V1.0
 ================================================================================

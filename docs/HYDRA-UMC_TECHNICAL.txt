@@ -1,3 +1,12 @@
+> ⚠️ **SUPERSEDED / OUTDATED - DO NOT USE FOR NEW WORK.** This document describes an
+> earlier board revision (STM32H757BIT6, LQFP-208, 12x onboard TMC5160A drivers
+> wired directly to robots, ESP32-C3 Wi-Fi, USB2514B hub, LAN8720A Ethernet PHY,
+> external SDRAM/QSPI flash). The CURRENT architecture (STM32H745ZIT6, LQFP-144,
+> a single FDCAN1 bus to up to 8 external Robot Controller Boards - no onboard
+> motor drivers) is documented in `README.md` and `docs/architecture.md`. Kept
+> here for historical reference only. See `docs/architecture.md` for why the
+> design changed and what's confirmed vs. still pending on the current revision.
+
 # HYDRA Core Architecture Specifications
 
 An industrial-grade, distributed multi-robot control system and high-performance HMI architecture designed for multi-axis cellular robotics, automated manufacturing, and complex toolhead orchestration. 
