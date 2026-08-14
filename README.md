@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC Banner" width="100%">
+</p>
+
 # 🚀 HYDRA-UMC TECHNICAL SPECIFICATION
 ### 🤖 The Ultimate Dual-Core Micro-Factory & Multi-Robot Controller Platform (V1.0 - PCIe Hailo-8 AI Accelerator & Dual USB 3.0 Hubs)
 
@@ -9,56 +13,27 @@
 
 Built on a **Heterogeneous Host + Real-Time Co-Processor Architecture**, HYDRA-UMC decouples high-level user interface rendering, computer vision, AI inference, and cloud connectivity from real-time step generation, fieldbus management, and power electronics actuation.
 
-```text
-                                  +-------------------------------------------------------+
-                                  |            COMPUTE MODULE 5 (HOST / CEREBRO)          |
-                                  | - Broadcom BCM2712 Quad Cortex-A76 @ 2.4 GHz          |
-                                  | - VideoCore VII GPU (OpenGL ES 3.1 / Vulkan 1.2)      |
-                                  | - RP1 Dual USB 3.0 Host Controllers (2x 5 Gbps)       |
-                                  | - Linux OS with PREEMPT_RT Patchset                   |
-                                  | - High-FPS Touch UI (Qt6 / Flutter) via MIPI-DSI      |
-                                  | - Trajectory Planning, G-code Parsing & Vision AI     |
-                                  +--------+------------------+------------------+--------+
-                                           |                  |                  |
-                    PCIe Gen 3.0 x1 Bus    |                  |                  |
-                     (Up to 8 Gbps)        |                  |                  |
-                                           |        USB3 Ch 1 |        USB3 Ch 2 |
-                                           v                  v                  v
-               +-----------------------------+   +------------+----+   +------------+----+
-               | HAILO-8 M.2 AI ACCELERATOR  |   | GL3523 HUB #1   |   | GL3523 HUB #2   |
-               | (26 TOPS Neural Coproc)     |   +------------+----+   +------------+----+
-               +-----------------------------+                |                  |
-                                                  4x USB3 Ports          4x USB3 Ports
-                                                    (Cam 1-4)              (Cam 5-8)
-                                                              |                  |
-                                                              +--------+---------+
-                                                                       |
-                                                   High-Speed SPI Bus + DMA + IRQ Pin
-                                                                       |
-                                  +------------------------------------v------------------+
-                                  |        STM32H745ZIT6 (REAL-TIME CO-PROCESSOR)         |
-                                  |                 (LQFP-144 Package)                    |
-                                  |                                                       |
-                                  |  +------------------------+  +---------------------+  |
-                                  |  | Cortex-M7 @ 480 MHz    |  | Cortex-M4 @ 240MHz  |  |
-                                  |  | - S-Curve Kinematics   |  | - FDCAN1 Controller |  |
-                                  |  | - Hardware Timers      |  | - Sensor Filtering  |  |
-                                  |  | - 6-Axis Local Stage   |  | - Inter-Core IPC    |  |
-                                  |  +------------------------+  +---------------------+  |
-                                  |                                                       |
-                                  |  - 1 MB SRAM / 2 MB Dual-Bank Internal Flash          |
-                                  |  - Dedicated SPI2 Interface to 64 KB FRAM             |
-                                  +---------------------------+---------------------------+
-                                                              |
-                                                    FDCAN BUS #1 (FDCAN1)
-                                                (STACK A - Up to 8x SLAVES)
-                                                              |
-     +---------+-------+-------+---------+-------+------------+------------+
-     |         |               |         |       |            |            |
-     v         v               v         v       v            v            v
-+-----+   +-----+         +-----+   +-----+   +-----+      +-----+      +-----+
-| A1  |   | A2  |  ...    | A3  |   | A4  |   | A5  | ...  | A7  |      | A8  |
-+-----+   +-----+         +-----+   +-----+   +-----+      +-----+      +-----+
+```mermaid
+flowchart TB
+    CM5["<b>Compute Module 5 (Host / Cerebro)</b><br/>Broadcom BCM2712 Quad Cortex-A76 @ 2.4 GHz<br/>VideoCore VII GPU (OpenGL ES 3.1 / Vulkan 1.2)<br/>RP1 Dual USB 3.0 Host Controllers (2x 5 Gbps)<br/>Linux OS with PREEMPT_RT patchset<br/>High-FPS touch UI (Qt6 / Flutter) via MIPI-DSI<br/>Trajectory planning, G-code parsing &amp; Vision AI"]
+
+    CM5 -- "PCIe Gen 3.0 x1 (up to 8 Gbps)" --> HAILO["<b>Hailo-8 M.2 AI Accelerator</b><br/>26 TOPS neural coprocessor"]
+    CM5 -- "USB3 Channel 1" --> HUB1["GL3523 Hub #1"]
+    CM5 -- "USB3 Channel 2" --> HUB2["GL3523 Hub #2"]
+    HUB1 --> CAM14["4x USB3 camera ports<br/>(Cam 1-4)"]
+    HUB2 --> CAM58["4x USB3 camera ports<br/>(Cam 5-8)"]
+
+    CM5 -- "High-Speed SPI bus + DMA + IRQ pin" --> MCU
+
+    subgraph MCU["STM32H745ZIT6 Real-Time Co-Processor (LQFP-144)"]
+        direction LR
+        CM7["<b>Cortex-M7 @ 480 MHz</b><br/>S-Curve kinematics<br/>Hardware timers<br/>6-axis local stage"]
+        CM4["<b>Cortex-M4 @ 240 MHz</b><br/>FDCAN1 controller<br/>Sensor filtering<br/>Inter-core IPC"]
+    end
+    MEM["1 MB SRAM / 2 MB dual-bank internal flash<br/>Dedicated SPI2 interface to 64 KB FRAM"]
+    MCU --- MEM
+
+    MCU -- "FDCAN1 - STACK A bus" --> ROBOTS["Robot Controller Boards A1...A8<br/>(up to 8 slave modules)"]
 ```
 
 ### 🤖 Micro-Factory Capabilities:
@@ -141,19 +116,9 @@ The motherboard acts as a master controller for up to 8 individual slave robotic
 * ⏱️ **Protocol Specs:** ~1 Mbps nominal bitrate (Classic CAN, 8-byte max payload per frame). Auto-bus-off recovery managed by Cortex-M4.
 * 🔌 **Physical Connector:** 40-pin, 2.54mm-pitch STACKING header/socket (+24V ×10 pins, GND ×10 pins, +5V ×4 pins auxiliary, FDCAN1 H/L, `BOARD_PRESENT_N`, 13 spare) - the 8 Robot Controller Boards physically STACK one on top of another on one side of this board (CONFIRMED topology, not a backplane), each board straight-through-passing all 40 signals to whatever mounts above it. Slot addressing is a LOCAL DIP switch per board (`BOARD_ID[2:0]`, README.md section 12), not derived from this connector. Full pin table and stack topology in `docs/PINOUT_STACKA_CONNECTOR.TXT`. Identical connector definition on the Kinematic Brain's own port and every Robot Controller Board's pair of ports.
 
-```text
-                  +-----------------------------------+
-                  |     STM32H745 FDCAN1 CONTROLLER   |
-                  +-----------------+-----------------+
-                                    |
-                                    v
-                         [TCAN1044 Transceiver]
-                                    |
-                                    v
-                           +------------------+
-                           |  STACK A BUS     |
-                           | (Robots A1 - A8) |
-                           +------------------+
+```mermaid
+flowchart LR
+    FDCAN1["STM32H745<br/>FDCAN1 Controller"] --> XCVR["TCAN1044<br/>Transceiver"] --> BUS["STACK A Bus<br/>(Robots A1 - A8)"]
 ```
 
 ---
@@ -235,16 +200,11 @@ traffic one hop further over a *second* CAN connection to a **URTC** board
 (Universal Robot Tool Controller - see the sibling `URTC` repository) mounted
 in the robot's head, optionally with its own expansion board.
 
-```text
-   STM32H745 FDCAN1 (STACK A)
-             |
-             v
-   +-------------------+        CAN         +-------------------+
-   | Robot Controller  |-------------------->|   URTC Tool Head  |
-   | Board (x1 per     |<--------------------|   (+ optional      |
-   | robot, up to 8)   |                     |   expansion board) |
-   +-------------------+                     +-------------------+
-   6x STEP/DIR/EN, endstops
+```mermaid
+flowchart LR
+    MCU["STM32H745<br/>FDCAN1 (STACK A)"] --> RCB["<b>Robot Controller Board</b><br/>x1 per robot, up to 8<br/>6x STEP/DIR/EN, endstops"]
+    RCB -- CAN --> URTC["<b>URTC Tool Head</b><br/>+ optional expansion board"]
+    URTC -- CAN --> RCB
 ```
 
 * 🎛️ **MCU:** STMicroelectronics **STM32G474RET6** (Cortex-M4 @ 170 MHz,
