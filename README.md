@@ -132,13 +132,13 @@ Built on a **Heterogeneous Host + Real-Time Co-Processor Architecture**, HYDRA-U
 
 ## 6. 📡 DISTRIBUTED FIELDBUS COMMUNICATION (SINGLE FDCAN)
 
-The motherboard acts as a master controller for up to 8 individual slave robotic modules distributed across a single physical CAN FD network:
+The motherboard acts as a master controller for up to 8 individual slave robotic modules distributed across a single physical CAN bus:
 
-* 🔌 **Hardware Peripheral:** 1x Native Hardware FDCAN Controller (`FDCAN1`) built directly into the STM32H745.
-* ⚡ **Physical Layer Transceiver:** 1x High-Speed CAN FD Transceiver (e.g., TI `TCAN1044AVD` / NXP `TJA1443`).
+* 🔌 **Hardware Peripheral:** 1x Native Hardware FDCAN Controller (`FDCAN1`) built directly into the STM32H745, run in **Classic CAN mode** (`FDCAN_FRAME_CLASSIC`, `BRS_OFF`) by the real bootloader implementation - the peripheral is FD-capable silicon, but the CAN-OTA/SPI-OTA protocol this project actually speaks today (`docs/CANBUS_STM32H745.TXT`, `docs/CANBUS_STM32G474.TXT`) uses classic frames only (max DLC 8), same as every other tier (G474 Robot Controller Boards, URTC). CAN FD's larger 64-byte BRS payloads are real hardware headroom for later, not something the protocol uses yet.
+* ⚡ **Physical Layer Transceiver:** 1x High-Speed CAN FD Transceiver (e.g., TI `TCAN1044AVD` / NXP `TJA1443`) - FD-capable hardware chosen for the same future-headroom reason as the peripheral above, even though today's traffic is classic frames.
 * 🔀 **Bus Topology:**
   * 🅰️ **STACK A (`FDCAN1`):** Serves Slave Modules A1 through A8.
-* ⏱️ **Protocol Specs:** 1 Mbps Arbitration Bitrate, 5 Mbps to 8 Mbps Data Payload Bitrate (64-byte payload frames). Auto-bus-off recovery managed by Cortex-M4.
+* ⏱️ **Protocol Specs:** ~1 Mbps nominal bitrate (Classic CAN, 8-byte max payload per frame). Auto-bus-off recovery managed by Cortex-M4.
 * 🔌 **Physical Connector:** 40-pin, 2.54mm-pitch STACKING header/socket (+24V ×10 pins, GND ×10 pins, +5V ×4 pins auxiliary, FDCAN1 H/L, `BOARD_PRESENT_N`, 13 spare) - the 8 Robot Controller Boards physically STACK one on top of another on one side of this board (CONFIRMED topology, not a backplane), each board straight-through-passing all 40 signals to whatever mounts above it. Slot addressing is a LOCAL DIP switch per board (`BOARD_ID[2:0]`, README.md section 12), not derived from this connector. Full pin table and stack topology in `docs/PINOUT_STACKA_CONNECTOR.TXT`. Identical connector definition on the Kinematic Brain's own port and every Robot Controller Board's pair of ports.
 
 ```text

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-08-14T12:42:58Z",
+  "generated_at": "2026-08-14T17:35:55Z",
   "project": {
     "name": "HYDRA-UMC",
     "full_name": "Hybrid Dual-core Robotics Automation - Universal Micro-factory Controller",
@@ -33,12 +33,12 @@
       "files": {
         "bin": {
           "filename": "HYDRA_RCB_BOOTLOADER_v1.0.0.bin",
-          "size_bytes": 13760,
-          "crc32": "0xD3F6D88C"
+          "size_bytes": 13768,
+          "crc32": "0xCD9C9895"
         },
         "hex": {
           "filename": "HYDRA_RCB_BOOTLOADER_v1.0.0.hex",
-          "size_bytes": 38803
+          "size_bytes": 38832
         },
         "elf": {
           "filename": "HYDRA_RCB_BOOTLOADER_v1.0.0.elf",
@@ -90,12 +90,12 @@
       "files": {
         "bin": {
           "filename": "HYDRA_KB_CM7_BOOTLOADER_v1.0.0.bin",
-          "size_bytes": 10376,
-          "crc32": "0xE10038E1"
+          "size_bytes": 10424,
+          "crc32": "0x726D66DA"
         },
         "hex": {
           "filename": "HYDRA_KB_CM7_BOOTLOADER_v1.0.0.hex",
-          "size_bytes": 29292
+          "size_bytes": 29427
         },
         "elf": {
           "filename": "HYDRA_KB_CM7_BOOTLOADER_v1.0.0.elf",
@@ -147,16 +147,16 @@
       "files": {
         "bin": {
           "filename": "HYDRA_KB_CM4_BOOTLOADER_v1.0.0.bin",
-          "size_bytes": 16388,
-          "crc32": "0xA421377D"
+          "size_bytes": 16516,
+          "crc32": "0x76F07A95"
         },
         "hex": {
           "filename": "HYDRA_KB_CM4_BOOTLOADER_v1.0.0.hex",
-          "size_bytes": 46191
+          "size_bytes": 46551
         },
         "elf": {
           "filename": "HYDRA_KB_CM4_BOOTLOADER_v1.0.0.elf",
-          "size_bytes": 147048
+          "size_bytes": 147096
         }
       }
     },

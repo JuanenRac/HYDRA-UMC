@@ -278,7 +278,15 @@ void HandleReadbackStart(void) {
 
     FirmwareMetadata_t meta;
     uint32_t total_size = 0;
-    if (Metadata_Read(&meta) && meta.state == META_STATE_APP_VALID) {
+    // Same guard ApplicationIsValid() applies before trusting meta.size -
+    // Metadata_Read() only checks `magic`, so a torn-write metadata page
+    // could otherwise leave state==META_STATE_APP_VALID with hardware_id/
+    // size still reading as erased flash, and the memcpy below would then
+    // read past the end of real flash. Reachable over SPI1 from the CM5,
+    // unauthenticated.
+    if (Metadata_Read(&meta) && meta.state == META_STATE_APP_VALID &&
+        meta.hardware_id == THIS_HARDWARE_ID &&
+        meta.size > 0 && meta.size <= APP_MAX_SIZE) {
         total_size = meta.size;
     }
 
@@ -439,6 +447,22 @@ void HandleEndUpdate(uint8_t *data) {
 // further - opaque to this function, see bootloader_common.h's own header)
 // -----------------------------------------------------------------------
 void Relay_ToStackA(uint8_t slot, const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
+    // BOARD_ID[2:0] is a 3-bit local DIP switch (docs/PINOUT_STM32G474_
+    // ROBOT_CONTROLLER.TXT section 1c) - only slots 0-7 can ever exist on
+    // the bus. slot >= 16 would push target_id past the 11-bit standard
+    // CAN ID range (undefined HAL behavior); this rejects anything past
+    // the actually-addressable range instead of only the ones that would
+    // overflow the ID width, matching how the rest of this codebase
+    // validates its other externally-supplied inputs explicitly.
+    if (slot > 7) {
+        memset(out, 0, sizeof(*out));
+        out->target_tier = SPI_TARGET_STACKA;
+        out->target_slot = slot;
+        out->frame_type = OFS_STATUS;
+        out->dlc = 1;
+        out->payload[0] = STATUS_ERROR;
+        return;
+    }
     uint32_t slot_base = CAN_ID_STACKA_BASE + (uint32_t)slot * STACKA_SLOT_WINDOW;
     uint32_t target_id = slot_base + in->frame_type;
 
@@ -494,11 +518,23 @@ void Relay_ToCM7(const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
     uint32_t wait_start = HAL_GetTick();
     while (HAL_HSEM_IsSemTaken(IPC_HSEM_CMD_ID)) {
         // previous command not yet consumed by CM7 - give it a little room
-        // before giving up and overwriting anyway (better a possibly-
-        // dropped stale command than blocking this core's own SPI1
-        // service indefinitely on a stuck CM7).
+        // before giving up. Unlike the original version of this loop,
+        // giving up here means returning an honest error WITHOUT touching
+        // .cmd - ipc_mailbox.h's own single-writer invariant only holds if
+        // CM4 never writes .cmd while CM7 might still be mid-read of the
+        // previous frame, and this struct has no sequence number CM7 could
+        // use to detect a torn read. A possibly-corrupted command reaching
+        // CM7's protocol handler is worse than an honest "CM7 busy" status
+        // relayed back to the CM5.
         HAL_IWDG_Refresh(&hiwdg);
-        if (HAL_GetTick() - wait_start > 50) break;
+        if (HAL_GetTick() - wait_start > 50) {
+            memset(out, 0, sizeof(*out));
+            out->target_tier = SPI_TARGET_CM7;
+            out->frame_type = OFS_STATUS;
+            out->dlc = 1;
+            out->payload[0] = STATUS_ERROR;
+            return;
+        }
     }
     IPC_MAILBOX->cmd.frame_type = in->frame_type;
     IPC_MAILBOX->cmd.dlc = in->dlc;

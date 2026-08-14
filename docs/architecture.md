@@ -45,8 +45,11 @@ Flasher/Tester's own target picker uses (`canOta.ts`'s `CanOtaTier`):
   protocol - see section 3.
 - **Tier 1 - Robot Controller Board (STM32G474RET6), reached over FDCAN1
   "STACK A":** CONFIRMED bus (1x native FDCAN1 on the STM32H745, up to 8
-  slaves, 1 Mbps arbitration / 5-8 Mbps data, TCAN1044/TJA1443 transceiver -
-  README.md section 6). MCU **CONFIRMED: STM32G474RET6** (Cortex-M4 @ 170
+  slaves, run in Classic CAN mode at ~1 Mbps, 8-byte max payload per frame
+  - the real bootloader implementation uses FDCAN_FRAME_CLASSIC/BRS_OFF,
+  not CAN FD's larger BRS payloads, see docs/CANBUS_STM32H745.TXT and
+  README.md section 6 - TCAN1044/TJA1443 transceiver). MCU **CONFIRMED:
+  STM32G474RET6** (Cortex-M4 @ 170
   MHz, LQFP-64, 512 KB flash, 3x FDCAN peripherals - 2 used: one uplink to
   the STM32H745's own FDCAN1, one downlink to that robot's own URTC Tool
   Head). Addressing scheme **PROPOSED** - see section 4.
@@ -278,3 +281,57 @@ ESP32-C3, USB hub, Ethernet PHY) that this document's tiered
 STM32H745/Robot-Controller-Board architecture replaced. They're marked
 superseded at the top of each file and kept for historical reference only -
 do not use them as a source of truth for new work.
+
+---
+
+## 8. Known security limitations (accepted risks, pre-hardware)
+
+None of the 3 real bootloaders (`firmware/mcu_stm32g474/boot/`,
+`firmware/mcu_stm32h745/CM7/boot/`, `firmware/mcu_stm32h745/CM4/boot/`)
+have been run against real hardware yet (§6). The items below are known,
+deliberate gaps in the current design - not oversights caught by review
+after the fact - kept here so they're visible before this project reaches
+real hardware, rather than only tracked in this session's own private
+audit notes.
+
+- **No Read-Out Protection (RDP) on any of the 3 chips.** Without it,
+  physical SWD access to any ONE board exposes `HMAC_KEY`
+  (`bootloader_crypto.h`), which is shared across every board of that
+  same type - compromising one Robot Controller Board's key compromises
+  the signing trust for all 8. Writing RDP option bytes wrong is a
+  real, irreversible bricking risk on hardware that doesn't exist to test
+  against yet (the same reasoning URTC's own bootloader has already
+  applied to defer this - see that project's own notes on RDP2 being a
+  one-way door). Revisit once real hardware exists to validate the
+  option-byte sequence against, ideally per-device keys derived from a
+  real per-chip secret (e.g. the STM32's own unique ID) rather than one
+  key shared per board type.
+- **`OFS_AUTHORIZE_DOWNGRADE`'s anti-rollback bypass is a fixed 4-byte
+  value** (`0xD0,0x9E,0x12,0xAD`, identical across all 3 bootloaders,
+  and published in `docs/CANBUS_STM32G474.TXT`/`docs/CANBUS_STM32H745.TXT`
+  since the protocol has to be documented for the Flasher/Tester tooling
+  to implement it). Any node on the relevant bus can authorize a
+  downgrade to an older-but-still-validly-signed image - this doesn't
+  let an attacker install unsigned firmware (HMAC verification still
+  gates that), but it does mean the anti-rollback protection itself has
+  no real access control. A per-device value derived from `HMAC_KEY`
+  would close this, but that requires updating the host-side (Flasher/
+  HYDRA-UMC-STUDIO) protocol implementation in lockstep with all 3
+  bootloaders - a coordinated change deliberately deferred rather than
+  done partially.
+- **`HandleReadbackStart` (readback of the currently-installed firmware)
+  has no authentication on any of the 3 bootloaders.** Any bus node can
+  read back the full installed application - this is a confidentiality
+  gap (firmware exfiltration), not an integrity one (readback is
+  read-only, it cannot be used to install anything). Same "needs a
+  coordinated host+firmware change" reasoning as the anti-rollback bypass
+  above applies to fixing this properly.
+
+None of these 3 items are memory-safety bugs (those - unbounded reads in
+`HandleReadbackStart` from a torn-write metadata page, a mailbox race
+between CM4 and CM7, a semaphore leak in the CM7 readback pacing loop,
+and a missing bounds check in `Relay_ToStackA` - were real bugs, already
+fixed). These 3 are access-control gaps in the protocol's own design,
+left as explicitly accepted risk until real hardware and a coordinated
+host-side update make the proper fix (per-device secrets derived from
+`HMAC_KEY`, ideally with real RDP) practical to implement and verify.

@@ -164,6 +164,51 @@ static void WireToFrame(const uint8_t wire[SPI_FRAME_SIZE], SpiOtaFrame_t *f) {
     memcpy(f->payload, &wire[4], 8);
 }
 
+// Dispatches one received SPI1 frame to the STACK A relay, the CM7 relay,
+// or this core's own protocol handlers, writing any immediate reply into
+// tx_wire (STACKA/CM7 replies come back synchronously from the relay
+// call; SELF-tier replies are staged separately via Protocol_TakePending
+// Response, same as before this function existed). Shared between the
+// listening window below and the main loop further down so version
+// queries / relayed traffic / etc. are handled identically in both -
+// previously only the main loop dispatched anything besides
+// OFS_START_UPDATE, so the CM5 querying anything else in the first
+// ~600ms after reset was silently dropped despite the listening window's
+// own comment claiming otherwise. Returns 1 if this frame was an
+// OFS_START_UPDATE for SELF (the listening window uses this to know it
+// must stop listening and enter update mode instead of eventually
+// falling through to JumpToApplication).
+static uint8_t DispatchFrame(SpiOtaFrame_t *in, uint8_t tx_wire[SPI_FRAME_SIZE]) {
+    SpiOtaFrame_t out;
+    if (in->target_tier == SPI_TARGET_STACKA) {
+        Relay_ToStackA(in->target_slot, in, &out);
+        FrameToWire(&out, tx_wire);
+    } else if (in->target_tier == SPI_TARGET_CM7) {
+        Relay_ToCM7(in, &out);
+        FrameToWire(&out, tx_wire);
+    } else { // SPI_TARGET_SELF
+        if (in->frame_type == OFS_START_UPDATE && in->dlc == 8) {
+            HandleStartUpdate(in->payload);
+            return 1;
+        } else if (in->frame_type == OFS_HMAC_CHUNK && in->dlc == 8) {
+            HandleHmacChunk(in->payload);
+        } else if (in->frame_type == OFS_DATA) {
+            HandleData(in->payload, in->dlc);
+        } else if (in->frame_type == OFS_END_UPDATE && in->dlc == 8) {
+            HandleEndUpdate(in->payload);
+        } else if (in->frame_type == OFS_QUERY_VERSION) {
+            HandleVersionQuery();
+        } else if (in->frame_type == OFS_QUERY_ERROR_COUNTERS) {
+            HandleErrorCounterQuery();
+        } else if (in->frame_type == OFS_AUTHORIZE_DOWNGRADE && in->dlc == 4) {
+            HandleAuthorizeDowngrade(in->payload);
+        } else if (in->frame_type == OFS_BACKUP_READ_REQUEST) {
+            HandleReadbackStart();
+        }
+    }
+    return 0;
+}
+
 static uint32_t last_heartbeat_tick = 0 - 1000;
 
 int main(void) {
@@ -204,14 +249,10 @@ int main(void) {
         if (HAL_SPI_TransmitReceive(&hspi1, tx_wire, rx_wire, SPI_FRAME_SIZE, 20) == HAL_OK) {
             SpiOtaFrame_t in;
             WireToFrame(rx_wire, &in);
-            if (in.target_tier == SPI_TARGET_SELF && in.frame_type == OFS_START_UPDATE && in.dlc == 8) {
+            if (DispatchFrame(&in, tx_wire)) {
                 enter_update_mode = 1;
-                HandleStartUpdate(in.payload);
                 break;
             }
-            // Anything else during the listening window (version queries,
-            // relayed traffic) is handled the same way the main loop below
-            // does - see that loop's own comments, not duplicated here.
         }
         HAL_GPIO_WritePin(HYDRA_DATA_READY_PORT, HYDRA_DATA_READY_PIN, GPIO_PIN_RESET);
 
@@ -232,34 +273,9 @@ int main(void) {
         HAL_IWDG_Refresh(&hiwdg);
         HAL_GPIO_WritePin(HYDRA_DATA_READY_PORT, HYDRA_DATA_READY_PIN, GPIO_PIN_SET);
         if (HAL_SPI_TransmitReceive(&hspi1, tx_wire, rx_wire, SPI_FRAME_SIZE, 20) == HAL_OK) {
-            SpiOtaFrame_t in, out;
+            SpiOtaFrame_t in;
             WireToFrame(rx_wire, &in);
-
-            if (in.target_tier == SPI_TARGET_STACKA) {
-                Relay_ToStackA(in.target_slot, &in, &out);
-                FrameToWire(&out, tx_wire);
-            } else if (in.target_tier == SPI_TARGET_CM7) {
-                Relay_ToCM7(&in, &out);
-                FrameToWire(&out, tx_wire);
-            } else { // SPI_TARGET_SELF
-                if (in.frame_type == OFS_START_UPDATE && in.dlc == 8) {
-                    HandleStartUpdate(in.payload);
-                } else if (in.frame_type == OFS_HMAC_CHUNK && in.dlc == 8) {
-                    HandleHmacChunk(in.payload);
-                } else if (in.frame_type == OFS_DATA) {
-                    HandleData(in.payload, in.dlc);
-                } else if (in.frame_type == OFS_END_UPDATE && in.dlc == 8) {
-                    HandleEndUpdate(in.payload);
-                } else if (in.frame_type == OFS_QUERY_VERSION) {
-                    HandleVersionQuery();
-                } else if (in.frame_type == OFS_QUERY_ERROR_COUNTERS) {
-                    HandleErrorCounterQuery();
-                } else if (in.frame_type == OFS_AUTHORIZE_DOWNGRADE && in.dlc == 4) {
-                    HandleAuthorizeDowngrade(in.payload);
-                } else if (in.frame_type == OFS_BACKUP_READ_REQUEST) {
-                    HandleReadbackStart();
-                }
-            }
+            DispatchFrame(&in, tx_wire);
         }
         HAL_GPIO_WritePin(HYDRA_DATA_READY_PORT, HYDRA_DATA_READY_PIN, GPIO_PIN_RESET);
 

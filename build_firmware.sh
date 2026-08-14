@@ -140,6 +140,26 @@ compile_dir() {
     return 0
 }
 
+# Runs a link command, filtering ld's own known-harmless notes out of the
+# printed output, WITHOUT losing the linker's real exit code the way
+# `cmd 2>&1 | grep -v "..." || true` used to - that pattern reports $? as
+# grep's own exit status (1 whenever every line got filtered out, 0
+# otherwise), then `|| true` masks even that, so a genuine link failure
+# that still emitted a partial/corrupt .elf was only ever caught later, if
+# at all (e.g. by build_bin_hex's own objcopy failing to find a valid ELF
+# - not guaranteed for every possible failure mode). Using a temp file for
+# stderr instead of a pipe means $? right after the command is the
+# linker's own, unmodified.
+link_filtered() {
+    local errfile
+    errfile="$(mktemp)"
+    "$@" 2>"$errfile"
+    local status=$?
+    grep -v "not implemented\|note: the message\|in function \`_" "$errfile" >&2
+    rm -f "$errfile"
+    return $status
+}
+
 # -----------------------------------------------------------------------
 step "2. FreeRTOS kernel sources (shared by every application target - see docs/architecture.md)"
 # -----------------------------------------------------------------------
@@ -273,10 +293,12 @@ else
 fi
 G4_BOOT_VER="v$(get_version_macro "$SRC/bootloader_common.h" BOOTLOADER_VERSION_MAJOR).$(get_version_macro "$SRC/bootloader_common.h" BOOTLOADER_VERSION_MINOR).$(get_version_macro "$SRC/bootloader_common.h" BOOTLOADER_VERSION_PATCH)"
 G4_BOOT_NAME="HYDRA_RCB_BOOTLOADER_${G4_BOOT_VER}"
-arm-none-eabi-gcc $LDCOMMON_G4 -T"$SRC/STM32G474RETx_BOOTLOADER.ld" \
+if ! link_filtered arm-none-eabi-gcc $LDCOMMON_G4 -T"$SRC/STM32G474RETx_BOOTLOADER.ld" \
     "$G4/app/startup.o" "$G4/app/system_stm32g4xx.o" \
-    "$G4/boot_obj"/*.o "$G4/hal_obj"/*.o -o "$G4/boot_obj/$G4_BOOT_NAME.elf" \
-    2>&1 | grep -v "not implemented\|note: the message\|in function \`_" || true
+    "$G4/boot_obj"/*.o "$G4/hal_obj"/*.o -o "$G4/boot_obj/$G4_BOOT_NAME.elf"; then
+    fail "Robot Controller Board bootloader: link failed - see errors above"
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
 build_bin_hex "$G4/boot_obj/$G4_BOOT_NAME.elf"
 cp "$G4/boot_obj/$G4_BOOT_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$G4_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/boot_obj/$G4_BOOT_NAME.elf" | tail -1 | awk '{print $1}') bytes text)"
@@ -289,10 +311,12 @@ rm -f "$G4/app_obj"/*.o
 arm-none-eabi-gcc $CFLAGS_G4_APP -I"$SRC" -x c -c "$SRC/STM32G474RE_main.c" -o "$G4/app_obj/STM32G474RE_main.o"
 G4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR)"
 G4_APP_NAME="HYDRA_RCB_APP_${G4_APP_VER}"
-arm-none-eabi-gcc $LDCOMMON_G4 -T"$SRC/STM32G474RETx_APP.ld" \
+if ! link_filtered arm-none-eabi-gcc $LDCOMMON_G4 -T"$SRC/STM32G474RETx_APP.ld" \
     "$G4/app/startup.o" "$G4/app/system_stm32g4xx.o" \
-    "$G4/app_obj"/*.o "$G4/hal_obj"/*.o "$G4/freertos_obj"/*.o -o "$G4/app_obj/$G4_APP_NAME.elf" \
-    2>&1 | grep -v "not implemented\|note: the message\|in function \`_" || true
+    "$G4/app_obj"/*.o "$G4/hal_obj"/*.o "$G4/freertos_obj"/*.o -o "$G4/app_obj/$G4_APP_NAME.elf"; then
+    fail "Robot Controller Board application: link failed - see errors above"
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
 build_bin_hex "$G4/app_obj/$G4_APP_NAME.elf"
 cp "$G4/app_obj/$G4_APP_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$G4_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/app_obj/$G4_APP_NAME.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test, see firmware/mcu_stm32g474/README.md"
@@ -425,10 +449,12 @@ else
 fi
 CM7_BOOT_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_PATCH)"
 CM7_BOOT_NAME="HYDRA_KB_CM7_BOOTLOADER_${CM7_BOOT_VER}"
-arm-none-eabi-gcc $LDCOMMON_CM7 -T"$SRC/boot/STM32H745ZITx_CM7_BOOTLOADER.ld" \
+if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM7 -T"$SRC/boot/STM32H745ZITx_CM7_BOOTLOADER.ld" \
     "$H7/cm7/startup.o" "$H7/cm7/system_stm32h7xx.o" \
-    "$H7/cm7_boot_obj"/*.o "$H7/hal_obj_cm7"/*.o -o "$H7/cm7_boot_obj/$CM7_BOOT_NAME.elf" \
-    2>&1 | grep -v "not implemented\|note: the message\|in function \`_" || true
+    "$H7/cm7_boot_obj"/*.o "$H7/hal_obj_cm7"/*.o -o "$H7/cm7_boot_obj/$CM7_BOOT_NAME.elf"; then
+    fail "CM7 bootloader: link failed - see errors above"
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
 build_bin_hex "$H7/cm7_boot_obj/$CM7_BOOT_NAME.elf"
 cp "$H7/cm7_boot_obj/$CM7_BOOT_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$CM7_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm7_boot_obj/$CM7_BOOT_NAME.elf" | tail -1 | awk '{print $1}') bytes text)"
@@ -436,10 +462,12 @@ pass "$CM7_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm7_boot_obj
 arm-none-eabi-gcc $CFLAGS_CM7_APP -I"$SRC" -x c -c "$SRC/STM32H745ZI_CM7_main.c" -o "$H7/cm7_app_obj/STM32H745ZI_CM7_main.o"
 CM7_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR)"
 CM7_APP_NAME="HYDRA_KB_CM7_APP_${CM7_APP_VER}"
-arm-none-eabi-gcc $LDCOMMON_CM7 -T"$SRC/STM32H745ZITx_CM7_APP.ld" \
+if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM7 -T"$SRC/STM32H745ZITx_CM7_APP.ld" \
     "$H7/cm7/startup.o" "$H7/cm7/system_stm32h7xx.o" \
-    "$H7/cm7_app_obj"/*.o "$H7/hal_obj_cm7"/*.o "$H7/cm7_freertos_obj"/*.o -o "$H7/cm7_app_obj/$CM7_APP_NAME.elf" \
-    2>&1 | grep -v "not implemented\|note: the message\|in function \`_" || true
+    "$H7/cm7_app_obj"/*.o "$H7/hal_obj_cm7"/*.o "$H7/cm7_freertos_obj"/*.o -o "$H7/cm7_app_obj/$CM7_APP_NAME.elf"; then
+    fail "CM7 application: link failed - see errors above"
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
 build_bin_hex "$H7/cm7_app_obj/$CM7_APP_NAME.elf"
 cp "$H7/cm7_app_obj/$CM7_APP_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$CM7_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm7_app_obj/$CM7_APP_NAME.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test"
@@ -456,10 +484,12 @@ else
 fi
 CM4_BOOT_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_PATCH)"
 CM4_BOOT_NAME="HYDRA_KB_CM4_BOOTLOADER_${CM4_BOOT_VER}"
-arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/boot/STM32H745ZITx_CM4_BOOTLOADER.ld" \
+if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/boot/STM32H745ZITx_CM4_BOOTLOADER.ld" \
     "$H7/cm4/startup.o" "$H7/cm4/system_stm32h7xx.o" \
-    "$H7/cm4_boot_obj"/*.o "$H7/hal_obj_cm4"/*.o -o "$H7/cm4_boot_obj/$CM4_BOOT_NAME.elf" \
-    2>&1 | grep -v "not implemented\|note: the message\|in function \`_" || true
+    "$H7/cm4_boot_obj"/*.o "$H7/hal_obj_cm4"/*.o -o "$H7/cm4_boot_obj/$CM4_BOOT_NAME.elf"; then
+    fail "CM4 bootloader: link failed - see errors above"
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
 build_bin_hex "$H7/cm4_boot_obj/$CM4_BOOT_NAME.elf"
 cp "$H7/cm4_boot_obj/$CM4_BOOT_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$CM4_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_boot_obj/$CM4_BOOT_NAME.elf" | tail -1 | awk '{print $1}') bytes text)"
@@ -467,10 +497,12 @@ pass "$CM4_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_boot_obj
 arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -x c -c "$SRC/STM32H745ZI_CM4_main.c" -o "$H7/cm4_app_obj/STM32H745ZI_CM4_main.o"
 CM4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR)"
 CM4_APP_NAME="HYDRA_KB_CM4_APP_${CM4_APP_VER}"
-arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/STM32H745ZITx_CM4_APP.ld" \
+if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/STM32H745ZITx_CM4_APP.ld" \
     "$H7/cm4/startup.o" "$H7/cm4/system_stm32h7xx.o" \
-    "$H7/cm4_app_obj"/*.o "$H7/hal_obj_cm4"/*.o "$H7/cm4_freertos_obj"/*.o -o "$H7/cm4_app_obj/$CM4_APP_NAME.elf" \
-    2>&1 | grep -v "not implemented\|note: the message\|in function \`_" || true
+    "$H7/cm4_app_obj"/*.o "$H7/hal_obj_cm4"/*.o "$H7/cm4_freertos_obj"/*.o -o "$H7/cm4_app_obj/$CM4_APP_NAME.elf"; then
+    fail "CM4 application: link failed - see errors above"
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
 build_bin_hex "$H7/cm4_app_obj/$CM4_APP_NAME.elf"
 cp "$H7/cm4_app_obj/$CM4_APP_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$CM4_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_app_obj/$CM4_APP_NAME.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test, no CM7<->CM4 scheduler sync yet"

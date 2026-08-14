@@ -272,13 +272,22 @@ static uint8_t WaitForReadbackPageAck(uint32_t page_index) {
     while ((HAL_GetTick() - wait_start) < 3000) {
         HAL_IWDG_Refresh(&hiwdg);
         if (HAL_HSEM_IsSemTaken(IPC_HSEM_CMD_ID)) {
-            if (IPC_MAILBOX->cmd.frame_type == OFS_BACKUP_READ_PAGE_ACK && IPC_MAILBOX->cmd.dlc == 4) {
-                uint32_t acked = ((uint32_t)IPC_MAILBOX->cmd.payload[0] << 24) | ((uint32_t)IPC_MAILBOX->cmd.payload[1] << 16)
-                                | ((uint32_t)IPC_MAILBOX->cmd.payload[2] << 8) | IPC_MAILBOX->cmd.payload[3];
-                HAL_HSEM_Release(IPC_HSEM_CMD_ID, 0);
+            uint8_t frame_type = IPC_MAILBOX->cmd.frame_type;
+            uint8_t dlc = IPC_MAILBOX->cmd.dlc;
+            uint32_t acked = ((uint32_t)IPC_MAILBOX->cmd.payload[0] << 24) | ((uint32_t)IPC_MAILBOX->cmd.payload[1] << 16)
+                            | ((uint32_t)IPC_MAILBOX->cmd.payload[2] << 8) | IPC_MAILBOX->cmd.payload[3];
+            // Always release once read, even when this isn't the ACK we're
+            // waiting for - leaving the semaphore held here (the original
+            // bug) makes HAL_HSEM_IsSemTaken keep reporting the same stale
+            // frame on every loop iteration, so this function just spins
+            // until the 3s timeout and aborts the whole readback instead of
+            // discarding the unrelated frame and continuing to wait.
+            HAL_HSEM_Release(IPC_HSEM_CMD_ID, 0);
+            if (frame_type == OFS_BACKUP_READ_PAGE_ACK && dlc == 4) {
                 if (acked == page_index) return 1;
-                return 0; // desynced - abandon rather than guess
+                return 0; // desynced ack for the wrong page - abandon rather than guess
             }
+            // Not the ACK we're waiting for - discard and keep waiting.
         }
     }
     return 0;
@@ -289,7 +298,15 @@ void HandleReadbackStart(void) {
 
     FirmwareMetadata_t meta;
     uint32_t total_size = 0;
-    if (Metadata_Read(&meta) && meta.state == META_STATE_APP_VALID) {
+    // Same guard ApplicationIsValid() applies before trusting meta.size -
+    // Metadata_Read() only checks `magic`, so a torn-write metadata page
+    // could otherwise leave state==META_STATE_APP_VALID with hardware_id/
+    // size still reading as erased flash, and the page loop below would
+    // then read past the end of real flash. Reachable via the CM5 mailbox
+    // relay, unauthenticated.
+    if (Metadata_Read(&meta) && meta.state == META_STATE_APP_VALID &&
+        meta.hardware_id == THIS_HARDWARE_ID &&
+        meta.size > 0 && meta.size <= APP_MAX_SIZE) {
         total_size = meta.size;
     }
 

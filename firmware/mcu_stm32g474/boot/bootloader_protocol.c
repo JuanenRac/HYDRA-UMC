@@ -330,7 +330,15 @@ void HandleReadbackStart(void) {
 
     FirmwareMetadata_t meta;
     uint32_t total_size = 0;
-    if (Metadata_Read(&meta) && meta.state == META_STATE_APP_VALID) {
+    // Same guard ApplicationIsValid() applies before trusting meta.size -
+    // Metadata_Read() only checks `magic`, so a torn-write metadata page
+    // could otherwise leave state==META_STATE_APP_VALID with hardware_id/
+    // size still reading as erased flash, and the page loop below would
+    // then read past the end of real flash. Reachable by any bus node,
+    // unauthenticated.
+    if (Metadata_Read(&meta) && meta.state == META_STATE_APP_VALID &&
+        meta.hardware_id == THIS_HARDWARE_ID &&
+        meta.size > 0 && meta.size <= APP_MAX_SIZE) {
         total_size = meta.size;
     }
 
