@@ -1,0 +1,38 @@
+# =============================================================================
+# yolov8_8cam.txt - Starting GStreamer pipeline shape for 8-camera YOLOv8
+# inference on the Hailo-8, via TAPPAS's own hailonet/hailofilter elements.
+# PROJECT: HYDRA-UMC
+# AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
+# LICENSE: GPL-3.0 - see repo root LICENSE
+#
+# NOT YET RUNNABLE - references ../models/yolov8_hydra.hef, which doesn't
+# exist yet (see ../README.md for what's needed before it does). This is a
+# starting shape for the real pipeline, not a working config - single-camera
+# skeleton shown below; the real 8-camera version needs `hailomuxer`/
+# `hailoroundrobin` (TAPPAS's own multi-stream batching elements) tying all
+# 8 sources into one hailonet inference call, not 8 independent ones (that
+# would waste the Hailo-8's own batching throughput) - not written yet,
+# needs verifying against TAPPAS's own current multi-stream example apps
+# first, not guessed here.
+# =============================================================================
+
+# Single-camera skeleton (verify TAPPAS element names/properties against the
+# actually-installed TAPPAS version before trusting this syntax - not run
+# against real hardware):
+gst-launch-1.0 \
+  v4l2src device=/dev/video0 ! \
+  video/x-raw,format=YUY2,width=1280,height=720,framerate=30/1 ! \
+  videoconvert ! \
+  hailonet hef-path=../models/yolov8_hydra.hef ! \
+  hailofilter so-path=libyolo_post.so ! \
+  hailooverlay ! \
+  videoconvert ! \
+  x264enc tune=zerolatency ! \
+  rtph264pay ! \
+  udpsink host=127.0.0.1 port=5000
+
+# TODO before this is real:
+#   - Multi-stream (8x) batching via hailomuxer/hailoroundrobin
+#   - Handoff to video_streamer/ instead of a raw udpsink placeholder
+#   - Real post-processing .so matching this project's own trained classes
+#     (not the stock COCO-trained libyolo_post.so this skeleton assumes)

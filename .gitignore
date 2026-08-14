@@ -1,0 +1,13 @@
+# Vendored ST HAL/CMSIS sources + compiled objects (fetched fresh by
+# build_firmware.sh from ST's own official repos - see docs/COMPILE_STM32G474.TXT
+# and docs/COMPILE_STM32H745.TXT). Never commit these; they aren't this
+# project's own code.
+build/
+
+# build_firmware.sh output - these are still GPIO-toggle smoke-test binaries,
+# not real firmware releases yet (see firmware/mcu_stm32g474/README.md and
+# firmware/mcu_stm32h745/README.md). Once real firmware exists and this
+# project adopts URTC's own VERSION_CHECKLIST.txt-style release discipline,
+# reconsider whether real release binaries belong committed here the same
+# way URTC's own firmware/*.bin does.
+firmware_out/

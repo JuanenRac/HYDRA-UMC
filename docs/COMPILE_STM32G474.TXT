@@ -1,0 +1,145 @@
+=============================================================================
+COMPILE_STM32G474.TXT - Building the Robot Controller Board firmware (STM32G474RET6)
+PROJECT: HYDRA-UMC
+AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
+LICENSE: This document is licensed under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
+=============================================================================
+Every command in this document was actually run against this project's own
+real source tree while writing it, via ./build_firmware.sh g474 - not
+reconstructed from memory. That script automates exactly what's documented
+here; read this first if the script itself ever needs adjusting.
+
+Modeled directly on the sibling URTC repo's own docs/COMPILE_STM32F303.TXT -
+same pinned-vendor-via-git approach, same reasoning style. Differences from
+that document are called out explicitly below rather than assumed obvious.
+
+-----------------------------------------------------------------------------
+1. What you're building - 2 binaries, 1 chip
+-----------------------------------------------------------------------------
+Robot Controller Board (STM32G474RET6, LQFP-64, 512 KB flash / 128 KB RAM -
+see HYDRA-UMC/docs/architecture.md section 1 for this board's role: one per
+robot, up to 8 per HYDRA-UMC controller, FDCAN1 uplink to the STM32H745
+"Kinematic Brain" + a second CAN downlink to that robot's own URTC Tool
+Head):
+    - Bootloader: firmware/mcu_stm32g474/boot/ -> HYDRA_RCB_BOOTLOADER.bin/.hex/.elf
+    - Application: firmware/mcu_stm32g474/     -> HYDRA_RCB_APP.bin/.hex/.elf
+
+Both outputs land in firmware_out/ at the repo root once built (NOT
+committed - see .gitignore; these are GPIO-toggle smoke-test binaries, not
+real firmware yet - see firmware/mcu_stm32g474/README.md for what's still
+real engineering work).
+
+-----------------------------------------------------------------------------
+2. Tools you need
+-----------------------------------------------------------------------------
+    sudo apt install gcc-arm-none-eabi binutils-arm-none-eabi \
+        libnewlib-arm-none-eabi git
+
+Verified working version on this project's own development machine:
+arm-none-eabi-gcc 10.3.1 (GNU Arm Embedded Toolchain 10.3-2021.10, via
+Chocolatey on Windows). Any reasonably recent GCC-based ARM toolchain should
+work the same way.
+
+Unlike URTC's own STM32F303 firmware, this chip's own skeleton is currently
+100% C (no C++ special case yet) - libstdc++-arm-none-eabi is not required
+today, though may become necessary later depending on what real dependencies
+land (note this explicitly if that changes, don't let it go undocumented the
+way it would have bitten someone here).
+
+You do not need STM32CubeIDE, STM32CubeMX, or any ST-branded IDE at all -
+build_firmware.sh builds this entirely from the command line with the
+generic GNU ARM toolchain above, the same philosophy URTC's own build script
+already established. See the repo root's own .vscode/ for an OPTIONAL VS
+Code setup (debugging via ST's own VS Code extension) - entirely separate
+from what's needed to just compile.
+
+-----------------------------------------------------------------------------
+3. Getting the ST HAL/CMSIS files this project depends on
+-----------------------------------------------------------------------------
+Same reasoning as URTC's own document: this repository does NOT vendor ST's
+HAL/CMSIS files (BSD-3-Clause, doesn't belong copied into this project's own
+source tree) - build_firmware.sh fetches them fresh from ST's own official
+repos, pinned to specific tags for reproducibility between runs:
+
+    stm32g4xx_hal_driver    v1.2.7   https://github.com/STMicroelectronics/stm32g4xx_hal_driver.git
+    cmsis_device_g4         v1.2.6   https://github.com/STMicroelectronics/cmsis_device_g4.git
+    cmsis_core              v5.9.0_20250520  https://github.com/STMicroelectronics/cmsis_core.git
+
+NOTE on cmsis_core's own internal layout: this repo's directory structure
+changed between older and newer tags - URTC's own build script (written
+against an earlier point in that repo's history) expects headers under
+CMSIS/Core/Include/; the v5.9.0_20250520 tag pinned here instead has them
+directly under Core/Include/ (no CMSIS/ prefix). Confirmed by actually
+fetching this exact tag while writing this document, not assumed - if
+re-pinning to a different tag later, re-verify this path didn't move again
+before assuming the old one still works.
+
+Cached locally under build/g474/vendor/ after the first run - re-run with
+--clean to force a fresh fetch.
+
+-----------------------------------------------------------------------------
+4. Common compiler flags
+-----------------------------------------------------------------------------
+    CFLAGS="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard \
+            -DSTM32G474xx -DUSE_HAL_DRIVER \
+            -Ipath/to/CMSIS_Include -Ipath/to/HAL_Include \
+            -O2 -Wall -ffunction-sections -fdata-sections"
+
+Only 10 of the ~100+ available HAL modules are compiled today - just enough
+for the GPIO-toggle smoke test (HAL core, Cortex, GPIO, RCC + RCC_EX, PWR +
+PWR_EX, FLASH + FLASH_EX, EXTI). Extend HAL_MODULES_G4 in build_firmware.sh
+as real FDCAN/timer/motion code lands - same "only what's used" reasoning
+URTC's own document explains in more depth for its own, larger module list.
+
+-----------------------------------------------------------------------------
+5. Flash partitioning (this board's own bootloader+app+backup split)
+-----------------------------------------------------------------------------
+See firmware/mcu_stm32g474/STM32G474RETx_APP.ld's own header comment for
+the exact byte ranges - summarized:
+
+    0x08000000  Bootloader        32 KB
+    0x08008000  Metadata           4 KB
+    0x08009000  App main slot    236 KB
+    0x08044000  App backup slot  236 KB
+    0x0807F000  Reserved           4 KB
+
+PROPOSED, modeled directly on URTC's own proven split (30 KB/2 KB/112 KB/112
+KB out of a 256 KB chip), scaled to this chip's 512 KB. Not yet verified
+against real hardware bring-up - the bootloader itself doesn't implement
+real CAN-OTA update logic yet either (see boot/bootloader_main.c's own
+header comment).
+
+-----------------------------------------------------------------------------
+6. The 2 link steps
+-----------------------------------------------------------------------------
+--- Bootloader ---
+    arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard \
+        -specs=nano.specs -specs=nosys.specs \
+        -Tfirmware/mcu_stm32g474/boot/STM32G474RETx_BOOTLOADER.ld -Wl,--gc-sections \
+        startup.o system_stm32g4xx.o bootloader_main.o hal_obj/*.o \
+        -o HYDRA_RCB_BOOTLOADER.elf
+
+--- Application ---
+    arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard \
+        -specs=nano.specs -specs=nosys.specs \
+        -Tfirmware/mcu_stm32g474/STM32G474RETx_APP.ld -Wl,--gc-sections \
+        startup.o system_stm32g4xx.o STM32G474RE_main.o hal_obj/*.o \
+        -o HYDRA_RCB_APP.elf
+
+Neither build needs g++ or -lm today (no C++, no floating-point math library
+calls yet) - unlike URTC's own expansion-slave build, which needs both for
+Melexis's MLX9064x calibration code. Revisit if/when this board grows a
+similar dependency.
+
+-----------------------------------------------------------------------------
+7. Generating the final .bin/.hex, and verifying
+-----------------------------------------------------------------------------
+    arm-none-eabi-objcopy -O binary HYDRA_RCB_APP.elf HYDRA_RCB_APP.bin
+    arm-none-eabi-objcopy -O ihex   HYDRA_RCB_APP.elf HYDRA_RCB_APP.hex
+    arm-none-eabi-size HYDRA_RCB_APP.elf
+
+Last verified: both binaries build cleanly, 0 warnings, 0 errors, via a full
+--clean rebuild (`./build_firmware.sh --clean g474`).
+=============================================================================
+END OF FILE
+=============================================================================

@@ -256,26 +256,81 @@ design pending implementation.
 ## 📂 REPOSITORY DIRECTORY STRUCTURE
 
 ```text
-hydra-platform/
+HYDRA-UMC/
+├── .vscode/                    # Recommended extensions + build tasks - see "Development Environment" below
 ├── docs/
-│   ├── datasheets/             # Datasheets of parts project
-│   ├── architecture.md
-│   └── pinout_stm32h745_lqfp144.csv
+│   ├── datasheets/             # Datasheets of parts used across every board in this repo
+│   ├── architecture.md         # The 4-tier system architecture (start here)
+│   ├── COMPILE_STM32G474.TXT   # Robot Controller Board firmware build reference
+│   ├── COMPILE_STM32H745.TXT   # Kinematic Brain firmware build reference (dual-core)
+│   └── HYDRA-UMC_*.txt/TXT     # Older docs - several superseded, see each file's own banner
 ├── hardware/
-│   ├── PCB/                    # Eagle SCH & BRD files (MCU, CM5, 2x GL3523, M.2 Hailo-8, Power)
-│   └── gerbers/                # Manufacturing output files
+│   ├── PCB/
+│   │   ├── kinematic_brain_stm32h745/          # Main motherboard - no schematic yet, see its own README
+│   │   └── robot_controller_board_stm32g474/   # Per-robot board - no schematic yet, see its own README
+│   └── gerbers/                # Manufacturing output files (empty until a board is laid out)
 ├── firmware/
-│   ├── cm5_host/               # Linux system services, Qt UI, IPC driver, RTSP streamer, Hailo-8 pipeline
-│   │   ├── hmi_qt6/            # 
-│   │   ├── ai_inference/       # Hailo-8 TAPPAS / YOLOv8 pipeline
-│   │   ├── video_streamer/     # Multi-camera RTSP/WebRTC server
-│   │   └── ipc_driver/         #
-│   └── mcu_stm32h745/          # STM32CubeIDE dual-core project
-│       ├── CM7/                # Motion engine, hardware timers, PID
-│       ├── CM4/                # FDCAN drivers, sensor filtering
-│       └── Common/             # Shared memory structure definitions
+│   ├── cm5_host/                # Linux userspace apps that run ON TOP of os/'s own image
+│   │   ├── hmi_qt6/             # Qt6 kiosk shell wrapping HYDRA-UMC-STUDIO's own dashboard
+│   │   ├── ai_inference/        # Hailo-8 TAPPAS / YOLOv8 pipeline
+│   │   ├── video_streamer/      # Multi-camera RTSP/WebRTC server (MediaMTX)
+│   │   └── ipc_driver/          # CM5 <-> STM32H745 SPI link (userspace)
+│   ├── mcu_stm32h745/           # Kinematic Brain firmware (Tier 0) - dual-core
+│   │   ├── CM7/                 # Motion engine, hardware timers (+ its own boot/)
+│   │   ├── CM4/                 # FDCAN drivers, sensor filtering (+ its own boot/)
+│   │   └── Common/              # Shared memory structure definitions (CM7<->CM4 IPC - not designed yet)
+│   └── mcu_stm32g474/           # Robot Controller Board firmware (Tier 1) - single-core, + its own boot/
+├── os/                          # CM5 OS image - base OS choice, systemd units, first-boot provisioning
+├── build_firmware.sh            # Builds every MCU firmware target above from a clean checkout
 └── README.md
 ```
+
+See `docs/architecture.md` for what each tier actually does and how they
+connect; every folder above with its own `README.md` has more detail than
+this top-level summary.
+
+## 🛠️ DEVELOPMENT ENVIRONMENT
+
+What this project's own development machine actually has installed and
+verified working (`build_firmware.sh g474`/`h745`, full `--clean` rebuilds,
+0 errors) - not a theoretical list:
+
+* 🔧 **ARM GNU Toolchain** (`arm-none-eabi-gcc` 10.3+) - compiles every MCU
+  firmware target. No STM32CubeIDE/CubeMX project files are used or
+  required to build - `build_firmware.sh` fetches ST's own HAL/CMSIS
+  sources fresh from their official GitHub repos and drives the compiler
+  directly, same philosophy the sibling `URTC` repo's own
+  `build_firmware.sh` already established.
+* 🧩 **VS Code + extensions** (`.vscode/extensions.json` lists all of
+  these): [STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension)
+  (project/build/debug integration), **Cortex-Debug** (SWD/JTAG debugging -
+  independent of `build_firmware.sh`, useful once real hardware exists),
+  **CMake Tools** (for `firmware/cm5_host/hmi_qt6/`'s own CMake project),
+  **C/C++** (IntelliSense across every firmware/host source file),
+  **Python** (`ai_inference/` pipeline scripts), **Hex Editor** (inspecting
+  `.bin` firmware output), **YAML** (`video_streamer/`'s own MediaMTX
+  config). Open the repo, accept the recommended-extensions prompt, and use
+  **Terminal → Run Task** for the pre-wired build tasks
+  (`.vscode/tasks.json`).
+* 🗂️ **git** - both for this repo itself and for `build_firmware.sh`'s own
+  pinned-tag vendoring of ST's HAL/CMSIS packages (cached under `build/`,
+  gitignored, re-fetched on `--clean`).
+
+## 🏗️ BUILDING THE FIRMWARE
+
+```bash
+./build_firmware.sh          # builds every MCU target (Robot Controller Board + Kinematic Brain, both cores)
+./build_firmware.sh g474     # Robot Controller Board only
+./build_firmware.sh h745     # Kinematic Brain only (both cores)
+./build_firmware.sh --clean  # wipe the vendored HAL/CMSIS cache first
+```
+
+Output lands in `firmware_out/` (gitignored). See
+`docs/COMPILE_STM32G474.TXT` and `docs/COMPILE_STM32H745.TXT` for exactly
+what each step does and why - and each firmware folder's own `README.md`
+for current status (today: verified-compiling GPIO-toggle smoke tests, not
+yet the real CAN-OTA/motion firmware - see `docs/architecture.md` for what
+that still needs).
 
 ## 👤 Author
 
