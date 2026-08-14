@@ -478,6 +478,27 @@ pass "$CM4_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_app_obj/$
 fi
 
 # -----------------------------------------------------------------------
+step "11. Firmware manifest (firmware_out/firmware_manifest.json)"
+# -----------------------------------------------------------------------
+# Only meaningful once every component exists - a partial build (g474-only
+# or h745-only) would make generate_manifest.py fail looking for the other
+# chip's own binaries, so this only runs for a full 'all' build (the
+# default with no target argument, or an explicit 'all').
+if [ "$TARGET" = "all" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+        if python3 "$ROOT/generate_manifest.py" "$ROOT"; then
+            pass "firmware_manifest.json regenerated - see it for exact versions/CRC32 of every component just built"
+        else
+            fail "generate_manifest.py failed - see errors above"
+        fi
+    else
+        warn "python3 not found - skipped firmware_manifest.json regeneration (HYDRA-UMC-STUDIO's own GitHub-download feature reads this file)"
+    fi
+else
+    echo "  (skipped - only regenerated on a full 'all' build, see this script's own comment)"
+fi
+
+# -----------------------------------------------------------------------
 step "Summary"
 # -----------------------------------------------------------------------
 echo "$PASS passed, $WARN warnings, $FAIL failed"
