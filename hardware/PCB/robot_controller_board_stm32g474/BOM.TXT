@@ -12,16 +12,19 @@ follows.
 Item | Qty | Designator | Component / Part Number         | Package / Footprint | Description / Function
 -----+-----+------------+----------------------------------+----------------------+---------------------------------------------------------
  01  |  1  | U1         | STM32G474RET6                     | LQFP-64 (10x10mm)    | Main MCU - Cortex-M4F @ up to 170 MHz, 512KB flash, 128KB RAM, 3x FDCAN
- 02  |  2  | U2, U3     | TBD - CAN FD transceiver          | SOIC-8               | One per FDCAN in use: U2 = uplink to STM32H745 FDCAN1 (STACK A), U3 = downlink to this robot's own URTC Tool Head. Candidate parts: TI TCAN1044AVD (matches the Kinematic Brain's own choice, README.md section 6) or NXP TJA1443 - not yet selected for this board specifically.
- 03  |  6  | TBD        | Stepper/servo driver interface    | TBD                  | STEP/DIR/ENABLE per axis (6-axis robot) - driver stage itself likely off-board (external driver modules) or onboard, not yet decided. See docs/architecture.md section 1 for this board's "6x STEP/DIR/EN, endstops" job description.
- 04  |  6  | TBD        | Endstop input (opto or mechanical)| TBD                  | One per axis, active-low convention matching URTC's own generic endstop pattern (docs/CANBUS.TXT reference) for consistency across this project.
- 05  |  1  | TBD        | 3.3V LDO/buck regulator           | TBD                  | Logic supply, fed from STACK A's own shared power rail (voltage TBD against README.md's own power distribution section)
- 06  |  1  | J1         | STACK A bus connector             | TBD                  | Matches HYDRA-UMC's own "heavy-copper shrouded connector (2.54mm pitch)" (README.md section 11) for consistency with the main board's own connector choice
+ 02  |  2  | U2, U3     | TBD - CAN FD transceiver          | SOIC-8               | One per FDCAN in use: U2 = FDCAN1 uplink to STM32H745 (STACK A), U3 = FDCAN2 downlink to this robot's own URTC Tool Head. Candidate parts: TI TCAN1044AVD (matches the Kinematic Brain's own choice, README.md section 6) or NXP TJA1443 - not yet selected for this board specifically. Pins: docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 1.
+ 03  |  6  | U4-U9      | Trinamic TMC5160A                 | QFN-7x7-48           | 6x stepper drivers, one per robot axis, SPI daisy-chain on SPI2 - docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 2
+ 04  |  6  | TBD        | Endstop input (opto or mechanical)| TBD                  | One per axis, active-low convention matching URTC's own generic endstop pattern (docs/CANBUS.TXT reference) for consistency across this project. Pins: docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 3.
+ 05  |  1  | TBD        | 24V->3.3V LDO/buck regulator      | TBD                  | LOCAL regulation, NOT fed from the STACK A bus's own +5V_BUS - this board generates its own 3.3V from the shared +24V rail (docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 4)
+ 05b |  1  | TBD        | 24V->5V buck regulator            | TBD                  | LOCAL 5V rail, same reasoning as item 05 - docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 4
+ 06  |  1  | J1         | 40-pin, 2.54mm shrouded box header | THT                  | STACK A bus connector - full pinout: docs/PINOUT_STACKA_CONNECTOR.TXT (identical to the Kinematic Brain's own connector)
  07  |  1  | J2         | URTC Tool Head CAN connector      | TBD                  | Downlink to this robot's own URTC head - connector choice not yet made, should probably match URTC's own expectations (see URTC repo's own PCB/ connector choices for precedent)
  08  |  1  | TBD        | Debug header (SWD)                | 2.54mm 4-pin         | For direct JTAG/SWD programming during bring-up, independent of the CAN-OTA path (docs/architecture.md section 3) - useful before a bootloader exists at all
+ 09  |  2  | J3, J4     | Molex Micro-Fit 3.0, 24POS, 3.00mm | THT                  | Robot connectors - PIN-BY-PIN MAPPING PENDING, user will specify separately. Connector type/count confirmed only - docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 5. Do not guess the pinout ahead of that spec.
 
 Not yet included, deliberately: crystal/oscillator (clock source TBD - HSI-
 only vs. HSE, see docs/COMPILE_STM32G474.TXT's own note on this being an
 open question), decoupling capacitors (standard per-pin, added at schematic
-time, not meaningfully decidable before then), status LED(s).
+time, not meaningfully decidable before then), status LED (pin assigned:
+docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 4).
 ================================================================================

@@ -85,6 +85,7 @@ Built on a **Heterogeneous Host + Real-Time Co-Processor Architecture**, HYDRA-U
   * 🌐 1x Gigabit Ethernet (RJ45) for industrial LAN / RTSP video streaming / WebSockets / MQTT
   * 📶 Wi-Fi 6 & Bluetooth 5.4
   * 📷 **8x USB 3.0 / 2.0 Vision Ports:** Driven by onboard dual Genesys Logic GL3523 controllers.
+  * 🎮 **2x USB 2.0 HID Ports:** Gamepad / mouse / keyboard - see section 4a.
 
 ---
 
@@ -100,10 +101,18 @@ Built on a **Heterogeneous Host + Real-Time Co-Processor Architecture**, HYDRA-U
 
 * 🎛️ **Hub Controllers:** 2x Genesys Logic `GL3523` USB 3.0 / SuperSpeed Hub ICs integrated directly on the motherboard.
 * 🔀 **Topology & Distribution:**
-  * 🅰️ **Hub #1 (`GL3523-A`):** Connected to RP1 USB3 Channel #1 (5 Gbps). Feeds USB Ports 1 to 4 (Cameras A1-A4).
-  * 🅱️ **Hub #2 (`GL3523-B`):** Connected to RP1 USB3 Channel #2 (5 Gbps). Feeds USB Ports 5 to 8 (Cameras A5-A8).
+  * 🅰️ **Hub #1 (`GL3523-A`):** Connected to CM5's native USB3-0 SuperSpeed PHY (5 Gbps). Feeds USB Ports 1 to 4 (Cameras A1-A4).
+  * 🅱️ **Hub #2 (`GL3523-B`):** Connected to CM5's native USB3-1 SuperSpeed PHY (5 Gbps). Feeds USB Ports 5 to 8 (Cameras A5-A8).
+  * ℹ️ CM5 exposes these 2 SuperSpeed PHYs directly (BCM2712) - no RP1 companion chip is involved (RP1 is specific to the Raspberry Pi 5 board, not CM5). Full pin-level signal routing: `docs/PINOUT_CM5_CARRIER.TXT`.
 * 🛡️ **Power Switch & Circuit Protection:** Individual USB VBUS protection via high-side current-limiting power switches (`TPS2065` / `SY6280`) configured for 500 mA - 1 A with fault reporting.
 * ⚡ **High-Current VBUS Rail:** Powered by a dedicated 24V to 5V Step-Down Regulator (5V @ 6A continuous).
+
+### 4a. 🎮 USB 2.0 HID SUBSYSTEM (2x GAMEPAD / MOUSE / KEYBOARD PORTS)
+
+* 🎛️ **Hub Controller:** 1x small USB 2.0 hub IC (e.g. Genesys Logic `GL850G` / `FE1.1s`, TBD) fanning CM5's single native USB 2.0 PHY out to 2 physical ports.
+* ℹ️ **Why a hub is needed:** the CM5 datasheet (`docs/datasheets/Raspberry Pi CM5.pdf`, §2.5) confirms BCM2712 exposes exactly **one** USB 2.0 (High Speed) port at the DF40 connector (`USB_N`/`USB_P`, pins 103/105) - separate and distinct from the 2x native USB 3.0 SuperSpeed PHYs already dedicated to the GL3523 camera hubs (section 4). A single physical pair cannot be split into 2 ports without a hub in between.
+* 🔀 **Topology:** `USB_N`/`USB_P` (CM5) -> hub upstream port -> 2x downstream USB 2.0 Type-A ports (front/side panel, for a gamepad, mouse, or keyboard - manual jog/teach-pendant control and HMI input, independent of the touchscreen).
+* 📌 Full pin-level signal routing: `docs/PINOUT_CM5_CARRIER.TXT` section 1.
 
 ---
 
@@ -130,6 +139,7 @@ The motherboard acts as a master controller for up to 8 individual slave robotic
 * 🔀 **Bus Topology:**
   * 🅰️ **STACK A (`FDCAN1`):** Serves Slave Modules A1 through A8.
 * ⏱️ **Protocol Specs:** 1 Mbps Arbitration Bitrate, 5 Mbps to 8 Mbps Data Payload Bitrate (64-byte payload frames). Auto-bus-off recovery managed by Cortex-M4.
+* 🔌 **Physical Connector:** 40-pin, 2.54mm-pitch shrouded box header (+24V ×10 pins, GND ×10 pins, +5V ×4 pins auxiliary, FDCAN1 H/L, per-slot `SLOT_ID[2:0]` address straps, `BOARD_PRESENT_N`, 10 spare) - full pin table and backplane topology in `docs/PINOUT_STACKA_CONNECTOR.TXT`. Identical connector on the Kinematic Brain's own port and every Robot Controller Board's port.
 
 ```text
                   +-----------------------------------+
@@ -162,17 +172,20 @@ To guarantee zero data loss and instant state recovery during emergency power di
 ## 8. 🦾 LOCAL MOTION, ACTUATION & SENSOR SUITE
 
 ### ⚙️ Motion Outputs
-* 🎯 **Supported Axes:** 6-Axis Cartesian Stage (`X`, `Y`, `Z`, `A`, `B`, `C`).
-* ⚡ **Signals:** 3.3V CMOS / Differential (`STEP`, `DIR`, `ENABLE`).
-* ⏱️ **Timers:** Advanced-Control Timers (`TIM1`, `TIM8`) and General Timers (`TIM2`-`TIM5`) with DMA pulse generation.
+* 🎯 **Supported Axes:** 6-Axis Local Stage - dual-Y gantry + tool axes (`X`, `Y1`, `Y2`, `Z`, `E0`, `E1`), driven by 6x TMC5160A stepper drivers in an SPI daisy-chain.
+* ⚡ **Signals:** 3.3V CMOS (`STEP`, `DIR`, `ENABLE`), shared SPI4 daisy-chain to all 6 drivers.
+* ⏱️ **Timers:** Advanced-Control Timers (`TIM1` for X/Y1/Y2/Z, `TIM8` for E0/E1) with hardware pulse generation.
+* 🛑 **Endstops:** 12x inputs, 2 per axis (MIN + MAX).
+* 📌 Full pin-level allocation: `docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT`.
 
 ### 🔌 Power & Fluidic Actuators
-* 🔀 **16x Low-Side Switching Channels:** Industrial N-Channel MOSFET outputs with flyback protection.
-  * 💨 **8x Channels:** Electropneumatic Valves (5V/24V actuation).
-  * 🧲 **8x Channels:** Vacuum Pumps / Venturi Pick-and-Place generators.
+* 🔀 **20x Low-Side Switching Channels:** Industrial N-Channel MOSFET outputs with flyback protection.
+  * 🧲 **8+2 Channels:** Vacuum Pumps / Venturi Pick-and-Place generators.
+  * 💨 **8+2 Channels:** Electropneumatic Valves (5V/24V actuation).
+* 💨 **Fans:** 3x 3-wire fans (PWM-switched supply via low-side MOSFET + tachometer sense per channel).
 * 🌡️ **Thermal Management:**
-  * 🔥 1x High-Current Gate Driver output for Heated Bed / Reflow Element (PWM controlled, 24V bus).
-  * 🌡️ 4x Precision NTC Thermistor analog inputs sampled by 16-bit hardware-oversampled ADCs (`ADC1`, `ADC2`).
+  * 🔥 1x Solid-State Relay control output for the Heated Bed, switching **230VAC mains** - opto-isolated from the MCU/logic domains; this is a mains-voltage circuit and needs real creepage/clearance on the PCB, not a 24V-bus footprint.
+  * 🌡️ 2x Precision NTC Thermistor analog inputs (heated bed) sampled by `ADC1`.
 
 ---
 
@@ -208,7 +221,7 @@ Communication between CM5 (Host) and STM32H745 (Co-Processor) utilizes a hardwar
 * 🛠️ **Connectors & Assembly:**
   * 🔲 LQFP-144 package (0.5 mm pitch) for STM32H745, QFN-88 packages for 2x GL3523 hubs, and M.2 Key M 2242/2280 socket for Hailo-8.
   * 🔌 Dual Hirose DF40 mezzanine connectors for Compute Module 5.
-  * 📌 Heavy-copper shrouded connector (2.54 mm pitch) for STACK A bus connection.
+  * 📌 40-pin, 2.54 mm-pitch shrouded box header for STACK A bus connection - `docs/PINOUT_STACKA_CONNECTOR.TXT`.
   * 🔌 8x USB 3.0 Type-A (or Hirose industrial latching) connectors for robot cameras.
 
 ---
@@ -266,6 +279,10 @@ HYDRA-UMC/
 │   ├── architecture.md         # The 4-tier system architecture (start here)
 │   ├── COMPILE_STM32G474.TXT   # Robot Controller Board firmware build reference
 │   ├── COMPILE_STM32H745.TXT   # Kinematic Brain firmware build reference (dual-core)
+│   ├── PINOUT_STM32H745_KINEMATIC_BRAIN.TXT    # Kinematic Brain full pin allocation
+│   ├── PINOUT_STM32G474_ROBOT_CONTROLLER.TXT   # Robot Controller Board full pin allocation
+│   ├── PINOUT_CM5_CARRIER.TXT                  # CM5 host subsystem signal routing
+│   ├── PINOUT_STACKA_CONNECTOR.TXT             # Shared 40-pin STACK A bus connector
 │   └── HYDRA-UMC_*.txt/TXT     # Older docs - several superseded, see each file's own banner
 ├── hardware/
 │   ├── PCB/

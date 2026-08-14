@@ -20,17 +20,22 @@ Item | Qty | Designator | Component / Part Number              | Package / Footp
  08  |  1  | -          | 5V USB buck regulator (24V->5V, 6A)      | TBD                  | Dedicated rail for 8x USB 3.0 camera ports + GL3523 hubs (README.md section 9)
  09  |  1  | -          | 3.3V regulator (4A)                      | TBD                  | STM32, FRAM, transceivers, Hailo-8 3.3V rail (README.md section 9)
  10  |  2  | -          | Hirose DF40 mezzanine connectors         | SMD                  | Compute Module 5 (README.md section 11)
- 11  |  1  | -          | Heavy-copper shrouded connector, 2.54mm  | THT                  | STACK A bus connection to Robot Controller Boards (README.md section 11)
+ 11  |  1  | J-STKA     | 40-pin, 2.54mm shrouded box header       | THT                  | STACK A bus connection - full pinout: docs/PINOUT_STACKA_CONNECTOR.TXT
  12  |  8  | -          | USB 3.0 Type-A (or Hirose industrial)    | THT/SMD              | Robot camera ports (README.md section 11)
- 13  |  16 | -          | N-Channel MOSFET (low-side)               | TBD                  | 8x electropneumatic valve + 8x vacuum pump/venturi channels (README.md section 8)
- 14  |  1  | -          | High-current gate driver                  | TBD                  | Heated bed / reflow element, PWM (README.md section 8)
- 15  |  4  | -          | NTC thermistor input (analog)             | -                    | ADC1/ADC2, 16-bit oversampled (README.md section 8)
- 16  |  1  | -          | MIPI-DSI 22-pin FPC connector              | FPC-22P              | Touch display interface (README.md section 11)
+ 13  |  6   | U6-U11    | Trinamic TMC5160A                        | QFN-7x7-48           | 6x stepper drivers (X,Y1,Y2,Z,E0,E1), SPI daisy-chain on SPI4 - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 3
+ 14  |  20  | -          | N-Channel MOSFET (low-side)              | TBD                  | 8+2 pump + 8+2 valve channels - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT sections 6-7
+ 15  |  1  | -          | Solid-state relay (230VAC mains-rated)   | TBD                  | Heated bed, opto-isolated MCU-side trigger - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 8 (mains-voltage circuit - real creepage/clearance required, NOT a 24V-bus part)
+ 16  |  2  | -          | NTC thermistor input (analog)             | -                    | Heated bed, ADC1 (docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 8)
+ 17  |  3  | -          | Fan driver (low-side MOSFET/gate driver)  | TBD                  | 3x 3-wire fans (PWM-switched supply + tach sense) - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 5
+ 18  |  1  | -          | MIPI-DSI FPC connector                   | FPC                  | Touch display interface (README.md section 11) - not the CM5's own DF40, this board's own local FPC to the panel
+ 19  |  1  | U12        | Genesys Logic GL850G or FE1.1s (TBD)     | SSOP-28 or similar   | USB 2.0 hub, fans out CM5's single native USB2 PHY to 2 ports - README.md section 4a, docs/PINOUT_CM5_CARRIER.TXT
+ 20  |  2  | -          | USB 2.0 Type-A                            | THT/SMD              | Gamepad/mouse/keyboard ports (README.md section 4a)
 
 Datasheets for most of these already exist at ../../../docs/datasheets/
 (STM32H745ZIT6.pdf, GL3523.pdf, Hailo-8 family, Raspberry Pi CM5.pdf) -
 check there before sourcing a duplicate. Not yet included: exact FDCAN
 transceiver part (2 candidates listed, not chosen), exact regulator ICs
 (topology described in README.md, specific parts TBD), passives (decoupling,
-pull-ups/downs - added at schematic time).
+pull-ups/downs - added at schematic time), endstop connectors (12x, see
+docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 4).
 ================================================================================
