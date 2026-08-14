@@ -25,10 +25,15 @@
  *   - The bootloader-facing side of the metadata/main/backup flash split
  *     defined in STM32G474RETx_APP.ld's own header comment
  *
- * PLACEHOLDER PIN: PA5 (matches common Nucleo-G474RE dev-board LED wiring) -
- * this repo's own hardware/PCB/robot_controller_board_stm32g474/ doesn't
- * have a real schematic yet (see that folder's own README) - adjust once
- * one exists.
+ * PIN: PC13, STATUS_LED - a REAL pinout allocation now, not a Nucleo-dev-
+ * board placeholder (see docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT
+ * section 4). The chip's other real peripherals (FDCAN1/2, 6x TMC5160A
+ * SPI daisy-chain + STEP/DIR/EN, 6x endstops, SLOT_ID straps) are all
+ * pinned out in that same file but NOT yet initialized here - that's the
+ * "real tasks" work listed below, still not done. The bootloader
+ * (../boot/) DOES already initialize FDCAN1 for real - see that folder's
+ * own bootloader_main.c if you need a working reference for this file's
+ * own eventual FDCAN1 init.
  *
  * FreeRTOS note: SVC_Handler/PendSV_Handler/SysTick_Handler are deliberately
  * NOT defined in this file - FreeRTOSConfig.h renames FreeRTOS's own port.c
@@ -50,21 +55,21 @@ static void Error_Handler(void)
 
 static void GPIO_Init(void)
 {
-  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
 
   GPIO_InitTypeDef gpio = {0};
-  gpio.Pin = GPIO_PIN_5;
+  gpio.Pin = GPIO_PIN_13;
   gpio.Mode = GPIO_MODE_OUTPUT_PP;
   gpio.Pull = GPIO_NOPULL;
   gpio.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &gpio);
+  HAL_GPIO_Init(GPIOC, &gpio);
 }
 
 static void vBlinkTask(void *pvParameters)
 {
   (void)pvParameters;
   for (;;) {
-    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
     vTaskDelay(pdMS_TO_TICKS(500));
   }
 }

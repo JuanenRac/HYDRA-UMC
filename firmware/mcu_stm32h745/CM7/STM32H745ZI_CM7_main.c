@@ -26,9 +26,14 @@
  *     update FreeRTOSConfig.h's own configCPU_CLOCK_HZ in the same commit
  *     that fixes this, or every FreeRTOS tick/delay silently goes wrong
  *
- * PLACEHOLDER PIN: PB0 - no real schematic exists yet for this board
- * either (see hardware/PCB/kinematic_brain_stm32h745/README.md) - adjust
- * once one does.
+ * PIN: PG9 - one of the 3 explicitly-spare GPIOs in this chip's real
+ * pinout (docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 9c), used here
+ * only because it's genuinely unclaimed - PB0 (the previous placeholder)
+ * is now real hardware: X_DIR (see that pinout file's section 3c). Every
+ * other real peripheral this core will eventually need (6x TMC5160A SPI4
+ * daisy-chain + STEP/DIR/EN, 12x endstops, 3x fans, 10x pumps, 10x valves,
+ * heated bed SSR+thermistors) is pinned out in that same file but NOT yet
+ * initialized here - that's the "real tasks" work below, still not done.
  *
  * FreeRTOS note: SVC_Handler/PendSV_Handler/SysTick_Handler are deliberately
  * NOT defined in this file - see FreeRTOSConfig.h's own header comment.
@@ -41,21 +46,21 @@
 
 static void GPIO_Init(void)
 {
-  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOG_CLK_ENABLE();
 
   GPIO_InitTypeDef gpio = {0};
-  gpio.Pin = GPIO_PIN_0;
+  gpio.Pin = GPIO_PIN_9;
   gpio.Mode = GPIO_MODE_OUTPUT_PP;
   gpio.Pull = GPIO_NOPULL;
   gpio.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &gpio);
+  HAL_GPIO_Init(GPIOG, &gpio);
 }
 
 static void vBlinkTask(void *pvParameters)
 {
   (void)pvParameters;
   for (;;) {
-    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
+    HAL_GPIO_TogglePin(GPIOG, GPIO_PIN_9);
     vTaskDelay(pdMS_TO_TICKS(250));
   }
 }

@@ -15,8 +15,14 @@
  * synchronize with CM7 in any way (no HSEM use) - real dual-core bring-up
  * needs that on both sides, not just this one.
  *
- * PLACEHOLDER PIN: PE0 - no real schematic exists yet (see
- * hardware/PCB/kinematic_brain_stm32h745/README.md) - adjust once one does.
+ * PIN: PG10 - one of the 3 explicitly-spare GPIOs in this chip's real
+ * pinout (docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 9c) - PE0 (the
+ * previous placeholder) is now real hardware: PUMP1 (see that pinout
+ * file's section 6). This core's REAL peripherals - SPI1 to the CM5,
+ * FDCAN1 to STACK A - are no longer unimplemented: ../boot/bootloader_
+ * main.c already initializes both for real (the CAN-OTA gateway). This
+ * application entry point just hasn't caught up to reuse that same init
+ * yet - see this file's own "real work still needed" note above.
  *
  * FreeRTOS note: SVC_Handler/PendSV_Handler/SysTick_Handler are deliberately
  * NOT defined in this file - see FreeRTOSConfig.h's own header comment.
@@ -29,21 +35,21 @@
 
 static void GPIO_Init(void)
 {
-  __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOG_CLK_ENABLE();
 
   GPIO_InitTypeDef gpio = {0};
-  gpio.Pin = GPIO_PIN_0;
+  gpio.Pin = GPIO_PIN_10;
   gpio.Mode = GPIO_MODE_OUTPUT_PP;
   gpio.Pull = GPIO_NOPULL;
   gpio.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOE, &gpio);
+  HAL_GPIO_Init(GPIOG, &gpio);
 }
 
 static void vBlinkTask(void *pvParameters)
 {
   (void)pvParameters;
   for (;;) {
-    HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_0);
+    HAL_GPIO_TogglePin(GPIOG, GPIO_PIN_10);
     vTaskDelay(pdMS_TO_TICKS(400));
   }
 }

@@ -21,17 +21,23 @@
  * this file's own header for why that's deliberately out of scope for a
  * first skeleton).
  *
- * Flash Bank 1 layout (1 MB = 0x100000 total):
- *   0x08000000  Bootloader        64 KB (0x10000) - see boot/STM32H745ZITx_CM7_BOOTLOADER.ld
- *   0x08010000  Metadata           4 KB (0x1000)
- *   0x08011000  App main slot    476 KB (0x77000) - THIS script targets this slot
- *   0x08088000  App backup slot  476 KB (0x77000)
- *   0x080FF000  Reserved           4 KB (0x1000)
+ * Flash Bank 1 layout (1 MB = 0x100000 total, 8 sectors x 128 KB each -
+ * CORRECTED during CAN-OTA bootloader implementation: STM32H7 erases in
+ * 128 KB SECTORS, not 2 KB pages like this project's F3/G4 boards, so
+ * every boundary below is now sector-aligned, unlike the byte-arbitrary
+ * split this table used to show. Metadata also moved to its OWN sector,
+ * separate from the bootloader's - see boot/bootloader_common.h's own
+ * METADATA_ADDR comment for why sharing a sector with the running
+ * bootloader's code was a real hazard on this chip, not just untidy):
+ *   0x08000000  Sector 0: Bootloader             128 KB - see boot/STM32H745ZITx_CM7_BOOTLOADER.ld
+ *   0x08020000  Sector 1: Metadata                128 KB - see boot/bootloader_common.h
+ *   0x08040000  Sectors 2-4: App main slot        384 KB - THIS script targets this slot
+ *   0x080A0000  Sectors 5-7: App backup slot      384 KB
  */
 
 MEMORY
 {
-  FLASH_APP (rx) : ORIGIN = 0x08011000, LENGTH = 476K
+  FLASH_APP (rx) : ORIGIN = 0x08040000, LENGTH = 384K
   RAM (rwx)       : ORIGIN = 0x24000000, LENGTH = 512K
 }
 

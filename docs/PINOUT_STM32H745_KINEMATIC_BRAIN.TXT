@@ -175,12 +175,63 @@ PC0  | BED_THERM1      | ADC1_INP10 (CONFIRMED pin) - NTC thermistor 1
 PC1  | BED_THERM2      | ADC1_INP11 (CONFIRMED pin) - NTC thermistor 2
 
 --------------------------------------------------------------------------------
-9. SPARE / RESERVED
+9. COMPLETE PIN INVENTORY - what's used, what's free, what doesn't exist
 --------------------------------------------------------------------------------
-PG8, PG9, PG10 - confirmed-available GPIO, unassigned. Keep spare rather
-than pre-committing; the user has already twice said "se me habra olvidado
-cosas" - these 3 are the margin for whatever that turns out to be, without
-having to re-budget the whole chip.
+9a. Confirmed-available general-purpose I/O pins on THIS package (LQFP-144)
+    - 75 total, per the file header's own Table 8 check:
+
+    PA2 PA3 PA4 PA5 PA6 PA7 PA8 PA9 PA10 PA11 PA12
+    PB0 PB1 PB2 PB5 PB9 PB10 PB11 PB14 PB15
+    PC0 PC1 PC5 PC6 PC7 PC8 PC9 PC10 PC11 PC12 PC13
+    PD0 PD1 PD2 PD3 PD4 PD5 PD6 PD7 PD8 PD9 PD10 PD11 PD12 PD13 PD14 PD15
+    PE0 PE1 PE2 PE3 PE4 PE5 PE6 PE7 PE8 PE9 PE10 PE11 PE12 PE13 PE14 PE15
+    PF6 PF7 PF8 PF9 PF10 PF14 PF15
+    PG6 PG7 PG8 PG9 PG10
+
+9b. USED - 72 of the 75 (all of sections 1-8 above). Cross-reference by
+    port if re-deriving from a schematic tool: every PA/PB/PC/PD/PE/PF pin
+    in the list above is assigned to something in this file except the 3
+    listed in 9c. Of PG, only PG6 (section 8, BED_SSR_CTRL) and PG7
+    (section 2, CAN1_STBY) are used.
+
+9c. FREE / UNASSIGNED - 3 pins, all on Port G:
+
+    PG8   - free, general-purpose
+    PG9   - CM7's own FreeRTOS smoke-test blink LED (firmware/mcu_stm32h745/
+            CM7/STM32H745ZI_CM7_main.c) - not a real peripheral signal, just
+            claims a genuinely-spare pin instead of colliding with a real
+            one the way the pre-pinout placeholder (PB0, now X_DIR) did.
+    PG10  - CM4's own FreeRTOS smoke-test blink LED (firmware/mcu_stm32h745/
+            CM4/STM32H745ZI_CM4_main.c) - same reasoning as PG9 above
+            (previous placeholder was PE0, now PUMP1).
+
+    Only PG8 is genuinely uncommitted. Keep it spare rather than pre-
+    committing; the user has already twice said "se me habra olvidado
+    cosas" - this is the margin for whatever that turns out to be. If more
+    spare pins are needed later, the only places to find them are (a)
+    retiring the two smoke-test LEDs above once real application tasks
+    exist, or (b) revisiting a design choice in sections 3-4 (the shared
+    DIAG line or the SPI daisy-chain) that traded pin count for a single
+    shared line - see the file header for why those trades were made.
+
+9d. NOT AVAILABLE ON THIS PACKAGE - do not route to these on a LQFP-144
+    schematic; they only exist on the larger UFBGA176/LQFP176/LQFP208/
+    TFBGA240 variants of this same die (confirmed absent from LQFP-144 in
+    Table 8 - this is not a "maybe," CubeMX will refuse to place them on
+    this package):
+
+    - All of Port H (PH0-PH15) and all of Port I (PI0-PI15) - neither port
+      is broken out at all on LQFP-144.
+    - The rest of Port F not listed in 9a: PF0, PF1, PF2, PF3, PF4, PF5,
+      PF11, PF12, PF13.
+    - The rest of Port G not listed in 9a: PG0, PG1, PG2, PG3, PG4, PG5,
+      PG12, PG13, PG14, PG15.
+
+9e. Out of scope for this file (system/power pins, not part of the
+    peripheral pin budget - see docs/COMPILE_STM32H745.TXT section 6 for
+    the real clock-tree/boot TODO list these belong to): VDD/VSS pairs,
+    VCAP1/VCAP2, VBAT, VREF+/VREF-, VDDA/VSSA, BOOT0, NRST, PA13/PA14 (SWD),
+    PC14/PC15 (OSC32_IN/OUT, if an RTC crystal is added).
 
 --------------------------------------------------------------------------------
 10. RECONCILIATION WITH PREVIOUSLY-DOCUMENTED SPECS

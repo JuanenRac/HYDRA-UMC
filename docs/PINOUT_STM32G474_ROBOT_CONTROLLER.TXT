@@ -43,6 +43,18 @@ PG8  | CAN2_STBY   | GPIO | Transceiver standby/enable, second transceiver
 (The 3rd onboard FDCAN peripheral, FDCAN3, is unused - reserved for future
 use, e.g. a second relay hop if a robot ever needs more than one URTC head.)
 
+1c. SLOT_ID[2:0] - reads which of the 8 physical STACK A backplane drops
+this board is plugged into (docs/PINOUT_STACKA_CONNECTOR.TXT section 1),
+so its own bootloader/firmware can compute its FDCAN1 slot base ID
+(CAN_ID_STACKA_BASE + N*0x20, docs/architecture.md section 4) at boot
+instead of needing N hand-programmed per board. Added here because without
+it, section 1a's own addressing scheme has no way to actually get "N".
+Pin  | Signal      | Notes
+-----+-------------+------------------------------------------------------
+PC0  | SLOT_ID_0   | GPIO input, LSB. Strapped per backplane drop position
+PC1  | SLOT_ID_1   | GPIO input.       (docs/PINOUT_STACKA_CONNECTOR.TXT
+PC2  | SLOT_ID_2   | GPIO input, MSB.   section 1) - not board-specific.
+
 --------------------------------------------------------------------------------
 2. 6x TMC5160A STEPPER DRIVERS - one per robot axis (axis numbering is
    per-robot, not the Kinematic Brain's X/Y1/Y2/Z/E0/E1 - each robot's own
@@ -155,7 +167,47 @@ the eventual real spec has somewhere to land.
     "Connector 2", or infer axis groupings ahead of that spec.
 
 --------------------------------------------------------------------------------
-6. CROSS-REFERENCES
+6. COMPLETE PIN INVENTORY - what's used, what's free, what doesn't exist
+--------------------------------------------------------------------------------
+6a. USED - 41 pins, all of sections 1-4 above:
+
+    PA0 PA1 PA2 PA3 PA4 PA5 PA6 PA8 PA9 PA10 PA11 PA15
+    PB0 PB1 PB2 PB3 PB5 PB6 PB7 PB8 PB9 PB10 PB11 PB12 PB13 PB14 PB15
+    PC0 PC1 PC2 PC3 PC4 PC6 PC7 PC10 PC11 PC12 PC13
+    PD2
+    PG7 PG8
+
+6b. FREE / UNASSIGNED - standard-population LQFP-64 pins not claimed by
+    any signal above (NOT individually re-verified against Table 12 the
+    way the FDCAN1/TIM1/TIM8 pins were - see the file header's own
+    disclaimer):
+
+    PA7   PA12  - free, general-purpose
+    PB4         - free, general-purpose
+    PC5 PC8 PC9 - free, general-purpose
+
+    6 pins total. This is the margin available if the eventual Micro-Fit
+    3.0 connector spec (section 5) turns out to need MCU-side signals
+    beyond what sections 2-3 already provide (e.g. a per-connector
+    present/ID line, matching the SLOT_ID/BOARD_PRESENT pattern already
+    used on the STACK A connector, docs/PINOUT_STACKA_CONNECTOR.TXT
+    section 1) - do not pre-assign these until that spec arrives.
+
+6c. Reserved/special-purpose, not general GPIO even though technically
+    pins on the package - do not repurpose without a real reason:
+
+    PA13, PA14  - SWD debug (SWDIO/SWCLK)
+    PC14, PC15  - LSE oscillator (32.768kHz RTC crystal, if ever added)
+    PF0, PF1    - HSE oscillator (if ever added instead of HSI-only,
+                  see docs/COMPILE_STM32G474.TXT's own open question)
+    PG10        - shared with NRST per Table 12 (BOOT0-adjacent reset
+                  function) - do not use as plain GPIO
+
+6d. Out of scope for this file (system/power pins): VDD/VSS pairs,
+    VDDA/VSSA, VREF+, VBAT, VDD_SPI, BOOT0.
+
+--------------------------------------------------------------------------------
+7. CROSS-REFERENCES
 --------------------------------------------------------------------------------
 - docs/PINOUT_STACKA_CONNECTOR.TXT   - the 40-pin bus this board's FDCAN1 +
   local power input feed.

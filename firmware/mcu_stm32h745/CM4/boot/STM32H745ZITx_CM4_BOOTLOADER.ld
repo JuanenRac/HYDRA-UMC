@@ -6,12 +6,14 @@
  * LICENSE: GPL-3.0 - see repo root LICENSE
  *
  * See ../STM32H745ZITx_CM4_APP.ld's own header comment for the full Bank 2
- * flash partitioning this bootloader slot is one piece of.
+ * flash partitioning this bootloader slot is one piece of, including the
+ * 128 KB-sector-aligned correction made during CAN-OTA bootloader
+ * implementation.
  */
 
 MEMORY
 {
-  FLASH_BOOT (rx) : ORIGIN = 0x08100000, LENGTH = 64K
+  FLASH_BOOT (rx) : ORIGIN = 0x08100000, LENGTH = 128K
   RAM (rwx)        : ORIGIN = 0x30000000, LENGTH = 288K
 }
 

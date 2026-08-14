@@ -9,17 +9,34 @@ This is the firmware for the **Robot Controller Board** (Tier 1 of
 reached over FDCAN1 "STACK A" from the STM32H745 "Kinematic Brain", and
 itself relaying one hop further to that robot's own URTC Tool Head.
 
-## Status: skeleton, not yet the real firmware
+## Status: real bootloader, application still a skeleton
 
 Everything here compiles and links today (`../../build_firmware.sh g474`,
-verified against a full `--clean` rebuild), but `STM32G474RE_main.c` is a
+verified against a full `--clean` rebuild).
+
+**`boot/` is a real CAN-OTA bootloader**, not a placeholder — bare-metal, no
+FreeRTOS (a bootloader doesn't need a scheduler — see `docs/architecture.md`
+section 2), ported from URTC's own proven bootloader (sibling repo) and
+re-based onto this board's own FDCAN1 slot addressing
+(`docs/architecture.md` section 4, `docs/PINOUT_STM32G474_ROBOT_
+CONTROLLER.TXT` section 1a/1c): FDCAN1 listen loop, `SLOT_ID[2:0]`-derived
+addressing, CRC32 + HMAC-SHA256 verify-into-backup-before-copy-to-main
+anti-bricking discipline, version query, error counters, anti-rollback with
+explicit downgrade authorization, backup readback. NOT yet verified against
+real hardware — see `boot/bootloader_main.c`'s own header for the FDCAN
+bit-timing assumption (16MHz HSI-derived) that needs revisiting once a real
+clock tree exists.
+
+`STM32G474RE_main.c` (the application, not the bootloader) is still a
 **FreeRTOS** GPIO-toggle smoke test (one task, `xTaskCreate`) proving the
-toolchain/HAL/linker/RTOS pipeline itself works — not real motion/CAN-OTA
-firmware. `boot/bootloader_main.c` stays **bare-metal, no FreeRTOS** (a
-bootloader doesn't need a scheduler — see `docs/architecture.md` section 2)
-and jumps straight to the application slot unconditionally, with no real
-update protocol implemented. See each file's own header comment for exactly
-what's still TODO, all tracked against `../../docs/architecture.md`.
+toolchain/HAL/linker/RTOS pipeline itself works — not real motion firmware
+yet. It now blinks a real pin (`PC13`, `STATUS_LED` per the pinout doc)
+instead of a Nucleo-dev-board placeholder, but doesn't yet initialize any
+of this board's other real peripherals (the 6x TMC5160A SPI4 daisy-chain,
+STEP/DIR/EN, 6x endstops, FDCAN2 to the URTC head) — those are pinned out
+in `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` but not yet wired up here.
+See each file's own header comment for exactly what's still TODO, all
+tracked against `../../docs/architecture.md`.
 
 **FreeRTOS:** `FreeRTOSConfig.h` in this folder configures the kernel (16
 KB heap, 1000 Hz tick — see that file's own header for why
@@ -68,7 +85,11 @@ command this script runs, and why).
 | `STM32G474RE_main.c` | Application entry point — currently a FreeRTOS GPIO-toggle smoke test only |
 | `STM32G474RETx_APP.ld` | Application linker script (main flash slot) |
 | `FreeRTOSConfig.h` | FreeRTOS kernel config for this board's application (bootloader never includes this) |
-| `boot/bootloader_main.c` | Bootloader entry point (bare-metal) — currently jumps straight to the app unconditionally |
+| `boot/bootloader_main.c` | Bootloader entry point (bare-metal) — clock config, FDCAN1 + SLOT_ID init, real CAN-OTA main loop |
+| `boot/bootloader_common.h` | Shared types/defines: flash layout, FDCAN1 offset table, HMAC key, status codes |
+| `boot/bootloader_crypto.c/h` | SHA-256 / HMAC-SHA256 (ported verbatim from URTC's own, chip-independent) |
+| `boot/bootloader_flash.c/h` | CRC32, flash program/erase (double-word), metadata persistence |
+| `boot/bootloader_protocol.c/h` | FDCAN protocol handlers, app validation, jump-to-application |
 | `boot/STM32G474RETx_BOOTLOADER.ld` | Bootloader linker script |
 
 `stm32g4xx_hal_conf.h` and every HAL/CMSIS header are NOT vendored here —

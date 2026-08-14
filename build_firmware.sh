@@ -27,10 +27,14 @@
 #   ./build_firmware.sh g474         build only the Robot Controller Board (STM32G474RET6)
 #   ./build_firmware.sh h745         build only the Kinematic Brain (STM32H745ZIT6, both cores)
 #
-# STATUS: every application binary below is a real, verified-compiling
-# FreeRTOS smoke test (one task, GPIO toggle) proving the toolchain/
-# vendoring/RTOS pipeline works end to end - not yet the real CAN-OTA/
-# motion firmware. See each firmware/*/README.md for current status.
+# STATUS: every application binary below is still a FreeRTOS smoke test
+# (one task, GPIO toggle) proving the toolchain/vendoring/RTOS pipeline
+# works end to end - real motion/vision/relay application logic is not yet
+# written. The BOOTLOADERS are different: all 3 (G474, H745 CM7, H745 CM4)
+# now implement the real CAN-OTA/SPI-OTA protocol (docs/architecture.md
+# sections 3-5) - CRC32+HMAC-SHA256 verify-into-backup-before-copy-to-main,
+# same anti-bricking discipline URTC's own bootloader already proves out.
+# See each firmware/*/README.md for exactly what's real vs. still TODO.
 # =============================================================================
 set -e
 
@@ -107,6 +111,33 @@ build_bin_hex() {
     local elf="$1"
     arm-none-eabi-objcopy -O binary "$elf" "${elf%.elf}.bin"
     arm-none-eabi-objcopy -O ihex "$elf" "${elf%.elf}.hex"
+}
+
+# Extracts a #define's integer value from a header - used below to embed
+# each bootloader's own BOOTLOADER_VERSION_MAJOR/MINOR/PATCH (bootloader_
+# common.h) and each application's own FIRMWARE_VERSION_MAJOR/MINOR into
+# its output filename, so the version a schematic/BOM/HYDRA-UMC-STUDIO
+# Flasher screen reports is read from the SAME source the firmware itself
+# was built from - never hand-typed twice, never able to drift out of sync.
+get_version_macro() {
+    local header="$1" macro="$2"
+    grep -oE "define[[:space:]]+${macro}[[:space:]]+[0-9]+" "$header" | grep -oE '[0-9]+$'
+}
+
+# Compiles every .c file in a directory (non-recursive) - same helper URTC's
+# own build_firmware.sh already uses for its own partitioned bootloader
+# sources (src/F303-master/boot/, src/F303-slave/boot/). Every bootloader in
+# this project is now split the same way (bootloader_main.c, bootloader_
+# common.h, bootloader_crypto.c, bootloader_flash.c, bootloader_protocol.c),
+# so this replaces what used to be a single hardcoded bootloader_main.c
+# compile line per target.
+compile_dir() {
+    local srcdir="$1" outdir="$2" cflags="$3" extra_inc="$4"
+    for f in "$srcdir"/*.c; do
+        [ -e "$f" ] || continue
+        arm-none-eabi-gcc $cflags -I"$srcdir" $extra_inc -x c -c "$f" -o "$outdir/$(basename "$f" .c).o" || return 1
+    done
+    return 0
 }
 
 # -----------------------------------------------------------------------
@@ -197,11 +228,10 @@ LDCOMMON_G4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=n
 # FreeRTOS) uses CFLAGS_G4 alone.
 CFLAGS_G4_APP="$CFLAGS_G4 -I$ROOT/firmware/mcu_stm32g474 -I$FREERTOS_SRC/include -I$FREERTOS_SRC/portable/GCC/ARM_CM4F"
 
-# Only the modules this skeleton's own GPIO-toggle smoke test needs today
-# (HAL core + RCC + GPIO + Cortex + PWR + FLASH) - extend this list as real
-# FDCAN/motion/timer code lands, same "only what's used" reasoning URTC's
-# own build script documents.
-HAL_MODULES_G4="stm32g4xx_hal stm32g4xx_hal_cortex stm32g4xx_hal_gpio stm32g4xx_hal_rcc stm32g4xx_hal_rcc_ex stm32g4xx_hal_pwr stm32g4xx_hal_pwr_ex stm32g4xx_hal_flash stm32g4xx_hal_flash_ex stm32g4xx_hal_exti"
+# HAL core + RCC + GPIO + Cortex + PWR + FLASH (app smoke test) plus FDCAN +
+# IWDG (the real CAN-OTA bootloader, firmware/mcu_stm32g474/boot/) - extend
+# further as real motion/timer application code lands.
+HAL_MODULES_G4="stm32g4xx_hal stm32g4xx_hal_cortex stm32g4xx_hal_gpio stm32g4xx_hal_rcc stm32g4xx_hal_rcc_ex stm32g4xx_hal_pwr stm32g4xx_hal_pwr_ex stm32g4xx_hal_flash stm32g4xx_hal_flash_ex stm32g4xx_hal_exti stm32g4xx_hal_fdcan stm32g4xx_hal_iwdg"
 
 HAL_OK=1
 for f in $HAL_MODULES_G4; do
@@ -231,18 +261,25 @@ else
 fi
 
 # -----------------------------------------------------------------------
-step "5. Robot Controller Board bootloader (firmware/mcu_stm32g474/boot/) - bare-metal, no FreeRTOS"
+step "5. Robot Controller Board bootloader (firmware/mcu_stm32g474/boot/) - bare-metal CAN-OTA, no FreeRTOS"
 # -----------------------------------------------------------------------
 SRC="$ROOT/firmware/mcu_stm32g474/boot"
 rm -f "$G4/boot_obj"/*.o
-arm-none-eabi-gcc $CFLAGS_G4 -I"$SRC" -x c -c "$SRC/bootloader_main.c" -o "$G4/boot_obj/bootloader_main.o"
+if compile_dir "$SRC" "$G4/boot_obj" "$CFLAGS_G4" ""; then
+    pass "bootloader_*.c compiled ($(ls "$SRC"/*.c | wc -l) files)"
+else
+    fail "Robot Controller Board bootloader failed to compile - see errors above"
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
+G4_BOOT_VER="v$(get_version_macro "$SRC/bootloader_common.h" BOOTLOADER_VERSION_MAJOR).$(get_version_macro "$SRC/bootloader_common.h" BOOTLOADER_VERSION_MINOR).$(get_version_macro "$SRC/bootloader_common.h" BOOTLOADER_VERSION_PATCH)"
+G4_BOOT_NAME="HYDRA_RCB_BOOTLOADER_${G4_BOOT_VER}"
 arm-none-eabi-gcc $LDCOMMON_G4 -T"$SRC/STM32G474RETx_BOOTLOADER.ld" \
     "$G4/app/startup.o" "$G4/app/system_stm32g4xx.o" \
-    "$G4/boot_obj"/*.o "$G4/hal_obj"/*.o -o "$G4/boot_obj/HYDRA_RCB_BOOTLOADER.elf" \
+    "$G4/boot_obj"/*.o "$G4/hal_obj"/*.o -o "$G4/boot_obj/$G4_BOOT_NAME.elf" \
     2>&1 | grep -v "not implemented\|note: the message\|in function \`_" || true
-build_bin_hex "$G4/boot_obj/HYDRA_RCB_BOOTLOADER.elf"
-cp "$G4/boot_obj/HYDRA_RCB_BOOTLOADER."{elf,bin,hex} "$FIRMWARE_OUT/"
-pass "HYDRA_RCB_BOOTLOADER.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/boot_obj/HYDRA_RCB_BOOTLOADER.elf" | tail -1 | awk '{print $1}') bytes text)"
+build_bin_hex "$G4/boot_obj/$G4_BOOT_NAME.elf"
+cp "$G4/boot_obj/$G4_BOOT_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
+pass "$G4_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/boot_obj/$G4_BOOT_NAME.elf" | tail -1 | awk '{print $1}') bytes text)"
 
 # -----------------------------------------------------------------------
 step "6. Robot Controller Board application (firmware/mcu_stm32g474/) - FreeRTOS"
@@ -250,13 +287,15 @@ step "6. Robot Controller Board application (firmware/mcu_stm32g474/) - FreeRTOS
 SRC="$ROOT/firmware/mcu_stm32g474"
 rm -f "$G4/app_obj"/*.o
 arm-none-eabi-gcc $CFLAGS_G4_APP -I"$SRC" -x c -c "$SRC/STM32G474RE_main.c" -o "$G4/app_obj/STM32G474RE_main.o"
+G4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR)"
+G4_APP_NAME="HYDRA_RCB_APP_${G4_APP_VER}"
 arm-none-eabi-gcc $LDCOMMON_G4 -T"$SRC/STM32G474RETx_APP.ld" \
     "$G4/app/startup.o" "$G4/app/system_stm32g4xx.o" \
-    "$G4/app_obj"/*.o "$G4/hal_obj"/*.o "$G4/freertos_obj"/*.o -o "$G4/app_obj/HYDRA_RCB_APP.elf" \
+    "$G4/app_obj"/*.o "$G4/hal_obj"/*.o "$G4/freertos_obj"/*.o -o "$G4/app_obj/$G4_APP_NAME.elf" \
     2>&1 | grep -v "not implemented\|note: the message\|in function \`_" || true
-build_bin_hex "$G4/app_obj/HYDRA_RCB_APP.elf"
-cp "$G4/app_obj/HYDRA_RCB_APP."{elf,bin,hex} "$FIRMWARE_OUT/"
-pass "HYDRA_RCB_APP.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/app_obj/HYDRA_RCB_APP.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test, see firmware/mcu_stm32g474/README.md"
+build_bin_hex "$G4/app_obj/$G4_APP_NAME.elf"
+cp "$G4/app_obj/$G4_APP_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
+pass "$G4_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/app_obj/$G4_APP_NAME.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test, see firmware/mcu_stm32g474/README.md"
 
 fi
 
@@ -310,9 +349,15 @@ fi
 # -----------------------------------------------------------------------
 step "8. Kinematic Brain - common compiler flags and shared HAL objects (per core)"
 # -----------------------------------------------------------------------
-# Only what this skeleton's own GPIO-toggle smoke test needs today - extend
-# as real FDCAN/SPI/timer/motion code lands, same reasoning as G474's own list.
-HAL_MODULES_H7="stm32h7xx_hal stm32h7xx_hal_cortex stm32h7xx_hal_gpio stm32h7xx_hal_rcc stm32h7xx_hal_rcc_ex stm32h7xx_hal_pwr stm32h7xx_hal_pwr_ex stm32h7xx_hal_flash stm32h7xx_hal_flash_ex stm32h7xx_hal_exti stm32h7xx_hal_mdma"
+# App smoke-test core modules plus FDCAN + IWDG + SPI + HSEM - the real
+# CAN-OTA bootloaders (firmware/mcu_stm32h745/CM7/boot/, CM4/boot/): CM7's
+# talks FDCAN/IWDG/HSEM only (no bus of its own, see that bootloader's own
+# header comment); CM4's is the gateway and needs all four (SPI1 to the
+# CM5, FDCAN1 to STACK A, IWDG, HSEM for the CM7<->CM4 mailbox). Compiled
+# for both cores regardless (same shared HAL_MODULES_H7 list, see the loop
+# below) - unused object files for one core cost nothing, and keeping one
+# list avoids the two cores' object sets silently drifting apart.
+HAL_MODULES_H7="stm32h7xx_hal stm32h7xx_hal_cortex stm32h7xx_hal_gpio stm32h7xx_hal_rcc stm32h7xx_hal_rcc_ex stm32h7xx_hal_pwr stm32h7xx_hal_pwr_ex stm32h7xx_hal_flash stm32h7xx_hal_flash_ex stm32h7xx_hal_exti stm32h7xx_hal_mdma stm32h7xx_hal_fdcan stm32h7xx_hal_iwdg stm32h7xx_hal_spi stm32h7xx_hal_hsem"
 
 for CORE in CM7 CM4; do
     CFLAGS_H7="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections"
@@ -368,48 +413,67 @@ else
 fi
 
 # -----------------------------------------------------------------------
-step "9. Kinematic Brain CM7 bootloader (bare-metal) + application (FreeRTOS) - firmware/mcu_stm32h745/CM7/"
+step "9. Kinematic Brain CM7 bootloader (bare-metal CAN-OTA, mailbox-relayed) + application (FreeRTOS) - firmware/mcu_stm32h745/CM7/"
 # -----------------------------------------------------------------------
 SRC="$ROOT/firmware/mcu_stm32h745/CM7"
-arm-none-eabi-gcc $CFLAGS_CM7 -I"$SRC/boot" -x c -c "$SRC/boot/bootloader_main.c" -o "$H7/cm7_boot_obj/bootloader_main.o"
+COMMON_INC="-I$ROOT/firmware/mcu_stm32h745/Common"
+if compile_dir "$SRC/boot" "$H7/cm7_boot_obj" "$CFLAGS_CM7" "$COMMON_INC"; then
+    pass "CM7 bootloader_*.c compiled ($(ls "$SRC/boot"/*.c | wc -l) files)"
+else
+    fail "CM7 bootloader failed to compile - see errors above"
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
+CM7_BOOT_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_PATCH)"
+CM7_BOOT_NAME="HYDRA_KB_CM7_BOOTLOADER_${CM7_BOOT_VER}"
 arm-none-eabi-gcc $LDCOMMON_CM7 -T"$SRC/boot/STM32H745ZITx_CM7_BOOTLOADER.ld" \
     "$H7/cm7/startup.o" "$H7/cm7/system_stm32h7xx.o" \
-    "$H7/cm7_boot_obj"/*.o "$H7/hal_obj_cm7"/*.o -o "$H7/cm7_boot_obj/HYDRA_KB_CM7_BOOTLOADER.elf" \
+    "$H7/cm7_boot_obj"/*.o "$H7/hal_obj_cm7"/*.o -o "$H7/cm7_boot_obj/$CM7_BOOT_NAME.elf" \
     2>&1 | grep -v "not implemented\|note: the message\|in function \`_" || true
-build_bin_hex "$H7/cm7_boot_obj/HYDRA_KB_CM7_BOOTLOADER.elf"
-cp "$H7/cm7_boot_obj/HYDRA_KB_CM7_BOOTLOADER."{elf,bin,hex} "$FIRMWARE_OUT/"
-pass "HYDRA_KB_CM7_BOOTLOADER.bin/.hex/.elf built"
+build_bin_hex "$H7/cm7_boot_obj/$CM7_BOOT_NAME.elf"
+cp "$H7/cm7_boot_obj/$CM7_BOOT_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
+pass "$CM7_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm7_boot_obj/$CM7_BOOT_NAME.elf" | tail -1 | awk '{print $1}') bytes text)"
 
 arm-none-eabi-gcc $CFLAGS_CM7_APP -I"$SRC" -x c -c "$SRC/STM32H745ZI_CM7_main.c" -o "$H7/cm7_app_obj/STM32H745ZI_CM7_main.o"
+CM7_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR)"
+CM7_APP_NAME="HYDRA_KB_CM7_APP_${CM7_APP_VER}"
 arm-none-eabi-gcc $LDCOMMON_CM7 -T"$SRC/STM32H745ZITx_CM7_APP.ld" \
     "$H7/cm7/startup.o" "$H7/cm7/system_stm32h7xx.o" \
-    "$H7/cm7_app_obj"/*.o "$H7/hal_obj_cm7"/*.o "$H7/cm7_freertos_obj"/*.o -o "$H7/cm7_app_obj/HYDRA_KB_CM7_APP.elf" \
+    "$H7/cm7_app_obj"/*.o "$H7/hal_obj_cm7"/*.o "$H7/cm7_freertos_obj"/*.o -o "$H7/cm7_app_obj/$CM7_APP_NAME.elf" \
     2>&1 | grep -v "not implemented\|note: the message\|in function \`_" || true
-build_bin_hex "$H7/cm7_app_obj/HYDRA_KB_CM7_APP.elf"
-cp "$H7/cm7_app_obj/HYDRA_KB_CM7_APP."{elf,bin,hex} "$FIRMWARE_OUT/"
-pass "HYDRA_KB_CM7_APP.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm7_app_obj/HYDRA_KB_CM7_APP.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test"
+build_bin_hex "$H7/cm7_app_obj/$CM7_APP_NAME.elf"
+cp "$H7/cm7_app_obj/$CM7_APP_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
+pass "$CM7_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm7_app_obj/$CM7_APP_NAME.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test"
 
 # -----------------------------------------------------------------------
-step "10. Kinematic Brain CM4 bootloader (bare-metal) + application (FreeRTOS) - firmware/mcu_stm32h745/CM4/"
+step "10. Kinematic Brain CM4 bootloader (bare-metal CAN-OTA gateway: SPI1+FDCAN1+mailbox) + application (FreeRTOS) - firmware/mcu_stm32h745/CM4/"
 # -----------------------------------------------------------------------
 SRC="$ROOT/firmware/mcu_stm32h745/CM4"
-arm-none-eabi-gcc $CFLAGS_CM4 -I"$SRC/boot" -x c -c "$SRC/boot/bootloader_main.c" -o "$H7/cm4_boot_obj/bootloader_main.o"
+if compile_dir "$SRC/boot" "$H7/cm4_boot_obj" "$CFLAGS_CM4" "$COMMON_INC"; then
+    pass "CM4 bootloader_*.c compiled ($(ls "$SRC/boot"/*.c | wc -l) files)"
+else
+    fail "CM4 bootloader failed to compile - see errors above"
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
+CM4_BOOT_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_PATCH)"
+CM4_BOOT_NAME="HYDRA_KB_CM4_BOOTLOADER_${CM4_BOOT_VER}"
 arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/boot/STM32H745ZITx_CM4_BOOTLOADER.ld" \
     "$H7/cm4/startup.o" "$H7/cm4/system_stm32h7xx.o" \
-    "$H7/cm4_boot_obj"/*.o "$H7/hal_obj_cm4"/*.o -o "$H7/cm4_boot_obj/HYDRA_KB_CM4_BOOTLOADER.elf" \
+    "$H7/cm4_boot_obj"/*.o "$H7/hal_obj_cm4"/*.o -o "$H7/cm4_boot_obj/$CM4_BOOT_NAME.elf" \
     2>&1 | grep -v "not implemented\|note: the message\|in function \`_" || true
-build_bin_hex "$H7/cm4_boot_obj/HYDRA_KB_CM4_BOOTLOADER.elf"
-cp "$H7/cm4_boot_obj/HYDRA_KB_CM4_BOOTLOADER."{elf,bin,hex} "$FIRMWARE_OUT/"
-pass "HYDRA_KB_CM4_BOOTLOADER.bin/.hex/.elf built"
+build_bin_hex "$H7/cm4_boot_obj/$CM4_BOOT_NAME.elf"
+cp "$H7/cm4_boot_obj/$CM4_BOOT_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
+pass "$CM4_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_boot_obj/$CM4_BOOT_NAME.elf" | tail -1 | awk '{print $1}') bytes text)"
 
 arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -x c -c "$SRC/STM32H745ZI_CM4_main.c" -o "$H7/cm4_app_obj/STM32H745ZI_CM4_main.o"
+CM4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR)"
+CM4_APP_NAME="HYDRA_KB_CM4_APP_${CM4_APP_VER}"
 arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/STM32H745ZITx_CM4_APP.ld" \
     "$H7/cm4/startup.o" "$H7/cm4/system_stm32h7xx.o" \
-    "$H7/cm4_app_obj"/*.o "$H7/hal_obj_cm4"/*.o "$H7/cm4_freertos_obj"/*.o -o "$H7/cm4_app_obj/HYDRA_KB_CM4_APP.elf" \
+    "$H7/cm4_app_obj"/*.o "$H7/hal_obj_cm4"/*.o "$H7/cm4_freertos_obj"/*.o -o "$H7/cm4_app_obj/$CM4_APP_NAME.elf" \
     2>&1 | grep -v "not implemented\|note: the message\|in function \`_" || true
-build_bin_hex "$H7/cm4_app_obj/HYDRA_KB_CM4_APP.elf"
-cp "$H7/cm4_app_obj/HYDRA_KB_CM4_APP."{elf,bin,hex} "$FIRMWARE_OUT/"
-pass "HYDRA_KB_CM4_APP.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_app_obj/HYDRA_KB_CM4_APP.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test, no CM7<->CM4 sync yet"
+build_bin_hex "$H7/cm4_app_obj/$CM4_APP_NAME.elf"
+cp "$H7/cm4_app_obj/$CM4_APP_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
+pass "$CM4_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_app_obj/$CM4_APP_NAME.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test, no CM7<->CM4 scheduler sync yet"
 
 fi
 
@@ -420,10 +484,10 @@ echo "$PASS passed, $WARN warnings, $FAIL failed"
 echo ""
 echo "Output binaries are in: $FIRMWARE_OUT/"
 echo ""
-echo "Reminder: every application binary above is a FreeRTOS GPIO-toggle"
-echo "smoke test proving the toolchain/vendoring/RTOS pipeline works end to"
-echo "end, NOT the real CAN-OTA/motion firmware yet - see each firmware/*/"
-echo "README.md and HYDRA-UMC/docs/architecture.md for what's still real"
-echo "engineering work. Bootloaders stay bare-metal (no FreeRTOS) by design."
+echo "Reminder: every _APP binary above is still a FreeRTOS GPIO-toggle"
+echo "smoke test - real motion/vision/relay application logic is not yet"
+echo "written. Every _BOOTLOADER binary IS the real CAN-OTA/SPI-OTA protocol"
+echo "(bare-metal, no FreeRTOS by design) - not yet verified against real"
+echo "hardware. See each firmware/*/README.md and docs/architecture.md."
 
 if [ "$FAIL" -gt 0 ]; then exit 1; fi

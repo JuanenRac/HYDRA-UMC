@@ -13,22 +13,28 @@
  * from 0x30000000) - separate from CM7's own D1 AXI SRAM, by design (each
  * core gets its own RAM so neither can starve the other; see
  * docs/architecture.md's own note on this chip's real-time motion (CM7) vs
- * FDCAN/IPC (CM4) split). SRAM4 (D3 domain, 64 KB @ 0x38000000) is
- * deliberately left unmapped here, reserved for a future CM7<->CM4
- * shared-memory region (IPC mailbox) once that's actually designed - not
- * needed for this skeleton's own GPIO-toggle smoke test.
+ * FDCAN/IPC (CM4) split). SRAM4 (D3 domain, 64 KB @ 0x38000000) is NOW USED
+ * - the CM7<->CM4 IPC mailbox this comment used to say was unmapped/future
+ * is implemented as of the real CAN-OTA bootloaders (../boot/, ../../CM7/
+ * boot/) - see ../../Common/ipc_mailbox.h. Deliberately still not given its
+ * own MEMORY region/section here: both cores access it via the fixed
+ * IPC_MAILBOX_BASE address directly (a plain struct pointer cast, same
+ * pattern the metadata page already uses for METADATA_ADDR), not through
+ * linker-placed symbols, since it's shared raw memory neither core "owns"
+ * the way .data/.bss in their own private RAM is owned.
  *
- * Flash Bank 2 layout (1 MB = 0x100000 total):
- *   0x08100000  Bootloader        64 KB (0x10000) - see boot/STM32H745ZITx_CM4_BOOTLOADER.ld
- *   0x08110000  Metadata           4 KB (0x1000)
- *   0x08111000  App main slot    476 KB (0x77000) - THIS script targets this slot
- *   0x08188000  App backup slot  476 KB (0x77000)
- *   0x081FF000  Reserved           4 KB (0x1000)
+ * Flash Bank 2 layout (1 MB = 0x100000 total, 8 sectors x 128 KB each -
+ * CORRECTED during CAN-OTA bootloader implementation, same sector-alignment
+ * fix as ../../CM7/STM32H745ZITx_CM7_APP.ld - see that file's own header):
+ *   0x08100000  Sector 0: Bootloader + Metadata  128 KB - see boot/STM32H745ZITx_CM4_BOOTLOADER.ld
+ *   0x08120000  Sectors 1-3: App main slot       384 KB - THIS script targets this slot
+ *   0x08180000  Sectors 4-6: App backup slot     384 KB
+ *   0x081E0000  Sector 7: Reserved               128 KB
  */
 
 MEMORY
 {
-  FLASH_APP (rx) : ORIGIN = 0x08111000, LENGTH = 476K
+  FLASH_APP (rx) : ORIGIN = 0x08120000, LENGTH = 384K
   RAM (rwx)       : ORIGIN = 0x30000000, LENGTH = 288K
 }
 

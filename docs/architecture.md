@@ -162,13 +162,26 @@ section 5 below:
 | +0x0B  | TEC (transmit error counter)          | 0x7FB |
 | +0x0C  | REC (receive error counter)           | 0x7FC |
 | +0x0D  | ALLOW_DOWNGRADE (bypass anti-rollback)| 0x7FD |
-| +0x0E  | BACKUP_READ_REQUEST                   | 0x7FE |
-| +0x0F  | BACKUP_READ_RESPONSE                  | 0x7FF |
+| +0x0E  | BACKUP_READ_REQUEST                   | 0x7FE (request half) |
+| +0x0F  | BACKUP_READ_RESPONSE                  | 0x7FE (response half) |
 | +0x10  | AXIS_STATUS (6x endstop bits + fault) | *(new - no URTC equivalent)* |
 | +0x11  | AXIS_STEP_TELEMETRY                   | *(new - no URTC equivalent)* |
 | +0x12  | RELAY_SEND (tunnel to Tier 2 - see §5)| *(new - no URTC equivalent)* |
 | +0x13  | RELAY_RECV (tunnel from Tier 2 - §5)  | *(new - no URTC equivalent)* |
-| +0x14..+0x1F | Reserved for future Robot Controller Board features | |
+| +0x14  | BACKUP_READ_PAGE_ACK                  | 0x7FF |
+| +0x15..+0x1F | Reserved for future Robot Controller Board features | |
+
+**Correction found during implementation** (firmware/mcu_stm32g474/boot/):
+the original version of this table conflated URTC's 0x7FE and 0x7FF into
++0x0E/+0x0F as if they were a plain request/response pair - they aren't.
+URTC's own protocol overloads a single ID (0x7FE) for BOTH directions of
+BACKUP_READ, told apart by DLC, and uses a SEPARATE ID (0x7FF) purely for
+the page-ack that paces it. This table instead gives BACKUP_READ_REQUEST
+and BACKUP_READ_RESPONSE their own distinct offsets (+0x0E/+0x0F, no DLC-
+based overloading needed since a 32-ID slot window has room to spare) and
+adds +0x14 for the page-ack 0x7FE's DLC-overloading was hiding - a real
+gap this table had until the G474 bootloader was actually implemented
+against it, not a stylistic change.
 
 Same anti-bricking discipline as URTC's own bootloader: a firmware image is
 only copied into the running slot after a full CRC32 + HMAC-SHA256 verify
@@ -240,18 +253,19 @@ that isn't there.
 | Piece | Status |
 |---|---|
 | CM5 <-> STM32H745 SPI transport | CONFIRMED, documented (README.md §10) |
-| STM32H745's own SPI firmware-update protocol (Tier 0) | PROPOSED (this document, §3) - no bootloader exists yet |
+| STM32H745's own SPI firmware-update protocol (Tier 0) | **IMPLEMENTED** - `firmware/mcu_stm32h745/CM4/boot/` is a real bootloader: SPI1 slave, the frame-type-byte scheme this document's §3 describes, CRC32+HMAC-SHA256 verify-into-backup-before-copy-to-main. Compiles clean (`build_firmware.sh h745`). NOT yet verified against real hardware - see that folder's own README.md for the concrete gaps (clock tree, dual-core bring-up). |
 | STM32H745 <-> Robot Controller Board FDCAN1 bus (electrical) | CONFIRMED, documented (README.md §6) |
-| Robot Controller Board slot addressing on that shared bus | PROPOSED (this document, §4) |
+| Robot Controller Board slot addressing on that shared bus | **IMPLEMENTED** - `SLOT_ID[2:0]` strap pins (`docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` §1c, `docs/PINOUT_STACKA_CONNECTOR.TXT` §1) feed `ReadSlotBaseId()` in both the G474 and the CM4 gateway bootloaders - this document's §4 formula is real code now, not just a formula. |
 | Robot Controller Board's own MCU identity | **CONFIRMED: STM32G474RET6** (LQFP-64, 512 KB flash, 3x FDCAN - 2 used, see §1). |
-| Robot Controller Board's own bootloader firmware | Does not exist yet. §4's ID map is meant to make writing it straightforward, not a substitute for writing it. |
+| Robot Controller Board's own bootloader firmware | **IMPLEMENTED** - `firmware/mcu_stm32g474/boot/` is a real bootloader: FDCAN1, slot-addressed per §4's offset table, same CRC32+HMAC-SHA256 anti-bricking discipline. Compiles clean. NOT yet verified against real hardware. |
+| CM7<->CM4 IPC (needed to flash CM7 itself, since only CM4 owns SPI1/FDCAN1) | **IMPLEMENTED** - `firmware/mcu_stm32h745/Common/ipc_mailbox.h`, a 2-HSEM-channel shared-SRAM4 mailbox. CM7's own bootloader (`CM7/boot/`) runs the same protocol state machine over this mailbox instead of a bus. Not previously designed anywhere in this document - found to be necessary during implementation. |
 | Robot Controller Board -> URTC Tool Head CAN link (electrical) | Described by the project owner; not yet on a schematic in `hardware/` |
-| Robot Controller Board <-> URTC Tool Head relay tunnel | PROPOSED (this document, §5) |
+| Robot Controller Board <-> URTC Tool Head relay tunnel | PROPOSED (this document, §5) - the CM4 gateway bootloader already forwards `+0x12`/`+0x13` opaquely (§5's own design), but the Robot Controller Board's own APPLICATION-side relay logic (not its bootloader) that actually speaks to the URTC head is still not written. |
 | URTC Tool Head firmware + protocol | CONFIRMED, fully implemented - see the `URTC` repo, `docs/CANBUS.TXT` - bare-metal, no RTOS (§2) |
 | URTC's own Advanced Expansion Board (STM32F303CBT6) + its I2C relay | CONFIRMED, fully implemented - see `URTC/docs/EXPANSION.TXT` and `CANBUS.TXT` §"EXPANSION SLAVE BRIDGE" - bare-metal, no RTOS (§2) |
 | Reaching the Advanced Expansion Board from HYDRA-UMC-STUDIO | PROPOSED, but needs no new protocol beyond §5's tunnel - piggybacks on URTC's own existing relay |
-| FreeRTOS on Tier 0 (both cores) and Tier 1 | CONFIRMED design decision (§2). Implementation: a real, verified-compiling skeleton (one task, GPIO toggle) exists for all 3 - `firmware/mcu_stm32g474/`, `firmware/mcu_stm32h745/CM7/`, `firmware/mcu_stm32h745/CM4/` - not yet the real tasks. |
-| HYDRA-UMC-STUDIO Flasher/Tester UI | Implemented against a **simulated (mock)** transport that follows this document's addressing scheme for all 4 tiers, including GitHub-release firmware download (currently wired for the `URTC` repo only) - see that repo's own README for current status. No real transport (SPI or CAN) is implemented yet - no STM32H745/Robot-Controller-Board firmware exists yet to talk to. |
+| FreeRTOS on Tier 0 (both cores) and Tier 1 | CONFIRMED design decision (§2). Implementation: a real, verified-compiling skeleton (one task, GPIO toggle) exists for all 3 - `firmware/mcu_stm32g474/`, `firmware/mcu_stm32h745/CM7/`, `firmware/mcu_stm32h745/CM4/` - not yet the real tasks (motion engine, sensor filtering, etc.) All 3 apps now run on their own board's real pinout (`docs/PINOUT_*.TXT`) rather than a Nucleo-dev-board placeholder pin. |
+| HYDRA-UMC-STUDIO Flasher/Tester UI | Implemented against a **simulated (mock)** transport that follows this document's addressing scheme for all 4 tiers, including GitHub-release firmware download (currently wired for the `URTC` repo only) - see that repo's own README for current status. No real transport (SPI or CAN) is wired into HYDRA-UMC-STUDIO itself yet - the bootloaders it would talk to now exist and compile, but haven't run on real hardware, and this dashboard doesn't have a native SPI/CAN backend to drive them with regardless (it's a browser/Node app - see `src/lib/canOta.ts`'s own header for why staying simulated is still the right call for now). |
 
 ---
 

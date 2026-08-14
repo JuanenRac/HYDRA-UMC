@@ -87,12 +87,12 @@ Pin | Signal          | Notes
 ----+-----------------+-----------------------------------------------------
 25  | CAN1_H          | FDCAN1 "STACK A" differential pair (docs/
 26  | CAN1_L          | architecture.md section 4). 120ohm termination at
-    |                 | the two electrical ends of the backplane only -
+    |                 | the two electrical ends of the physical stack only -
     |                 | see section 3.
 ----+-----------------+-----------------------------------------------------
 27  | SLOT_ID_0       | \  3-bit physical-slot-position strap, LSB..MSB.
-28  | SLOT_ID_1       |  > Pulled high/low per backplane drop (0-7across
-29  | SLOT_ID_2       | /  the 8 slots) - see section 1.
+28  | SLOT_ID_1       |  > Pulled high/low per position in the physical
+29  | SLOT_ID_2       | /  stack (0-7 across the 8 slots) - see section 1.
 ----+-----------------+-----------------------------------------------------
 30  | BOARD_PRESENT_N | Open-drain, active-low, per-slot - see section 1.
 ----+-----------------+-----------------------------------------------------
@@ -114,54 +114,79 @@ the CAN/SLOT_ID/PRESENT/RESERVED split are this doc's own proposal to make
 the rest of the connector actually usable.
 
 --------------------------------------------------------------------------------
-3. PHYSICAL TOPOLOGY - reconciling "40-pin connector" with "en paralelo"
-   and with "up to 8 slave boards" on one CAN bus
+3. PHYSICAL TOPOLOGY - CONFIRMED: a physical stack, not a backplane/harness
 --------------------------------------------------------------------------------
-A single 40-pin header cannot electrically be "8 boards in parallel" by
-itself - it is PROPOSED here as the connector STANDARD (identical pin table)
-used at 9 physical locations:
+CONFIRMED by the project owner: the 8 Robot Controller Boards mount as a
+physical STACK - one on top of another - on one side of the Kinematic
+Brain's own PCB, not spread across a separate backplane board or connected
+by ribbon cables (this section previously proposed both of those as
+options; the user has since settled it - keeping the old reasoning below
+struck through only in spirit, replaced here, not left ambiguous).
 
-    Kinematic Brain "STACK A OUT" (1x, this connector)
-        |
-        v
-    [ STACK A BACKPLANE / harness - not yet designed, out of scope here ]
-        |
-        +-- Robot Controller Board slot 1 "STACK A IN" (this connector, SLOT_ID=0)
-        +-- Robot Controller Board slot 2 "STACK A IN" (this connector, SLOT_ID=1)
-        +-- ... up to slot 8 (SLOT_ID=7)
+    Kinematic Brain PCB
+    +----------------------------+
+    |                            |
+    |   [ STACK A OUT connector ]|--+  <- this 40-pin definition, base of the stack
+    +----------------------------+  |
+                                     v
+                          +-------------------+
+                          | Robot Ctrl Board 1 |  SLOT_ID=0
+                          | [IN, passthrough]  |--+  <- 2 connectors: one mates
+                          +-------------------+  |     downward into the board
+                                                  v     below, one extends the
+                          +-------------------+        SAME 40 signals upward
+                          | Robot Ctrl Board 2 |  SLOT_ID=1  for the next board
+                          | [IN, passthrough]  |--+
+                          +-------------------+  |
+                                     :            v
+                                     :     ... up to 8 boards, SLOT_ID=7
+                                     :
+                          +-------------------+
+                          | Robot Ctrl Board 8 |  SLOT_ID=7
+                          | [IN only - top]    |
+                          +-------------------+
 
-Two realistic ways to build the actual backplane/harness (a real decision
-for whoever lays out hardware/PCB/ - not decided here, both are compatible
-with this pin table unchanged):
+Each Robot Controller Board (except the topmost) carries TWO of this same
+40-pin connector: one on its underside mating with the board (or the
+Kinematic Brain) below it, one on its topside extending the identical 40
+signals to whatever mounts above it - a straight-through passthrough, every
+pin wired 1:1 between the two connectors on a given board, exactly like a
+Raspberry Pi HAT's own stacking header convention (same idea, this
+project's own pin count/pinout, not the Pi's). This is what makes "each
+slave board gets a 40-pin connector" (the user's own robot_controller_
+board_stm32g474/BOM.TXT precedent) and "en paralelo, una encima de otra"
+(physically stacked, electrically parallel - the user's own words) the SAME
+design decision: every board taps the identical 40 signals via its own
+pair of stacking connectors, nothing routes through any board's own logic
+to reach the next one up.
 
-  (a) A dedicated small backplane PCB with 9 of these connectors wired
-      dead-straight pin-for-pin (power/GND/SLOT_ID straps/CAN bus all in
-      parallel), CAN_H/CAN_L routed as a proper stub-minimized bus trace
-      with 120ohm termination resistors populated only at the two physical
-      ends of that trace (the Kinematic Brain end, and whichever slot
-      connector sits electrically furthest away) - standard CAN bus
-      practice, same principle already used in URTC's own CANBUS.TXT.
-  (b) A ribbon/multi-drop harness doing the same electrically, with
-      termination resistors in small in-line plugs at the two ends instead
-      of on a backplane PCB.
-
-Either way, every Robot Controller Board's own connector is the SAME
-40-pin definition in this file, which is what makes "conector de 40 pines"
-on the slave boards (per the user's own message) and "conexion en paralelo"
-on the master board the same design decision, not two different ones.
+CAN bus implication: FDCAN1 (CAN1_H/CAN1_L, pins 25-26) is now a genuine
+multi-drop stack instead of a backplane trace - 120ohm termination
+resistors belong at the two electrical ends: the Kinematic Brain's own
+STACK A OUT connector, and the TOPMOST populated Robot Controller Board's
+own upward-facing connector (populate/depopulate a termination resistor
+per board as stack height changes, or fit a keyed terminator plug on top
+of however many boards are actually stacked) - same standard CAN
+termination practice as before, just at physically different points now
+that the topology is a stack instead of a backplane run.
 
 --------------------------------------------------------------------------------
 4. CONNECTOR PART / MECHANICAL
 --------------------------------------------------------------------------------
-PROPOSED: 2x20, 2.54mm-pitch, shrouded/keyed box header (IDC or THT) - this
-UPDATES, not contradicts, README.md section 11's previous "Heavy-copper
-shrouded connector, 2.54mm pitch" line, which was written before the pin
-COUNT was known. Same pitch and shrouding as originally specced, now with
-an exact pin count and a per-pin current budget behind it (10 parallel
-contacts per rail instead of a single unspecified "heavy-copper" contact).
-Exact part number TBD at schematic time (candidates: Molex KK 2.54mm /
-TE MTA-100 series box headers, both readily available with high-current-
-rated contacts and board-to-board or board-to-cable variants).
+PROPOSED: 2x20, 2.54mm-pitch STACKING header/socket pair (not a plain box
+header - see section 3's own stack diagram) - this UPDATES, not
+contradicts, README.md section 11's previous "Heavy-copper shrouded
+connector, 2.54mm pitch" line, which was written before the pin COUNT or
+the physical stacking arrangement was known. Same pitch as originally
+specced, now with an exact pin count, a per-pin current budget (10
+parallel contacts per rail), and a real mechanical form factor behind it.
+Candidates: 2x20 female stacking headers (the same family Raspberry Pi
+HATs use, e.g. Samtec SSQ/ESQ or Adafruit-style long-leg stacking headers)
+sized for however many boards' worth of stack height the mechanical design
+needs to clear per board, high-current-rated contacts given the 10-pin-
+parallel +24V/GND rails. Exact part number and stack pitch (how much
+vertical clearance each board needs) TBD at schematic/mechanical-design
+time - not decided here.
 
 --------------------------------------------------------------------------------
 5. CROSS-REFERENCES
