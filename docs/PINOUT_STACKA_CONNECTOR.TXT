@@ -37,16 +37,36 @@ Two things had to be ADDED beyond the user's literal list, because a 40-pin
 parallel bus serving 8 independently-populated slots cannot work without
 them:
 
-  - SLOT_ID[2:0]: a 3-bit hardware strap, PROPOSED as three pins on the
-    connector, each pulled to a different logic level depending on WHICH of
-    the 8 physical backplane drops a Robot Controller Board is plugged into
-    (e.g. resistor-coded per drop on a shared backplane PCB, or jumper-
-    coded on a ribbon harness). This is what lets each board self-identify
-    its own N (0-7) at boot and compute its own FDCAN1 slot base ID
-    (CAN_ID_STACKA_BASE + N*0x20, docs/architecture.md section 4) instead
-    of needing that ID hand-programmed into firmware per board. Without
-    this, the addressing scheme already on paper has no way to actually
-    assign N to a physical board.
+  - SLOT_ID[2:0]: 3 pins on the connector carrying this board's own
+    position in the stack (0-7), so each board can self-identify its own N
+    at boot and compute its own FDCAN1 slot base ID (CAN_ID_STACKA_BASE +
+    N*0x20, docs/architecture.md section 4) instead of needing that ID
+    hand-programmed into firmware per board. Without this, the addressing
+    scheme already on paper has no way to actually assign N to a physical
+    board.
+    CORRECTED for the physical stack topology (section 3): every Robot
+    Controller Board is the SAME PCB/BOM (mass-produced, interchangeable),
+    so a fixed per-position resistor strap - workable on a backplane where
+    each slot is a physically distinct connector - does NOT work here: it
+    would require a DIFFERENT board revision per stack position. Instead,
+    SLOT_ID is RIPPLE-PROPAGATED at power-up: the Kinematic Brain's own
+    "STACK A OUT" connector hardwires SLOT_ID[2:0] = 0b000 on its 3 pins;
+    each board's own firmware reads SLOT_ID[2:0] as GPIO INPUTS from its
+    downward-facing "IN" connector at boot, latches N = (value read) + 1,
+    then reconfigures those SAME 3 MCU pins as GPIO OUTPUTS driving N onto
+    its upward-facing "OUT" connector for whatever board is stacked next -
+    the same 3 physical traces serve as input-from-below then output-to-
+    above on every board, so no extra pins are needed beyond the 3 already
+    budgeted. This naturally sequences bottom-to-top at power-up (a board
+    can't drive a valid N until it has first read a stable one from below),
+    with no contention as long as every board follows read-then-drive
+    strictly in that order. FIRMWARE NOTE: `ReadSlotBaseId()` in both
+    docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT-driven bootloaders
+    (firmware/mcu_stm32g474/boot/bootloader_main.c) currently implements
+    only the simpler "static strap" read (input-only, no re-drive to an
+    OUT connector) - the ripple behavior described here is NOT yet
+    implemented in firmware, flagged as a real follow-up, not silently
+    assumed done.
   - BOARD_PRESENT: one open-drain pin, pulled low by an installed Robot
     Controller Board, read by the Kinematic Brain to know which of the 8
     slots are physically populated without needing a full FDCAN handshake
