@@ -19,13 +19,25 @@ FDCAN1 "STACK A". Two independent cores, two independent firmware images:
 
 Both cores' app/bootloader pairs compile and link today
 (`../../build_firmware.sh h745`, verified against a full `--clean`
-rebuild), but each `main.c` is a GPIO-toggle smoke test proving the
-toolchain/HAL/linker pipeline works for both cores — not real firmware.
-**Real dual-core bring-up (CM4 boot release, HSEM sync, cache enable, real
-clock tree, actual SPI1 IPC to the CM5) is NOT done** — see
+rebuild), but each application `main.c` is a **FreeRTOS** GPIO-toggle
+smoke test (one task per core, TWO INDEPENDENT FreeRTOS instances — this is
+a dual-core AMP chip, no shared scheduler state) proving the
+toolchain/HAL/linker/RTOS pipeline works for both cores — not real
+firmware. Both bootloaders stay **bare-metal, no FreeRTOS** (see
+`docs/architecture.md` section 2). **Real dual-core bring-up (CM4 boot
+release, HSEM sync, cache enable, real clock tree, actual SPI1 IPC to the
+CM5, cross-core scheduler-start coordination) is NOT done** — see
 `../../docs/COMPILE_STM32H745.TXT` section 6 for the complete list of what
 that still needs, before assuming this skeleton is close to running on real
 silicon.
+
+**FreeRTOS:** each core has its own `FreeRTOSConfig.h` (different heap
+size — 64 KB for CM7's own 512 KB AXI SRAM, 32 KB for CM4's own 288 KB
+SRAM — see each file's own header for why `configCPU_CLOCK_HZ` is still the
+HSI64 reset default and needs updating alongside real clock config).
+Vendored the same way as the HAL/CMSIS sources, one core-specific port each
+(CM7 = ARM_CM7/r0p1, CM4 = ARM_CM4F) — see
+`../../docs/COMPILE_STM32H745.TXT` section 3a.
 
 ## Hardware platform
 
@@ -66,13 +78,15 @@ the 4 `system_stm32h7xx*.c` boot-strategy variants was picked and why).
 
 | Path | Purpose |
 |---|---|
-| `CM7/STM32H745ZI_CM7_main.c` | CM7 application entry point — GPIO-toggle smoke test only |
+| `CM7/STM32H745ZI_CM7_main.c` | CM7 application entry point — FreeRTOS GPIO-toggle smoke test only |
 | `CM7/STM32H745ZITx_CM7_APP.ld` | CM7 application linker script (Bank 1 main slot) |
-| `CM7/boot/bootloader_main.c` | CM7 bootloader — jumps straight to the app unconditionally |
+| `CM7/FreeRTOSConfig.h` | FreeRTOS kernel config for CM7's own application (bootloader never includes this) |
+| `CM7/boot/bootloader_main.c` | CM7 bootloader (bare-metal) — jumps straight to the app unconditionally |
 | `CM7/boot/STM32H745ZITx_CM7_BOOTLOADER.ld` | CM7 bootloader linker script |
-| `CM4/STM32H745ZI_CM4_main.c` | CM4 application entry point — GPIO-toggle smoke test only |
+| `CM4/STM32H745ZI_CM4_main.c` | CM4 application entry point — FreeRTOS GPIO-toggle smoke test only |
 | `CM4/STM32H745ZITx_CM4_APP.ld` | CM4 application linker script (Bank 2 main slot) |
-| `CM4/boot/bootloader_main.c` | CM4 bootloader — jumps straight to the app unconditionally |
+| `CM4/FreeRTOSConfig.h` | FreeRTOS kernel config for CM4's own application (bootloader never includes this) |
+| `CM4/boot/bootloader_main.c` | CM4 bootloader (bare-metal) — jumps straight to the app unconditionally |
 | `CM4/boot/STM32H745ZITx_CM4_BOOTLOADER.ld` | CM4 bootloader linker script |
 | `Common/` | Reserved for shared memory structure definitions (CM7↔CM4 IPC mailbox) once that's designed — empty today |
 

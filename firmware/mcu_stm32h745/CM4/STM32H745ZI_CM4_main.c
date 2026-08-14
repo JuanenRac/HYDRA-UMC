@@ -6,19 +6,25 @@
  * LICENSE: GPL-3.0 - see repo root LICENSE
  *
  * STARTING POINT ONLY - see ../CM7/STM32H745ZI_CM7_main.c's own header for
- * the shared reasoning. This core's real job per README.md section 5:
- * FDCAN1 protocol management (the Tier 1 slot-addressed bootloader/relay
- * scheme from docs/architecture.md sections 3-4), analog sensor filtering,
- * safety interlocks, inter-core IPC with CM7. None of that exists here yet
- * - this is a standalone GPIO-toggle smoke test only, and does not
- * currently wait for or synchronize with CM7 in any way (no HSEM use) -
- * real dual-core bring-up needs that on both sides, not just this one.
+ * the shared dual-core-bring-up reasoning. This core's real job per
+ * README.md section 5: FDCAN1 protocol management (the Tier 1
+ * slot-addressed bootloader/relay scheme from docs/architecture.md sections
+ * 3-4), analog sensor filtering, safety interlocks, inter-core IPC with
+ * CM7. None of that exists here yet - this is a standalone FreeRTOS
+ * GPIO-toggle smoke test only, and does not currently wait for or
+ * synchronize with CM7 in any way (no HSEM use) - real dual-core bring-up
+ * needs that on both sides, not just this one.
  *
  * PLACEHOLDER PIN: PE0 - no real schematic exists yet (see
  * hardware/PCB/kinematic_brain_stm32h745/README.md) - adjust once one does.
+ *
+ * FreeRTOS note: SVC_Handler/PendSV_Handler/SysTick_Handler are deliberately
+ * NOT defined in this file - see FreeRTOSConfig.h's own header comment.
  * =============================================================================
  */
 
+#include "FreeRTOS.h"
+#include "task.h"
 #include "stm32h7xx_hal.h"
 
 static void GPIO_Init(void)
@@ -33,15 +39,48 @@ static void GPIO_Init(void)
   HAL_GPIO_Init(GPIOE, &gpio);
 }
 
+static void vBlinkTask(void *pvParameters)
+{
+  (void)pvParameters;
+  for (;;) {
+    HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_0);
+    vTaskDelay(pdMS_TO_TICKS(400));
+  }
+}
+
 int main(void)
 {
   HAL_Init();
   GPIO_Init();
 
-  while (1) {
-    HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_0);
-    HAL_Delay(400);
-  }
+  xTaskCreate(vBlinkTask, "blink", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+
+  vTaskStartScheduler();
+
+  /* Only reached if vTaskStartScheduler() itself failed. */
+  __disable_irq();
+  for (;;) { }
+}
+
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
+{
+  (void)xTask; (void)pcTaskName;
+  __disable_irq();
+  while (1) { }
+}
+
+void vApplicationMallocFailedHook(void)
+{
+  __disable_irq();
+  while (1) { }
+}
+
+/* FreeRTOS now owns SysTick - HAL_IncTick() has to be driven from somewhere
+ * else, or HAL_GetTick()/HAL_Delay() silently stop advancing. See
+ * ../../mcu_stm32g474/STM32G474RE_main.c's own note on this same gotcha. */
+void vApplicationTickHook(void)
+{
+  HAL_IncTick();
 }
 
 void HAL_MspInit(void)
@@ -54,7 +93,3 @@ void HardFault_Handler(void) { while (1) { } }
 void MemManage_Handler(void) { while (1) { } }
 void BusFault_Handler(void) { while (1) { } }
 void UsageFault_Handler(void) { while (1) { } }
-void SVC_Handler(void) { }
-void DebugMon_Handler(void) { }
-void PendSV_Handler(void) { }
-void SysTick_Handler(void) { HAL_IncTick(); }

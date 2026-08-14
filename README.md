@@ -117,6 +117,7 @@ Built on a **Heterogeneous Host + Real-Time Co-Processor Architecture**, HYDRA-U
 * 💾 **Internal Memory Architecture:**
   * 💾 **2 MB** Dual-Bank Internal Flash
   * 🧠 **1 MB** Total Internal SRAM (512 KB AXI SRAM + 128 KB ITCM / 128 KB DTCM + SRAM1/SRAM2/SRAM3)
+* 🧵 **RTOS:** **FreeRTOS**, one independent instance per core (AMP, not SMP - no shared scheduler state between Core 1 and Core 2). Firmware skeleton: `firmware/mcu_stm32h745/`, see `docs/architecture.md` section 2.
 
 ---
 
@@ -237,6 +238,8 @@ in the robot's head, optionally with its own expansion board.
   LQFP-64, 512 KB flash), using 2 of its 3 onboard FDCAN peripherals - one as
   the FDCAN uplink to the STM32H745, one as the CAN downlink to its own URTC
   head. See `docs/architecture.md` §1.
+* 🧵 **RTOS:** **FreeRTOS** (its bootloader stays bare-metal - no scheduler
+  needed to receive/verify/jump). Firmware skeleton: `firmware/mcu_stm32g474/`.
 * 📡 **CAN-OTA firmware updates, 4 tiers deep:** the STM32H745 itself (over
   its existing SPI link to the CM5), this board, its URTC Tool Head
   (STM32F303CCT6), and - only when installed - that head's own Advanced

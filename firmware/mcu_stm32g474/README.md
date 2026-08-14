@@ -13,11 +13,19 @@ itself relaying one hop further to that robot's own URTC Tool Head.
 
 Everything here compiles and links today (`../../build_firmware.sh g474`,
 verified against a full `--clean` rebuild), but `STM32G474RE_main.c` is a
-GPIO-toggle smoke test proving the toolchain/HAL/linker pipeline itself
-works — not real motion/CAN-OTA firmware. `boot/bootloader_main.c` jumps
-straight to the application slot unconditionally, with no real update
-protocol implemented. See each file's own header comment for exactly what's
-still TODO, all tracked against `../../docs/architecture.md`.
+**FreeRTOS** GPIO-toggle smoke test (one task, `xTaskCreate`) proving the
+toolchain/HAL/linker/RTOS pipeline itself works — not real motion/CAN-OTA
+firmware. `boot/bootloader_main.c` stays **bare-metal, no FreeRTOS** (a
+bootloader doesn't need a scheduler — see `docs/architecture.md` section 2)
+and jumps straight to the application slot unconditionally, with no real
+update protocol implemented. See each file's own header comment for exactly
+what's still TODO, all tracked against `../../docs/architecture.md`.
+
+**FreeRTOS:** `FreeRTOSConfig.h` in this folder configures the kernel (16
+KB heap, 1000 Hz tick — see that file's own header for why
+`configCPU_CLOCK_HZ` is still the HSI reset default and needs updating
+alongside real clock config). Vendored the same way as the HAL/CMSIS
+sources — see `../../docs/COMPILE_STM32G474.TXT` section 3a.
 
 ## Hardware platform
 
@@ -57,9 +65,10 @@ command this script runs, and why).
 
 | File | Purpose |
 |---|---|
-| `STM32G474RE_main.c` | Application entry point — currently a GPIO-toggle smoke test only |
+| `STM32G474RE_main.c` | Application entry point — currently a FreeRTOS GPIO-toggle smoke test only |
 | `STM32G474RETx_APP.ld` | Application linker script (main flash slot) |
-| `boot/bootloader_main.c` | Bootloader entry point — currently jumps straight to the app unconditionally |
+| `FreeRTOSConfig.h` | FreeRTOS kernel config for this board's application (bootloader never includes this) |
+| `boot/bootloader_main.c` | Bootloader entry point (bare-metal) — currently jumps straight to the app unconditionally |
 | `boot/STM32G474RETx_BOOTLOADER.ld` | Bootloader linker script |
 
 `stm32g4xx_hal_conf.h` and every HAL/CMSIS header are NOT vendored here —

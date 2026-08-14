@@ -17,15 +17,22 @@ Kinematic Brain (STM32H745ZIT6, LQFP-144, 2 MB flash / 1 MB RAM total,
 Cortex-M7 @ up to 480 MHz + Cortex-M4 @ up to 240 MHz - see
 HYDRA-UMC/docs/architecture.md section 1 and README.md section 5 for this
 board's role):
-    - CM7 bootloader:   firmware/mcu_stm32h745/CM7/boot/ -> HYDRA_KB_CM7_BOOTLOADER.bin/.hex/.elf
-    - CM7 application:  firmware/mcu_stm32h745/CM7/      -> HYDRA_KB_CM7_APP.bin/.hex/.elf
-    - CM4 bootloader:   firmware/mcu_stm32h745/CM4/boot/ -> HYDRA_KB_CM4_BOOTLOADER.bin/.hex/.elf
-    - CM4 application:  firmware/mcu_stm32h745/CM4/      -> HYDRA_KB_CM4_APP.bin/.hex/.elf
+    - CM7 bootloader:   firmware/mcu_stm32h745/CM7/boot/ -> HYDRA_KB_CM7_BOOTLOADER.bin/.hex/.elf  (bare-metal)
+    - CM7 application:  firmware/mcu_stm32h745/CM7/      -> HYDRA_KB_CM7_APP.bin/.hex/.elf         (FreeRTOS)
+    - CM4 bootloader:   firmware/mcu_stm32h745/CM4/boot/ -> HYDRA_KB_CM4_BOOTLOADER.bin/.hex/.elf  (bare-metal)
+    - CM4 application:  firmware/mcu_stm32h745/CM4/      -> HYDRA_KB_CM4_APP.bin/.hex/.elf         (FreeRTOS)
+
+Both applications run FreeRTOS (CONFIRMED design decision, docs/
+architecture.md section 2) - as TWO INDEPENDENT instances, one per core
+(this is a dual-core AMP chip, no shared scheduler state between CM7 and
+CM4 - see that same section for why). Neither bootloader runs FreeRTOS -
+see section 3a below for what the applications need beyond the bootloaders.
 
 Each core gets its OWN flash bank (1 MB each of the chip's 2 MB total) and
 its OWN bootloader+app+backup split within that bank - see each *.ld
 script's own header comment for the exact byte ranges. All 4 outputs land
-in firmware_out/ (gitignored - smoke-test binaries, not real firmware yet).
+in firmware_out/ (gitignored - FreeRTOS/bare-metal smoke-test binaries, not
+real firmware yet).
 
 -----------------------------------------------------------------------------
 2. Tools - same as STM32G474 (docs/COMPILE_STM32G474.TXT section 2)
@@ -81,6 +88,35 @@ a typical single-core chip:
                              uses to a plain system_stm32h7xx.c locally, per
                              core - the source filename itself doesn't need
                              to survive into the build tree.
+
+-----------------------------------------------------------------------------
+3a. FreeRTOS kernel sources (applications only, not the bootloaders)
+-----------------------------------------------------------------------------
+See docs/COMPILE_STM32G474.TXT section 3a for the shared vendoring
+philosophy and gotcha (HAL_IncTick() via vApplicationTickHook() once
+FreeRTOS owns SysTick - identical reasoning here, both cores). FreeRTOS-
+Kernel itself is fetched ONCE (build/vendor/freertos/, shared with G474 -
+chip-agnostic kernel source) at the SAME pinned tag:
+
+    FreeRTOS-Kernel   V11.3.0   https://github.com/FreeRTOS/FreeRTOS-Kernel.git
+
+What's different here vs. G474: each CORE needs its own PORT, and its own
+compiled object set (own FreeRTOSConfig.h per core - different heap size,
+see each core's own file):
+
+    CM7: portable/GCC/ARM_CM7/r0p1/port.c - NOTE the r0p1 subfolder. This
+         port is specifically for the Cortex-M7 r0p1 silicon revision
+         (works around a documented errata in that revision's own MPU
+         behavior around FreeRTOS's own context switch) - FreeRTOS-Kernel
+         does NOT ship a plain non-r0p1 ARM_CM7 port; r0p1 is correct
+         regardless of which exact r0pX silicon this specific STM32H745
+         actually is, per FreeRTOS's own upstream guidance (the workaround
+         is harmless on later revisions too).
+    CM4: portable/GCC/ARM_CM4F/port.c - identical port G474 already uses.
+
+Compiled into build/h745/cm7_freertos_obj/ and build/h745/cm4_freertos_obj/
+respectively (kept separate, same "never link a CM7 object into a CM4
+build" discipline as the HAL objects - section 4 above).
 
 -----------------------------------------------------------------------------
 4. Common compiler flags - per core
@@ -167,9 +203,15 @@ Kinematic Brain firmware - be aware of it before assuming "it builds" means
     correct D1/D2/D3 domain voltage scaling) - both cores currently run at
     HSI reset defaults.
   - The actual SPI1 slave-mode IPC to the CM5 (README.md section 10) and
-    the Tier-0 SPI-OTA bootloader protocol (docs/architecture.md section 2)
+    the Tier-0 SPI-OTA bootloader protocol (docs/architecture.md section 3)
     - neither exists in this skeleton's bootloader or app code yet, both
     currently just jump straight from bootloader to app unconditionally.
+  - Each core starts its OWN FreeRTOS scheduler independently
+    (vTaskStartScheduler() in each core's own main()) - there's no
+    coordination between the two "go live" moments today (e.g. CM7 waiting
+    for confirmation CM4 is also up before starting real motion tasks) -
+    another thing HSEM-based sync (above) would need to cover once real
+    tasks replace vBlinkTask in both.
 
 None of this blocks compiling or verifying the toolchain/linker setup
 itself (that's what this document and build_firmware.sh both already
@@ -179,10 +221,10 @@ engineering work.
 -----------------------------------------------------------------------------
 7. Verifying your own build
 -----------------------------------------------------------------------------
-Last verified: all 4 binaries build cleanly, 0 warnings, 0 errors, via a
-full --clean rebuild (`./build_firmware.sh --clean h745`), and via a
-combined `./build_firmware.sh --clean all` alongside the G474 target in the
-same run.
+Last verified: all 4 binaries (2 bare-metal bootloaders, 2 FreeRTOS
+applications) build cleanly, 0 warnings, 0 errors, via a full --clean
+rebuild (`./build_firmware.sh --clean h745`), and via a combined
+`./build_firmware.sh --clean all` alongside the G474 target in the same run.
 =============================================================================
 END OF FILE
 =============================================================================

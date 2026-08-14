@@ -30,7 +30,7 @@ verified against real hardware.
 |                     | 50  |  FDCAN1 STACK A    |STACK|  STEP/DIR/EN,     |     |  docs/CANBUS.TXT)  |     |  (only when         |
 |                     | MHz |  master (up to 8   |A    |  endstops. Own    |     |                    |     |  expansion_board_  |
 |                     |     |  robot slots)      |     |  STM32G474RET6,   |     |                    |     |  type is 3 or 4 -  |
-+-------------------+     +-------------------+     |  2x FDCAN - one    |     +-------------------+     |  see §4)           |
++-------------------+     +-------------------+     |  2x FDCAN - one    |     +-------------------+     |  see §5)           |
     Tier 0                     Tier 1                |  uplink (Tier 1->2)|          Tier 2                +-------------------+
                                                        |  one downlink      |                                    Tier 3
                                                        |  (Tier 2->3)       |
@@ -42,31 +42,66 @@ Flasher/Tester's own target picker uses (`canOta.ts`'s `CanOtaTier`):
 
 - **Tier 0 - Kinematic Brain (STM32H745ZIT6), reached directly over SPI:**
   CONFIRMED bus (Tier 1's own transport, see below), **PROPOSED** flashing
-  protocol - see section 2.
+  protocol - see section 3.
 - **Tier 1 - Robot Controller Board (STM32G474RET6), reached over FDCAN1
   "STACK A":** CONFIRMED bus (1x native FDCAN1 on the STM32H745, up to 8
   slaves, 1 Mbps arbitration / 5-8 Mbps data, TCAN1044/TJA1443 transceiver -
   README.md section 6). MCU **CONFIRMED: STM32G474RET6** (Cortex-M4 @ 170
   MHz, LQFP-64, 512 KB flash, 3x FDCAN peripherals - 2 used: one uplink to
   the STM32H745's own FDCAN1, one downlink to that robot's own URTC Tool
-  Head). Addressing scheme **PROPOSED** - see section 3.
+  Head). Addressing scheme **PROPOSED** - see section 4.
 - **Tier 2 - URTC Tool Head (STM32F303CCT6), reached one hop further, relayed
   through the Robot Controller Board:** CONFIRMED board/firmware (see the
   sibling `URTC` repo, `docs/CANBUS.TXT`). The physical CAN link from the
   Robot Controller Board to it, and the relay behavior on the Robot
-  Controller Board's own side, are **PROPOSED** - see section 4.
+  Controller Board's own side, are **PROPOSED** - see section 5.
 - **Tier 3 - Advanced Expansion Board (STM32F303CBT6), only present when a
   robot's URTC head has `expansion_board_type` 3 or 4 installed, reached two
   hops further, relayed through both the Robot Controller Board AND the URTC
   head:** CONFIRMED board/firmware and CONFIRMED relay protocol on the URTC
   head's own side (`URTC/docs/CANBUS.TXT` IDs `0x210`-`0x221`,
   `URTC/docs/EXPANSION.TXT` for the 6 expansion board variants). Reaching it
-  from HYDRA-UMC-STUDIO needs no NEW protocol design beyond section 3's own
-  tunnel - see section 4.
+  from HYDRA-UMC-STUDIO needs no NEW protocol design beyond section 5's own
+  tunnel - see section 5.
 
 ---
 
-## 2. Tier 0: flashing the Kinematic Brain itself (STM32H745, over SPI)
+## 2. RTOS choice per tier
+
+**CONFIRMED (by the project owner) - FreeRTOS runs on both Tier 0 (both
+cores) and Tier 1.** Neither Tier 2 (URTC Tool Head) nor Tier 3 (its
+Advanced Expansion Board) run an RTOS - both are CONFIRMED, already-shipping
+bare-metal superloop designs (see the sibling `URTC` repo) that this project
+doesn't change.
+
+- **Tier 0 - STM32H745, both cores:** CM7 and CM4 each run their OWN
+  FreeRTOS instance - this is a dual-core AMP (asymmetric multiprocessing)
+  chip, not SMP, so there is no shared kernel state or scheduler between the
+  two; each core's own tasks, queues, and heap are entirely private to it.
+  Cross-core communication (once designed - see section 5's own note on the
+  D3-domain SRAM4 region reserved for this) will need its own explicit IPC
+  mechanism (a HAL/FreeRTOS-agnostic shared-memory mailbox, most likely),
+  not anything FreeRTOS provides for free across cores.
+- **Tier 1 - STM32G474:** a single FreeRTOS instance (one core, no AMP/SMP
+  question).
+- **Bootloaders (all 3 - CM7, CM4, G474) stay bare-metal, no FreeRTOS.** A
+  bootloader's job (receive firmware, verify, jump) doesn't need a
+  scheduler, and keeping it minimal is itself a safety property - less code
+  running before anything has been verified, easier to audit, one less
+  moving part that could itself have a bug bricking a board. This mirrors
+  URTC's own bootloader, which is bare-metal too.
+
+Implementation status: `../firmware/mcu_stm32g474/`, `../firmware/mcu_stm32h745/CM7/`,
+and `../firmware/mcu_stm32h745/CM4/` each have a real, verified-compiling
+FreeRTOS skeleton (one task, GPIO toggle - proves the toolchain+RTOS
+pipeline itself works, not real firmware) - see `docs/COMPILE_STM32G474.TXT`
+and `docs/COMPILE_STM32H745.TXT` for exactly what that does and doesn't
+include yet (real clock config, real tasks, cross-core IPC are all still
+open).
+
+---
+
+## 3. Tier 0: flashing the Kinematic Brain itself (STM32H745, over SPI)
 
 **PROPOSED** - no bootloader exists yet for the STM32H745 side of this link.
 
@@ -86,7 +121,7 @@ crossing FDCAN1 at all, so it needs no STACK-A slot addressing.
 
 ---
 
-## 3. Tier 1 addressing: which of 8 Robot Controller Boards is a frame for?
+## 4. Tier 1 addressing: which of 8 Robot Controller Boards is a frame for?
 
 **PROPOSED** - not yet implemented on the STM32H745 or any Robot Controller
 Board firmware.
@@ -109,7 +144,7 @@ firmware (offsets `+0x00`..`+0x0F` - a direct, 1:1 re-based copy of URTC's
 own `0x7F0`-`0x7FF`, so its bootloader state machine can be lifted almost
 directly from URTC's proven implementation instead of designed from
 scratch), plus 2 new axis-telemetry IDs and the Tier-2 relay pair from
-section 4 below:
+section 5 below:
 
 | Offset | Purpose                              | Mirrors URTC's own (fixed) ID |
 |--------|---------------------------------------|--------------------------------|
@@ -131,8 +166,8 @@ section 4 below:
 | +0x0F  | BACKUP_READ_RESPONSE                  | 0x7FF |
 | +0x10  | AXIS_STATUS (6x endstop bits + fault) | *(new - no URTC equivalent)* |
 | +0x11  | AXIS_STEP_TELEMETRY                   | *(new - no URTC equivalent)* |
-| +0x12  | RELAY_SEND (tunnel to Tier 2 - see §4)| *(new - no URTC equivalent)* |
-| +0x13  | RELAY_RECV (tunnel from Tier 2 - §4)  | *(new - no URTC equivalent)* |
+| +0x12  | RELAY_SEND (tunnel to Tier 2 - see §5)| *(new - no URTC equivalent)* |
+| +0x13  | RELAY_RECV (tunnel from Tier 2 - §5)  | *(new - no URTC equivalent)* |
 | +0x14..+0x1F | Reserved for future Robot Controller Board features | |
 
 Same anti-bricking discipline as URTC's own bootloader: a firmware image is
@@ -142,7 +177,7 @@ leaves the previously-working firmware intact.
 
 ---
 
-## 4. Tiers 2-3: reaching the URTC Tool Head, and its own optional Advanced
+## 5. Tiers 2-3: reaching the URTC Tool Head, and its own optional Advanced
    Expansion Board, through the Robot Controller Board
 
 **PROPOSED**, modeled directly on a pattern URTC's own firmware already
@@ -153,7 +188,7 @@ direct CAN access to, unmodified and un-reinterpreted, without needing a
 dedicated fixed ID for every possible downstream command.
 
 The Robot Controller Board does the same thing one hop earlier, but as a
-**generic, ID-agnostic tunnel** (`+0x12`/`+0x13` from section 3's table)
+**generic, ID-agnostic tunnel** (`+0x12`/`+0x13` from section 4's table)
 rather than a fixed 1:1 ID mapping - URTC's own protocol alone spans over a
 hundred distinct IDs (`0x000`-`0x2FF` runtime, `0x7F0`-`0x7FF` bootloader),
 far more than a 32-ID slot window could enumerate individually:
@@ -200,26 +235,27 @@ that isn't there.
 
 ---
 
-## 5. What already exists vs. what this fills in
+## 6. What already exists vs. what this fills in
 
 | Piece | Status |
 |---|---|
 | CM5 <-> STM32H745 SPI transport | CONFIRMED, documented (README.md §10) |
-| STM32H745's own SPI firmware-update protocol (Tier 0) | PROPOSED (this document, §2) - no bootloader exists yet |
+| STM32H745's own SPI firmware-update protocol (Tier 0) | PROPOSED (this document, §3) - no bootloader exists yet |
 | STM32H745 <-> Robot Controller Board FDCAN1 bus (electrical) | CONFIRMED, documented (README.md §6) |
-| Robot Controller Board slot addressing on that shared bus | PROPOSED (this document, §3) |
+| Robot Controller Board slot addressing on that shared bus | PROPOSED (this document, §4) |
 | Robot Controller Board's own MCU identity | **CONFIRMED: STM32G474RET6** (LQFP-64, 512 KB flash, 3x FDCAN - 2 used, see §1). |
-| Robot Controller Board's own bootloader firmware | Does not exist yet. §3's ID map is meant to make writing it straightforward, not a substitute for writing it. |
+| Robot Controller Board's own bootloader firmware | Does not exist yet. §4's ID map is meant to make writing it straightforward, not a substitute for writing it. |
 | Robot Controller Board -> URTC Tool Head CAN link (electrical) | Described by the project owner; not yet on a schematic in `hardware/` |
-| Robot Controller Board <-> URTC Tool Head relay tunnel | PROPOSED (this document, §4) |
-| URTC Tool Head firmware + protocol | CONFIRMED, fully implemented - see the `URTC` repo, `docs/CANBUS.TXT` |
-| URTC's own Advanced Expansion Board (STM32F303CBT6) + its I2C relay | CONFIRMED, fully implemented - see `URTC/docs/EXPANSION.TXT` and `CANBUS.TXT` §"EXPANSION SLAVE BRIDGE" |
-| Reaching the Advanced Expansion Board from HYDRA-UMC-STUDIO | PROPOSED, but needs no new protocol beyond §4's tunnel - piggybacks on URTC's own existing relay |
+| Robot Controller Board <-> URTC Tool Head relay tunnel | PROPOSED (this document, §5) |
+| URTC Tool Head firmware + protocol | CONFIRMED, fully implemented - see the `URTC` repo, `docs/CANBUS.TXT` - bare-metal, no RTOS (§2) |
+| URTC's own Advanced Expansion Board (STM32F303CBT6) + its I2C relay | CONFIRMED, fully implemented - see `URTC/docs/EXPANSION.TXT` and `CANBUS.TXT` §"EXPANSION SLAVE BRIDGE" - bare-metal, no RTOS (§2) |
+| Reaching the Advanced Expansion Board from HYDRA-UMC-STUDIO | PROPOSED, but needs no new protocol beyond §5's tunnel - piggybacks on URTC's own existing relay |
+| FreeRTOS on Tier 0 (both cores) and Tier 1 | CONFIRMED design decision (§2). Implementation: a real, verified-compiling skeleton (one task, GPIO toggle) exists for all 3 - `firmware/mcu_stm32g474/`, `firmware/mcu_stm32h745/CM7/`, `firmware/mcu_stm32h745/CM4/` - not yet the real tasks. |
 | HYDRA-UMC-STUDIO Flasher/Tester UI | Implemented against a **simulated (mock)** transport that follows this document's addressing scheme for all 4 tiers, including GitHub-release firmware download (currently wired for the `URTC` repo only) - see that repo's own README for current status. No real transport (SPI or CAN) is implemented yet - no STM32H745/Robot-Controller-Board firmware exists yet to talk to. |
 
 ---
 
-## 6. Superseded documents
+## 7. Superseded documents
 
 `docs/HYDRA-UMC_TECHNICAL.txt`, `docs/HYDRA-UMC_BOM.txt`, and
 `docs/HYDRA-UMC_PINOUT.txt` describe an earlier board revision

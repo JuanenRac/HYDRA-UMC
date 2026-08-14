@@ -5,17 +5,23 @@
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
  * LICENSE: GPL-3.0 - see repo root LICENSE
  *
- * STARTING POINT ONLY - proves the toolchain/HAL/linker setup documented in
- * docs/COMPILE_STM32G474.TXT actually produces a working binary (a GPIO
- * toggle, the traditional "does this chip even boot" smoke test), not a
- * real robot-controller-board application yet. Real work still needed here,
- * tracked against HYDRA-UMC/docs/architecture.md:
+ * STARTING POINT ONLY - proves the toolchain/HAL/linker/FreeRTOS setup
+ * documented in docs/COMPILE_STM32G474.TXT actually produces a working
+ * binary (a single FreeRTOS task toggling a GPIO, the traditional "does
+ * this chip even boot, and does the scheduler actually run" smoke test),
+ * not a real robot-controller-board application yet. Real work still
+ * needed here, tracked against HYDRA-UMC/docs/architecture.md:
+ *   - Real tasks: FDCAN Tier 1 protocol handling, 6-axis STEP/DIR/EN pulse
+ *     generation, endstop polling - vBlinkTask below is a placeholder for
+ *     where those tasks (plural - this is why a real scheduler is used
+ *     instead of a superloop) will live, not itself one of them
  *   - FDCAN1 init + the Tier 1 slot-addressed protocol (architecture.md §3)
  *   - FDCAN2 (or 3) init + the Tier 2/3 relay tunnel (architecture.md §4)
- *   - 6x STEP/DIR/EN outputs + endstop inputs (this board's actual job)
  *   - Real clock tree config (left at HSI 16 MHz default below - fine for
  *     this smoke test, NOT fine for real FDCAN bit timing or step-pulse
- *     precision)
+ *     precision) - FreeRTOSConfig.h's own configCPU_CLOCK_HZ must be
+ *     updated in the SAME commit as whichever change fixes this, or every
+ *     FreeRTOS tick/delay silently goes wrong
  *   - The bootloader-facing side of the metadata/main/backup flash split
  *     defined in STM32G474RETx_APP.ld's own header comment
  *
@@ -23,9 +29,17 @@
  * this repo's own hardware/PCB/robot_controller_board_stm32g474/ doesn't
  * have a real schematic yet (see that folder's own README) - adjust once
  * one exists.
+ *
+ * FreeRTOS note: SVC_Handler/PendSV_Handler/SysTick_Handler are deliberately
+ * NOT defined in this file - FreeRTOSConfig.h renames FreeRTOS's own port.c
+ * handlers onto those exact symbol names instead (see that file's own
+ * header comment). Defining them here too would be a duplicate-symbol link
+ * error.
  * =============================================================================
  */
 
+#include "FreeRTOS.h"
+#include "task.h"
 #include "stm32g4xx_hal.h"
 
 static void Error_Handler(void)
@@ -46,6 +60,15 @@ static void GPIO_Init(void)
   HAL_GPIO_Init(GPIOA, &gpio);
 }
 
+static void vBlinkTask(void *pvParameters)
+{
+  (void)pvParameters;
+  for (;;) {
+    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
+}
+
 int main(void)
 {
   HAL_StatusTypeDef hal_status = HAL_Init();
@@ -56,14 +79,41 @@ int main(void)
   /* Clock tree left at HSI (16 MHz) reset default - a smoke-test-only
    * choice. Real FDCAN bit timing and step-pulse generation both need a
    * proper SystemClock_Config() (HSE + PLL) written once the board's real
-   * crystal/oscillator choice is known - see this file's own header. */
+   * crystal/oscillator choice is known - see this file's own header, and
+   * update FreeRTOSConfig.h's own configCPU_CLOCK_HZ in the same commit. */
 
   GPIO_Init();
 
-  while (1) {
-    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-    HAL_Delay(500);
-  }
+  xTaskCreate(vBlinkTask, "blink", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+
+  vTaskStartScheduler();
+
+  /* Only reached if vTaskStartScheduler() itself failed (e.g. out of heap
+   * for the idle/timer tasks) - not a normal code path. */
+  Error_Handler();
+  for (;;) { }
+}
+
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
+{
+  (void)xTask; (void)pcTaskName;
+  __disable_irq();
+  while (1) { }
+}
+
+void vApplicationMallocFailedHook(void)
+{
+  __disable_irq();
+  while (1) { }
+}
+
+/* FreeRTOS now owns SysTick (see this file's own header comment on the
+ * handler rename in FreeRTOSConfig.h) - HAL_IncTick() has to be driven from
+ * somewhere else, or HAL_GetTick()/HAL_Delay() silently stop advancing.
+ * configUSE_TICK_HOOK=1 in FreeRTOSConfig.h calls this once per tick. */
+void vApplicationTickHook(void)
+{
+  HAL_IncTick();
 }
 
 void HAL_MspInit(void)
@@ -77,13 +127,3 @@ void HardFault_Handler(void) { while (1) { } }
 void MemManage_Handler(void) { while (1) { } }
 void BusFault_Handler(void) { while (1) { } }
 void UsageFault_Handler(void) { while (1) { } }
-void SVC_Handler(void) { }
-void DebugMon_Handler(void) { }
-void PendSV_Handler(void) { }
-
-static volatile uint32_t g_tick = 0;
-void SysTick_Handler(void)
-{
-  g_tick++;
-  HAL_IncTick();
-}

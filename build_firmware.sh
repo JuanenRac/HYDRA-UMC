@@ -15,17 +15,22 @@
 # first if anything here needs adjusting; this script automates them, it
 # doesn't replace them.
 #
+# FreeRTOS: both application targets (Robot Controller Board's STM32G474,
+# and the Kinematic Brain's STM32H745 - BOTH cores) run FreeRTOS - see
+# docs/architecture.md for the reasoning. Bootloaders stay bare-metal
+# (matches URTC's own precedent - a bootloader doesn't need a scheduler,
+# keeping it minimal/auditable/fast is the actual goal there).
+#
 # Usage:
 #   ./build_firmware.sh              build every target below
 #   ./build_firmware.sh --clean      wipe the local build/ cache first
 #   ./build_firmware.sh g474         build only the Robot Controller Board (STM32G474RET6)
 #   ./build_firmware.sh h745         build only the Kinematic Brain (STM32H745ZIT6, both cores)
 #
-# STATUS: g474 is a real, verified-compiling smoke test (GPIO toggle) proving
-# the toolchain/vendoring pipeline itself works end to end - not yet the real
-# CAN-OTA/motion firmware (see firmware/mcu_stm32g474/README.md). h745 is not
-# implemented in this script yet - see docs/COMPILE_STM32H745.TXT for the
-# manual steps until it is.
+# STATUS: every application binary below is a real, verified-compiling
+# FreeRTOS smoke test (one task, GPIO toggle) proving the toolchain/
+# vendoring/RTOS pipeline works end to end - not yet the real CAN-OTA/
+# motion firmware. See each firmware/*/README.md for current status.
 # =============================================================================
 set -e
 
@@ -45,6 +50,8 @@ H7_HAL_REPO="https://github.com/STMicroelectronics/stm32h7xx_hal_driver.git"
 H7_HAL_TAG="v1.11.6"
 H7_CMSIS_DEVICE_REPO="https://github.com/STMicroelectronics/cmsis_device_h7.git"
 H7_CMSIS_DEVICE_TAG="v1.10.7"
+FREERTOS_REPO="https://github.com/FreeRTOS/FreeRTOS-Kernel.git"
+FREERTOS_TAG="V11.3.0"
 
 PASS=0; WARN=0; FAIL=0
 pass() { echo "  OK   $1"; PASS=$((PASS+1)); }
@@ -102,13 +109,44 @@ build_bin_hex() {
     arm-none-eabi-objcopy -O ihex "$elf" "${elf%.elf}.hex"
 }
 
+# -----------------------------------------------------------------------
+step "2. FreeRTOS kernel sources (shared by every application target - see docs/architecture.md)"
+# -----------------------------------------------------------------------
+FREERTOS_VENDOR="$BUILD/vendor/freertos"
+if [ ! -d "$FREERTOS_VENDOR" ]; then
+    echo "Fetching FreeRTOS-Kernel ($FREERTOS_TAG)..."
+    git -c safe.directory='*' clone --depth 1 --branch "$FREERTOS_TAG" -q "$FREERTOS_REPO" "$FREERTOS_VENDOR"
+    pass "FreeRTOS-Kernel fetched"
+else
+    pass "FreeRTOS-Kernel already cached at build/vendor/freertos"
+fi
+FREERTOS_SRC="$FREERTOS_VENDOR"
+FREERTOS_COMMON_SOURCES="tasks.c queue.c list.c timers.c event_groups.c"
+
+# Compiles the FreeRTOS kernel + the given port + heap_4, into $4, using the
+# given CFLAGS (which must already -I the target's own FreeRTOSConfig.h
+# directory) - shared helper for all 3 application targets below. Bootloaders
+# never call this (bare-metal, see this script's own header comment).
+compile_freertos() {
+    local cflags="$1" port_dir="$2" objdir="$3"
+    mkdir -p "$objdir"
+    for f in $FREERTOS_COMMON_SOURCES; do
+        if [ ! -f "$objdir/$f.o" ] || [ "$FREERTOS_SRC/$f" -nt "$objdir/$f.o" ]; then
+            arm-none-eabi-gcc $cflags -I"$FREERTOS_SRC/include" -I"$port_dir" -x c -c "$FREERTOS_SRC/$f" -o "$objdir/$f.o" || return 1
+        fi
+    done
+    arm-none-eabi-gcc $cflags -I"$FREERTOS_SRC/include" -I"$port_dir" -x c -c "$port_dir/port.c" -o "$objdir/port.o" || return 1
+    arm-none-eabi-gcc $cflags -I"$FREERTOS_SRC/include" -I"$port_dir" -x c -c "$FREERTOS_SRC/portable/MemMang/heap_4.c" -o "$objdir/heap_4.o" || return 1
+    return 0
+}
+
 # =========================================================================
 if [ "$TARGET" = "all" ] || [ "$TARGET" = "g474" ]; then
 # =========================================================================
-step "2. Robot Controller Board (STM32G474RET6) - ST HAL/CMSIS sources"
+step "3. Robot Controller Board (STM32G474RET6) - ST HAL/CMSIS sources"
 # -----------------------------------------------------------------------
 G4="$BUILD/g474"
-mkdir -p "$G4/vendor" "$G4/common/HAL_Include" "$G4/common/CMSIS_Include" "$G4/hal_src" "$G4/hal_obj" "$G4/app" "$G4/boot_obj" "$G4/app_obj"
+mkdir -p "$G4/vendor" "$G4/common/HAL_Include" "$G4/common/CMSIS_Include" "$G4/hal_src" "$G4/hal_obj" "$G4/app" "$G4/boot_obj" "$G4/app_obj" "$G4/freertos_obj"
 
 if [ ! -d "$G4/vendor/hal" ]; then
     echo "Fetching STM32G4xx HAL driver ($G4_HAL_TAG)..."
@@ -129,9 +167,9 @@ fi
 if [ ! -d "$G4/vendor/cmsis_core" ]; then
     echo "Fetching generic ARM CMSIS Core headers (Include/ only, sparse)..."
     git -c safe.directory='*' clone --depth 1 --filter=blob:none --no-checkout -q --branch "$CMSIS_CORE_TAG" "$CMSIS_CORE_REPO" "$G4/vendor/cmsis_core"
-    (cd "$G4/vendor/cmsis_core" && git -c safe.directory='*' sparse-checkout init --no-cone \
-        && echo "/Core/Include/**" > .git/info/sparse-checkout \
-        && git -c safe.directory='*' checkout -q)
+    git -C "$G4/vendor/cmsis_core" -c safe.directory='*' sparse-checkout init --no-cone
+    echo "/Core/Include/**" > "$G4/vendor/cmsis_core/.git/info/sparse-checkout"
+    git -C "$G4/vendor/cmsis_core" -c safe.directory='*' checkout -q
     pass "CMSIS core fetched (Include/ only)"
 else
     pass "CMSIS core already cached at build/g474/vendor/cmsis_core"
@@ -150,10 +188,14 @@ else
 fi
 
 # -----------------------------------------------------------------------
-step "3. Robot Controller Board - common compiler flags and shared HAL objects"
+step "4. Robot Controller Board - common compiler flags and shared HAL objects"
 # -----------------------------------------------------------------------
 CFLAGS_G4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32G474xx -DUSE_HAL_DRIVER -I$G4/common/CMSIS_Include -I$G4/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections"
 LDCOMMON_G4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
+# App CFLAGS additionally need this target's own FreeRTOSConfig.h directory
+# plus FreeRTOS's own headers/port headers - the bootloader (bare-metal, no
+# FreeRTOS) uses CFLAGS_G4 alone.
+CFLAGS_G4_APP="$CFLAGS_G4 -I$ROOT/firmware/mcu_stm32g474 -I$FREERTOS_SRC/include -I$FREERTOS_SRC/portable/GCC/ARM_CM4F"
 
 # Only the modules this skeleton's own GPIO-toggle smoke test needs today
 # (HAL core + RCC + GPIO + Cortex + PWR + FLASH) - extend this list as real
@@ -181,8 +223,15 @@ arm-none-eabi-gcc $CFLAGS_G4 -x assembler-with-cpp -c "$G4/app/startup_stm32g474
 arm-none-eabi-gcc $CFLAGS_G4 -x c -c "$G4/app/system_stm32g4xx.c" -o "$G4/app/system_stm32g4xx.o"
 pass "startup + system files compiled"
 
+if compile_freertos "$CFLAGS_G4_APP" "$FREERTOS_SRC/portable/GCC/ARM_CM4F" "$G4/freertos_obj"; then
+    pass "FreeRTOS kernel (ARM_CM4F port) compiled for Robot Controller Board"
+else
+    fail "FreeRTOS kernel failed to compile for Robot Controller Board - see errors above"
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
+
 # -----------------------------------------------------------------------
-step "4. Robot Controller Board bootloader (firmware/mcu_stm32g474/boot/)"
+step "5. Robot Controller Board bootloader (firmware/mcu_stm32g474/boot/) - bare-metal, no FreeRTOS"
 # -----------------------------------------------------------------------
 SRC="$ROOT/firmware/mcu_stm32g474/boot"
 rm -f "$G4/boot_obj"/*.o
@@ -196,28 +245,28 @@ cp "$G4/boot_obj/HYDRA_RCB_BOOTLOADER."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "HYDRA_RCB_BOOTLOADER.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/boot_obj/HYDRA_RCB_BOOTLOADER.elf" | tail -1 | awk '{print $1}') bytes text)"
 
 # -----------------------------------------------------------------------
-step "5. Robot Controller Board application (firmware/mcu_stm32g474/)"
+step "6. Robot Controller Board application (firmware/mcu_stm32g474/) - FreeRTOS"
 # -----------------------------------------------------------------------
 SRC="$ROOT/firmware/mcu_stm32g474"
 rm -f "$G4/app_obj"/*.o
-arm-none-eabi-gcc $CFLAGS_G4 -I"$SRC" -x c -c "$SRC/STM32G474RE_main.c" -o "$G4/app_obj/STM32G474RE_main.o"
+arm-none-eabi-gcc $CFLAGS_G4_APP -I"$SRC" -x c -c "$SRC/STM32G474RE_main.c" -o "$G4/app_obj/STM32G474RE_main.o"
 arm-none-eabi-gcc $LDCOMMON_G4 -T"$SRC/STM32G474RETx_APP.ld" \
     "$G4/app/startup.o" "$G4/app/system_stm32g4xx.o" \
-    "$G4/app_obj"/*.o "$G4/hal_obj"/*.o -o "$G4/app_obj/HYDRA_RCB_APP.elf" \
+    "$G4/app_obj"/*.o "$G4/hal_obj"/*.o "$G4/freertos_obj"/*.o -o "$G4/app_obj/HYDRA_RCB_APP.elf" \
     2>&1 | grep -v "not implemented\|note: the message\|in function \`_" || true
 build_bin_hex "$G4/app_obj/HYDRA_RCB_APP.elf"
 cp "$G4/app_obj/HYDRA_RCB_APP."{elf,bin,hex} "$FIRMWARE_OUT/"
-pass "HYDRA_RCB_APP.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/app_obj/HYDRA_RCB_APP.elf" | tail -1 | awk '{print $1}') bytes text) - GPIO-toggle smoke test only, see firmware/mcu_stm32g474/README.md"
+pass "HYDRA_RCB_APP.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/app_obj/HYDRA_RCB_APP.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test, see firmware/mcu_stm32g474/README.md"
 
 fi
 
 # =========================================================================
 if [ "$TARGET" = "all" ] || [ "$TARGET" = "h745" ]; then
 # =========================================================================
-step "6. Kinematic Brain (STM32H745ZIT6) - ST HAL/CMSIS sources"
+step "7. Kinematic Brain (STM32H745ZIT6) - ST HAL/CMSIS sources"
 # -----------------------------------------------------------------------
 H7="$BUILD/h745"
-mkdir -p "$H7/vendor" "$H7/common/HAL_Include" "$H7/common/CMSIS_Include" "$H7/hal_src" "$H7/hal_obj" "$H7/cm7" "$H7/cm4" "$H7/cm7_boot_obj" "$H7/cm7_app_obj" "$H7/cm4_boot_obj" "$H7/cm4_app_obj"
+mkdir -p "$H7/vendor" "$H7/common/HAL_Include" "$H7/common/CMSIS_Include" "$H7/hal_src" "$H7/hal_obj" "$H7/cm7" "$H7/cm4" "$H7/cm7_boot_obj" "$H7/cm7_app_obj" "$H7/cm4_boot_obj" "$H7/cm4_app_obj" "$H7/cm7_freertos_obj" "$H7/cm4_freertos_obj"
 
 if [ ! -d "$H7/vendor/hal" ]; then
     echo "Fetching STM32H7xx HAL driver ($H7_HAL_TAG)..."
@@ -259,7 +308,7 @@ else
 fi
 
 # -----------------------------------------------------------------------
-step "7. Kinematic Brain - common compiler flags and shared HAL objects (per core)"
+step "8. Kinematic Brain - common compiler flags and shared HAL objects (per core)"
 # -----------------------------------------------------------------------
 # Only what this skeleton's own GPIO-toggle smoke test needs today - extend
 # as real FDCAN/SPI/timer/motion code lands, same reasoning as G474's own list.
@@ -299,9 +348,27 @@ CFLAGS_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745x
 LDCOMMON_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
 CFLAGS_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections"
 LDCOMMON_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
+# App CFLAGS additionally need each core's own FreeRTOSConfig.h directory
+# plus FreeRTOS's own headers/port headers - each core's bootloader
+# (bare-metal) uses CFLAGS_CM7/CFLAGS_CM4 alone.
+CFLAGS_CM7_APP="$CFLAGS_CM7 -I$ROOT/firmware/mcu_stm32h745/CM7 -I$FREERTOS_SRC/include -I$FREERTOS_SRC/portable/GCC/ARM_CM7/r0p1"
+CFLAGS_CM4_APP="$CFLAGS_CM4 -I$ROOT/firmware/mcu_stm32h745/CM4 -I$FREERTOS_SRC/include -I$FREERTOS_SRC/portable/GCC/ARM_CM4F"
+
+if compile_freertos "$CFLAGS_CM7_APP" "$FREERTOS_SRC/portable/GCC/ARM_CM7/r0p1" "$H7/cm7_freertos_obj"; then
+    pass "FreeRTOS kernel (ARM_CM7/r0p1 port) compiled for CM7"
+else
+    fail "FreeRTOS kernel failed to compile for CM7 - see errors above"
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
+if compile_freertos "$CFLAGS_CM4_APP" "$FREERTOS_SRC/portable/GCC/ARM_CM4F" "$H7/cm4_freertos_obj"; then
+    pass "FreeRTOS kernel (ARM_CM4F port) compiled for CM4"
+else
+    fail "FreeRTOS kernel failed to compile for CM4 - see errors above"
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
 
 # -----------------------------------------------------------------------
-step "8. Kinematic Brain CM7 bootloader + application (firmware/mcu_stm32h745/CM7/)"
+step "9. Kinematic Brain CM7 bootloader (bare-metal) + application (FreeRTOS) - firmware/mcu_stm32h745/CM7/"
 # -----------------------------------------------------------------------
 SRC="$ROOT/firmware/mcu_stm32h745/CM7"
 arm-none-eabi-gcc $CFLAGS_CM7 -I"$SRC/boot" -x c -c "$SRC/boot/bootloader_main.c" -o "$H7/cm7_boot_obj/bootloader_main.o"
@@ -313,17 +380,17 @@ build_bin_hex "$H7/cm7_boot_obj/HYDRA_KB_CM7_BOOTLOADER.elf"
 cp "$H7/cm7_boot_obj/HYDRA_KB_CM7_BOOTLOADER."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "HYDRA_KB_CM7_BOOTLOADER.bin/.hex/.elf built"
 
-arm-none-eabi-gcc $CFLAGS_CM7 -I"$SRC" -x c -c "$SRC/STM32H745ZI_CM7_main.c" -o "$H7/cm7_app_obj/STM32H745ZI_CM7_main.o"
+arm-none-eabi-gcc $CFLAGS_CM7_APP -I"$SRC" -x c -c "$SRC/STM32H745ZI_CM7_main.c" -o "$H7/cm7_app_obj/STM32H745ZI_CM7_main.o"
 arm-none-eabi-gcc $LDCOMMON_CM7 -T"$SRC/STM32H745ZITx_CM7_APP.ld" \
     "$H7/cm7/startup.o" "$H7/cm7/system_stm32h7xx.o" \
-    "$H7/cm7_app_obj"/*.o "$H7/hal_obj_cm7"/*.o -o "$H7/cm7_app_obj/HYDRA_KB_CM7_APP.elf" \
+    "$H7/cm7_app_obj"/*.o "$H7/hal_obj_cm7"/*.o "$H7/cm7_freertos_obj"/*.o -o "$H7/cm7_app_obj/HYDRA_KB_CM7_APP.elf" \
     2>&1 | grep -v "not implemented\|note: the message\|in function \`_" || true
 build_bin_hex "$H7/cm7_app_obj/HYDRA_KB_CM7_APP.elf"
 cp "$H7/cm7_app_obj/HYDRA_KB_CM7_APP."{elf,bin,hex} "$FIRMWARE_OUT/"
-pass "HYDRA_KB_CM7_APP.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm7_app_obj/HYDRA_KB_CM7_APP.elf" | tail -1 | awk '{print $1}') bytes text) - GPIO-toggle smoke test only"
+pass "HYDRA_KB_CM7_APP.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm7_app_obj/HYDRA_KB_CM7_APP.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test"
 
 # -----------------------------------------------------------------------
-step "9. Kinematic Brain CM4 bootloader + application (firmware/mcu_stm32h745/CM4/)"
+step "10. Kinematic Brain CM4 bootloader (bare-metal) + application (FreeRTOS) - firmware/mcu_stm32h745/CM4/"
 # -----------------------------------------------------------------------
 SRC="$ROOT/firmware/mcu_stm32h745/CM4"
 arm-none-eabi-gcc $CFLAGS_CM4 -I"$SRC/boot" -x c -c "$SRC/boot/bootloader_main.c" -o "$H7/cm4_boot_obj/bootloader_main.o"
@@ -335,14 +402,14 @@ build_bin_hex "$H7/cm4_boot_obj/HYDRA_KB_CM4_BOOTLOADER.elf"
 cp "$H7/cm4_boot_obj/HYDRA_KB_CM4_BOOTLOADER."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "HYDRA_KB_CM4_BOOTLOADER.bin/.hex/.elf built"
 
-arm-none-eabi-gcc $CFLAGS_CM4 -I"$SRC" -x c -c "$SRC/STM32H745ZI_CM4_main.c" -o "$H7/cm4_app_obj/STM32H745ZI_CM4_main.o"
+arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -x c -c "$SRC/STM32H745ZI_CM4_main.c" -o "$H7/cm4_app_obj/STM32H745ZI_CM4_main.o"
 arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/STM32H745ZITx_CM4_APP.ld" \
     "$H7/cm4/startup.o" "$H7/cm4/system_stm32h7xx.o" \
-    "$H7/cm4_app_obj"/*.o "$H7/hal_obj_cm4"/*.o -o "$H7/cm4_app_obj/HYDRA_KB_CM4_APP.elf" \
+    "$H7/cm4_app_obj"/*.o "$H7/hal_obj_cm4"/*.o "$H7/cm4_freertos_obj"/*.o -o "$H7/cm4_app_obj/HYDRA_KB_CM4_APP.elf" \
     2>&1 | grep -v "not implemented\|note: the message\|in function \`_" || true
 build_bin_hex "$H7/cm4_app_obj/HYDRA_KB_CM4_APP.elf"
 cp "$H7/cm4_app_obj/HYDRA_KB_CM4_APP."{elf,bin,hex} "$FIRMWARE_OUT/"
-pass "HYDRA_KB_CM4_APP.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_app_obj/HYDRA_KB_CM4_APP.elf" | tail -1 | awk '{print $1}') bytes text) - GPIO-toggle smoke test only, no CM7<->CM4 sync yet"
+pass "HYDRA_KB_CM4_APP.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_app_obj/HYDRA_KB_CM4_APP.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test, no CM7<->CM4 sync yet"
 
 fi
 
@@ -353,9 +420,10 @@ echo "$PASS passed, $WARN warnings, $FAIL failed"
 echo ""
 echo "Output binaries are in: $FIRMWARE_OUT/"
 echo ""
-echo "Reminder: g474's app/bootloader above are GPIO-toggle smoke tests that"
-echo "prove the toolchain/vendoring pipeline works end to end, NOT the real"
-echo "CAN-OTA/motion firmware yet - see firmware/mcu_stm32g474/README.md and"
-echo "HYDRA-UMC/docs/architecture.md for what's still real engineering work."
+echo "Reminder: every application binary above is a FreeRTOS GPIO-toggle"
+echo "smoke test proving the toolchain/vendoring/RTOS pipeline works end to"
+echo "end, NOT the real CAN-OTA/motion firmware yet - see each firmware/*/"
+echo "README.md and HYDRA-UMC/docs/architecture.md for what's still real"
+echo "engineering work. Bootloaders stay bare-metal (no FreeRTOS) by design."
 
 if [ "$FAIL" -gt 0 ]; then exit 1; fi
