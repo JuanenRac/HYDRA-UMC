@@ -28,7 +28,7 @@
  * PIN: PC13, STATUS_LED - a REAL pinout allocation now, not a Nucleo-dev-
  * board placeholder (see docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT
  * section 4). The chip's other real peripherals (FDCAN1/2, 6x TMC5160A
- * SPI daisy-chain + STEP/DIR/EN, 6x endstops, SLOT_ID straps) are all
+ * SPI daisy-chain + STEP/DIR/EN, 6x endstops, BOARD_ID DIP switch) are all
  * pinned out in that same file but NOT yet initialized here - that's the
  * "real tasks" work listed below, still not done. The bootloader
  * (../boot/) DOES already initialize FDCAN1 for real - see that folder's

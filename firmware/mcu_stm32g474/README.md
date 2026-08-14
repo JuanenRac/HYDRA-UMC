@@ -19,8 +19,8 @@ FreeRTOS (a bootloader doesn't need a scheduler — see `docs/architecture.md`
 section 2), ported from URTC's own proven bootloader (sibling repo) and
 re-based onto this board's own FDCAN1 slot addressing
 (`docs/architecture.md` section 4, `docs/PINOUT_STM32G474_ROBOT_
-CONTROLLER.TXT` section 1a/1c): FDCAN1 listen loop, `SLOT_ID[2:0]`-derived
-addressing, CRC32 + HMAC-SHA256 verify-into-backup-before-copy-to-main
+CONTROLLER.TXT` section 1a/1c): FDCAN1 listen loop, `BOARD_ID[2:0]`-derived
+addressing (a local DIP switch, not the STACK A connector), CRC32 + HMAC-SHA256 verify-into-backup-before-copy-to-main
 anti-bricking discipline, version query, error counters, anti-rollback with
 explicit downgrade authorization, backup readback. NOT yet verified against
 real hardware — see `boot/bootloader_main.c`'s own header for the FDCAN
@@ -85,7 +85,7 @@ command this script runs, and why).
 | `STM32G474RE_main.c` | Application entry point — currently a FreeRTOS GPIO-toggle smoke test only |
 | `STM32G474RETx_APP.ld` | Application linker script (main flash slot) |
 | `FreeRTOSConfig.h` | FreeRTOS kernel config for this board's application (bootloader never includes this) |
-| `boot/bootloader_main.c` | Bootloader entry point (bare-metal) — clock config, FDCAN1 + SLOT_ID init, real CAN-OTA main loop |
+| `boot/bootloader_main.c` | Bootloader entry point (bare-metal) — clock config, FDCAN1 + BOARD_ID init, real CAN-OTA main loop |
 | `boot/bootloader_common.h` | Shared types/defines: flash layout, FDCAN1 offset table, HMAC key, status codes |
 | `boot/bootloader_crypto.c/h` | SHA-256 / HMAC-SHA256 (ported verbatim from URTC's own, chip-independent) |
 | `boot/bootloader_flash.c/h` | CRC32, flash program/erase (double-word), metadata persistence |

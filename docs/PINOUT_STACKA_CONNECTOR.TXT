@@ -33,45 +33,28 @@ sections 1 and 4, README.md section 6). If that reading is wrong, tell me
 and this file gets a real SPI_STACKA_* pin group instead of the reserved
 spares below.
 
-Two things had to be ADDED beyond the user's literal list, because a 40-pin
+One thing had to be ADDED beyond the user's literal list, because a 40-pin
 parallel bus serving 8 independently-populated slots cannot work without
-them:
+it:
 
-  - SLOT_ID[2:0]: 3 pins on the connector carrying this board's own
-    position in the stack (0-7), so each board can self-identify its own N
-    at boot and compute its own FDCAN1 slot base ID (CAN_ID_STACKA_BASE +
-    N*0x20, docs/architecture.md section 4) instead of needing that ID
-    hand-programmed into firmware per board. Without this, the addressing
-    scheme already on paper has no way to actually assign N to a physical
-    board.
-    CORRECTED for the physical stack topology (section 3): every Robot
-    Controller Board is the SAME PCB/BOM (mass-produced, interchangeable),
-    so a fixed per-position resistor strap - workable on a backplane where
-    each slot is a physically distinct connector - does NOT work here: it
-    would require a DIFFERENT board revision per stack position. Instead,
-    SLOT_ID is RIPPLE-PROPAGATED at power-up: the Kinematic Brain's own
-    "STACK A OUT" connector hardwires SLOT_ID[2:0] = 0b000 on its 3 pins;
-    each board's own firmware reads SLOT_ID[2:0] as GPIO INPUTS from its
-    downward-facing "IN" connector at boot, latches N = (value read) + 1,
-    then reconfigures those SAME 3 MCU pins as GPIO OUTPUTS driving N onto
-    its upward-facing "OUT" connector for whatever board is stacked next -
-    the same 3 physical traces serve as input-from-below then output-to-
-    above on every board, so no extra pins are needed beyond the 3 already
-    budgeted. This naturally sequences bottom-to-top at power-up (a board
-    can't drive a valid N until it has first read a stable one from below),
-    with no contention as long as every board follows read-then-drive
-    strictly in that order. FIRMWARE NOTE: `ReadSlotBaseId()` in both
-    docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT-driven bootloaders
-    (firmware/mcu_stm32g474/boot/bootloader_main.c) currently implements
-    only the simpler "static strap" read (input-only, no re-drive to an
-    OUT connector) - the ripple behavior described here is NOT yet
-    implemented in firmware, flagged as a real follow-up, not silently
-    assumed done.
   - BOARD_PRESENT: one open-drain pin, pulled low by an installed Robot
     Controller Board, read by the Kinematic Brain to know which of the 8
     slots are physically populated without needing a full FDCAN handshake
     first (useful at power-up, and for HYDRA-UMC-STUDIO's Flasher/Tester to
     show "not installed" vs. "installed but not responding").
+
+SLOT ADDRESSING IS NOT ON THIS CONNECTOR (revised per explicit direction):
+each Robot Controller Board carries its own FDCAN1 slot address (0-7) via
+3 LOCAL DIP-switch/jumper pins on the board itself, set by whoever installs
+it - see docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 1c
+("BOARD_ID[2:0]"). This replaces an earlier draft of this file that tried
+to derive slot position from the connector (first a per-position resistor
+strap, then a ripple-propagated scheme) - both added real complexity a
+simple manually-set local DIP switch avoids entirely, and every Robot
+Controller Board being the same interchangeable PCB/BOM (mass-produced) was
+always going to make anything connector-position-derived awkward. The 3
+pins that earlier draft reserved on this connector are folded back into
+the general RESERVED pool below instead.
 
 --------------------------------------------------------------------------------
 2. PIN TABLE (40 pins, connector viewed from the mating face)
@@ -110,28 +93,27 @@ Pin | Signal          | Notes
     |                 | the two electrical ends of the physical stack only -
     |                 | see section 3.
 ----+-----------------+-----------------------------------------------------
-27  | SLOT_ID_0       | \  3-bit physical-slot-position strap, LSB..MSB.
-28  | SLOT_ID_1       |  > Pulled high/low per position in the physical
-29  | SLOT_ID_2       | /  stack (0-7 across the 8 slots) - see section 1.
+27  | BOARD_PRESENT_N | Open-drain, active-low, per-slot - see section 1.
 ----+-----------------+-----------------------------------------------------
-30  | BOARD_PRESENT_N | Open-drain, active-low, per-slot - see section 1.
-----+-----------------+-----------------------------------------------------
-31  | RESERVED        | \
-32  | RESERVED        |  \
-33  | RESERVED        |   \
-34  | RESERVED        |    10 spare pins. PROPOSED future use: a shared
-35  | RESERVED        |    SYNC_TRIGGER line for coordinated multi-robot
-36  | RESERVED        |    motion start (not designed yet - would need
-37  | RESERVED        |    its own doc), and general headroom so this
-38  | RESERVED        |    connector doesn't need re-speccing for the
-39  | RESERVED        |    next thing that gets "forgotten." Leave
-40  | RESERVED        |    unpopulated on both ends until assigned. /
+28  | RESERVED        | \
+29  | RESERVED        |  \
+30  | RESERVED        |   \
+31  | RESERVED        |    13 spare pins (was 10 - the 3 SLOT_ID pins an
+32  | RESERVED        |    earlier draft of this file reserved here folded
+33  | RESERVED        |    back into this pool once slot addressing moved
+34  | RESERVED        |    to local DIP-switch pins on each Robot
+35  | RESERVED        |    Controller Board instead - see section 1).
+36  | RESERVED        |    PROPOSED future use: a shared SYNC_TRIGGER line
+37  | RESERVED        |    for coordinated multi-robot motion start (not
+38  | RESERVED        |    designed yet - would need its own doc), and
+39  | RESERVED        |    general headroom so this connector doesn't need
+40  | RESERVED        |    re-speccing for the next "forgotten" thing. /
 ----+-----------------+-----------------------------------------------------
 
-Total: 10 + 10 + 4 + 2 + 3 + 1 + 10 = 40 pins. Matches the user's explicit
+Total: 10 + 10 + 4 + 2 + 1 + 13 = 40 pins. Matches the user's explicit
 40-pin/10-pin-24V/10-pin-GND constraints exactly; +5V_BUS pin count (4) and
-the CAN/SLOT_ID/PRESENT/RESERVED split are this doc's own proposal to make
-the rest of the connector actually usable.
+the CAN/PRESENT/RESERVED split are this doc's own proposal to make the
+rest of the connector actually usable.
 
 --------------------------------------------------------------------------------
 3. PHYSICAL TOPOLOGY - CONFIRMED: a physical stack, not a backplane/harness
@@ -150,21 +132,30 @@ struck through only in spirit, replaced here, not left ambiguous).
     +----------------------------+  |
                                      v
                           +-------------------+
-                          | Robot Ctrl Board 1 |  SLOT_ID=0
+                          | Robot Ctrl Board 1 |  BOARD_ID DIP=0 (installer-set)
                           | [IN, passthrough]  |--+  <- 2 connectors: one mates
                           +-------------------+  |     downward into the board
                                                   v     below, one extends the
                           +-------------------+        SAME 40 signals upward
-                          | Robot Ctrl Board 2 |  SLOT_ID=1  for the next board
+                          | Robot Ctrl Board 2 |  BOARD_ID DIP=1 (installer-set)
                           | [IN, passthrough]  |--+
                           +-------------------+  |
                                      :            v
-                                     :     ... up to 8 boards, SLOT_ID=7
+                                     :     ... up to 8 boards, DIP=7
                                      :
                           +-------------------+
-                          | Robot Ctrl Board 8 |  SLOT_ID=7
+                          | Robot Ctrl Board 8 |  BOARD_ID DIP=7 (installer-set)
                           | [IN only - top]    |
                           +-------------------+
+
+BOARD_ID is set locally per board (docs/PINOUT_STM32G474_ROBOT_
+CONTROLLER.TXT section 1c), NOT derived from stack position by this
+connector - the diagram above shows the installer setting each board's DIP
+switch to match its intended physical position, a convention worth
+following for sanity but not something the hardware enforces or derives on
+its own. Nothing stops (and nothing detects) installing boards out of
+numeric order; only the address each board's own DIP switch encodes
+matters to the FDCAN1 protocol.
 
 Each Robot Controller Board (except the topmost) carries TWO of this same
 40-pin connector: one on its underside mating with the board (or the
@@ -212,8 +203,10 @@ time - not decided here.
 5. CROSS-REFERENCES
 --------------------------------------------------------------------------------
 - docs/architecture.md section 4  - FDCAN1 slot-addressed protocol this bus
-  carries (CAN_ID_STACKA_BASE + N*0x20). SLOT_ID[2:0] on this connector is
-  what supplies "N" in that formula - not designed there, designed here.
+  carries (CAN_ID_STACKA_BASE + N*0x20). "N" comes from BOARD_ID[2:0], a
+  LOCAL DIP switch on each Robot Controller Board (docs/PINOUT_STM32G474_
+  ROBOT_CONTROLLER.TXT section 1c) - NOT from this connector, see section 1
+  above.
 - README.md section 6             - FDCAN1 STACK A summary, section 9 power
   distribution, section 11 PCB connector list (needs its "heavy-copper
   shrouded connector" line updated to reference this file - done, see the

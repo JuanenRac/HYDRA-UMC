@@ -43,17 +43,25 @@ PG8  | CAN2_STBY   | GPIO | Transceiver standby/enable, second transceiver
 (The 3rd onboard FDCAN peripheral, FDCAN3, is unused - reserved for future
 use, e.g. a second relay hop if a robot ever needs more than one URTC head.)
 
-1c. SLOT_ID[2:0] - reads which of the 8 physical STACK A backplane drops
-this board is plugged into (docs/PINOUT_STACKA_CONNECTOR.TXT section 1),
-so its own bootloader/firmware can compute its FDCAN1 slot base ID
-(CAN_ID_STACKA_BASE + N*0x20, docs/architecture.md section 4) at boot
-instead of needing N hand-programmed per board. Added here because without
-it, section 1a's own addressing scheme has no way to actually get "N".
+1c. BOARD_ID[2:0] - CONFIRMED design (user-specified): a LOCAL 3-position
+DIP switch (or 3 jumpers) on this board's own PCB, manually set by whoever
+installs the board, encoding which of the 8 FDCAN1 STACK A slots (0-7)
+this board answers as. Read once at boot so firmware can compute its own
+FDCAN1 slot base ID (CAN_ID_STACKA_BASE + N*0x20, docs/architecture.md
+section 4) instead of needing N hand-programmed into a per-board firmware
+build. Deliberately NOT derived from the STACK A connector or from
+physical stack position (docs/PINOUT_STACKA_CONNECTOR.TXT section 1 has
+the full reasoning: every board is the same interchangeable PCB/BOM, so
+anything connector-position-derived needs either a different board per
+position or a fragile power-up ripple sequence - a local DIP switch avoids
+both, at the cost of a manual step during install/replacement that whoever
+racks a new board simply has to get right).
 Pin  | Signal      | Notes
 -----+-------------+------------------------------------------------------
-PC0  | SLOT_ID_0   | GPIO input, LSB. Strapped per backplane drop position
-PC1  | SLOT_ID_1   | GPIO input.       (docs/PINOUT_STACKA_CONNECTOR.TXT
-PC2  | SLOT_ID_2   | GPIO input, MSB.   section 1) - not board-specific.
+PC0  | BOARD_ID_0  | GPIO input, LSB. Pulled to a defined level by a local
+PC1  | BOARD_ID_1  | GPIO input.       3-position DIP switch/jumper block -
+PC2  | BOARD_ID_2  | GPIO input, MSB.  see section 6a-6c below for the pull
+     |             |                   convention and hardware.PCB/BOM entry.
 
 --------------------------------------------------------------------------------
 2. 6x TMC5160A STEPPER DRIVERS - one per robot axis (axis numbering is
@@ -189,9 +197,9 @@ the eventual real spec has somewhere to land.
     6 pins total. This is the margin available if the eventual Micro-Fit
     3.0 connector spec (section 5) turns out to need MCU-side signals
     beyond what sections 2-3 already provide (e.g. a per-connector
-    present/ID line, matching the SLOT_ID/BOARD_PRESENT pattern already
-    used on the STACK A connector, docs/PINOUT_STACKA_CONNECTOR.TXT
-    section 1) - do not pre-assign these until that spec arrives.
+    present/ID line, matching the BOARD_PRESENT pattern already used on
+    the STACK A connector, docs/PINOUT_STACKA_CONNECTOR.TXT section 1) -
+    do not pre-assign these until that spec arrives.
 
 6c. Reserved/special-purpose, not general GPIO even though technically
     pins on the package - do not repurpose without a real reason:

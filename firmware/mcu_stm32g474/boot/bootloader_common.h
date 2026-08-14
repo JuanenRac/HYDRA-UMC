@@ -75,18 +75,23 @@ extern const uint8_t HMAC_KEY[32];
 
 // -----------------------------------------------------------------------
 // Slot addressing (docs/architecture.md section 4) - this board's own
-// FDCAN1 slot base ID, computed once at boot from the SLOT_ID[2:0] strap
-// pins on the STACK A connector (docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT
-// section 1c / docs/PINOUT_STACKA_CONNECTOR.TXT section 1) - NOT hand-
-// programmed per board, so the exact same binary runs in any of the 8 slots.
+// FDCAN1 slot base ID, computed once at boot from the BOARD_ID[2:0] LOCAL
+// DIP-switch pins (docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 1c) -
+// manually set by whoever installs this board, NOT derived from the STACK
+// A connector or physical stack position (docs/PINOUT_STACKA_CONNECTOR.TXT
+// section 1 has the reasoning: every board is the same interchangeable
+// PCB, so a connector-position-derived scheme needs either per-position
+// board variants or a fragile power-up ripple sequence - a local DIP
+// switch avoids both). Same binary runs on every board regardless of which
+// address its own switch is set to.
 // -----------------------------------------------------------------------
 #define CAN_ID_STACKA_BASE 0x600UL
 #define STACKA_SLOT_WINDOW 0x20UL
 
-// Reads SLOT_ID[2:0] (PC0=LSB, PC1, PC2=MSB) and returns this board's own
+// Reads BOARD_ID[2:0] (PC0=LSB, PC1, PC2=MSB) and returns this board's own
 // 0x600+N*0x20 base - called once by bootloader_main.c at startup, result
 // cached and passed to every protocol function that needs it (not re-read
-// per frame - the strap can't change while the board is powered).
+// per frame - a DIP switch can't change while the board is powered).
 uint32_t ReadSlotBaseId(void);
 
 // -----------------------------------------------------------------------

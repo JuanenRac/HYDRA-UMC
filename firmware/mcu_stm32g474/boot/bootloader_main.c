@@ -1,6 +1,6 @@
 // =============================================================================
 // HYDRA-UMC Robot Controller Board Bootloader - clock config, FDCAN init,
-// SLOT_ID read, main loop, and interrupt handlers
+// BOARD_ID read, main loop, and interrupt handlers
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 // GPL-3.0 - see repo root LICENSE
 //
@@ -8,10 +8,11 @@
 // master/boot/) - same listening-window/update/heartbeat/timeout structure.
 // Real differences: FDCAN1 instead of bxCAN (see MX_FDCAN1_Init below), and
 // every ID this bootloader sends/listens for is offset from this board's
-// own SLOT_ID-derived base (ReadSlotBaseId(), read once at startup) instead
-// of a fixed absolute ID - see docs/architecture.md section 4 and
-// docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT sections 1a/1c for the pins
-// and addressing scheme this file implements.
+// own BOARD_ID-derived base (ReadSlotBaseId(), read once at startup from a
+// LOCAL DIP switch - not the STACK A connector) instead of a fixed
+// absolute ID - see docs/architecture.md section 4 and docs/PINOUT_
+// STM32G474_ROBOT_CONTROLLER.TXT sections 1a/1c for the pins and
+// addressing scheme this file implements.
 //
 // Pin assignments below match docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT
 // exactly - re-verify there (and against Table 12 of the datasheet) before
@@ -61,17 +62,19 @@ void SystemClock_Config(void) {
 }
 
 // -----------------------------------------------------------------------
-// SLOT_ID[2:0] - docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 1c:
-// PC0=LSB, PC1, PC2=MSB. Read once at startup (the strap can't change
-// while the board is powered), converted to this board's own FDCAN1 slot
-// base ID.
+// BOARD_ID[2:0] - docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 1c:
+// PC0=LSB, PC1, PC2=MSB, a LOCAL 3-position DIP switch on this board's own
+// PCB (manually set by the installer, not derived from the STACK A
+// connector or stack position). Read once at startup (a DIP switch can't
+// change while the board is powered), converted to this board's own
+// FDCAN1 slot base ID.
 // -----------------------------------------------------------------------
 uint32_t ReadSlotBaseId(void) {
     __HAL_RCC_GPIOC_CLK_ENABLE();
     GPIO_InitTypeDef gi = {0};
     gi.Pin = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2;
     gi.Mode = GPIO_MODE_INPUT;
-    gi.Pull = GPIO_PULLDOWN; // backplane strap pulls high per-slot to encode N - unstrapped reads as slot 0, a safe default rather than undefined
+    gi.Pull = GPIO_PULLDOWN; // DIP switch pulls high per closed position to encode N - open/unset reads as address 0, a safe default rather than undefined
     HAL_GPIO_Init(GPIOC, &gi);
 
     uint32_t n = 0;

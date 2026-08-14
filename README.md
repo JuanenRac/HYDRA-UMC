@@ -139,7 +139,7 @@ The motherboard acts as a master controller for up to 8 individual slave robotic
 * 🔀 **Bus Topology:**
   * 🅰️ **STACK A (`FDCAN1`):** Serves Slave Modules A1 through A8.
 * ⏱️ **Protocol Specs:** 1 Mbps Arbitration Bitrate, 5 Mbps to 8 Mbps Data Payload Bitrate (64-byte payload frames). Auto-bus-off recovery managed by Cortex-M4.
-* 🔌 **Physical Connector:** 40-pin, 2.54mm-pitch shrouded box header (+24V ×10 pins, GND ×10 pins, +5V ×4 pins auxiliary, FDCAN1 H/L, per-slot `SLOT_ID[2:0]` address straps, `BOARD_PRESENT_N`, 10 spare) - full pin table and backplane topology in `docs/PINOUT_STACKA_CONNECTOR.TXT`. Identical connector on the Kinematic Brain's own port and every Robot Controller Board's port.
+* 🔌 **Physical Connector:** 40-pin, 2.54mm-pitch STACKING header/socket (+24V ×10 pins, GND ×10 pins, +5V ×4 pins auxiliary, FDCAN1 H/L, `BOARD_PRESENT_N`, 13 spare) - the 8 Robot Controller Boards physically STACK one on top of another on one side of this board (CONFIRMED topology, not a backplane), each board straight-through-passing all 40 signals to whatever mounts above it. Slot addressing is a LOCAL DIP switch per board (`BOARD_ID[2:0]`, README.md section 12), not derived from this connector. Full pin table and stack topology in `docs/PINOUT_STACKA_CONNECTOR.TXT`. Identical connector definition on the Kinematic Brain's own port and every Robot Controller Board's pair of ports.
 
 ```text
                   +-----------------------------------+
@@ -221,7 +221,7 @@ Communication between CM5 (Host) and STM32H745 (Co-Processor) utilizes a hardwar
 * 🛠️ **Connectors & Assembly:**
   * 🔲 LQFP-144 package (0.5 mm pitch) for STM32H745, QFN-88 packages for 2x GL3523 hubs, and M.2 Key M 2242/2280 socket for Hailo-8.
   * 🔌 Dual Hirose DF40 mezzanine connectors for Compute Module 5.
-  * 📌 40-pin, 2.54 mm-pitch shrouded box header for STACK A bus connection - `docs/PINOUT_STACKA_CONNECTOR.TXT`.
+  * 📌 40-pin, 2.54 mm-pitch STACKING header for STACK A bus connection (base of the physical Robot Controller Board stack) - `docs/PINOUT_STACKA_CONNECTOR.TXT`.
   * 🔌 8x USB 3.0 Type-A (or Hirose industrial latching) connectors for robot cameras.
 
 ---
@@ -251,6 +251,11 @@ in the robot's head, optionally with its own expansion board.
   LQFP-64, 512 KB flash), using 2 of its 3 onboard FDCAN peripherals - one as
   the FDCAN uplink to the STM32H745, one as the CAN downlink to its own URTC
   head. See `docs/architecture.md` §1.
+* 🔢 **Addressing:** `BOARD_ID[2:0]` - a local 3-position DIP switch on each
+  board, manually set to 0-7 at install time, gives every board its own
+  FDCAN1 slot base ID - not derived from the physical stack position or the
+  STACK A connector (every board is the same interchangeable PCB). See
+  `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` §1c.
 * 🧵 **RTOS:** **FreeRTOS** (its bootloader stays bare-metal - no scheduler
   needed to receive/verify/jump). Firmware skeleton: `firmware/mcu_stm32g474/`.
 * 📡 **CAN-OTA firmware updates, 4 tiers deep:** the STM32H745 itself (over
@@ -282,7 +287,9 @@ HYDRA-UMC/
 │   ├── PINOUT_STM32H745_KINEMATIC_BRAIN.TXT    # Kinematic Brain full pin allocation
 │   ├── PINOUT_STM32G474_ROBOT_CONTROLLER.TXT   # Robot Controller Board full pin allocation
 │   ├── PINOUT_CM5_CARRIER.TXT                  # CM5 host subsystem signal routing
-│   ├── PINOUT_STACKA_CONNECTOR.TXT             # Shared 40-pin STACK A bus connector
+│   ├── PINOUT_STACKA_CONNECTOR.TXT             # Shared 40-pin STACK A stacking connector
+│   ├── CANBUS_STM32H745.TXT                    # Kinematic Brain wire-level protocol (SPI1/mailbox/FDCAN1-master)
+│   ├── CANBUS_STM32G474.TXT                    # Robot Controller Board wire-level protocol (FDCAN1-slave/FDCAN2)
 │   └── HYDRA-UMC_*.txt/TXT     # Older docs - several superseded, see each file's own banner
 ├── hardware/
 │   ├── PCB/

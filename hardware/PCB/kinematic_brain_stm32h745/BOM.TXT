@@ -20,7 +20,7 @@ Item | Qty | Designator | Component / Part Number              | Package / Footp
  08  |  1  | -          | 5V USB buck regulator (24V->5V, 6A)      | TBD                  | Dedicated rail for 8x USB 3.0 camera ports + GL3523 hubs (README.md section 9)
  09  |  1  | -          | 3.3V regulator (4A)                      | TBD                  | STM32, FRAM, transceivers, Hailo-8 3.3V rail (README.md section 9)
  10  |  2  | -          | Hirose DF40 mezzanine connectors         | SMD                  | Compute Module 5 (README.md section 11)
- 11  |  1  | J-STKA     | 40-pin, 2.54mm shrouded box header       | THT                  | STACK A bus connection - full pinout: docs/PINOUT_STACKA_CONNECTOR.TXT
+ 11  |  1  | J-STKA     | 40-pin, 2.54mm STACKING header (male, base of stack) | THT      | STACK A bus connection - base of the physical Robot Controller Board stack (CONFIRMED topology, one side of this board), full pinout: docs/PINOUT_STACKA_CONNECTOR.TXT section 3
  12  |  8  | -          | USB 3.0 Type-A (or Hirose industrial)    | THT/SMD              | Robot camera ports (README.md section 11)
  13  |  6   | U6-U11    | Trinamic TMC5160A                        | QFN-7x7-48           | 6x stepper drivers (X,Y1,Y2,Z,E0,E1), SPI daisy-chain on SPI4 - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 3
  14  |  20  | -          | N-Channel MOSFET (low-side)              | TBD                  | 8+2 pump + 8+2 valve channels - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT sections 6-7

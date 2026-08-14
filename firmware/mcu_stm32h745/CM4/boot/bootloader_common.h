@@ -62,8 +62,11 @@ extern const uint8_t HMAC_KEY[32];
 // STACK A slot addressing (docs/architecture.md section 4) - this core
 // (not a Robot Controller Board itself) is the one that OWNS this
 // addressing scheme, computing target slot base IDs to relay to rather
-// than reading its own SLOT_ID the way firmware/mcu_stm32g474/boot/
-// bootloader_common.h's own copy of these constants does.
+// than reading its own BOARD_ID the way firmware/mcu_stm32g474/boot/
+// bootloader_common.h's own copy of these constants does (that board reads
+// a local DIP switch; this core has none to read - the target slot comes
+// from the SPI1 frame's own target_slot field instead, see
+// bootloader_protocol.c's own Relay_ToStackA()).
 #define CAN_ID_STACKA_BASE 0x600UL
 #define STACKA_SLOT_WINDOW 0x20UL
 
