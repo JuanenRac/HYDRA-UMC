@@ -270,7 +270,10 @@ in the robot's head, optionally with its own expansion board.
 
 See `docs/architecture.md` for the complete tiered architecture (this section
 is a summary), including what's confirmed hardware fact vs. still a proposed
-design pending implementation.
+design pending implementation. Section 8 of that document also tracks the
+current bootloaders' known, accepted security limitations (no Read-Out
+Protection yet, a shared anti-rollback bypass value, unauthenticated
+readback) - deliberate pre-hardware gaps, not oversights.
 
 ---
 
@@ -305,10 +308,12 @@ HYDRA-UMC/
 │   ├── mcu_stm32h745/           # Kinematic Brain firmware (Tier 0) - dual-core
 │   │   ├── CM7/                 # Motion engine, hardware timers (+ its own boot/)
 │   │   ├── CM4/                 # FDCAN drivers, sensor filtering (+ its own boot/)
-│   │   └── Common/              # Shared memory structure definitions (CM7<->CM4 IPC - not designed yet)
+│   │   └── Common/              # CM7<->CM4 shared-memory IPC mailbox (ipc_mailbox.h) - implemented, used by both cores' bootloaders
 │   └── mcu_stm32g474/           # Robot Controller Board firmware (Tier 1) - single-core, + its own boot/
 ├── os/                          # CM5 OS image - base OS choice, systemd units, first-boot provisioning
 ├── build_firmware.sh            # Builds every MCU firmware target above from a clean checkout
+├── generate_manifest.py         # Regenerates firmware_out/firmware_manifest.json (versions/CRC32) after a full build
+├── firmware_out/                # Committed build output (.bin/.hex/.elf + manifest) - NOT gitignored, see "Building the Firmware" below
 └── README.md
 ```
 
@@ -358,9 +363,33 @@ HYDRA-UMC-STUDIO's GitHub-download feature can actually find real
 `.bin` files there via `firmware_manifest.json` - it is NOT gitignored.
 See `docs/COMPILE_STM32G474.TXT` and `docs/COMPILE_STM32H745.TXT` for
 exactly what each step does and why - and each firmware folder's own
-`README.md` for current status (today: verified-compiling GPIO-toggle
-smoke tests, not yet the real CAN-OTA/motion firmware - see
-`docs/architecture.md` for what that still needs).
+`README.md` for current status. As of 14 August 2026: the **bootloaders**
+for all 3 targets (G474, H745 CM7, H745 CM4) are real, working CAN-OTA/
+SPI-OTA implementations (CRC32 + HMAC-SHA256 verify-into-backup-before-
+copy-to-main, same anti-bricking discipline as URTC's own bootloader) -
+compiling clean end to end, not yet verified against real hardware. The
+**applications** are still verified-compiling FreeRTOS GPIO-toggle smoke
+tests, not yet the real motion/vision/relay firmware. See
+`docs/architecture.md` (especially section 6's status table and section 8's
+known, accepted security limitations) for exactly what's real vs. still
+open.
+
+## 🔗 Related Projects
+
+This project is part of a larger robotics ecosystem by the same author (JuanenRac / Electro Hobby 3D). Worth knowing about, since a request might actually be about one of these rather than this repository:
+
+**HYDRA-UMC platform** — the multi-robot micro-factory cell
+- **HYDRA-UMC** *(this repository)* — the motherboard itself: Raspberry Pi CM5 host + dual-core STM32H745 real-time co-processor, orchestrating up to 8 distributed robot arms over CAN-OTA/SPI-OTA. Own hardware + firmware, GPL-3.0/CERN-OHL-S v2/CC BY-SA 4.0.
+- **[HYDRA-UMC STUDIO](https://github.com/JuanenRac/HYDRA-UMC-STUDIO)** — web-based control dashboard for HYDRA-UMC: multi-robot 3D visualization, kinematics/trajectory recording, CAN-OTA flashing and testing for the whole platform. React + Vite + Three.js.
+- **[HYDRA-UMC-ANDROID-CONTROL](https://github.com/JuanenRac/HYDRA-UMC-ANDROID-CONTROL)** — planned Android control app for HYDRA-UMC. Not yet started; scope to be defined.
+- **[HYDRA-UMC-IOS-CONTROL](https://github.com/JuanenRac/HYDRA-UMC-IOS-CONTROL)** — planned iOS control app for HYDRA-UMC. Not yet started; scope to be defined.
+- **[HYDRA-UMC-SUITE](https://github.com/JuanenRac/HYDRA-UMC-SUITE)** — planned; scope to be defined.
+
+**URTC platform** — the tool head controller every HYDRA-UMC robot arm carries
+- **[URTC](https://github.com/JuanenRac/URTC)** — Universal Robot Tool Controller: STM32F303-based CAN bus tool head controller, 25 fully-implemented tool profiles, CAN-OTA firmware update.
+- **[URTC Flasher](https://github.com/JuanenRac/URTC-FLASHER)** — desktop CAN-OTA + full-chip SWD/JTAG flashing tool for URTC boards (Windows/Linux).
+- **[URTC Tester](https://github.com/JuanenRac/URTC-TESTER)** — desktop live CAN-bus diagnostic tool for URTC boards, one panel per tool profile (Windows/Linux).
+- **[URTC Web Studio](https://github.com/JuanenRac/URTC-WEB-STUDIO)** — browser-based alternative to the 2 desktop tools above (Web Serial API + SLCAN), no local install needed.
 
 ## 👤 Author
 
