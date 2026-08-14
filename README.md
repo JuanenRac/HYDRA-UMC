@@ -352,12 +352,15 @@ verified working (`build_firmware.sh g474`/`h745`, full `--clean` rebuilds,
 ./build_firmware.sh --clean  # wipe the vendored HAL/CMSIS cache first
 ```
 
-Output lands in `firmware_out/` (gitignored). See
-`docs/COMPILE_STM32G474.TXT` and `docs/COMPILE_STM32H745.TXT` for exactly
-what each step does and why - and each firmware folder's own `README.md`
-for current status (today: verified-compiling GPIO-toggle smoke tests, not
-yet the real CAN-OTA/motion firmware - see `docs/architecture.md` for what
-that still needs).
+Output lands in `firmware_out/`, which is committed and pushed to this
+repo (same convention as URTC's own `firmware/` output folder) so that
+HYDRA-UMC-STUDIO's GitHub-download feature can actually find real
+`.bin` files there via `firmware_manifest.json` - it is NOT gitignored.
+See `docs/COMPILE_STM32G474.TXT` and `docs/COMPILE_STM32H745.TXT` for
+exactly what each step does and why - and each firmware folder's own
+`README.md` for current status (today: verified-compiling GPIO-toggle
+smoke tests, not yet the real CAN-OTA/motion firmware - see
+`docs/architecture.md` for what that still needs).
 
 ## 👤 Author
 

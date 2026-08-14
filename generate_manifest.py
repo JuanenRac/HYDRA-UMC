@@ -20,12 +20,12 @@
 #
 # NOTE ON WHERE THIS LIVES: URTC commits its build OUTPUT straight into a
 # `firmware/` folder. HYDRA-UMC's own `firmware/` is SOURCE (mcu_stm32g474/,
-# mcu_stm32h745/) - build output goes to `firmware_out/` instead, which is
-# gitignored by design (see .gitignore). This script still writes a real
-# manifest there on every build; whether firmware_out/ itself ever gets
-# committed+pushed (so HYDRA-UMC-STUDIO's own GitHub-download feature has
-# something to actually find) is the project owner's own call, not decided
-# by this script.
+# mcu_stm32h745/) - build output goes to `firmware_out/` instead. Like
+# URTC's own output folder, firmware_out/ is intentionally committed and
+# pushed to this repo (NOT gitignored - it has no entry in .gitignore),
+# so that HYDRA-UMC-STUDIO's own GitHub-download feature has real .bin
+# files to find via firmware_manifest.json. This script writes a fresh
+# manifest there on every build.
 #
 # Usage: python3 generate_manifest.py [repo_root]
 #   repo_root defaults to this script's own parent directory.
@@ -161,12 +161,10 @@ def main():
             "last step of a full build_firmware.sh run - hand-editing this file "
             "is pointless, it'll be overwritten the next time either script (or "
             "this one directly) runs.",
-            "firmware_out/ is gitignored in this repo (see .gitignore) - this "
-            "manifest existing locally does NOT mean it's reachable from GitHub. "
-            "HYDRA-UMC-STUDIO's own GitHub-download feature only finds anything "
-            "here once firmware_out/ is actually committed and pushed - a "
-            "project-owner decision, not something this script or the build "
-            "makes for you.",
+            "firmware_out/ is intentionally committed and pushed to this repo "
+            "(same convention as URTC's own output folder) so that "
+            "HYDRA-UMC-STUDIO's GitHub-download feature can find real .bin "
+            "files here via this manifest.",
         ],
         "components": {
             "g474_bootloader": component(
