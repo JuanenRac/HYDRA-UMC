@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # =============================================================================
-# generate_manifest.py - Regenerate firmware_out/firmware_manifest.json
+# generate_manifest.py - Regenerate firmware/firmware_manifest.json
 #
 # PROJECT: HYDRA-UMC
 # AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
@@ -14,18 +14,17 @@
 # isn't a style preference, it's what makes that possible. Reads every
 # component's own real version straight from its own bootloader_common.h
 # (never hardcoded here) and computes a fresh CRC32 over each real .bin
-# file in firmware_out/ - run this any time firmware_out/ changes and the
+# file in firmware/ - run this any time firmware/ changes and the
 # manifest needs to catch up, not just after a full rebuild.
 # build_firmware.sh calls this same script as its own last step.
 #
-# NOTE ON WHERE THIS LIVES: URTC commits its build OUTPUT straight into a
-# `firmware/` folder. HYDRA-UMC's own `firmware/` is SOURCE (mcu_stm32g474/,
-# mcu_stm32h745/) - build output goes to `firmware_out/` instead. Like
-# URTC's own output folder, firmware_out/ is intentionally committed and
-# pushed to this repo (NOT gitignored - it has no entry in .gitignore),
-# so that HYDRA-UMC-STUDIO's own GitHub-download feature has real .bin
-# files to find via firmware_manifest.json. This script writes a fresh
-# manifest there on every build.
+# Same layout as the sibling URTC repo now: `src/` is source
+# (mcu_stm32g474/, mcu_stm32h745/), `firmware/` is build OUTPUT.
+# firmware/ is intentionally committed and pushed to this repo (NOT
+# gitignored - it has no entry in .gitignore), so that
+# HYDRA-UMC-STUDIO's own GitHub-download feature has real .bin files to
+# find via firmware_manifest.json. This script writes a fresh manifest
+# there on every build.
 #
 # Usage: python3 generate_manifest.py [repo_root]
 #   repo_root defaults to this script's own parent directory.
@@ -104,19 +103,19 @@ def component(fw_out, prefix, display_name, chip, hw_id, ver, flash_address, fla
 
 def main():
     root = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.path.abspath(__file__))
-    fw_out = os.path.join(root, "firmware_out")
+    fw_out = os.path.join(root, "firmware")
 
-    g4_h = os.path.join(root, "firmware", "mcu_stm32g474", "boot", "bootloader_common.h")
+    g4_h = os.path.join(root, "src", "mcu_stm32g474", "boot", "bootloader_common.h")
     g4_boot_ver = {k: int(read_define(g4_h, f"BOOTLOADER_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
     g4_app_ver = {k: int(read_define(g4_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor")}
     g4_hwid = read_define(g4_h, "THIS_HARDWARE_ID")
 
-    cm7_h = os.path.join(root, "firmware", "mcu_stm32h745", "CM7", "boot", "bootloader_common.h")
+    cm7_h = os.path.join(root, "src", "mcu_stm32h745", "CM7", "boot", "bootloader_common.h")
     cm7_boot_ver = {k: int(read_define(cm7_h, f"BOOTLOADER_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
     cm7_app_ver = {k: int(read_define(cm7_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor")}
     cm7_hwid = read_define(cm7_h, "THIS_HARDWARE_ID")
 
-    cm4_h = os.path.join(root, "firmware", "mcu_stm32h745", "CM4", "boot", "bootloader_common.h")
+    cm4_h = os.path.join(root, "src", "mcu_stm32h745", "CM4", "boot", "bootloader_common.h")
     cm4_boot_ver = {k: int(read_define(cm4_h, f"BOOTLOADER_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
     cm4_app_ver = {k: int(read_define(cm4_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor")}
     cm4_hwid = read_define(cm4_h, "THIS_HARDWARE_ID")
@@ -144,7 +143,7 @@ def main():
             "crc32 is computed over the real .bin file exactly as shipped here "
             "(standard CRC-32/ISO-HDLC), the same variant this project's own "
             "bootloaders compute internally during a real update (see each "
-            "firmware/*/boot/bootloader_flash.c's own CRC32_Update/"
+            "src/*/boot/bootloader_flash.c's own CRC32_Update/"
             "CRC32_Finalize) and the same variant HYDRA-UMC-STUDIO's own "
             "src/lib/canOta.ts checks a download against before offering to "
             "flash it - a mismatch means the file changed since this manifest "
@@ -161,7 +160,7 @@ def main():
             "last step of a full build_firmware.sh run - hand-editing this file "
             "is pointless, it'll be overwritten the next time either script (or "
             "this one directly) runs.",
-            "firmware_out/ is intentionally committed and pushed to this repo "
+            "firmware/ is intentionally committed and pushed to this repo "
             "(same convention as URTC's own output folder) so that "
             "HYDRA-UMC-STUDIO's GitHub-download feature can find real .bin "
             "files here via this manifest.",

@@ -5,10 +5,10 @@
 build has been run, no base OS choice has been hardware-verified.
 
 This is where the CM5's own OS image build lives — distinct from
-`../firmware/cm5_host/`, which holds the individual *applications* (HMI
+`../src/cm5_host/`, which holds the individual *applications* (HMI
 shell, AI inference, video streaming, SPI IPC driver) that run **on top of**
 whatever this folder produces. Think of it as: `os/` builds and configures
-the box; `firmware/cm5_host/` is what's installed inside it.
+the box; `src/cm5_host/` is what's installed inside it.
 
 ## Base OS choice — PROPOSED, not yet decided for real
 
@@ -36,7 +36,7 @@ a recommendation to revisit explicitly, not a decision already made.
 
 ## Layout
 
-- `systemd/` — unit files wiring `firmware/cm5_host/`'s own components
+- `systemd/` — unit files wiring `src/cm5_host/`'s own components
   together (start order, restart policy, dependencies). `hydra-hmi.service`
   is a starting example — references binaries/paths that don't exist yet
   (nothing in `cm5_host/` builds a real installable binary today), so this

@@ -101,7 +101,7 @@ flowchart TB
 * 💾 **Internal Memory Architecture:**
   * 💾 **2 MB** Dual-Bank Internal Flash
   * 🧠 **1 MB** Total Internal SRAM (512 KB AXI SRAM + 128 KB ITCM / 128 KB DTCM + SRAM1/SRAM2/SRAM3)
-* 🧵 **RTOS:** **FreeRTOS**, one independent instance per core (AMP, not SMP - no shared scheduler state between Core 1 and Core 2). Firmware skeleton: `firmware/mcu_stm32h745/`, see `docs/architecture.md` section 2.
+* 🧵 **RTOS:** **FreeRTOS**, one independent instance per core (AMP, not SMP - no shared scheduler state between Core 1 and Core 2). Firmware skeleton: `src/mcu_stm32h745/`, see `docs/architecture.md` section 2.
 
 ---
 
@@ -113,7 +113,7 @@ The motherboard acts as a master controller for up to 8 individual slave robotic
 * ⚡ **Physical Layer Transceiver:** 1x High-Speed CAN FD Transceiver (e.g., TI `TCAN1044AVD` / NXP `TJA1443`) - FD-capable hardware chosen for the same future-headroom reason as the peripheral above, even though today's traffic is classic frames.
 * 🔀 **Bus Topology:**
   * 🅰️ **STACK A (`FDCAN1`):** Serves Slave Modules A1 through A8.
-* ⏱️ **Protocol Specs:** ~1 Mbps nominal bitrate (Classic CAN, 8-byte max payload per frame). Auto-bus-off recovery is planned to be managed by the Cortex-M4 - not yet implemented in application firmware (today's CM4 `main.c` is a bring-up/blink skeleton, see `firmware/mcu_stm32h745/CM4/`), tracked as real future work rather than a shipped capability.
+* ⏱️ **Protocol Specs:** ~1 Mbps nominal bitrate (Classic CAN, 8-byte max payload per frame). Auto-bus-off recovery is planned to be managed by the Cortex-M4 - not yet implemented in application firmware (today's CM4 `main.c` is a bring-up/blink skeleton, see `src/mcu_stm32h745/CM4/`), tracked as real future work rather than a shipped capability.
 * 🔌 **Physical Connector:** 40-pin, 2.54mm-pitch STACKING header/socket (+24V ×10 pins, GND ×10 pins, +5V ×4 pins auxiliary, FDCAN1 H/L, `BOARD_PRESENT_N`, 13 spare) - the 8 Robot Controller Boards physically STACK one on top of another on one side of this board (CONFIRMED topology, not a backplane), each board straight-through-passing all 40 signals to whatever mounts above it. Slot addressing is a LOCAL DIP switch per board (`BOARD_ID[2:0]`, README.md section 12), not derived from this connector. Full pin table and stack topology in `docs/PINOUT_STACKA_CONNECTOR.TXT`. Identical connector definition on the Kinematic Brain's own port and every Robot Controller Board's pair of ports.
 
 ```mermaid
@@ -217,7 +217,7 @@ flowchart LR
   STACK A connector (every board is the same interchangeable PCB). See
   `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` §1c.
 * 🧵 **RTOS:** **FreeRTOS** (its bootloader stays bare-metal - no scheduler
-  needed to receive/verify/jump). Firmware skeleton: `firmware/mcu_stm32g474/`.
+  needed to receive/verify/jump). Firmware skeleton: `src/mcu_stm32g474/`.
 * 📡 **CAN-OTA firmware updates, 4 tiers deep:** the STM32H745 itself (over
   its existing SPI link to the CM5), this board, its URTC Tool Head
   (STM32F303CCT6), and - only when installed - that head's own Advanced
@@ -259,7 +259,7 @@ HYDRA-UMC/
 │   │   ├── kinematic_brain_stm32h745/          # Main motherboard - no schematic yet, see its own README
 │   │   └── robot_controller_board_stm32g474/   # Per-robot board - no schematic yet, see its own README
 │   └── gerbers/                # Manufacturing output files (empty until a board is laid out)
-├── firmware/
+├── src/                         # Same layout convention as the sibling URTC repo: src/ is SOURCE
 │   ├── cm5_host/                # Linux userspace apps that run ON TOP of os/'s own image
 │   │   ├── hmi_qt6/             # Qt6 kiosk shell wrapping HYDRA-UMC-STUDIO's own dashboard
 │   │   ├── ai_inference/        # Hailo-8 TAPPAS / YOLOv8 pipeline
@@ -272,8 +272,8 @@ HYDRA-UMC/
 │   └── mcu_stm32g474/           # Robot Controller Board firmware (Tier 1) - single-core, + its own boot/
 ├── os/                          # CM5 OS image - base OS choice, systemd units, first-boot provisioning
 ├── build_firmware.sh            # Builds every MCU firmware target above from a clean checkout
-├── generate_manifest.py         # Regenerates firmware_out/firmware_manifest.json (versions/CRC32) after a full build
-├── firmware_out/                # Committed build output (.bin/.hex/.elf + manifest) - NOT gitignored, see "Building the Firmware" below
+├── generate_manifest.py         # Regenerates firmware/firmware_manifest.json (versions/CRC32) after a full build
+├── firmware/                    # Committed build output (.bin/.hex/.elf + manifest) - NOT gitignored, same convention as URTC's own output folder, see "Building the Firmware" below
 └── README.md
 ```
 
@@ -297,7 +297,7 @@ verified working (`build_firmware.sh g474`/`h745`, full `--clean` rebuilds,
   these): [STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension)
   (project/build/debug integration), **Cortex-Debug** (SWD/JTAG debugging -
   independent of `build_firmware.sh`, useful once real hardware exists),
-  **CMake Tools** (for `firmware/cm5_host/hmi_qt6/`'s own CMake project),
+  **CMake Tools** (for `src/cm5_host/hmi_qt6/`'s own CMake project),
   **C/C++** (IntelliSense across every firmware/host source file),
   **Python** (`ai_inference/` pipeline scripts), **Hex Editor** (inspecting
   `.bin` firmware output), **YAML** (`video_streamer/`'s own MediaMTX
@@ -317,7 +317,7 @@ verified working (`build_firmware.sh g474`/`h745`, full `--clean` rebuilds,
 ./build_firmware.sh --clean  # wipe the vendored HAL/CMSIS cache first
 ```
 
-Output lands in `firmware_out/`, which is committed and pushed to this
+Output lands in `firmware/`, which is committed and pushed to this
 repo (same convention as URTC's own `firmware/` output folder) so that
 HYDRA-UMC-STUDIO's GitHub-download feature can actually find real
 `.bin` files there via `firmware_manifest.json` - it is NOT gitignored.

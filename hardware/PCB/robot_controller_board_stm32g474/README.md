@@ -8,7 +8,7 @@ convention this project uses for the text-based BOM/netlist/pinlist exports
 Eagle itself can generate once a real schematic exists.
 
 See `../../../docs/architecture.md` for this board's role (Tier 1 — one per
-robot, up to 8 per HYDRA-UMC controller) and `../../../firmware/mcu_stm32g474/`
+robot, up to 8 per HYDRA-UMC controller) and `../../../src/mcu_stm32g474/`
 for the firmware side.
 
 ## Starting parts list (BOM.TXT)

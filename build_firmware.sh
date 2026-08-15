@@ -34,13 +34,13 @@
 # now implement the real CAN-OTA/SPI-OTA protocol (docs/architecture.md
 # sections 3-5) - CRC32+HMAC-SHA256 verify-into-backup-before-copy-to-main,
 # same anti-bricking discipline URTC's own bootloader already proves out.
-# See each firmware/*/README.md for exactly what's real vs. still TODO.
+# See each src/*/README.md for exactly what's real vs. still TODO.
 # =============================================================================
 set -e
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD="$ROOT/build"
-FIRMWARE_OUT="$ROOT/firmware_out"
+FIRMWARE_OUT="$ROOT/firmware"
 
 # Pinned versions - see docs/COMPILE_STM32G474.TXT section 3 for why pinned
 # rather than tracking each repo's own latest master.
@@ -246,10 +246,10 @@ LDCOMMON_G4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=n
 # App CFLAGS additionally need this target's own FreeRTOSConfig.h directory
 # plus FreeRTOS's own headers/port headers - the bootloader (bare-metal, no
 # FreeRTOS) uses CFLAGS_G4 alone.
-CFLAGS_G4_APP="$CFLAGS_G4 -I$ROOT/firmware/mcu_stm32g474 -I$FREERTOS_SRC/include -I$FREERTOS_SRC/portable/GCC/ARM_CM4F"
+CFLAGS_G4_APP="$CFLAGS_G4 -I$ROOT/src/mcu_stm32g474 -I$FREERTOS_SRC/include -I$FREERTOS_SRC/portable/GCC/ARM_CM4F"
 
 # HAL core + RCC + GPIO + Cortex + PWR + FLASH (app smoke test) plus FDCAN +
-# IWDG (the real CAN-OTA bootloader, firmware/mcu_stm32g474/boot/) - extend
+# IWDG (the real CAN-OTA bootloader, src/mcu_stm32g474/boot/) - extend
 # further as real motion/timer application code lands.
 HAL_MODULES_G4="stm32g4xx_hal stm32g4xx_hal_cortex stm32g4xx_hal_gpio stm32g4xx_hal_rcc stm32g4xx_hal_rcc_ex stm32g4xx_hal_pwr stm32g4xx_hal_pwr_ex stm32g4xx_hal_flash stm32g4xx_hal_flash_ex stm32g4xx_hal_exti stm32g4xx_hal_fdcan stm32g4xx_hal_iwdg"
 
@@ -281,9 +281,9 @@ else
 fi
 
 # -----------------------------------------------------------------------
-step "5. Robot Controller Board bootloader (firmware/mcu_stm32g474/boot/) - bare-metal CAN-OTA, no FreeRTOS"
+step "5. Robot Controller Board bootloader (src/mcu_stm32g474/boot/) - bare-metal CAN-OTA, no FreeRTOS"
 # -----------------------------------------------------------------------
-SRC="$ROOT/firmware/mcu_stm32g474/boot"
+SRC="$ROOT/src/mcu_stm32g474/boot"
 rm -f "$G4/boot_obj"/*.o
 if compile_dir "$SRC" "$G4/boot_obj" "$CFLAGS_G4" ""; then
     pass "bootloader_*.c compiled ($(ls "$SRC"/*.c | wc -l) files)"
@@ -304,9 +304,9 @@ cp "$G4/boot_obj/$G4_BOOT_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$G4_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/boot_obj/$G4_BOOT_NAME.elf" | tail -1 | awk '{print $1}') bytes text)"
 
 # -----------------------------------------------------------------------
-step "6. Robot Controller Board application (firmware/mcu_stm32g474/) - FreeRTOS"
+step "6. Robot Controller Board application (src/mcu_stm32g474/) - FreeRTOS"
 # -----------------------------------------------------------------------
-SRC="$ROOT/firmware/mcu_stm32g474"
+SRC="$ROOT/src/mcu_stm32g474"
 rm -f "$G4/app_obj"/*.o
 arm-none-eabi-gcc $CFLAGS_G4_APP -I"$SRC" -x c -c "$SRC/STM32G474RE_main.c" -o "$G4/app_obj/STM32G474RE_main.o"
 G4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR)"
@@ -319,7 +319,7 @@ if ! link_filtered arm-none-eabi-gcc $LDCOMMON_G4 -T"$SRC/STM32G474RETx_APP.ld" 
 fi
 build_bin_hex "$G4/app_obj/$G4_APP_NAME.elf"
 cp "$G4/app_obj/$G4_APP_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
-pass "$G4_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/app_obj/$G4_APP_NAME.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test, see firmware/mcu_stm32g474/README.md"
+pass "$G4_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/app_obj/$G4_APP_NAME.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test, see src/mcu_stm32g474/README.md"
 
 fi
 
@@ -374,7 +374,7 @@ fi
 step "8. Kinematic Brain - common compiler flags and shared HAL objects (per core)"
 # -----------------------------------------------------------------------
 # App smoke-test core modules plus FDCAN + IWDG + SPI + HSEM - the real
-# CAN-OTA bootloaders (firmware/mcu_stm32h745/CM7/boot/, CM4/boot/): CM7's
+# CAN-OTA bootloaders (src/mcu_stm32h745/CM7/boot/, CM4/boot/): CM7's
 # talks FDCAN/IWDG/HSEM only (no bus of its own, see that bootloader's own
 # header comment); CM4's is the gateway and needs all four (SPI1 to the
 # CM5, FDCAN1 to STACK A, IWDG, HSEM for the CM7<->CM4 mailbox). Compiled
@@ -420,8 +420,8 @@ LDCOMMON_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=
 # App CFLAGS additionally need each core's own FreeRTOSConfig.h directory
 # plus FreeRTOS's own headers/port headers - each core's bootloader
 # (bare-metal) uses CFLAGS_CM7/CFLAGS_CM4 alone.
-CFLAGS_CM7_APP="$CFLAGS_CM7 -I$ROOT/firmware/mcu_stm32h745/CM7 -I$FREERTOS_SRC/include -I$FREERTOS_SRC/portable/GCC/ARM_CM7/r0p1"
-CFLAGS_CM4_APP="$CFLAGS_CM4 -I$ROOT/firmware/mcu_stm32h745/CM4 -I$FREERTOS_SRC/include -I$FREERTOS_SRC/portable/GCC/ARM_CM4F"
+CFLAGS_CM7_APP="$CFLAGS_CM7 -I$ROOT/src/mcu_stm32h745/CM7 -I$FREERTOS_SRC/include -I$FREERTOS_SRC/portable/GCC/ARM_CM7/r0p1"
+CFLAGS_CM4_APP="$CFLAGS_CM4 -I$ROOT/src/mcu_stm32h745/CM4 -I$FREERTOS_SRC/include -I$FREERTOS_SRC/portable/GCC/ARM_CM4F"
 
 if compile_freertos "$CFLAGS_CM7_APP" "$FREERTOS_SRC/portable/GCC/ARM_CM7/r0p1" "$H7/cm7_freertos_obj"; then
     pass "FreeRTOS kernel (ARM_CM7/r0p1 port) compiled for CM7"
@@ -437,10 +437,10 @@ else
 fi
 
 # -----------------------------------------------------------------------
-step "9. Kinematic Brain CM7 bootloader (bare-metal CAN-OTA, mailbox-relayed) + application (FreeRTOS) - firmware/mcu_stm32h745/CM7/"
+step "9. Kinematic Brain CM7 bootloader (bare-metal CAN-OTA, mailbox-relayed) + application (FreeRTOS) - src/mcu_stm32h745/CM7/"
 # -----------------------------------------------------------------------
-SRC="$ROOT/firmware/mcu_stm32h745/CM7"
-COMMON_INC="-I$ROOT/firmware/mcu_stm32h745/Common"
+SRC="$ROOT/src/mcu_stm32h745/CM7"
+COMMON_INC="-I$ROOT/src/mcu_stm32h745/Common"
 if compile_dir "$SRC/boot" "$H7/cm7_boot_obj" "$CFLAGS_CM7" "$COMMON_INC"; then
     pass "CM7 bootloader_*.c compiled ($(ls "$SRC/boot"/*.c | wc -l) files)"
 else
@@ -473,9 +473,9 @@ cp "$H7/cm7_app_obj/$CM7_APP_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$CM7_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm7_app_obj/$CM7_APP_NAME.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test"
 
 # -----------------------------------------------------------------------
-step "10. Kinematic Brain CM4 bootloader (bare-metal CAN-OTA gateway: SPI1+FDCAN1+mailbox) + application (FreeRTOS) - firmware/mcu_stm32h745/CM4/"
+step "10. Kinematic Brain CM4 bootloader (bare-metal CAN-OTA gateway: SPI1+FDCAN1+mailbox) + application (FreeRTOS) - src/mcu_stm32h745/CM4/"
 # -----------------------------------------------------------------------
-SRC="$ROOT/firmware/mcu_stm32h745/CM4"
+SRC="$ROOT/src/mcu_stm32h745/CM4"
 if compile_dir "$SRC/boot" "$H7/cm4_boot_obj" "$CFLAGS_CM4" "$COMMON_INC"; then
     pass "CM4 bootloader_*.c compiled ($(ls "$SRC/boot"/*.c | wc -l) files)"
 else
@@ -510,7 +510,7 @@ pass "$CM4_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_app_obj/$
 fi
 
 # -----------------------------------------------------------------------
-step "11. Firmware manifest (firmware_out/firmware_manifest.json)"
+step "11. Firmware manifest (firmware/firmware_manifest.json)"
 # -----------------------------------------------------------------------
 # Only meaningful once every component exists - a partial build (g474-only
 # or h745-only) would make generate_manifest.py fail looking for the other
@@ -541,6 +541,6 @@ echo "Reminder: every _APP binary above is still a FreeRTOS GPIO-toggle"
 echo "smoke test - real motion/vision/relay application logic is not yet"
 echo "written. Every _BOOTLOADER binary IS the real CAN-OTA/SPI-OTA protocol"
 echo "(bare-metal, no FreeRTOS by design) - not yet verified against real"
-echo "hardware. See each firmware/*/README.md and docs/architecture.md."
+echo "hardware. See each src/*/README.md and docs/architecture.md."
 
 if [ "$FAIL" -gt 0 ]; then exit 1; fi
