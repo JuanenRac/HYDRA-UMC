@@ -323,16 +323,15 @@ HYDRA-UMC-STUDIO's GitHub-download feature can actually find real
 `.bin` files there via `firmware_manifest.json` - it is NOT gitignored.
 See `docs/COMPILE_STM32G474.TXT` and `docs/COMPILE_STM32H745.TXT` for
 exactly what each step does and why - and each firmware folder's own
-`README.md` for current status. As of 14 August 2026: the **bootloaders**
-for all 3 targets (G474, H745 CM7, H745 CM4) are real, working CAN-OTA/
-SPI-OTA implementations (CRC32 + HMAC-SHA256 verify-into-backup-before-
-copy-to-main, same anti-bricking discipline as URTC's own bootloader) -
-compiling clean end to end, not yet verified against real hardware. The
-**applications** are still verified-compiling FreeRTOS GPIO-toggle smoke
-tests, not yet the real motion/vision/relay firmware. See
-`docs/architecture.md` (especially section 6's status table and section 8's
-known, accepted security limitations) for exactly what's real vs. still
-open.
+`README.md` for current status. The **bootloaders** for all 3 targets
+(G474, H745 CM7, H745 CM4) are real, working CAN-OTA/SPI-OTA
+implementations (CRC32 + HMAC-SHA256 verify-into-backup-before-copy-to-main,
+same anti-bricking discipline as URTC's own bootloader) - compiling clean
+end to end, not yet verified against real hardware. The **applications**
+are still verified-compiling FreeRTOS GPIO-toggle smoke tests, not yet the
+real motion/vision/relay firmware. See `docs/architecture.md` (especially
+section 6's status table and section 8's known, accepted security
+limitations) for exactly what's real vs. still open.
 
 ## 🔗 Related Projects
 

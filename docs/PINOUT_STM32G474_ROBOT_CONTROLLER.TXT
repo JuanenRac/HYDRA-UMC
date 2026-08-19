@@ -115,8 +115,9 @@ Axis | Pin
 
 --------------------------------------------------------------------------------
 3. ENDSTOPS - 1 per axis, 6 total (NOT 2-per-axis like the Kinematic
-   Brain's own local stage - the user specified 6 endstops for this board,
-   matching 1 per robot joint)
+   Brain's own local stage - one endstop per robot joint is enough for a
+   homing reference on a serial arm, unlike the Kinematic Brain's shared
+   gantry axes which need both MIN and MAX per axis)
 --------------------------------------------------------------------------------
 Axis | Pin | Notes
 -----+-----+-------------------------------------------------------------
@@ -130,8 +131,8 @@ Axis | Pin | Notes
 --------------------------------------------------------------------------------
 4. LOCAL POWER SUPPLY - this board's own 5V and 3.3V regulation
 --------------------------------------------------------------------------------
-Per the user's own spec, this board generates its OWN 5V and 3.3V locally
-rather than relying on the STACK A bus's +5V_BUS pins (docs/
+This board generates its OWN 5V and 3.3V locally rather than relying on
+the STACK A bus's +5V_BUS pins (docs/
 PINOUT_STACKA_CONNECTOR.TXT section 1, which documents that rail as
 auxiliary/optional for exactly this reason). PROPOSED power architecture:
 
@@ -143,8 +144,9 @@ auxiliary/optional for exactly this reason). PROPOSED power architecture:
 This gives each Robot Controller Board electrical independence from
 whatever the other 7 boards on the same bus are doing, and from the
 Kinematic Brain's own local rail regulation - only the 24V supply and GND
-are truly shared/critical; 5V and 3.3V are each board's own problem exactly
-because the user asked for it that way.
+are truly shared/critical; 5V and 3.3V are each board's own problem by
+design, so no single regulator has to size for however many of the other 7
+boards happen to be populated on the bus.
 
 Pin  | Signal        | Notes
 -----+---------------+---------------------------------------------------
@@ -155,22 +157,21 @@ PC13 | STATUS_LED    | Board-alive indicator (bring-up/diagnostic use)
 --------------------------------------------------------------------------------
 5. ROBOT CONNECTORS - 2x 24POS 3.00mm Micro-Fit 3.0 - PINOUT PENDING
 --------------------------------------------------------------------------------
-The user has explicitly said the pin-by-pin mapping for these two
-connectors will be specified separately ("que ya te especificare pinout").
+The pin-by-pin mapping for these two connectors is not yet specified.
 Nothing below is a real pinout - it only records what's already decided so
 the eventual real spec has somewhere to land.
 
   - Connector type: Molex Micro-Fit 3.0, 24-position, 3.00mm pitch, 2x -
-    CONFIRMED (user-specified part family/pin count).
+    CONFIRMED (part family/pin count).
   - Signals likely to be carried (not yet mapped to specific pins): the 6x
     TMC5160A motor-phase outputs (section 2 above - these come directly off
     each driver's own integrated FET half-bridges, NOT through additional
     MCU GPIOs), the 6x endstop signals (section 3 above, if endstops are
     robot-side rather than board-side), and GND/sense returns. Whether all
     6 axes' phases split 3-per-connector, or the split follows some other
-    robot-specific grouping, is part of what the user will specify - NOT
-    guessed here per this project's own established convention (see
-    memory: don't invent what a spec-less variant should be).
+    robot-specific grouping, is not yet specified - not guessed here, per
+    this project's own convention of not inventing a spec for a spec-less
+    variant.
   - Do not assign J1/J2 pin numbers, designators beyond "Connector 1" /
     "Connector 2", or infer axis groupings ahead of that spec.
 

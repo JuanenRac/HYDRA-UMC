@@ -13,10 +13,10 @@ plugged into anything.
 
 Every fact below is marked either **CONFIRMED** (already built/documented
 elsewhere in this repo or in the sibling `URTC` repo) or **PROPOSED** (a
-design filling a real, previously-undocumented gap - consistent with
-everything already built, but not yet implemented or hardware-verified). Do
-not treat a PROPOSED item as settled fact until it's been implemented and
-verified against real hardware.
+design for a gap this document fills - consistent with everything already
+built, but not yet implemented or hardware-verified). Do not treat a
+PROPOSED item as settled fact until it's been implemented and verified
+against real hardware.
 
 ---
 
@@ -261,7 +261,7 @@ that isn't there.
 | Robot Controller Board slot addressing on that shared bus | **IMPLEMENTED** - `BOARD_ID[2:0]`, a LOCAL DIP switch on each Robot Controller Board (`docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` §1c - CONFIRMED design, not derived from the STACK A connector or stack position, see `docs/PINOUT_STACKA_CONNECTOR.TXT` §1) feeds `ReadSlotBaseId()` in the G474 bootloader - this document's §4 formula is real code now, not just a formula. The CM4 gateway bootloader doesn't read this itself (it's the master, not a stack member) - it takes a target slot number from the SPI1 frame the CM5 sends (`SpiOtaFrame_t.target_slot`, `src/mcu_stm32h745/CM4/boot/bootloader_common.h`) instead. |
 | Robot Controller Board's own MCU identity | **CONFIRMED: STM32G474RET6** (LQFP-64, 512 KB flash, 3x FDCAN - 2 used, see §1). |
 | Robot Controller Board's own bootloader firmware | **IMPLEMENTED** - `src/mcu_stm32g474/boot/` is a real bootloader: FDCAN1, slot-addressed per §4's offset table, same CRC32+HMAC-SHA256 anti-bricking discipline. Compiles clean. NOT yet verified against real hardware. |
-| CM7<->CM4 IPC (needed to flash CM7 itself, since only CM4 owns SPI1/FDCAN1) | **IMPLEMENTED** - `src/mcu_stm32h745/Common/ipc_mailbox.h`, a 2-HSEM-channel shared-SRAM4 mailbox. CM7's own bootloader (`CM7/boot/`) runs the same protocol state machine over this mailbox instead of a bus. Not previously designed anywhere in this document - found to be necessary during implementation. |
+| CM7<->CM4 IPC (needed to flash CM7 itself, since only CM4 owns SPI1/FDCAN1) | **IMPLEMENTED** - `src/mcu_stm32h745/Common/ipc_mailbox.h`, a 2-HSEM-channel shared-SRAM4 mailbox. CM7's own bootloader (`CM7/boot/`) runs the same protocol state machine over this mailbox instead of a bus - the only way to reach CM7 at all, since it has no SPI1/FDCAN1 access of its own. |
 | Robot Controller Board -> URTC Tool Head CAN link (electrical) | Described by the project owner; not yet on a schematic in `hardware/` |
 | Robot Controller Board <-> URTC Tool Head relay tunnel | PROPOSED (this document, §5) - the CM4 gateway bootloader already forwards `+0x12`/`+0x13` opaquely (§5's own design), but the Robot Controller Board's own APPLICATION-side relay logic (not its bootloader) that actually speaks to the URTC head is still not written. |
 | URTC Tool Head firmware + protocol | CONFIRMED, fully implemented - see the `URTC` repo, `docs/CANBUS.TXT` - bare-metal, no RTOS (§2) |
@@ -290,9 +290,8 @@ None of the 3 real bootloaders (`src/mcu_stm32g474/boot/`,
 `src/mcu_stm32h745/CM7/boot/`, `src/mcu_stm32h745/CM4/boot/`)
 have been run against real hardware yet (§6). The items below are known,
 deliberate gaps in the current design - not oversights caught by review
-after the fact - kept here so they're visible before this project reaches
-real hardware, rather than only tracked in this session's own private
-audit notes.
+after the fact - kept here, in the project's own documentation, so they
+stay visible before this project reaches real hardware.
 
 - **No Read-Out Protection (RDP) on any of the 3 chips.** Without it,
   physical SWD access to any ONE board exposes `HMAC_KEY`
