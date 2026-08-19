@@ -21,8 +21,8 @@ Total distinct GPIO pins used below: 72 of the ~75 confirmed-available
 general-purpose pins on this package (3 spare - PG8, PG9, PG10 - see
 section 9). This is intentionally tight, and it is the reason several
 design choices below (SPI daisy-chaining, a shared fault line) exist: a
-naive "one pin per signal, no sharing" allocation for everything the user
-asked for does NOT fit in the pins this package actually has broken out.
+naive "one pin per signal, no sharing" allocation for every signal this
+board needs does NOT fit in the pins this package actually has broken out.
 
 --------------------------------------------------------------------------------
 1. HOST LINK - SPI1 to CM5 (already established, README.md section 10)
@@ -169,8 +169,8 @@ PG6  | BED_SSR_CTRL    | GPIO output -> opto-isolated gate/trigger of an
      |                 | board's 24V/5V/3.3V domains and from GND, with
      |                 | creepage/clearance per mains-switching practice.
      |                 | This is a HARD REQUIREMENT, not a suggestion - see
-     |                 | section 10 for how this changes the BOM vs. the
-     |                 | previously-documented "24V bus, PWM" heated bed.
+     |                 | section 10 for how this affects the BOM compared to
+     |                 | a simple 24V PWM-driven heated bed.
 PC0  | BED_THERM1      | ADC1_INP10 (CONFIRMED pin) - NTC thermistor 1
 PC1  | BED_THERM2      | ADC1_INP11 (CONFIRMED pin) - NTC thermistor 2
 
@@ -199,16 +199,16 @@ PC1  | BED_THERM2      | ADC1_INP11 (CONFIRMED pin) - NTC thermistor 2
     PG8   - free, general-purpose
     PG9   - CM7's own FreeRTOS smoke-test blink LED (firmware/mcu_stm32h745/
             CM7/STM32H745ZI_CM7_main.c) - not a real peripheral signal, just
-            claims a genuinely-spare pin instead of colliding with a real
-            one the way the pre-pinout placeholder (PB0, now X_DIR) did.
+            claims a genuinely-spare pin so it doesn't collide with a real
+            one (X_DIR is on PB0).
     PG10  - CM4's own FreeRTOS smoke-test blink LED (firmware/mcu_stm32h745/
             CM4/STM32H745ZI_CM4_main.c) - same reasoning as PG9 above
-            (previous placeholder was PE0, now PUMP1).
+            (PUMP1 is on PE0).
 
     Only PG8 is genuinely uncommitted. Keep it spare rather than pre-
-    committing; the user has already twice said "se me habra olvidado
-    cosas" - this is the margin for whatever that turns out to be. If more
-    spare pins are needed later, the only places to find them are (a)
+    committing - it's the margin for whatever turns out to be missing from
+    this pin budget. If more spare pins are needed later, the only places
+    to find them are (a)
     retiring the two smoke-test LEDs above once real application tasks
     exist, or (b) revisiting a design choice in sections 3-4 (the shared
     DIAG line or the SPI daisy-chain) that traded pin count for a single
@@ -234,28 +234,28 @@ PC1  | BED_THERM2      | ADC1_INP11 (CONFIRMED pin) - NTC thermistor 2
     PC14/PC15 (OSC32_IN/OUT, if an RTC crystal is added).
 
 --------------------------------------------------------------------------------
-10. RECONCILIATION WITH PREVIOUSLY-DOCUMENTED SPECS
+10. SPEC NOTES - AXES, VALVE/PUMP COUNT, HEATED BED, STACK A CONNECTOR
 --------------------------------------------------------------------------------
-This message's requirements changed 4 things README.md section 8 (and the
-BOM it was derived from) previously said. All 4 are updated in README.md /
-hardware/PCB/kinematic_brain_stm32h745/BOM.TXT alongside this file:
+These 4 items are the most detailed version of what README.md section 8 (and
+the BOM it's derived from) describe at a higher level. This section is the
+single source of truth for all 4, kept in sync with README.md section 8 and
+hardware/PCB/kinematic_brain_stm32h745/BOM.TXT:
 
-  - Axes: generic 6-axis "X, Y, Z, A, B, C" -> concrete "X, Y1, Y2, Z, E0,
-    E1" (dual-Y gantry + 2 tool/extruder axes). This file's section 3 uses
-    the new names.
-  - Valve/pump channels: "16x Low-Side Switching Channels (8 valves + 8
-    pumps)" -> 20 total (8+2 pumps, 8+2 valves) - sections 6-7 above.
-  - Heated bed: "PWM controlled, 24V bus" -> solid-state relay switching
-    230VAC mains, with 2 dedicated thermistors (previously "4x" shared
-    across unspecified use) - section 8 above. This is the one safety-
-    relevant change: 230VAC mains switching needs real isolation on the
-    PCB (creepage/clearance, opto-isolated SSR trigger, mains-rated
-    connector and trace spacing) that a 24V PWM design would not have
-    needed. Flag this to whoever lays out the PCB - it is not a drop-in
-    swap of the same footprint.
-  - STACK A connector: "Heavy-copper shrouded connector, 2.54mm pitch"
-    (no pin count) -> 40-pin, full pinout in
-    docs/PINOUT_STACKA_CONNECTOR.TXT.
+  - Axes: concrete "X, Y1, Y2, Z, E0, E1" (dual-Y gantry + 2 tool/extruder
+    axes), not a generic 6-axis "X, Y, Z, A, B, C" label. This file's
+    section 3 uses these names throughout.
+  - Valve/pump channels: 20 total low-side switching channels (8+2 pumps,
+    8+2 valves) - sections 6-7 above.
+  - Heated bed: a solid-state relay switching 230VAC mains, with 2
+    dedicated NTC thermistors - section 8 above. This is the one
+    safety-relevant item on this list: 230VAC mains switching needs real
+    isolation on the PCB (creepage/clearance, opto-isolated SSR trigger,
+    mains-rated connector and trace spacing) that a simple 24V PWM-driven
+    bed would not need. Flag this to whoever lays out the PCB - it is not
+    a drop-in swap of the same footprint as a 24V-bus design.
+  - STACK A connector: 40-pin, full pinout in
+    docs/PINOUT_STACKA_CONNECTOR.TXT (README.md section 11 only carries the
+    generic "Heavy-copper shrouded connector, 2.54mm pitch" description).
 
 --------------------------------------------------------------------------------
 11. CROSS-REFERENCES

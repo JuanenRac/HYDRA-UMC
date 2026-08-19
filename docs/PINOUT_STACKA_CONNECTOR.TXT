@@ -4,38 +4,32 @@
         "STACK A OUT" port AND on every Robot Controller Board's own
                     "STACK A IN" port (parallel bus drop)
 ================================================================================
-STATUS: PROPOSED - fills a gap the user explicitly flagged ("se me habra
-olvidado cosas") between the previously-documented FDCAN1 STACK A bus
-(docs/architecture.md section 4, README.md section 6) and the user's new,
-more specific requirement: "conector de 40 pines para conexion en paralelo
-de las 8 tarjetas esclavas ... alimentacion +24V de 10 pines, 10 pines
-masa, +5V". Not yet verified against real hardware. This ONE pinout is used
-identically at both ends of the bus - see "Physical topology" below for how
-that reconciles with "en paralelo" (parallel, not daisy-chained point-to-
-point).
+STATUS: PROPOSED - not yet verified against real hardware. This connector
+carries the physical bus that ties the Kinematic Brain to up to 8 Robot
+Controller Boards: +24V power, GND, +5V auxiliary, and the FDCAN1 "STACK A"
+differential pair already documented in docs/architecture.md section 4 and
+README.md section 6. This ONE pinout is used identically at both ends of the
+bus - see "Physical topology" below for how a single shared pinout still
+supports 8 boards wired in parallel rather than daisy-chained point-to-point.
 
-This supersedes the vague "Heavy-copper shrouded connector, 2.54mm pitch"
-line in README.md section 11 / hardware/PCB/*/BOM.TXT - see the bottom of
-this file for the exact reconciliation.
+This is the concrete pin-level definition of the connector referenced only
+generically ("Heavy-copper shrouded connector, 2.54mm pitch") in README.md
+section 11 and hardware/PCB/*/BOM.TXT - see section 4 below for how the two
+relate.
 
 --------------------------------------------------------------------------------
 1. WHAT THIS CONNECTOR CARRIES
 --------------------------------------------------------------------------------
-Per the user's own explicit split: +24V power (10 pins), GND (10 pins),
-+5V - plus what already exists on paper for this bus (docs/architecture.md
-section 4): the FDCAN1 differential pair. Reading the user's message
-carefully, "conexion spi" appears in the same run-on sentence as the STACK A
-connector - this is interpreted here as re-confirming the ALREADY-DOCUMENTED
-STM32H745<->CM5 SPI1 link (README.md section 10), not a second bus riding on
-this connector. FDCAN1 remains this connector's only command/data bus,
-consistent with every prior document this session (docs/architecture.md
-sections 1 and 4, README.md section 6). If that reading is wrong, tell me
-and this file gets a real SPI_STACKA_* pin group instead of the reserved
-spares below.
++24V power (10 pins), GND (10 pins), +5V auxiliary (4 pins), plus the FDCAN1
+differential pair already documented in docs/architecture.md section 4.
+SPI here refers to the already-documented STM32H745<->CM5 SPI1 link
+(README.md section 10) - this connector does not carry a second SPI bus.
+FDCAN1 remains this connector's only command/data bus, consistent with every
+other reference to STACK A in this repo (docs/architecture.md sections 1 and
+4, README.md section 6).
 
-One thing had to be ADDED beyond the user's literal list, because a 40-pin
-parallel bus serving 8 independently-populated slots cannot work without
-it:
+One signal beyond straight power/data is necessary, because a 40-pin
+parallel bus serving 8 independently-populated slots cannot work without it:
 
   - BOARD_PRESENT: one open-drain pin, pulled low by an installed Robot
     Controller Board, read by the Kinematic Brain to know which of the 8
@@ -43,18 +37,16 @@ it:
     first (useful at power-up, and for HYDRA-UMC-STUDIO's Flasher/Tester to
     show "not installed" vs. "installed but not responding").
 
-SLOT ADDRESSING IS NOT ON THIS CONNECTOR (revised per explicit direction):
-each Robot Controller Board carries its own FDCAN1 slot address (0-7) via
-3 LOCAL DIP-switch/jumper pins on the board itself, set by whoever installs
-it - see docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 1c
-("BOARD_ID[2:0]"). This replaces an earlier draft of this file that tried
-to derive slot position from the connector (first a per-position resistor
-strap, then a ripple-propagated scheme) - both added real complexity a
-simple manually-set local DIP switch avoids entirely, and every Robot
-Controller Board being the same interchangeable PCB/BOM (mass-produced) was
-always going to make anything connector-position-derived awkward. The 3
-pins that earlier draft reserved on this connector are folded back into
-the general RESERVED pool below instead.
+SLOT ADDRESSING IS NOT ON THIS CONNECTOR: each Robot Controller Board
+carries its own FDCAN1 slot address (0-7) via 3 LOCAL DIP-switch/jumper pins
+on the board itself, set by whoever installs it - see
+docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 1c ("BOARD_ID[2:0]"). A
+per-position resistor strap or a ripple-propagated addressing scheme were
+both considered and rejected: either adds real complexity that a simple,
+locally-set DIP switch avoids, and every Robot Controller Board being the
+same interchangeable, mass-produced PCB makes deriving identity from
+connector position awkward by design. The 3 pins that scheme would have
+needed are folded into the general RESERVED pool below instead.
 
 --------------------------------------------------------------------------------
 2. PIN TABLE (40 pins, connector viewed from the mating face)
@@ -64,12 +56,12 @@ Pin | Signal          | Notes
  1  | +24V_BUS        | \
  2  | +24V_BUS        |  \
  3  | +24V_BUS        |   \
- 4  | +24V_BUS        |    10 pins in parallel, per the user's own spec -
- 5  | +24V_BUS        |    spreads bus current across multiple contacts
- 6  | +24V_BUS        |    (2.54mm-pitch contacts are typically rated
- 7  | +24V_BUS        |    ~3A each; 10 in parallel gives realistic
- 8  | +24V_BUS        |    headroom for 8 populated Robot Controller
- 9  | +24V_BUS        |    Boards' stepper current, not just logic power)
+ 4  | +24V_BUS        |    10 pins in parallel - spreads bus current across
+ 5  | +24V_BUS        |    multiple contacts (2.54mm-pitch contacts are
+ 6  | +24V_BUS        |    typically rated ~3A each; 10 in parallel gives
+ 7  | +24V_BUS        |    realistic headroom for 8 populated Robot
+ 8  | +24V_BUS        |    Controller Boards' stepper current, not just
+ 9  | +24V_BUS        |    logic power)
 10  | +24V_BUS        | /
 ----+-----------------+-----------------------------------------------------
 11  | GND             | \
@@ -98,22 +90,21 @@ Pin | Signal          | Notes
 28  | RESERVED        | \
 29  | RESERVED        |  \
 30  | RESERVED        |   \
-31  | RESERVED        |    13 spare pins (was 10 - the 3 SLOT_ID pins an
-32  | RESERVED        |    earlier draft of this file reserved here folded
-33  | RESERVED        |    back into this pool once slot addressing moved
-34  | RESERVED        |    to local DIP-switch pins on each Robot
-35  | RESERVED        |    Controller Board instead - see section 1).
-36  | RESERVED        |    PROPOSED future use: a shared SYNC_TRIGGER line
-37  | RESERVED        |    for coordinated multi-robot motion start (not
-38  | RESERVED        |    designed yet - would need its own doc), and
-39  | RESERVED        |    general headroom so this connector doesn't need
-40  | RESERVED        |    re-speccing for the next "forgotten" thing. /
+31  | RESERVED        |    13 spare pins. Addressing lives on each board's
+32  | RESERVED        |    own local DIP switch (section 1), not on this
+33  | RESERVED        |    connector, so these stay free. PROPOSED future
+34  | RESERVED        |    use: a shared SYNC_TRIGGER line for coordinated
+35  | RESERVED        |    multi-robot motion start (not designed yet -
+36  | RESERVED        |    would need its own doc), plus general headroom
+37  | RESERVED        |    so this connector doesn't need re-speccing for
+38  | RESERVED        |    whatever the next requirement turns out to be.
+39  | RESERVED        |    /
+40  | RESERVED        |   /
 ----+-----------------+-----------------------------------------------------
 
-Total: 10 + 10 + 4 + 2 + 1 + 13 = 40 pins. Matches the user's explicit
-40-pin/10-pin-24V/10-pin-GND constraints exactly; +5V_BUS pin count (4) and
-the CAN/PRESENT/RESERVED split are this doc's own proposal to make the
-rest of the connector actually usable.
+Total: 10 + 10 + 4 + 2 + 1 + 13 = 40 pins. +24V_BUS/GND stay at 10 pins each
+for the current-headroom reasoning above; +5V_BUS pin count (4) and the
+CAN/PRESENT/RESERVED split make the rest of the connector actually usable.
 
 --------------------------------------------------------------------------------
 3. PHYSICAL TOPOLOGY - CONFIRMED: a physical stack, not a backplane/harness
@@ -121,9 +112,9 @@ rest of the connector actually usable.
 CONFIRMED by the project owner: the 8 Robot Controller Boards mount as a
 physical STACK - one on top of another - on one side of the Kinematic
 Brain's own PCB, not spread across a separate backplane board or connected
-by ribbon cables (this section previously proposed both of those as
-options; the user has since settled it - keeping the old reasoning below
-struck through only in spirit, replaced here, not left ambiguous).
+by ribbon cables. A stack keeps every board tapping the identical 40 signals
+through its own pair of stacking connectors, with nothing routed through any
+board's own logic to reach the next one up.
 
     Kinematic Brain PCB
     +----------------------------+
@@ -154,8 +145,8 @@ connector - the diagram above shows the installer setting each board's DIP
 switch to match its intended physical position, a convention worth
 following for sanity but not something the hardware enforces or derives on
 its own. Nothing stops (and nothing detects) installing boards out of
-numeric order; only the address each board's own DIP switch encodes
-matters to the FDCAN1 protocol.
+numeric order; only the address each board's own DIP switch encodes matters
+to the FDCAN1 protocol.
 
 Each Robot Controller Board (except the topmost) carries TWO of this same
 40-pin connector: one on its underside mating with the board (or the
@@ -163,41 +154,36 @@ Kinematic Brain) below it, one on its topside extending the identical 40
 signals to whatever mounts above it - a straight-through passthrough, every
 pin wired 1:1 between the two connectors on a given board, exactly like a
 Raspberry Pi HAT's own stacking header convention (same idea, this
-project's own pin count/pinout, not the Pi's). This is what makes "each
-slave board gets a 40-pin connector" (the user's own robot_controller_
-board_stm32g474/BOM.TXT precedent) and "en paralelo, una encima de otra"
-(physically stacked, electrically parallel - the user's own words) the SAME
-design decision: every board taps the identical 40 signals via its own
-pair of stacking connectors, nothing routes through any board's own logic
-to reach the next one up.
+project's own pin count/pinout, not the Pi's). This is what keeps "each
+slave board gets a 40-pin connector" and "physically stacked, electrically
+parallel" the SAME design decision: every board taps the identical 40
+signals via its own pair of stacking connectors, nothing routes through any
+board's own logic to reach the next one up.
 
-CAN bus implication: FDCAN1 (CAN1_H/CAN1_L, pins 25-26) is now a genuine
-multi-drop stack instead of a backplane trace - 120ohm termination
+CAN bus implication: FDCAN1 (CAN1_H/CAN1_L, pins 25-26) is a genuine
+multi-drop stack rather than a backplane trace - 120ohm termination
 resistors belong at the two electrical ends: the Kinematic Brain's own
 STACK A OUT connector, and the TOPMOST populated Robot Controller Board's
-own upward-facing connector (populate/depopulate a termination resistor
-per board as stack height changes, or fit a keyed terminator plug on top
-of however many boards are actually stacked) - same standard CAN
-termination practice as before, just at physically different points now
-that the topology is a stack instead of a backplane run.
+own upward-facing connector (populate/depopulate a termination resistor per
+board as stack height changes, or fit a keyed terminator plug on top of
+however many boards are actually stacked) - standard CAN termination
+practice, applied at the two physical ends of the stack.
 
 --------------------------------------------------------------------------------
 4. CONNECTOR PART / MECHANICAL
 --------------------------------------------------------------------------------
 PROPOSED: 2x20, 2.54mm-pitch STACKING header/socket pair (not a plain box
-header - see section 3's own stack diagram) - this UPDATES, not
-contradicts, README.md section 11's previous "Heavy-copper shrouded
-connector, 2.54mm pitch" line, which was written before the pin COUNT or
-the physical stacking arrangement was known. Same pitch as originally
-specced, now with an exact pin count, a per-pin current budget (10
+header - see section 3's own stack diagram). This is a more specific version
+of README.md section 11's "Heavy-copper shrouded connector, 2.54mm pitch"
+entry: same pitch, now with an exact pin count, a per-pin current budget (10
 parallel contacts per rail), and a real mechanical form factor behind it.
-Candidates: 2x20 female stacking headers (the same family Raspberry Pi
-HATs use, e.g. Samtec SSQ/ESQ or Adafruit-style long-leg stacking headers)
-sized for however many boards' worth of stack height the mechanical design
-needs to clear per board, high-current-rated contacts given the 10-pin-
-parallel +24V/GND rails. Exact part number and stack pitch (how much
-vertical clearance each board needs) TBD at schematic/mechanical-design
-time - not decided here.
+Candidates: 2x20 female stacking headers (the same family Raspberry Pi HATs
+use, e.g. Samtec SSQ/ESQ or Adafruit-style long-leg stacking headers) sized
+for however many boards' worth of stack height the mechanical design needs
+to clear per board, high-current-rated contacts given the 10-pin-parallel
++24V/GND rails. Exact part number and stack pitch (how much vertical
+clearance each board needs) TBD at schematic/mechanical-design time - not
+decided here.
 
 --------------------------------------------------------------------------------
 5. CROSS-REFERENCES
@@ -208,9 +194,9 @@ time - not decided here.
   ROBOT_CONTROLLER.TXT section 1c) - NOT from this connector, see section 1
   above.
 - README.md section 6             - FDCAN1 STACK A summary, section 9 power
-  distribution, section 11 PCB connector list (needs its "heavy-copper
-  shrouded connector" line updated to reference this file - done, see the
-  README.md diff alongside this commit).
+  distribution, section 11 PCB connector list (its "heavy-copper shrouded
+  connector" line references this file for the exact pin count and
+  mechanical form factor).
 - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT - which H745 GPIOs/peripherals
   feed this connector on the master end.
 - docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT - which G474 GPIOs/peripherals
