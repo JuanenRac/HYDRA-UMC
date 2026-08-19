@@ -149,7 +149,7 @@ if "%TARGET%"=="g474" set "DO_G474=1"
 if "%TARGET%"=="h745" set "DO_H745=1"
 
 REM =========================================================================
-if defined DO_G474 (
+if not defined DO_G474 goto :SKIP_G474
 REM =========================================================================
 echo.
 echo === 3. Robot Controller Board ^(STM32G474RET6^) - ST HAL/CMSIS sources ===
@@ -333,10 +333,10 @@ copy /y "!OUT!\!G4_APP_NAME!.bin" "%FIRMWARE_OUT%\" >nul
 copy /y "!OUT!\!G4_APP_NAME!.hex" "%FIRMWARE_OUT%\" >nul
 echo   OK   !G4_APP_NAME!.bin/.hex/.elf built - FreeRTOS GPIO-toggle smoke test, see src\mcu_stm32g474\README.md
 set /a PASS+=1
-)
+:SKIP_G474
 
 REM =========================================================================
-if defined DO_H745 (
+if not defined DO_H745 goto :SKIP_H745
 REM =========================================================================
 echo.
 echo === 7. Kinematic Brain ^(STM32H745ZIT6^) - ST HAL/CMSIS sources ===
@@ -622,7 +622,7 @@ copy /y "!OUT!\!CM4_APP_NAME!.bin" "%FIRMWARE_OUT%\" >nul
 copy /y "!OUT!\!CM4_APP_NAME!.hex" "%FIRMWARE_OUT%\" >nul
 echo   OK   !CM4_APP_NAME!.bin/.hex/.elf built - FreeRTOS GPIO-toggle smoke test, no CM7^<-^>CM4 scheduler sync yet
 set /a PASS+=1
-)
+:SKIP_H745
 
 REM -----------------------------------------------------------------------
 echo.
