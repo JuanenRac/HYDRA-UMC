@@ -285,16 +285,16 @@ this top-level summary.
 
 ## 🛠️ DEVELOPMENT ENVIRONMENT
 
-What this project's own development machine actually has installed and
-verified working (`build_firmware.sh g474`/`h745`, full `--clean` rebuilds,
-0 errors) - not a theoretical list:
+What this project's own development machines actually have installed and
+verified working (`build_firmware.sh`/`build_firmware.bat`, `g474`/`h745`/
+default targets, 0 errors) - not a theoretical list:
 
 * 🔧 **ARM GNU Toolchain** (`arm-none-eabi-gcc` 10.3+) - compiles every MCU
   firmware target. No STM32CubeIDE/CubeMX project files are used or
-  required to build - `build_firmware.sh` fetches ST's own HAL/CMSIS
-  sources fresh from their official GitHub repos and drives the compiler
-  directly, same philosophy the sibling `URTC` repo's own
-  `build_firmware.sh` already established.
+  required to build - `build_firmware.sh`/`build_firmware.bat` fetches ST's
+  own HAL/CMSIS sources fresh from their official GitHub repos and drives
+  the compiler directly, same philosophy the sibling `URTC` repo's own
+  `build_firmware.sh`/`build_firmware.bat` already established.
 * 🧩 **VS Code + extensions** (`.vscode/extensions.json` lists all of
   these): [STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension)
   (project/build/debug integration), **Cortex-Debug** (SWD/JTAG debugging -
@@ -312,12 +312,45 @@ verified working (`build_firmware.sh g474`/`h745`, full `--clean` rebuilds,
 
 ## 🏗️ BUILDING THE FIRMWARE
 
+**Linux/Mac:**
 ```bash
 ./build_firmware.sh          # builds every MCU target (Robot Controller Board + Kinematic Brain, both cores)
 ./build_firmware.sh g474     # Robot Controller Board only
 ./build_firmware.sh h745     # Kinematic Brain only (both cores)
 ./build_firmware.sh --clean  # wipe the vendored HAL/CMSIS cache first
 ```
+
+**Windows:**
+```bat
+build_firmware.bat          :: builds every MCU target (Robot Controller Board + Kinematic Brain, both cores)
+build_firmware.bat g474     :: Robot Controller Board only
+build_firmware.bat h745     :: Kinematic Brain only (both cores)
+build_firmware.bat --clean  :: wipe the vendored HAL/CMSIS cache first
+```
+
+`build_firmware.bat` is the same build as `build_firmware.sh` translated to
+batch (same steps, same pinned HAL/CMSIS versions, same pass/warn/fail
+reporting) - run end to end on a real Windows machine with the [Arm GNU
+Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)
+installed and `arm-none-eabi-gcc` on `PATH`: every HAL module, both
+bootloaders, and every application compiled and linked clean, and
+`firmware_manifest.json` regenerated with CRC32s matching the Linux/Mac
+build's own output. Requires the same tools as the Linux/Mac script: the Arm
+GNU Toolchain, `git` (to fetch ST's own HAL/CMSIS sources), and `python` for
+the manifest step.
+
+**Manual build (either OS, without the script):** the script automates
+exactly the steps in `docs/COMPILE_STM32G474.TXT` and
+`docs/COMPILE_STM32H745.TXT` - fetch the pinned HAL/CMSIS/FreeRTOS sources
+listed at the top of `build_firmware.sh`/`build_firmware.bat`, compile each
+target's HAL modules and startup/system files with `arm-none-eabi-gcc`
+(flags/module lists are listed in that same script), then link each
+bootloader and application against its own linker script (`*.ld`, next to
+its source) with `arm-none-eabi-gcc`/`-Wl,--gc-sections` and convert with
+`arm-none-eabi-objcopy` to `.bin`/`.hex`. Those two `docs/COMPILE_*.TXT`
+files are the authoritative, step-by-step reference if you'd rather not run
+either script - the scripts exist to automate them, not replace them as the
+source of truth.
 
 Output lands in `firmware/`, which is committed and pushed to this
 repo (same convention as URTC's own `firmware/` output folder) so that

@@ -16,14 +16,15 @@ REM in docs\COMPILE_STM32G474.TXT and docs\COMPILE_STM32H745.TXT - read those
 REM first if anything here needs adjusting; this script automates them, it
 REM doesn't replace them.
 REM
-REM HONESTY NOTE (same convention as URTC's own .bat): this file was written
-REM by carefully translating build_firmware.sh's logic into batch syntax. It
-REM could not be executed in the environment that wrote it (no Windows
-REM machine available there) - the logic mirrors the verified Linux/Mac
-REM script exactly, but hasn't itself been run start to finish on a real
-REM Windows machine. If something here doesn't work as written, trust
-REM build_firmware.sh's own logic as the source of truth and adjust this
-REM file's own syntax to match its intent.
+REM HONESTY NOTE: this file was written by translating build_firmware.sh's
+REM logic into batch syntax, then actually run end to end on a real Windows
+REM machine with the Arm GNU Toolchain installed (both `g474` and `h745`
+REM targets, then a full default build) - every HAL module, bootloader, and
+REM application linked clean and firmware_manifest.json regenerated with
+REM real CRC32s, matching build_firmware.sh's own output shape. If something
+REM here stops working as written, trust build_firmware.sh's own logic as
+REM the source of truth and adjust this file's own syntax to match its
+REM intent.
 REM
 REM FreeRTOS: both application targets (Robot Controller Board's STM32G474,
 REM and the Kinematic Brain's STM32H745 - BOTH cores) run FreeRTOS - see
@@ -663,6 +664,6 @@ echo written. Every _BOOTLOADER binary IS the real CAN-OTA/SPI-OTA protocol
 echo (bare-metal, no FreeRTOS by design) - not yet verified against real
 echo hardware. See each src\*\README.md and docs\architecture.md.
 
-endlocal
+endlocal & set "FAIL=%FAIL%"
 if %FAIL% GTR 0 exit /b 1
 exit /b 0
