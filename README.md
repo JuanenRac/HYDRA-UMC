@@ -276,7 +276,8 @@ HYDRA-UMC/
 ├── build_firmware.bat           # Same build, Windows (see "Building the Firmware" below)
 ├── generate_manifest.py         # Regenerates firmware/firmware_manifest.json (versions/CRC32) after a full build
 ├── firmware/                    # Committed build output (.bin/.hex/.elf + manifest) - NOT gitignored, same convention as URTC's own output folder, see "Building the Firmware" below
-└── README.md
+├── README.md                    # This file
+└── README_spa.md / README_ita.md / README_fra.md / README_deu.md    # <- translations
 ```
 
 See `docs/architecture.md` for what each tier actually does and how they
