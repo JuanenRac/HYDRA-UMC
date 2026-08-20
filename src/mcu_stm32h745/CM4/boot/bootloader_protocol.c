@@ -454,7 +454,19 @@ void Relay_ToStackA(uint8_t slot, const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
     // the actually-addressable range instead of only the ones that would
     // overflow the ID width, matching how the rest of this codebase
     // validates its other externally-supplied inputs explicitly.
-    if (slot > 7) {
+    // in->frame_type is also externally supplied (the CM5's own SPI1 frame,
+    // byte 2 - no CRC on the raw wire frame, see bootloader_main.c's own
+    // WireToFrame) and is used below as a raw ADDEND onto this slot's own
+    // base ID. Without this check, frame_type >= STACKA_SLOT_WINDOW (0x20)
+    // pushes target_id PAST this slot's own 32-ID window and into the NEXT
+    // slot's (or a further slot's) command space - e.g. slot=0 with a
+    // corrupted frame_type=0x21 computes the exact same ID as slot=1's own
+    // +0x01 (START_UPDATE), silently addressing a DIFFERENT robot than the
+    // one the CM5 actually asked for. A bit-flipped or malformed SPI1 frame
+    // must not be able to steer a command onto an unrelated robot's own
+    // command ID - reject out-of-window offsets the same way slot>7 is
+    // already rejected above, rather than only bounding the slot number.
+    if (slot > 7 || in->frame_type >= STACKA_SLOT_WINDOW) {
         memset(out, 0, sizeof(*out));
         out->target_tier = SPI_TARGET_STACKA;
         out->target_slot = slot;
