@@ -39,6 +39,15 @@ static void IPC_SendResponse(uint8_t frame_type, const uint8_t *data, uint8_t dl
     IPC_MAILBOX->resp.dlc = dlc;
     memset((void*)IPC_MAILBOX->resp.payload, 0, 8);
     if (dlc > 0) memcpy((void*)IPC_MAILBOX->resp.payload, data, dlc);
+    // SRAM4 writes above are Normal (bufferable) memory; the HSEM take just
+    // below is a peripheral (Device) write, with no ordering guarantee
+    // between the two bus types without an explicit barrier. Without this
+    // __DSB(), CM4 could observe IPC_HSEM_RESP_ID taken and read a stale or
+    // torn .resp frame before the writes above have actually landed in
+    // SRAM4 - same "flush shared data before signaling" requirement as
+    // CM4's own Relay_ToCM7() write side (../../CM4/boot/bootloader_
+    // protocol.c), mirrored here for this mailbox's other direction.
+    __DSB();
     HAL_HSEM_FastTake(IPC_HSEM_RESP_ID); // claims the slot - CM4 reads it, then releases, which is what the wait loop above watches for next time
 }
 

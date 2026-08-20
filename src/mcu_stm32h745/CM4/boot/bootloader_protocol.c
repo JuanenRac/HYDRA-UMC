@@ -552,6 +552,16 @@ void Relay_ToCM7(const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
     IPC_MAILBOX->cmd.dlc = in->dlc;
     memset((void*)IPC_MAILBOX->cmd.payload, 0, 8);
     memcpy((void*)IPC_MAILBOX->cmd.payload, (const void*)in->payload, in->dlc > 8 ? 8 : in->dlc);
+    // SRAM4 writes above are Normal (bufferable) memory; the HSEM take just
+    // below is a peripheral (Device) write - the two bus types have no
+    // ordering guarantee relative to each other without an explicit
+    // barrier. Without this __DSB(), the store buffer could let the HSEM
+    // take reach CM7 before the .cmd field writes have actually landed in
+    // SRAM4, so CM7 could observe the semaphore taken and read a stale or
+    // torn command frame. Same "flush shared data before signaling"
+    // pattern ST's own dual-core HSEM application notes require for this
+    // exact producer/consumer shape.
+    __DSB();
     HAL_HSEM_FastTake(IPC_HSEM_CMD_ID);
 
     memset(out, 0, sizeof(*out));
