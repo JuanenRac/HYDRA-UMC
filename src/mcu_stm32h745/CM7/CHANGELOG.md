@@ -18,6 +18,7 @@ as part of making this component incremental.
 
 | Version | Notes |
 |---|---|
+| **1.0.3** | Verification build - confirms `build_firmware.bat` (the Windows mirror of `build_firmware.sh`) calls the exact same `bump_version.py` step and increments this application's own version identically to the Linux/Mac script. No source changes to this application itself. |
 | **1.0.2** | Verification build - second of two consecutive builds run to confirm `bump_version.py` correctly increments this application's own version build over build. No source changes to this application itself. |
 | **1.0.1** | Verification build - first of two consecutive builds run to confirm the automatic version-bump mechanism increments `FIRMWARE_VERSION_PATCH` correctly (the field itself is new as of this same change - see this file's own header note) and that the bumped value is what actually ends up in the compiled binary's output filename. No source changes to this application itself. |
 | **1.0.0** | Initial versioned release (previously `MAJOR.MINOR` only, no PATCH field). Still a FreeRTOS GPIO-toggle smoke test, not yet the real motion/vision application logic - see `../README.md` for current status. |

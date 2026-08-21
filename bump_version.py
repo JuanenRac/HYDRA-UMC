@@ -7,12 +7,12 @@
 # AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
 # LICENSE: GPL-3.0 (same as the firmware this versions - see LICENSE at repo root)
 #
-# ECOSYSTEM-WIDE VERSIONING POLICY, as implemented for THIS repo: unlike the
-# sibling URTC repo (where only the bootloaders are incremental, bumped BY
-# HAND before a build counts as "final" - see URTC's own VERSION_CHECKLIST.txt),
-# HYDRA-UMC makes ALL SIX components incremental - the 3 bootloaders AND the
-# 3 applications each bump their own PATCH by exactly 1 on every real build
-# that produces a new binary for that component, fully automatically. That's
+# ECOSYSTEM-WIDE VERSIONING POLICY, as implemented for THIS repo: same
+# scheme as the sibling URTC repo (see URTC's own bump_version.py and
+# CHANGELOG.md) - ALL components are incremental, never bumped by hand.
+# HYDRA-UMC has SIX of them - the 3 bootloaders AND the 3 applications
+# each bump their own PATCH by exactly 1 on every real build that
+# produces a new binary for that component, fully automatically. That's
 # what this script does, and why build_firmware.sh/.bat call it as the very
 # first step of compiling EACH of the 6 components, before that component's
 # own .c files (which #include this exact header) ever reach the compiler -

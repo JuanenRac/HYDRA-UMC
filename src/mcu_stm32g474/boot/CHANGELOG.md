@@ -18,6 +18,7 @@ drift out of sync with what was actually compiled.
 
 | Version | Notes |
 |---|---|
+| **1.0.3** | Verification build - confirms `build_firmware.bat` (the Windows mirror of `build_firmware.sh`) calls the exact same `bump_version.py` step and increments this bootloader's own version identically to the Linux/Mac script. No source changes to this bootloader itself. |
 | **1.0.2** | Verification build - second of two consecutive builds run to confirm `bump_version.py` correctly increments this bootloader's own version build over build. No source changes to this bootloader itself. |
 | **1.0.1** | Verification build - first of two consecutive builds run to confirm the automatic version-bump mechanism (`bump_version.py`, called from `build_firmware.sh`/`.bat` right before this component compiles) increments `BOOTLOADER_VERSION_PATCH` correctly and that the bumped value is what actually gets baked into the compiled binary and its output filename. No source changes to this bootloader itself. |
 | **1.0.0** | Initial versioned release. Real CAN-OTA bootloader (see this component's own `bootloader_protocol.c`) implementing CRC32 + HMAC-SHA256 verify-into-backup-before-copy-to-main, same anti-bricking discipline as URTC's own bootloader - compiling clean end to end, not yet verified against real hardware. |
