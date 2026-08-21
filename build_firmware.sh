@@ -42,6 +42,37 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD="$ROOT/build"
 FIRMWARE_OUT="$ROOT/firmware"
 
+# -----------------------------------------------------------------------
+# Banner - printed on every run (not just a comment at the top of this
+# file), so anyone running this from a double-clicked terminal or a fresh
+# shell sees what project/script/author/license they're looking at before
+# any output scrolls past.
+# -----------------------------------------------------------------------
+echo "============================================================================="
+echo " HYDRA-UMC - firmware build"
+echo ""
+echo " Installs tools, verifies everything, and compiles HYDRA-UMC's own MCU"
+echo " firmware binaries from a clean checkout: Robot Controller Board"
+echo " (STM32G474RET6) + Kinematic Brain (STM32H745ZIT6, CM7+CM4) - 6 components"
+echo " total (3 bootloaders + 3 applications), all version-incremental (see"
+echo " bump_version.py)."
+echo ""
+echo " Author:  JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com"
+echo " License: GPL-3.0 - see LICENSE at repo root"
+echo "============================================================================="
+
+# Keeps the window open when this script is double-clicked/launched from a
+# real terminal, on success AND on failure (matches build_firmware.bat's
+# own `pause`) - fires on every exit path via this EXIT trap (normal
+# completion, an explicit `exit N` anywhere above, or `set -e` aborting on
+# a failed command), not just the final line. Skipped when stdin isn't a
+# real terminal (`[ -t 0 ]` false - e.g. CI, a pipe, or another script
+# driving this one) so automation never hangs waiting for a keypress that
+# will never come.
+if [ -t 0 ]; then
+    trap 'echo ""; read -r -p "Press Enter to close this window..." _' EXIT
+fi
+
 # Pinned versions - see docs/COMPILE_STM32G474.TXT section 3 for why pinned
 # rather than tracking each repo's own latest master.
 G4_HAL_REPO="https://github.com/STMicroelectronics/stm32g4xx_hal_driver.git"
@@ -104,6 +135,12 @@ else
     fail "git not found - needed to fetch ST's own HAL/CMSIS sources."
     echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
 fi
+if command -v python3 >/dev/null 2>&1; then
+    pass "python3 found: $(python3 --version)"
+else
+    fail "python3 not found - required to run bump_version.py (all 6 components are incremental, see this script's own version-bump steps below) and generate_manifest.py."
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
 
 mkdir -p "$FIRMWARE_OUT"
 
@@ -122,6 +159,27 @@ build_bin_hex() {
 get_version_macro() {
     local header="$1" macro="$2"
     grep -oE "define[[:space:]]+${macro}[[:space:]]+[0-9]+" "$header" | grep -oE '[0-9]+$'
+}
+
+# Bumps ONE component's own version macro family (BOOTLOADER_VERSION or
+# FIRMWARE_VERSION) in its bootloader_common.h in place, via bump_version.py
+# (odometer carry rule: PATCH past 9 -> MINOR+1, PATCH resets to 0 - see
+# that script's own header comment for the full reasoning). Called BEFORE
+# each of the 6 components below gets compiled, so the just-bumped value is
+# what actually ends up baked into that binary (bootloader_protocol.c reads
+# these same macros at compile time) and in its output filename - never
+# bumped after the fact. Per this repo's own versioning policy, ALL 6
+# components (3 bootloaders + 3 applications) are incremental this way,
+# unlike sibling repo URTC where only the bootloaders are (and there, bumped
+# by hand, not automatically like here).
+bump_version() {
+    local header="$1" prefix="$2" label="$3"
+    local newver
+    if ! newver="$(python3 "$ROOT/bump_version.py" "$header" "$prefix")"; then
+        fail "$label: version bump failed - see bump_version.py's own error above"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+    pass "$label version bumped to v$newver ($header)"
 }
 
 # Compiles every .c file in a directory (non-recursive) - same helper URTC's
@@ -284,6 +342,7 @@ fi
 step "5. Robot Controller Board bootloader (src/mcu_stm32g474/boot/) - bare-metal CAN-OTA, no FreeRTOS"
 # -----------------------------------------------------------------------
 SRC="$ROOT/src/mcu_stm32g474/boot"
+bump_version "$SRC/bootloader_common.h" BOOTLOADER_VERSION "Robot Controller Board bootloader"
 rm -f "$G4/boot_obj"/*.o
 if compile_dir "$SRC" "$G4/boot_obj" "$CFLAGS_G4" ""; then
     pass "bootloader_*.c compiled ($(ls "$SRC"/*.c | wc -l) files)"
@@ -307,9 +366,10 @@ pass "$G4_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/boot_obj/$G4_
 step "6. Robot Controller Board application (src/mcu_stm32g474/) - FreeRTOS"
 # -----------------------------------------------------------------------
 SRC="$ROOT/src/mcu_stm32g474"
+bump_version "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION "Robot Controller Board application"
 rm -f "$G4/app_obj"/*.o
 arm-none-eabi-gcc $CFLAGS_G4_APP -I"$SRC" -x c -c "$SRC/STM32G474RE_main.c" -o "$G4/app_obj/STM32G474RE_main.o"
-G4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR)"
+G4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_PATCH)"
 G4_APP_NAME="HYDRA_RCB_APP_${G4_APP_VER}"
 if ! link_filtered arm-none-eabi-gcc $LDCOMMON_G4 -T"$SRC/STM32G474RETx_APP.ld" \
     "$G4/app/startup.o" "$G4/app/system_stm32g4xx.o" \
@@ -441,6 +501,7 @@ step "9. Kinematic Brain CM7 bootloader (bare-metal CAN-OTA, mailbox-relayed) + 
 # -----------------------------------------------------------------------
 SRC="$ROOT/src/mcu_stm32h745/CM7"
 COMMON_INC="-I$ROOT/src/mcu_stm32h745/Common"
+bump_version "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM7 bootloader"
 if compile_dir "$SRC/boot" "$H7/cm7_boot_obj" "$CFLAGS_CM7" "$COMMON_INC"; then
     pass "CM7 bootloader_*.c compiled ($(ls "$SRC/boot"/*.c | wc -l) files)"
 else
@@ -459,8 +520,9 @@ build_bin_hex "$H7/cm7_boot_obj/$CM7_BOOT_NAME.elf"
 cp "$H7/cm7_boot_obj/$CM7_BOOT_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$CM7_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm7_boot_obj/$CM7_BOOT_NAME.elf" | tail -1 | awk '{print $1}') bytes text)"
 
+bump_version "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM7 application"
 arm-none-eabi-gcc $CFLAGS_CM7_APP -I"$SRC" -x c -c "$SRC/STM32H745ZI_CM7_main.c" -o "$H7/cm7_app_obj/STM32H745ZI_CM7_main.o"
-CM7_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR)"
+CM7_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_PATCH)"
 CM7_APP_NAME="HYDRA_KB_CM7_APP_${CM7_APP_VER}"
 if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM7 -T"$SRC/STM32H745ZITx_CM7_APP.ld" \
     "$H7/cm7/startup.o" "$H7/cm7/system_stm32h7xx.o" \
@@ -476,6 +538,7 @@ pass "$CM7_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm7_app_obj/$
 step "10. Kinematic Brain CM4 bootloader (bare-metal CAN-OTA gateway: SPI1+FDCAN1+mailbox) + application (FreeRTOS) - src/mcu_stm32h745/CM4/"
 # -----------------------------------------------------------------------
 SRC="$ROOT/src/mcu_stm32h745/CM4"
+bump_version "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM4 bootloader"
 if compile_dir "$SRC/boot" "$H7/cm4_boot_obj" "$CFLAGS_CM4" "$COMMON_INC"; then
     pass "CM4 bootloader_*.c compiled ($(ls "$SRC/boot"/*.c | wc -l) files)"
 else
@@ -494,8 +557,9 @@ build_bin_hex "$H7/cm4_boot_obj/$CM4_BOOT_NAME.elf"
 cp "$H7/cm4_boot_obj/$CM4_BOOT_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$CM4_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_boot_obj/$CM4_BOOT_NAME.elf" | tail -1 | awk '{print $1}') bytes text)"
 
+bump_version "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM4 application"
 arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -x c -c "$SRC/STM32H745ZI_CM4_main.c" -o "$H7/cm4_app_obj/STM32H745ZI_CM4_main.o"
-CM4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR)"
+CM4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_PATCH)"
 CM4_APP_NAME="HYDRA_KB_CM4_APP_${CM4_APP_VER}"
 if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/STM32H745ZITx_CM4_APP.ld" \
     "$H7/cm4/startup.o" "$H7/cm4/system_stm32h7xx.o" \
@@ -517,14 +581,11 @@ step "11. Firmware manifest (firmware/firmware_manifest.json)"
 # chip's own binaries, so this only runs for a full 'all' build (the
 # default with no target argument, or an explicit 'all').
 if [ "$TARGET" = "all" ]; then
-    if command -v python3 >/dev/null 2>&1; then
-        if python3 "$ROOT/generate_manifest.py" "$ROOT"; then
-            pass "firmware_manifest.json regenerated - see it for exact versions/CRC32 of every component just built"
-        else
-            fail "generate_manifest.py failed - see errors above"
-        fi
+    # python3 is a hard requirement (step 1), so no availability check needed here.
+    if python3 "$ROOT/generate_manifest.py" "$ROOT"; then
+        pass "firmware_manifest.json regenerated - see it for exact versions/CRC32 of every component just built"
     else
-        warn "python3 not found - skipped firmware_manifest.json regeneration (HYDRA-UMC-STUDIO's own GitHub-download feature reads this file)"
+        fail "generate_manifest.py failed - see errors above"
     fi
 else
     echo "  (skipped - only regenerated on a full 'all' build, see this script's own comment)"

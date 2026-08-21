@@ -47,21 +47,30 @@ extern IWDG_HandleTypeDef  hiwdg;
 #define THIS_HARDWARE_ID       0x47343031UL // "G401" - STM32G474RET6, HYDRA-UMC Robot Controller Board revision 1
 
 // FIRMWARE_VERSION_* describes the APPLICATION image (firmware/
-// mcu_stm32g474/STM32G474RE_main.c), not this bootloader itself - only
-// bumped when the user says so, stays at 1.0 otherwise (per project
-// convention, matches BOOTLOADER_VERSION_* below only in shape, not in
-// when each one moves).
+// mcu_stm32g474/STM32G474RE_main.c), not this bootloader itself.
+// Ecosystem-wide versioning policy for THIS repo (unlike sibling repo
+// URTC, where only bootloaders are incremental): ALL 6 HYDRA-UMC
+// components, including this one, are incremental - PATCH bumps by
+// exactly 1 on every real build that produces a new binary for this
+// application, via bump_version.py, called automatically as the first
+// step of "6. Robot Controller Board application" in build_firmware.sh/
+// .bat, BEFORE this header is compiled in. "Odometer" carry rule: PATCH
+// past 9 resets to 0 and MINOR increments (e.g. 1.1.9 -> 1.2.0, never
+// 1.1.10) - same rule BOOTLOADER_VERSION_* below already used. Also
+// embedded in the output filename (HYDRA_RCB_APP_v1.0.0.bin).
 #define FIRMWARE_VERSION_MAJOR 1
 #define FIRMWARE_VERSION_MINOR 0
+#define FIRMWARE_VERSION_PATCH 2
 
 // BOOTLOADER_VERSION_* describes THIS bootloader binary itself. Versioning
-// convention (matches URTC's own): PATCH increments on every change to
-// this partitioned bootloader source OR every new compiled release of it
-// (0-9), then MINOR increments and PATCH resets to 0. Also embedded in the
-// output filename by build_firmware.sh (HYDRA_RCB_BOOTLOADER_v1.0.0.bin).
+// convention (matches URTC's own shape, but NOT its manual-bump timing -
+// see bump_version.py's own header comment): PATCH increments on every
+// real build of this partitioned bootloader source (0-9), then MINOR
+// increments and PATCH resets to 0. Also embedded in the output filename
+// by build_firmware.sh (HYDRA_RCB_BOOTLOADER_v1.0.0.bin).
 #define BOOTLOADER_VERSION_MAJOR 1
 #define BOOTLOADER_VERSION_MINOR 0
-#define BOOTLOADER_VERSION_PATCH 0
+#define BOOTLOADER_VERSION_PATCH 2
 
 // -----------------------------------------------------------------------
 // HMAC-SHA256 signing key - PLACEHOLDER, same caveat as URTC's own key

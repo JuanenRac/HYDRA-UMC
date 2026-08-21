@@ -386,6 +386,22 @@ de estado de la sección 6 y las limitaciones de seguridad conocidas y
 aceptadas de la sección 8) para exactamente qué es real frente a lo que
 sigue abierto.
 
+## 🔢 Versionado
+
+Los 6 componentes de firmware (3 bootloaders + 3 aplicaciones - Robot
+Controller Board STM32G474, Kinematic Brain CM7, Kinematic Brain CM4, un
+par bootloader/aplicación por chip/núcleo) son incrementales en versión:
+`build_firmware.sh`/`.bat` incrementan el PATCH de ese componente en
+exactamente 1 justo antes de compilarlo, mediante `bump_version.py`, de
+modo que cada build real que produce un binario nuevo de un componente
+lleva su propia versión nueva ya incorporada - nunca escrita a mano, nunca
+puede desincronizarse de lo que realmente se compiló. Regla de acarreo
+("cuentakilómetros"): si el PATCH supera 9, se resetea a 0 y el MINOR sube
+en 1 (ej. `1.1.9` -> `1.2.0`, nunca `1.1.10`); si el MINOR supera 9, el
+acarreo sigue hacia el MAJOR de la misma forma. Ver el propio
+`bootloader_common.h` de cada componente y el comentario de cabecera de
+`bump_version.py` para el mecanismo completo.
+
 ## 🔗 Proyectos Relacionados
 
 Este proyecto forma parte de un ecosistema de robótica más amplio del mismo autor (JuanenRac / Electro Hobby 3D). Vale la pena conocerlo, ya que una petición podría en realidad tratarse de uno de estos en vez de este repositorio:

@@ -111,17 +111,17 @@ def main():
 
     g4_h = os.path.join(root, "src", "mcu_stm32g474", "boot", "bootloader_common.h")
     g4_boot_ver = {k: int(read_define(g4_h, f"BOOTLOADER_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
-    g4_app_ver = {k: int(read_define(g4_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor")}
+    g4_app_ver = {k: int(read_define(g4_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
     g4_hwid = read_define(g4_h, "THIS_HARDWARE_ID")
 
     cm7_h = os.path.join(root, "src", "mcu_stm32h745", "CM7", "boot", "bootloader_common.h")
     cm7_boot_ver = {k: int(read_define(cm7_h, f"BOOTLOADER_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
-    cm7_app_ver = {k: int(read_define(cm7_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor")}
+    cm7_app_ver = {k: int(read_define(cm7_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
     cm7_hwid = read_define(cm7_h, "THIS_HARDWARE_ID")
 
     cm4_h = os.path.join(root, "src", "mcu_stm32h745", "CM4", "boot", "bootloader_common.h")
     cm4_boot_ver = {k: int(read_define(cm4_h, f"BOOTLOADER_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
-    cm4_app_ver = {k: int(read_define(cm4_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor")}
+    cm4_app_ver = {k: int(read_define(cm4_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
     cm4_hwid = read_define(cm4_h, "THIS_HARDWARE_ID")
 
     manifest = {
@@ -140,10 +140,16 @@ def main():
             "meaningful compared against an EARLIER manifest's own value for that "
             "exact same component key. Comparing version_code ACROSS different "
             "component keys means nothing.",
-            "version_code = major*10000 + minor*100 + patch (patch=0 for the 3 "
-            "application components, which don't carry one) - bigger is newer, "
+            "version_code = major*10000 + minor*100 + patch - bigger is newer, "
             "safe for simple numeric comparison. Don't compare version_string "
-            "alphabetically.",
+            "alphabetically. All 6 components (3 bootloaders AND 3 "
+            "applications) are incremental: PATCH bumps by 1 on every real "
+            "build that produces a new binary for that component (odometer "
+            "carry rule - PATCH past 9 resets to 0 and MINOR increments, e.g. "
+            "1.1.9 -> 1.2.0, never 1.1.10), applied automatically by "
+            "bump_version.py before that component compiles - see "
+            "build_firmware.sh/.bat and each component's own bootloader_"
+            "common.h for the exact mechanism.",
             "crc32 is computed over the real .bin file exactly as shipped here "
             "(standard CRC-32/ISO-HDLC), the same variant this project's own "
             "bootloaders compute internally during a real update (see each "

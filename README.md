@@ -369,6 +369,21 @@ real motion/vision/relay firmware. See `docs/architecture.md` (especially
 section 6's status table and section 8's known, accepted security
 limitations) for exactly what's real vs. still open.
 
+## 🔢 Versioning
+
+All 6 firmware components (3 bootloaders + 3 applications - Robot
+Controller Board's STM32G474, Kinematic Brain's CM7, Kinematic Brain's
+CM4, one bootloader/application pair per chip/core) are version-
+incremental: `build_firmware.sh`/`.bat` bump that component's own PATCH by
+exactly 1 immediately before compiling it, via `bump_version.py`, so every
+real build that produces a new binary for a component carries its own new
+version baked in - never hand-typed, never able to drift out of sync with
+what actually got compiled. Carry rule (an "odometer"): PATCH past 9
+resets to 0 and MINOR increments by 1 (e.g. `1.1.9` -> `1.2.0`, never
+`1.1.10`); MINOR past 9 carries into MAJOR the same way. See each
+component's own `bootloader_common.h` and `bump_version.py`'s own header
+comment for the full mechanism.
+
 ## 🔗 Related Projects
 
 This project is part of a larger robotics ecosystem by the same author (JuanenRac / Electro Hobby 3D). Worth knowing about, since a request might actually be about one of these rather than this repository:

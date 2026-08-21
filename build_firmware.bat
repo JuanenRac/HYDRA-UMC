@@ -54,6 +54,25 @@ if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 set "BUILD=%ROOT%\build"
 set "FIRMWARE_OUT=%ROOT%\firmware"
 
+REM -----------------------------------------------------------------------
+REM Banner - printed on every run (not just a comment at the top of this
+REM file), so anyone double-clicking this from Explorer or launching it
+REM from a fresh cmd window sees what project/script/author/license they're
+REM looking at before any output scrolls past.
+REM -----------------------------------------------------------------------
+echo =============================================================================
+echo  HYDRA-UMC - firmware build
+echo.
+echo  Installs tools, verifies everything, and compiles HYDRA-UMC's own MCU
+echo  firmware binaries from a clean checkout: Robot Controller Board
+echo  (STM32G474RET6) + Kinematic Brain (STM32H745ZIT6, CM7+CM4) - 6 components
+echo  total (3 bootloaders + 3 applications), all version-incremental (see
+echo  bump_version.py).
+echo.
+echo  Author:  JuanenRac (Electro Hobby 3D^) - electrohobby3d@gmail.com
+echo  License: GPL-3.0 - see LICENSE at repo root
+echo =============================================================================
+
 REM Pinned versions - see docs\COMPILE_STM32G474.TXT section 3 for why pinned
 REM rather than tracking each repo's own latest master.
 set "G4_HAL_REPO=https://github.com/STMicroelectronics/stm32g4xx_hal_driver.git"
@@ -124,6 +143,17 @@ if errorlevel 1 (
     goto :summary
 ) else (
     for /f "delims=" %%v in ('git --version') do echo   OK   git found: %%v
+    set /a PASS+=1
+)
+
+where python >nul 2>&1
+if errorlevel 1 (
+    echo   FAIL python not found - required to run bump_version.py ^(all 6 components are incremental, see this script's own version-bump steps below^) and generate_manifest.py.
+    echo        Install from https://www.python.org/downloads/windows/ and re-run.
+    set /a FAIL+=1
+    goto :summary
+) else (
+    for /f "delims=" %%v in ('python --version') do echo   OK   python found: %%v
     set /a PASS+=1
 )
 
@@ -267,6 +297,7 @@ echo.
 echo === 5. Robot Controller Board bootloader ^(src\mcu_stm32g474\boot\^) - bare-metal CAN-OTA, no FreeRTOS ===
 REM -----------------------------------------------------------------------
 set "SRC=%ROOT%\src\mcu_stm32g474\boot"
+call :BumpVersion "!SRC!\bootloader_common.h" BOOTLOADER_VERSION "Robot Controller Board bootloader"
 set "OUT=!G4!\boot_obj"
 del /q "!OUT!\*.o" 2>nul
 set "SECTION_FAIL=0"
@@ -309,6 +340,7 @@ echo.
 echo === 6. Robot Controller Board application ^(src\mcu_stm32g474\^) - FreeRTOS ===
 REM -----------------------------------------------------------------------
 set "SRC=%ROOT%\src\mcu_stm32g474"
+call :BumpVersion "!SRC!\boot\bootloader_common.h" FIRMWARE_VERSION "Robot Controller Board application"
 set "OUT=!G4!\app_obj"
 del /q "!OUT!\*.o" 2>nul
 arm-none-eabi-gcc %CFLAGS_G4_APP% -I"!SRC!" -x c -c "!SRC!\STM32G474RE_main.c" -o "!OUT!\STM32G474RE_main.o"
@@ -317,10 +349,11 @@ if errorlevel 1 (
     set /a FAIL+=1
     goto :summary
 )
-set "G4_APP_MAJOR=?" & set "G4_APP_MINOR=?"
+set "G4_APP_MAJOR=?" & set "G4_APP_MINOR=?" & set "G4_APP_PATCH=?"
 for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_MAJOR" "!SRC!\boot\bootloader_common.h"') do set "G4_APP_MAJOR=%%v"
 for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_MINOR" "!SRC!\boot\bootloader_common.h"') do set "G4_APP_MINOR=%%v"
-set "G4_APP_NAME=HYDRA_RCB_APP_v!G4_APP_MAJOR!.!G4_APP_MINOR!"
+for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_PATCH" "!SRC!\boot\bootloader_common.h"') do set "G4_APP_PATCH=%%v"
+set "G4_APP_NAME=HYDRA_RCB_APP_v!G4_APP_MAJOR!.!G4_APP_MINOR!.!G4_APP_PATCH!"
 arm-none-eabi-gcc %LDCOMMON_G4% -T"!SRC!\STM32G474RETx_APP.ld" "!G4!\app\startup.o" "!G4!\app\system_stm32g4xx.o" "!OUT!\*.o" "!G4!\hal_obj\*.o" "!G4!\freertos_obj\*.o" -o "!OUT!\!G4_APP_NAME!.elf"
 if errorlevel 1 (
     echo   FAIL Robot Controller Board application: link failed
@@ -499,6 +532,7 @@ echo.
 echo === 9. Kinematic Brain CM7 bootloader ^(bare-metal CAN-OTA, mailbox-relayed^) + application ^(FreeRTOS^) - src\mcu_stm32h745\CM7\ ===
 REM -----------------------------------------------------------------------
 set "SRC=%ROOT%\src\mcu_stm32h745\CM7"
+call :BumpVersion "!SRC!\boot\bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM7 bootloader"
 set "OUT=!H7!\cm7_boot_obj"
 del /q "!OUT!\*.o" 2>nul
 set "SECTION_FAIL=0"
@@ -533,6 +567,7 @@ copy /y "!OUT!\!CM7_BOOT_NAME!.hex" "%FIRMWARE_OUT%\" >nul
 echo   OK   !CM7_BOOT_NAME!.bin/.hex/.elf built
 set /a PASS+=1
 
+call :BumpVersion "!SRC!\boot\bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM7 application"
 set "OUT=!H7!\cm7_app_obj"
 del /q "!OUT!\*.o" 2>nul
 arm-none-eabi-gcc %CFLAGS_CM7_APP% -I"!SRC!" -x c -c "!SRC!\STM32H745ZI_CM7_main.c" -o "!OUT!\STM32H745ZI_CM7_main.o"
@@ -541,10 +576,11 @@ if errorlevel 1 (
     set /a FAIL+=1
     goto :summary
 )
-set "CM7_APP_MAJOR=?" & set "CM7_APP_MINOR=?"
+set "CM7_APP_MAJOR=?" & set "CM7_APP_MINOR=?" & set "CM7_APP_PATCH=?"
 for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_MAJOR" "!SRC!\boot\bootloader_common.h"') do set "CM7_APP_MAJOR=%%v"
 for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_MINOR" "!SRC!\boot\bootloader_common.h"') do set "CM7_APP_MINOR=%%v"
-set "CM7_APP_NAME=HYDRA_KB_CM7_APP_v!CM7_APP_MAJOR!.!CM7_APP_MINOR!"
+for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_PATCH" "!SRC!\boot\bootloader_common.h"') do set "CM7_APP_PATCH=%%v"
+set "CM7_APP_NAME=HYDRA_KB_CM7_APP_v!CM7_APP_MAJOR!.!CM7_APP_MINOR!.!CM7_APP_PATCH!"
 arm-none-eabi-gcc %LDCOMMON_CM7% -T"!SRC!\STM32H745ZITx_CM7_APP.ld" "!H7!\cm7\startup.o" "!H7!\cm7\system_stm32h7xx.o" "!OUT!\*.o" "!H7!\hal_obj_cm7\*.o" "!H7!\cm7_freertos_obj\*.o" -o "!OUT!\!CM7_APP_NAME!.elf"
 if errorlevel 1 (
     echo   FAIL CM7 application: link failed
@@ -564,6 +600,7 @@ echo.
 echo === 10. Kinematic Brain CM4 bootloader ^(bare-metal CAN-OTA gateway: SPI1+FDCAN1+mailbox^) + application ^(FreeRTOS^) - src\mcu_stm32h745\CM4\ ===
 REM -----------------------------------------------------------------------
 set "SRC=%ROOT%\src\mcu_stm32h745\CM4"
+call :BumpVersion "!SRC!\boot\bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM4 bootloader"
 set "OUT=!H7!\cm4_boot_obj"
 del /q "!OUT!\*.o" 2>nul
 set "SECTION_FAIL=0"
@@ -598,6 +635,7 @@ copy /y "!OUT!\!CM4_BOOT_NAME!.hex" "%FIRMWARE_OUT%\" >nul
 echo   OK   !CM4_BOOT_NAME!.bin/.hex/.elf built
 set /a PASS+=1
 
+call :BumpVersion "!SRC!\boot\bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM4 application"
 set "OUT=!H7!\cm4_app_obj"
 del /q "!OUT!\*.o" 2>nul
 arm-none-eabi-gcc %CFLAGS_CM4_APP% -I"!SRC!" -x c -c "!SRC!\STM32H745ZI_CM4_main.c" -o "!OUT!\STM32H745ZI_CM4_main.o"
@@ -606,10 +644,11 @@ if errorlevel 1 (
     set /a FAIL+=1
     goto :summary
 )
-set "CM4_APP_MAJOR=?" & set "CM4_APP_MINOR=?"
+set "CM4_APP_MAJOR=?" & set "CM4_APP_MINOR=?" & set "CM4_APP_PATCH=?"
 for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_MAJOR" "!SRC!\boot\bootloader_common.h"') do set "CM4_APP_MAJOR=%%v"
 for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_MINOR" "!SRC!\boot\bootloader_common.h"') do set "CM4_APP_MINOR=%%v"
-set "CM4_APP_NAME=HYDRA_KB_CM4_APP_v!CM4_APP_MAJOR!.!CM4_APP_MINOR!"
+for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_PATCH" "!SRC!\boot\bootloader_common.h"') do set "CM4_APP_PATCH=%%v"
+set "CM4_APP_NAME=HYDRA_KB_CM4_APP_v!CM4_APP_MAJOR!.!CM4_APP_MINOR!.!CM4_APP_PATCH!"
 arm-none-eabi-gcc %LDCOMMON_CM4% -T"!SRC!\STM32H745ZITx_CM4_APP.ld" "!H7!\cm4\startup.o" "!H7!\cm4\system_stm32h7xx.o" "!OUT!\*.o" "!H7!\hal_obj_cm4\*.o" "!H7!\cm4_freertos_obj\*.o" -o "!OUT!\!CM4_APP_NAME!.elf"
 if errorlevel 1 (
     echo   FAIL CM4 application: link failed
@@ -634,18 +673,14 @@ REM or h745-only) would make generate_manifest.py fail looking for the other
 REM chip's own binaries, so this only runs for a full 'all' build (the
 REM default with no target argument, or an explicit 'all').
 if "%TARGET%"=="all" (
-    where python >nul 2>&1
+    REM python is a hard requirement (step 1), so no availability check needed here.
+    python "%ROOT%\generate_manifest.py" "%ROOT%"
     if errorlevel 1 (
-        echo   WARN python not found - skipped firmware_manifest.json regeneration ^(HYDRA-UMC-STUDIO's own GitHub-download feature reads this file^)
+        echo   FAIL generate_manifest.py failed - see the traceback above
+        set /a FAIL+=1
     ) else (
-        python "%ROOT%\generate_manifest.py" "%ROOT%"
-        if errorlevel 1 (
-            echo   FAIL generate_manifest.py failed - see the traceback above
-            set /a FAIL+=1
-        ) else (
-            echo   OK   firmware_manifest.json regenerated - see it for exact versions/CRC32 of every component just built
-            set /a PASS+=1
-        )
+        echo   OK   firmware_manifest.json regenerated - see it for exact versions/CRC32 of every component just built
+        set /a PASS+=1
     )
 ) else (
     echo   ^(skipped - only regenerated on a full 'all' build, see this script's own comment^)
@@ -664,6 +699,48 @@ echo written. Every _BOOTLOADER binary IS the real CAN-OTA/SPI-OTA protocol
 echo (bare-metal, no FreeRTOS by design) - not yet verified against real
 echo hardware. See each src\*\README.md and docs\architecture.md.
 
+REM Keeps the window open when this script is double-clicked from Explorer,
+REM on success AND on failure - every FAIL path above reaches this same
+REM :summary label via `goto :summary`, so one `pause` here covers all of
+REM them. `pause` itself already no-ops instead of hanging when stdin isn't
+REM a real console (e.g. redirected from NUL or a pipe - the same trick
+REM `build_firmware.bat < NUL` relies on for unattended/automated runs).
+echo.
+pause
+
 endlocal & set "FAIL=%FAIL%"
 if %FAIL% GTR 0 exit /b 1
 exit /b 0
+
+REM =============================================================================
+REM :BumpVersion <header_path> <MACRO_PREFIX> <label>
+REM
+REM Bumps ONE component's own version macro family (BOOTLOADER_VERSION or
+REM FIRMWARE_VERSION) in its bootloader_common.h in place, via bump_version.py
+REM (odometer carry rule: PATCH past 9 -> MINOR+1, PATCH resets to 0 - see
+REM that script's own header comment). Called BEFORE each of the 6 components
+REM below gets compiled, so the just-bumped value is what actually ends up
+REM baked into that binary and in its output filename - never bumped after
+REM the fact. Per this repo's own versioning policy, ALL 6 components (3
+REM bootloaders + 3 applications) are incremental this way, unlike sibling
+REM repo URTC where only the bootloaders are (and there, bumped by hand, not
+REM automatically like here). Reached only via `call :BumpVersion ...` -
+REM never falls into from normal top-to-bottom flow (the `exit /b 0` above
+REM guarantees that).
+REM =============================================================================
+:BumpVersion
+set "BUMP_HDR=%~1"
+set "BUMP_PREFIX=%~2"
+set "BUMP_LABEL=%~3"
+set "BUMP_TMP=%BUILD%\bump_ver.tmp"
+python "%ROOT%\bump_version.py" "%BUMP_HDR%" "%BUMP_PREFIX%" > "%BUMP_TMP%"
+if errorlevel 1 (
+    echo   FAIL %BUMP_LABEL%: version bump failed - see bump_version.py's own error above
+    set /a FAIL+=1
+    goto :summary
+)
+set "BUMP_NEWVER="
+for /f "usebackq delims=" %%v in ("%BUMP_TMP%") do set "BUMP_NEWVER=%%v"
+echo   OK   %BUMP_LABEL% version bumped to v!BUMP_NEWVER! ^(%BUMP_HDR%^)
+set /a PASS+=1
+goto :eof

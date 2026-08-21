@@ -389,6 +389,22 @@ reale Bewegungs-/Vision-/Relais-Firmware. Siehe `docs/architecture.md`
 akzeptierten Sicherheitseinschränkungen von Abschnitt 8) für das, was genau
 real ist gegenüber dem, was noch offen ist.
 
+## 🔢 Versionierung
+
+Alle 6 Firmware-Komponenten (3 Bootloader + 3 Anwendungen - Robot
+Controller Board STM32G474, Kinematic Brain CM7, Kinematic Brain CM4, je
+ein Bootloader-/Anwendungspaar pro Chip/Kern) sind versionsinkrementell:
+`build_firmware.sh`/`.bat` erhöhen den PATCH-Wert dieser Komponente um
+genau 1, unmittelbar bevor sie kompiliert wird, über `bump_version.py` -
+jeder echte Build, der ein neues Binary für eine Komponente erzeugt, trägt
+also seine eigene neue Version bereits eingebacken, nie von Hand
+eingetragen, nie in der Lage, vom tatsächlich Kompilierten abzuweichen.
+Übertragsregel (ein "Kilometerzähler"): überschreitet PATCH 9, wird er auf
+0 zurückgesetzt und MINOR um 1 erhöht (z. B. `1.1.9` -> `1.2.0`, niemals
+`1.1.10`); überschreitet MINOR 9, trägt es auf dieselbe Weise in MAJOR
+über. Siehe die eigene `bootloader_common.h` jeder Komponente sowie den
+Header-Kommentar von `bump_version.py` für den vollständigen Mechanismus.
+
 ## 🔗 Verwandte Projekte
 
 Dieses Projekt ist Teil eines größeren Robotik-Ökosystems desselben Autors (JuanenRac / Electro Hobby 3D). Gut zu wissen, da eine Anfrage tatsächlich eines dieser Projekte betreffen könnte statt dieses Repository:

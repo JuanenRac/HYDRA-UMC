@@ -50,12 +50,20 @@ extern IWDG_HandleTypeDef  hiwdg;
 #define FLASH_PAGE_SIZE       0x800UL // 2048 bytes - logical OTA transfer-chunk size, not hardware erase granularity (see ../../CM7/boot/bootloader_flash.c's own header, identical reasoning here)
 
 #define THIS_HARDWARE_ID       0x48374334UL // "H7C4" - STM32H745ZIT6 CM4 core, HYDRA-UMC Kinematic Brain revision 1
+// FIRMWARE_VERSION_* (this core's application) and BOOTLOADER_VERSION_*
+// (this bootloader) are BOTH incremental - PATCH bumps by 1 on every real
+// build of that component, via bump_version.py, called automatically by
+// build_firmware.sh/.bat before this header is compiled in. Odometer carry
+// rule (PATCH past 9 -> MINOR+1, PATCH resets to 0) - full reasoning in
+// src/mcu_stm32g474/boot/bootloader_common.h's own header comment, same
+// rule applies here verbatim.
 #define FIRMWARE_VERSION_MAJOR 1
 #define FIRMWARE_VERSION_MINOR 0
+#define FIRMWARE_VERSION_PATCH 2
 
 #define BOOTLOADER_VERSION_MAJOR 1
 #define BOOTLOADER_VERSION_MINOR 0
-#define BOOTLOADER_VERSION_PATCH 0
+#define BOOTLOADER_VERSION_PATCH 2
 
 extern const uint8_t HMAC_KEY[32];
 
