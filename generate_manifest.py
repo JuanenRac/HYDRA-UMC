@@ -48,7 +48,11 @@ def read_define(path, name):
             f"manifest NOT written, check this script's own regex against that "
             f"file's real current content before trusting anything else here."
         )
-    return m.group(1).rstrip("UL")
+    # C integer-literal suffix (U/L in any case/order, e.g. "UL", "ul", "LU")
+    # - a real suffix strip, not str.rstrip()'s "trim any trailing chars from
+    # this set" semantics (which happened to give the same result here only
+    # because no real #define value in this codebase ends in a literal U/L).
+    return re.sub(r"(?i)[ul]+$", "", m.group(1))
 
 
 def find_versioned_bin(fw_out, prefix):

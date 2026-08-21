@@ -60,8 +60,16 @@ Pin  | Signal      | Notes
 -----+-------------+------------------------------------------------------
 PC0  | BOARD_ID_0  | GPIO input, LSB. Pulled to a defined level by a local
 PC1  | BOARD_ID_1  | GPIO input.       3-position DIP switch/jumper block -
-PC2  | BOARD_ID_2  | GPIO input, MSB.  see section 6a-6c below for the pull
-     |             |                   convention and hardware.PCB/BOM entry.
+PC2  | BOARD_ID_2  | GPIO input, MSB.  see pull convention below. BOM entry:
+     |             |                   hardware/PCB/robot_controller_board_
+     |             |                   stm32g474/BOM.TXT item 10.
+
+Pull convention (matches the real firmware, src/mcu_stm32g474/boot/
+bootloader_main.c's ReadSlotBaseId()): all 3 pins are configured
+GPIO_PULLDOWN internally. A closed switch position pulls its pin HIGH to
+encode a '1' bit; an open position leaves the internal pulldown in charge,
+reading as '0'. An unpopulated/all-open switch therefore reads as slot 0 -
+a safe, defined default rather than a floating/undefined input.
 
 --------------------------------------------------------------------------------
 2. 6x TMC5160A STEPPER DRIVERS - one per robot axis (axis numbering is

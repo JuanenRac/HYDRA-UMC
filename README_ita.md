@@ -39,7 +39,7 @@ flowchart TB
 ### 🤖 Capacità della Micro-Fabbrica:
 * 📡 **Rete Multi-Robot Distribuita:** Coordina fino a 8 moduli robotici slave distribuiti (es. bracci robotici Parol6, testine utensile e assi ausiliari) collegati su un unico bus fisico FDCAN.
 * 🧠 **Supercalcolo di Visione Neurale Embedded:** Coprocessore Hailo-8 M.2 PCIe onboard (26 TOPS) che abilita il rilevamento oggetti multi-stream YOLOv8/YOLO11, l'ispezione difetti e l'allineamento fiduciale PnP in tempo reale su tutte e 8 le camere.
-* 📐 **Stadio Locale a 6 Assi:** Generazione diretta di impulsi step/dir/enable per 6 assi locali (X, Y, Z, A, B, C) che azionano sistemi di posizionamento cartesiano, indexer o gantry locali.
+* 📐 **Stadio Locale a 6 Assi:** Generazione diretta di impulsi step/dir/enable per 6 assi locali (X, Y1, Y2, Z, E0, E1) che azionano sistemi di posizionamento cartesiano, indexer o gantry locali.
 * 🎯 **Integrazione JuanenPNP e JuanenCNC:** Direttamente compatibile con sistemi Pick-and-Place (strutture hardware LumenPNP) e unità CNC dotate di moduli laser ottico da 10W per la prototipazione PCB e il posizionamento SMD.
 * 👁️ **Matrice di Visione e Ispezione Octal a Camera:** Doppio controller USB 3.0 integrato che alimenta 8 porte camera USB dedicate per l'allineamento ottico pick-and-place con OpenCV in tempo reale, l'ispezione termica e il monitoraggio remoto dello streaming.
 * ⚡ **Matrice di Attuazione e Gestione Termica:** Controlla 16 canali industriali MOSFET low-side (8 valvole elettropneumatiche + 8 pompe per vuoto/generatori venturi) e driver del piano riscaldato ad alta corrente per la saldatura a rifusione SMD o i piani di stampa 3D.

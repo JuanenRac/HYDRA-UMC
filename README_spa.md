@@ -39,7 +39,7 @@ flowchart TB
 ### 🤖 Capacidades de la Micro-Fábrica:
 * 📡 **Red Multi-Robot Distribuida:** Coordina hasta 8 módulos robóticos esclavos distribuidos (p. ej., brazos robóticos Parol6, cabezales de herramienta y ejes auxiliares) conectados a través de un único bus físico FDCAN.
 * 🧠 **Supercomputación de Visión Neuronal Embebida:** Coprocesador Hailo-8 M.2 por PCIe a bordo (26 TOPS) que permite detección de objetos multi-flujo YOLOv8/YOLO11, inspección de defectos y alineación de fiduciales PnP en tiempo real en las 8 cámaras.
-* 📐 **Etapa Local de 6 Ejes:** Generación directa de pulsos step/dir/enable para 6 ejes locales (X, Y, Z, A, B, C) que accionan sistemas de posicionamiento cartesiano, indexadores o pórticos (gantries) locales.
+* 📐 **Etapa Local de 6 Ejes:** Generación directa de pulsos step/dir/enable para 6 ejes locales (X, Y1, Y2, Z, E0, E1) que accionan sistemas de posicionamiento cartesiano, indexadores o pórticos (gantries) locales.
 * 🎯 **Integración con JuanenPNP y JuanenCNC:** Directamente compatible con sistemas de Pick-and-Place (estructuras de hardware LumenPNP) y unidades CNC equipadas con módulos de láser óptico de 10W para prototipado de PCB y colocación SMD.
 * 👁️ **Matriz de Visión e Inspección Óctuple por Cámara:** Doble controlador USB 3.0 integrado que alimenta 8 puertos de cámara USB dedicados para alineación óptica pick-and-place con OpenCV en tiempo real, inspección térmica y monitorización remota de flujo de vídeo.
 * ⚡ **Matriz de Actuación y Gestión Térmica:** Controla 16 canales industriales de MOSFET de lado bajo (8 válvulas electroneumáticas + 8 bombas de vacío/generadores venturi) y drivers de cama de alta corriente para soldadura por reflujo SMD o camas de impresión 3D.

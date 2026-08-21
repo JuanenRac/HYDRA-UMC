@@ -30,6 +30,8 @@ Item | Qty | Designator | Component / Part Number              | Package / Footp
  18  |  1  | -          | MIPI-DSI FPC connector                   | FPC                  | Touch display interface (README.md section 11) - not the CM5's own DF40, this board's own local FPC to the panel
  19  |  1  | U12        | Genesys Logic GL850G or FE1.1s (TBD)     | SSOP-28 or similar   | USB 2.0 hub, fans out CM5's single native USB2 PHY to 2 ports - README.md section 4a, docs/PINOUT_CM5_CARRIER.TXT
  20  |  2  | -          | USB 2.0 Type-A                            | THT/SMD              | Gamepad/mouse/keyboard ports (README.md section 4a)
+ 21  |  1  | F1         | TBD - resettable PTC fuse or fast-blow fuse | TBD                | Overcurrent protection on the board's single 24V DC main input (README.md section 9), upstream of every onboard regulator (items 07-09) and of the +24V_BUS pins this board forwards onto the STACK A connector (item 11) - protects the whole board plus every downstream Robot Controller Board from an input-side fault. Rating TBD until the real combined load (regulators + up to 8 stacked boards' worth of stepper current) is known - not guessed here.
+ 22  |  1  | F2         | TBD - mains-rated fuse (230VAC)           | TBD                  | Overcurrent protection in series with the LIVE conductor feeding the heated bed solid-state relay (item 15) - same mains-voltage circuit as that relay (docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 8/10: real creepage/clearance, opto-isolated trigger), NOT a 24V-bus part. Rating TBD until the heated bed's real wattage is specified.
 
 Datasheets for most of these already exist at ../../../docs/datasheets/
 (STM32H745ZIT6.pdf, GL3523.pdf, Hailo-8 family, Raspberry Pi CM5.pdf) -

@@ -39,7 +39,7 @@ flowchart TB
 ### 🤖 Capacités de la Micro-Usine :
 * 📡 **Réseau Multi-Robot Distribué :** Coordonne jusqu'à 8 modules robotiques esclaves distribués (p. ex. bras robotiques Parol6, têtes d'outils et axes auxiliaires) connectés via un unique bus physique FDCAN.
 * 🧠 **Supercalcul de Vision Neuronale Embarqué :** Coprocesseur Hailo-8 M.2 PCIe embarqué (26 TOPS) permettant la détection d'objets multi-flux YOLOv8/YOLO11, l'inspection de défauts et l'alignement de repères fiduciaires PnP en temps réel sur les 8 caméras.
-* 📐 **Étage Local 6 Axes :** Génération directe d'impulsions step/dir/enable pour 6 axes locaux (X, Y, Z, A, B, C) pilotant des systèmes de positionnement cartésien, des indexeurs, ou des portiques locaux.
+* 📐 **Étage Local 6 Axes :** Génération directe d'impulsions step/dir/enable pour 6 axes locaux (X, Y1, Y2, Z, E0, E1) pilotant des systèmes de positionnement cartésien, des indexeurs, ou des portiques locaux.
 * 🎯 **Intégration JuanenPNP et JuanenCNC :** Directement compatible avec les systèmes Pick-and-Place (structures matérielles LumenPNP) et les unités CNC équipées de modules laser optiques de 10W pour le prototypage de PCB et le placement SMD.
 * 👁️ **Matrice de Vision et d'Inspection Octuple par Caméra :** Double contrôleur USB 3.0 intégré alimentant 8 ports caméra USB dédiés pour l'alignement optique pick-and-place OpenCV en temps réel, l'inspection thermique, et la surveillance de flux vidéo à distance.
 * ⚡ **Matrice d'Actionnement et Gestion Thermique :** Contrôle 16 canaux MOSFET industriels côté bas (8 électrovannes pneumatiques + 8 pompes à vide/générateurs venturi) et des drivers de plateau chauffant haute intensité pour le brasage par refusion SMD ou les plateaux d'impression 3D.
