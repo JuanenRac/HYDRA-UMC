@@ -3,6 +3,15 @@
 </p>
 
 # 🚀 SPECIFICA TECNICA DI HYDRA-UMC
+
+<p align="center">
+  <a href="README.md">🇺🇸 English</a> |
+  <a href="README_spa.md">🇪🇸 Español</a> |
+  <a href="README_fra.md">🇫🇷 Français</a> |
+  🇮🇹 <b>Italiano</b> |
+  <a href="README_deu.md">🇩🇪 Deutsch</a>
+</p>
+
 ### 🤖 La Piattaforma Definitiva di Micro-Fabbrica a Doppio Nucleo e Controller Multi-Robot (V1.0 - Acceleratore IA Hailo-8 PCIe e Doppio Hub USB 3.0)
 
 <p align="left">
