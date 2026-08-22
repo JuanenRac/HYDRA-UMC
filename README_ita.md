@@ -5,6 +5,15 @@
 # 🚀 SPECIFICA TECNICA DI HYDRA-UMC
 ### 🤖 La Piattaforma Definitiva di Micro-Fabbrica a Doppio Nucleo e Controller Multi-Robot (V1.0 - Acceleratore IA Hailo-8 PCIe e Doppio Hub USB 3.0)
 
+<p align="left">
+  <img src="https://img.shields.io/badge/Licenza-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="CERN OHL-S">
+  <img src="https://img.shields.io/badge/Linguaggio-C11-00599C.svg" alt="C">
+  <img src="https://img.shields.io/badge/Piattaforma-STM32H745-003551.svg" alt="STM32">
+  <img src="https://img.shields.io/badge/Bus-FDCAN-yellow.svg" alt="FDCAN">
+</p>
+
+
 ---
 
 ## 1. 🛠️ PANORAMICA DEL PROGETTO E DELL'ECOSISTEMA MICRO-FABBRICA

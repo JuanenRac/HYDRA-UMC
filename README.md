@@ -5,6 +5,15 @@
 # 🚀 HYDRA-UMC TECHNICAL SPECIFICATION
 ### 🤖 The Ultimate Dual-Core Micro-Factory & Multi-Robot Controller Platform (V1.0 - PCIe Hailo-8 AI Accelerator & Dual USB 3.0 Hubs)
 
+<p align="left">
+  <img src="https://img.shields.io/badge/License-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="CERN OHL-S">
+  <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="C">
+  <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="STM32">
+  <img src="https://img.shields.io/badge/Bus-FDCAN-yellow.svg" alt="FDCAN">
+</p>
+
+
 ---
 
 ## 1. 🛠️ PROJECT OVERVIEW & THE MICRO-FACTORY ECOSYSTEM

@@ -5,6 +5,15 @@
 # 🚀 SPÉCIFICATION TECHNIQUE DE HYDRA-UMC
 ### 🤖 La Plateforme Ultime de Micro-Usine à Double Cœur et Contrôleur Multi-Robot (V1.0 - Accélérateur IA Hailo-8 PCIe et Double Hub USB 3.0)
 
+<p align="left">
+  <img src="https://img.shields.io/badge/Licence-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="CERN OHL-S">
+  <img src="https://img.shields.io/badge/Langage-C11-00599C.svg" alt="C">
+  <img src="https://img.shields.io/badge/Plateforme-STM32H745-003551.svg" alt="STM32">
+  <img src="https://img.shields.io/badge/Bus-FDCAN-yellow.svg" alt="FDCAN">
+</p>
+
+
 ---
 
 ## 1. 🛠️ VUE D'ENSEMBLE DU PROJET ET DE L'ÉCOSYSTÈME MICRO-USINE
