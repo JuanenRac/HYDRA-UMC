@@ -26,6 +26,23 @@
  *     update FreeRTOSConfig.h's own configCPU_CLOCK_HZ in the same commit
  *     that fixes this, or every FreeRTOS tick/delay silently goes wrong
  *
+ * WATCHDOG NOTE (found auditing this file, not a pre-existing TODO): IWDG1
+ * is independent hardware that, once started, survives NVIC_SystemReset()
+ * AND a bootloader->application jump alike - HAL_DeInit()/HAL_RCC_DeInit()
+ * (called by ../boot/bootloader_protocol.c's own JumpToApplication() right
+ * before landing here) do not and cannot touch it. The bootloader
+ * (../boot/bootloader_main.c) arms IWDG1 (Prescaler=32, Reload=4095, ~4s
+ * timeout at the assumed 32kHz LSI) as literally its first action in
+ * main() - so by the time this application's own main() below starts
+ * running, that same countdown is already ticking with an unknown amount
+ * of budget left, and nothing in this file used to touch IWDG1 at all.
+ * Left unrefreshed, real hardware would reset roughly every 4 seconds
+ * forever (bootloader re-arms, jumps back here, resets again) - the exact
+ * same IWDG_Instance/Prescaler/Reload are reasserted below (re-asserting
+ * matching values is a harmless no-op on already-running IWDG hardware)
+ * purely so this file has its own local handle to refresh from the blink
+ * task, not to change the timeout the bootloader already set.
+ *
  * PIN: PG9 - one of the 3 explicitly-spare GPIOs in this chip's real
  * pinout (docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 9c), used here
  * only because it's genuinely unclaimed - PB0 (the previous placeholder)
@@ -44,6 +61,8 @@
 #include "task.h"
 #include "stm32h7xx_hal.h"
 
+static IWDG_HandleTypeDef hiwdg;
+
 static void GPIO_Init(void)
 {
   __HAL_RCC_GPIOG_CLK_ENABLE();
@@ -60,6 +79,7 @@ static void vBlinkTask(void *pvParameters)
 {
   (void)pvParameters;
   for (;;) {
+    HAL_IWDG_Refresh(&hiwdg); /* see this file's own header WATCHDOG NOTE - the bootloader's ~4s IWDG1 survives the jump into here unrefreshed otherwise */
     HAL_GPIO_TogglePin(GPIOG, GPIO_PIN_9);
     vTaskDelay(pdMS_TO_TICKS(250));
   }
@@ -67,6 +87,16 @@ static void vBlinkTask(void *pvParameters)
 
 int main(void)
 {
+  /* Re-arm/refresh this same IWDG1 the bootloader already started (see
+   * this file's own header WATCHDOG NOTE) as the very first action here,
+   * before HAL_Init() - same "don't leave an already-ticking countdown
+   * unattended any longer than necessary" reasoning the bootloader itself
+   * applies to its own first line of main(). */
+  hiwdg.Instance = IWDG1;
+  hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
+  hiwdg.Init.Reload = 4095;
+  HAL_IWDG_Init(&hiwdg);
+
   HAL_Init();
 
   /* Real clock tree (HSE + PLL1 to 480 MHz) and dual-core bring-up (CM4

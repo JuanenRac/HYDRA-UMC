@@ -55,17 +55,25 @@ static void DispatchCommand(uint8_t ofs, uint8_t *data, uint8_t dlc) {
 }
 
 int main(void) {
-    HAL_Init();
-    SystemClock_Config();
-    __HAL_RCC_HSEM_CLK_ENABLE();
-
-    // Same IWDG shape as every other bootloader in this project - see this
-    // file's own header comment on why the exact prescaler/reload is still
-    // a placeholder.
+    // IWDG armed as the very first action in main(), before HAL_Init() -
+    // if HAL_Init()/SystemClock_Config() themselves ever got stuck, the
+    // watchdog is already ticking and will still recover the board
+    // instead of leaving the chip wedged with no independent watchdog
+    // running yet. Safe this early: IWDG1 runs off its own always-on LSI
+    // domain (no RCC/clock-tree dependency), and HAL_IWDG_Init()'s PVU/RVU
+    // register-update-flag wait polls hardware status bits directly, not
+    // HAL_GetTick() - so it doesn't need HAL_Init()'s SysTick config to
+    // have run first either. Same IWDG shape as every other bootloader in
+    // this project - see this file's own header comment on why the exact
+    // prescaler/reload is still a placeholder.
     hiwdg.Instance = IWDG1; // CM7 owns IWDG1, CM4 owns IWDG2 - two independent watchdogs, matching this chip's own dual-core independence (docs/architecture.md section 2)
     hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
     hiwdg.Init.Reload = 4095; // generous placeholder - TODO tune against real 128KB sector-erase timing once measured on real hardware, see bootloader_flash.c's own header
     HAL_IWDG_Init(&hiwdg);
+
+    HAL_Init();
+    SystemClock_Config();
+    __HAL_RCC_HSEM_CLK_ENABLE();
 
     uint8_t app_valid = ApplicationIsValid();
 

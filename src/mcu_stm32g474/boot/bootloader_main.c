@@ -168,16 +168,18 @@ static void MX_FDCAN1_Init(void) {
 static uint32_t last_heartbeat_tick = 0 - 1000; // forces an immediate heartbeat on the first check
 
 int main(void) {
-    HAL_Init();
-    SystemClock_Config();
-
-    uint32_t slot_base = ReadSlotBaseId();
-    Protocol_Init(slot_base);
-
-    MX_FDCAN1_Init();
-
-    // Same IWDG config shape as URTC's own bootloader (independent watchdog
-    // - survives NVIC_SystemReset(), so a 0x-relative-ENTER_BOOTLOADER-
+    // IWDG armed as the very first action in main(), before HAL_Init() -
+    // if HAL_Init()/SystemClock_Config() themselves ever got stuck (bad
+    // flash wait-state config, stuck oscillator-ready wait loop), the
+    // watchdog is already ticking and will still recover the board,
+    // instead of leaving the chip wedged with no independent watchdog
+    // running yet. Safe to call this early: IWDG runs off its own
+    // always-on LSI domain (no RCC/clock-tree dependency), and
+    // HAL_IWDG_Init()'s PVU/RVU register-update-flag wait polls hardware
+    // status bits directly, not HAL_GetTick() - so it doesn't need
+    // HAL_Init()'s SysTick config to have run first either. Same IWDG
+    // config shape as URTC's own bootloader (independent watchdog -
+    // survives NVIC_SystemReset(), so a 0x-relative-ENTER_BOOTLOADER-
     // triggered reset inherits an already-ticking countdown). Prescaler/
     // Reload here are placeholders matching this project's own
     // FreeRTOSConfig.h note on LSI/clock-tree still being TODO - re-tune
@@ -187,6 +189,14 @@ int main(void) {
     hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
     hiwdg.Init.Reload = 999;
     HAL_IWDG_Init(&hiwdg);
+
+    HAL_Init();
+    SystemClock_Config();
+
+    uint32_t slot_base = ReadSlotBaseId();
+    Protocol_Init(slot_base);
+
+    MX_FDCAN1_Init();
 
     uint8_t app_valid = ApplicationIsValid();
 

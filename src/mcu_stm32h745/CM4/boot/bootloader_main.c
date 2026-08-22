@@ -212,17 +212,26 @@ static uint8_t DispatchFrame(SpiOtaFrame_t *in, uint8_t tx_wire[SPI_FRAME_SIZE])
 static uint32_t last_heartbeat_tick = 0 - 1000;
 
 int main(void) {
+    // IWDG armed as the very first action in main(), before HAL_Init() -
+    // if HAL_Init()/SystemClock_Config() themselves ever got stuck, the
+    // watchdog is already ticking and will still recover the board
+    // instead of leaving the chip wedged with no independent watchdog
+    // running yet. Safe this early: IWDG2 runs off its own always-on LSI
+    // domain (no RCC/clock-tree dependency), and HAL_IWDG_Init()'s PVU/RVU
+    // register-update-flag wait polls hardware status bits directly, not
+    // HAL_GetTick() - so it doesn't need HAL_Init()'s SysTick config to
+    // have run first either.
+    hiwdg.Instance = IWDG2; // CM4 owns IWDG2 (CM7 owns IWDG1) - independent per-core watchdogs, docs/architecture.md section 2
+    hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
+    hiwdg.Init.Reload = 4095; // generous placeholder, same TODO as CM7's own bootloader_main.c
+    HAL_IWDG_Init(&hiwdg);
+
     HAL_Init();
     SystemClock_Config();
     __HAL_RCC_HSEM_CLK_ENABLE();
 
     MX_SPI1_Init();
     MX_FDCAN1_Init();
-
-    hiwdg.Instance = IWDG2; // CM4 owns IWDG2 (CM7 owns IWDG1) - independent per-core watchdogs, docs/architecture.md section 2
-    hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
-    hiwdg.Init.Reload = 4095; // generous placeholder, same TODO as CM7's own bootloader_main.c
-    HAL_IWDG_Init(&hiwdg);
 
     uint8_t app_valid = ApplicationIsValid();
 
