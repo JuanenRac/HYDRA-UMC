@@ -55,9 +55,9 @@ flowchart TB
 ```
 
 ### 🤖 Mikrofabrik-Fähigkeiten:
-* 📡 **Verteiltes Multi-Roboter-Netzwerk:** Koordiniert bis zu 8 verteilte robotische Slave-Module (z. B. Parol6-Roboterarme, Werkzeugköpfe und Hilfsachsen), die über einen einzigen physischen FDCAN-Bus verbunden sind.
+* 📡 **Verteiltes Multi-Roboter-Netzwerk:** Koordiniert bis zu 8 verteilte robotische Slave-Module (3, 4, 5 und 6 Achsen werden heute unterstützt; Skalierung auf 7, 8, 9 Achsen und Dual-Roboter-Architekturen in zukünftigen Versionen), die über einen einzigen physischen FDCAN-Bus verbunden sind.
 * 🧠 **Eingebettetes neuronales Vision-Supercomputing:** Onboard-PCIe-M.2-Hailo-8-Coprozessor (26 TOPS), der Multi-Stream-YOLOv8/YOLO11-Objekterkennung, Fehlerinspektion und Echtzeit-PnP-Fiducial-Ausrichtung über alle 8 Kameras ermöglicht.
-* 📐 **Lokale 6-Achsen-Stufe:** Direkte Step/Dir/Enable-Impulserzeugung für 6 lokale Achsen (X, Y1, Y2, Z, E0, E1), die kartesische Positioniersysteme, Indexierer oder lokale Portale antreiben.
+* 📐 **Lokale 6-Achsen-Stufe:** Direkte Step/Dir/Enable-Impulserzeugung für 6 lokale Achsen (X, Y1, Y2, Z, E0, E1) für Zusatzbedarfe: zusätzliche Roboter, ATC-Revolver (automatischer Werkzeugwechsler), Förderbandsynchronisation oder XYZ-Tischportale.
 * 🎯 **JuanenPNP- und JuanenCNC-Integration:** Direkt kompatibel mit Pick-and-Place-Systemen (LumenPNP-Hardwarestrukturen) und CNC-Einheiten, die mit 10W-optischen Lasermodulen für PCB-Prototyping und SMD-Bestückung ausgestattet sind.
 * 👁️ **Octal-Kamera-Vision- und Inspektionsmatrix:** Integrierte doppelte USB-3.0-Controller, die 8x dedizierte USB-Kameraports für Echtzeit-OpenCV-Pick-and-Place-optische Ausrichtung, Wärmeinspektion und Fernstream-Überwachung ansteuern.
 * ⚡ **Ansteuerungsmatrix und Wärmemanagement:** Steuert 16 industrielle Low-Side-MOSFET-Kanäle (8 elektropneumatische Ventile + 8 Vakuumpumpen/Venturi-Generatoren) sowie Hochstrom-Bett-Treiber für SMD-Reflow-Löten oder 3D-Druckbetten.

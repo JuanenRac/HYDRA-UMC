@@ -55,9 +55,9 @@ flowchart TB
 ```
 
 ### 🤖 Micro-Factory Capabilities:
-* 📡 **Distributed Multi-Robot Network:** Coordinates up to 8 distributed slave robotic modules (e.g., Parol6 robotic arms, toolheads, and auxiliary axes) connected over a single physical FDCAN bus.
+* 📡 **Distributed Multi-Robot Network:** Coordinates up to 8 distributed slave robotic modules (3, 4, 5, and 6-DOF supported today; scaling up to 7, 8, 9-DOF and Dual-Robot architectures in future releases) connected over a single physical FDCAN bus.
 * 🧠 **Embedded Neural Vision Supercomputing:** Onboard PCIe M.2 Hailo-8 Coprocessor (26 TOPS) enabling multi-stream YOLOv8/YOLO11 object detection, defect inspection, and real-time PnP fiducial alignment across all 8 cameras.
-* 📐 **Local 6-Axis Stage:** Direct step/dir/enable pulse generation for 6 local axes (X, Y1, Y2, Z, E0, E1) driving Cartesian positioning systems, indexers, or local gantries.
+* 📐 **Local 6-Axis Stage:** Direct step/dir/enable pulse generation for 6 local axes (X, Y1, Y2, Z, E0, E1) for auxiliary needs: additional robots, ATC (Automatic Tool Changer) revolvers, conveyor belt synchronization, or XYZ table gantries.
 * 🎯 **JuanenPNP & JuanenCNC Integration:** Directly compatible with Pick-and-Place systems (LumenPNP hardware structures) and CNC units equipped with 10W optical laser modules for PCB prototyping and SMD placement.
 * 👁️ **Octal Camera Vision & Inspection Matrix:** Integrated dual USB 3.0 controllers driving 8x dedicated USB camera ports for real-time OpenCV pick-and-place optical alignment, thermal inspection, and remote stream monitoring.
 * ⚡ **Actuation Matrix & Thermal Management:** Controls 16 industrial low-side MOSFET channels (8 electropneumatic valves + 8 vacuum pumps/venturi generators) and high-current bed drivers for SMD reflow soldering or 3D printing beds.
