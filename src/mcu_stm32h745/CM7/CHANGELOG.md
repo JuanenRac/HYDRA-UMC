@@ -18,6 +18,8 @@ as part of making this component incremental.
 
 | Version | Notes |
 |---|---|
+| **1.0.6** | Same fix as the G474 application's own 1.0.6 entry (hallazgo #110, full-ecosystem audit): this application inherits the watchdog already armed by its own bootloader (survives `HAL_DeInit()`) but never touched it - added this application's own `IWDG_HandleTypeDef` (matching the bootloader's Instance/Prescaler/Reload) plus a periodic refresh in its own task loop, avoiding a perpetual reset loop on real hardware. (1.0.4 was a verification build, no source changes; 1.0.5 was an orphaned intermediate build superseded by this one.) |
+| **1.0.4** | Verification build - same build-mechanism verification pattern as 1.0.1-1.0.3. No source changes to this application itself. |
 | **1.0.3** | Verification build - confirms `build_firmware.bat` (the Windows mirror of `build_firmware.sh`) calls the exact same `bump_version.py` step and increments this application's own version identically to the Linux/Mac script. No source changes to this application itself. |
 | **1.0.2** | Verification build - second of two consecutive builds run to confirm `bump_version.py` correctly increments this application's own version build over build. No source changes to this application itself. |
 | **1.0.1** | Verification build - first of two consecutive builds run to confirm the automatic version-bump mechanism increments `FIRMWARE_VERSION_PATCH` correctly (the field itself is new as of this same change - see this file's own header note) and that the bumped value is what actually ends up in the compiled binary's output filename. No source changes to this application itself. |

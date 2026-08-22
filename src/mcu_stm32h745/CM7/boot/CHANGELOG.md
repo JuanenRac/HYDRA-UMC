@@ -18,6 +18,8 @@ drift out of sync with what was actually compiled.
 
 | Version | Notes |
 |---|---|
+| **1.0.6** | Same fix as the G474 bootloader's own 1.0.6 entry (hallazgo #110, full-ecosystem audit): `HAL_IWDG_Init()` was being called after `HAL_Init()`/`SystemClock_Config()` in `main()`, leaving startup unwatched until that point - moved to the first line of `main()`. (1.0.4 was a verification build, no source changes; 1.0.5 was an orphaned intermediate build superseded by this one.) |
+| **1.0.4** | Verification build - same build-mechanism verification pattern as 1.0.1-1.0.3. No source changes to this bootloader itself. |
 | **1.0.3** | Verification build - confirms `build_firmware.bat` (the Windows mirror of `build_firmware.sh`) calls the exact same `bump_version.py` step and increments this bootloader's own version identically to the Linux/Mac script. No source changes to this bootloader itself. |
 | **1.0.2** | Verification build - second of two consecutive builds run to confirm `bump_version.py` correctly increments this bootloader's own version build over build. No source changes to this bootloader itself. |
 | **1.0.1** | Verification build - first of two consecutive builds run to confirm the automatic version-bump mechanism increments `BOOTLOADER_VERSION_PATCH` correctly and that the bumped value is what actually gets baked into the compiled binary and its output filename. No source changes to this bootloader itself. |
