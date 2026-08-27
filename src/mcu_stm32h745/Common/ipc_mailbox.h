@@ -26,8 +26,7 @@
 // CM7 ever reads .cmd / writes .resp - no locking beyond the two HSEM
 // channels is needed because each field only ever has ONE writer.
 //
-// CACHE COHERENCY (checked against SONNET/AUDITORIA_COMPLETA_44_PROYECTOS.txt
-// #1, "race condition CM7<->CM4"): NOT a race as currently built - CM7's
+// CACHE COHERENCY: NOT a race as currently built - CM7's
 // bootloader never calls SCB_EnableDCache() (grepped, none exist anywhere
 // under CM7/boot/ - SystemClock_Config() there is still an explicit TODO,
 // see that file's own header), and a Cortex-M7 resets with its D-Cache
