@@ -359,16 +359,3 @@ HYDRA-UMC 版权所有 (c) 2026 JuanenRac（Electro Hobby 3D）。任何形式�
 3. **文档**（本 README、维修手册，以及 `./docs` 下的参考文件）采用 **知识共享 署名-相同方式共享 4.0 国际版（CC BY-SA 4.0）**。完整文本见 https://creativecommons.org/licenses/by-sa/4.0/ 。
 
 若你基于本项目进行二次开发，请留意这一许可协议的划分：对固件或烧录工具的代码修改应保持 GPL-3.0，硬件修改应保持 CERN-OHL-S，文档衍生作品应保持 CC BY-SA —— 并均需注明源自本项目。
-
-## 关联项目
-
-> Canonical public ecosystem relationship map.
-
-**Direct integrations:**
-[HYDRA-UMC-OS](https://github.com/JuanenRac/HYDRA-UMC-OS) · [HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK) · [HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER) · [URTC](https://github.com/JuanenRac/URTC) · [HYDRA-UMC-DSI](https://github.com/JuanenRac/HYDRA-UMC-DSI) · [HYDRA-UMC-STUDIO](https://github.com/JuanenRac/HYDRA-UMC-STUDIO)
-
-**Platform and contracts:**
-[HYDRA-UMC-OS](https://github.com/JuanenRac/HYDRA-UMC-OS) · [HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK)
-
-**Rest of the ecosystem:**
-All remaining public repositories are grouped by the seven ecosystem layers in the [JuanenRac ecosystem dashboard](https://juanenrac.github.io/JuanenRac/).

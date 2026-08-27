@@ -359,16 +359,3 @@ HYDRA-UMC の著作権は (c) 2026 JuanenRac（Electro Hobby 3D）に帰属し�
 3. **ドキュメント**（本 README、サービスマニュアル、`./docs` 配下の参考資料）は、**クリエイティブ・コモンズ 表示-継承 4.0 国際（CC BY-SA 4.0）** の下で提供されます。全文は https://creativecommons.org/licenses/by-sa/4.0/ を参照してください。
 
 本プロジェクトを基に開発を行う際は、このライセンス区分を念頭に置いてください：ファームウェアや書き込みツールへのコード変更は GPL-3.0 を維持し、ハードウェアの改変は CERN-OHL-S を維持し、ドキュメントの派生物は CC BY-SA を維持してください —— いずれも本プロジェクトへの帰属表示を伴う必要があります。
-
-## 関連プロジェクト
-
-> Canonical public ecosystem relationship map.
-
-**Direct integrations:**
-[HYDRA-UMC-OS](https://github.com/JuanenRac/HYDRA-UMC-OS) · [HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK) · [HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER) · [URTC](https://github.com/JuanenRac/URTC) · [HYDRA-UMC-DSI](https://github.com/JuanenRac/HYDRA-UMC-DSI) · [HYDRA-UMC-STUDIO](https://github.com/JuanenRac/HYDRA-UMC-STUDIO)
-
-**Platform and contracts:**
-[HYDRA-UMC-OS](https://github.com/JuanenRac/HYDRA-UMC-OS) · [HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK)
-
-**Rest of the ecosystem:**
-All remaining public repositories are grouped by the seven ecosystem layers in the [JuanenRac ecosystem dashboard](https://juanenrac.github.io/JuanenRac/).
