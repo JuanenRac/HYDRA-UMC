@@ -1,0 +1,336 @@
+# HYDRA-UMC System Architecture
+
+**Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>**
+**License:** CC BY-SA 4.0 (documentation) - see this repo's own README.md for the
+full licensing split (firmware GPL-3.0, hardware CERN-OHL-S v2, docs CC BY-SA 4.0).
+
+This document is the missing piece between `README.md` (which stops at "the
+STM32H745 talks to up to 8 slave modules over FDCAN1") and the actual robot
+cell: what those 8 slaves *are*, how a URTC tool head (and its own optional
+expansion board) reaches the rest of the system, and how firmware gets onto
+any of these boards without a JTAG/SWD probe or a USB-CAN dongle physically
+plugged into anything.
+
+Every fact below is marked either **CONFIRMED** (already built/documented
+elsewhere in this repo or in the sibling `URTC` repo) or **PROPOSED** (a
+design for a gap this document fills - consistent with everything already
+built, but not yet implemented or hardware-verified). Do not treat a
+PROPOSED item as settled fact until it's been implemented and verified
+against real hardware.
+
+---
+
+## 1. The four flashable/testable tiers
+
+```text
++-------------------+     +-------------------+     +--------------------+     +-------------------+     +-------------------+
+|  COMPUTE MODULE 5  | SPI |   STM32H745ZIT6   |FDCAN|  ROBOT CONTROLLER  | CAN |    URTC TOOL HEAD  | I2C |  ADVANCED EXPANSION|
+|  (HYDRA-UMC-STUDIO |---->|  "Kinematic Brain" |1    |  BOARD (x1-8, one  |---->|  STM32F303CCT6,    |---->|  (optional)        |
+|  dashboard, Linux) |<----|  S-curve motion,   |<----|  per robot; 6-axis |<----|  see URTC's own    |<----|  STM32F303CBT6     |
+|                     | 50  |  FDCAN1 STACK A    |STACK|  STEP/DIR/EN,     |     |  docs/CANBUS.TXT)  |     |  (only when         |
+|                     | MHz |  master (up to 8   |A    |  endstops. Own    |     |                    |     |  expansion_board_  |
+|                     |     |  robot slots)      |     |  STM32G474RET6,   |     |                    |     |  type is 3 or 4 -  |
++-------------------+     +-------------------+     |  2x FDCAN - one    |     +-------------------+     |  see §5)           |
+    Tier 0                     Tier 1                |  uplink (Tier 1->2)|          Tier 2                +-------------------+
+                                                       |  one downlink      |                                    Tier 3
+                                                       |  (Tier 2->3)       |
+                                                       +--------------------+
+```
+
+Tier numbering here matches "how many hops from the CM5", which is what
+Flasher/Tester's own target picker uses (`canOta.ts`'s `CanOtaTier`):
+
+- **Tier 0 - Kinematic Brain (STM32H745ZIT6), reached directly over SPI:**
+  CONFIRMED bus (Tier 1's own transport, see below), **PROPOSED** flashing
+  protocol - see section 3.
+- **Tier 1 - Robot Controller Board (STM32G474RET6), reached over FDCAN1
+  "STACK A":** CONFIRMED bus (1x native FDCAN1 on the STM32H745, up to 8
+  slaves, run in Classic CAN mode at ~1 Mbps, 8-byte max payload per frame
+  - the real bootloader implementation uses FDCAN_FRAME_CLASSIC/BRS_OFF,
+  not CAN FD's larger BRS payloads, see docs/CANBUS_STM32H745.TXT and
+  README.md section 6 - TCAN1044/TJA1443 transceiver). MCU **CONFIRMED:
+  STM32G474RET6** (Cortex-M4 @ 170
+  MHz, LQFP-64, 512 KB flash, 3x FDCAN peripherals - 2 used: one uplink to
+  the STM32H745's own FDCAN1, one downlink to that robot's own URTC Tool
+  Head). Addressing scheme **PROPOSED** - see section 4.
+- **Tier 2 - URTC Tool Head (STM32F303CCT6), reached one hop further, relayed
+  through the Robot Controller Board:** CONFIRMED board/firmware (see the
+  sibling `URTC` repo, `docs/CANBUS.TXT`). The physical CAN link from the
+  Robot Controller Board to it, and the relay behavior on the Robot
+  Controller Board's own side, are **PROPOSED** - see section 5.
+- **Tier 3 - Advanced Expansion Board (STM32F303CBT6), only present when a
+  robot's URTC head has `expansion_board_type` 3 or 4 installed, reached two
+  hops further, relayed through both the Robot Controller Board AND the URTC
+  head:** CONFIRMED board/firmware and CONFIRMED relay protocol on the URTC
+  head's own side (`URTC/docs/CANBUS.TXT` IDs `0x210`-`0x221`,
+  `URTC/docs/EXPANSION.TXT` for the 6 expansion board variants). Reaching it
+  from HYDRA-UMC-STUDIO needs no NEW protocol design beyond section 5's own
+  tunnel - see section 5.
+
+---
+
+## 2. RTOS choice per tier
+
+**CONFIRMED (by the project owner) - FreeRTOS runs on both Tier 0 (both
+cores) and Tier 1.** Neither Tier 2 (URTC Tool Head) nor Tier 3 (its
+Advanced Expansion Board) run an RTOS - both are CONFIRMED, already-shipping
+bare-metal superloop designs (see the sibling `URTC` repo) that this project
+doesn't change.
+
+- **Tier 0 - STM32H745, both cores:** CM7 and CM4 each run their OWN
+  FreeRTOS instance - this is a dual-core AMP (asymmetric multiprocessing)
+  chip, not SMP, so there is no shared kernel state or scheduler between the
+  two; each core's own tasks, queues, and heap are entirely private to it.
+  Cross-core communication (once designed - see section 5's own note on the
+  D3-domain SRAM4 region reserved for this) will need its own explicit IPC
+  mechanism (a HAL/FreeRTOS-agnostic shared-memory mailbox, most likely),
+  not anything FreeRTOS provides for free across cores.
+- **Tier 1 - STM32G474:** a single FreeRTOS instance (one core, no AMP/SMP
+  question).
+- **Bootloaders (all 3 - CM7, CM4, G474) stay bare-metal, no FreeRTOS.** A
+  bootloader's job (receive firmware, verify, jump) doesn't need a
+  scheduler, and keeping it minimal is itself a safety property - less code
+  running before anything has been verified, easier to audit, one less
+  moving part that could itself have a bug bricking a board. This mirrors
+  URTC's own bootloader, which is bare-metal too.
+
+Implementation status: `../src/mcu_stm32g474/`, `../src/mcu_stm32h745/CM7/`,
+and `../src/mcu_stm32h745/CM4/` each have a real, verified-compiling
+FreeRTOS skeleton (one task, GPIO toggle - proves the toolchain+RTOS
+pipeline itself works, not real firmware) - see `docs/COMPILE_STM32G474.TXT`
+and `docs/COMPILE_STM32H745.TXT` for exactly what that does and doesn't
+include yet (real clock config, real tasks, cross-core IPC are all still
+open).
+
+---
+
+## 3. Tier 0: flashing the Kinematic Brain itself (STM32H745, over SPI)
+
+**PROPOSED** - no bootloader exists yet for the STM32H745 side of this link.
+
+The STM32H745 isn't reached over CAN at all - it's wired directly to the CM5
+over the same SPI1 link Tier-1 telemetry already uses (`HYDRA_DATA_READY`
+handshake, 128-byte frames, README.md section 10). Proposal: reuse that same
+physical transport for firmware updates too, carrying the **same command
+vocabulary** Tiers 1-3 below reuse from URTC's own proven bootloader
+(ENTER_BOOTLOADER, START_UPDATE, DATA, PAGE_ACK, END_UPDATE, STATUS,
+HEARTBEAT, HMAC_CHUNK, VERSION_QUERY/RESPONSE, TEC/REC, ALLOW_DOWNGRADE,
+BACKUP_READ) as a **frame-type byte** inside the existing SPI frame header,
+instead of as a CAN ID - SPI frames don't have IDs to overload the way CAN
+frames do, but the same command *semantics* still apply directly, including
+the same anti-bricking discipline (verify into a backup slot before copying
+into the running one). This is the only tier that talks to the CM5 without
+crossing FDCAN1 at all, so it needs no STACK-A slot addressing.
+
+---
+
+## 4. Tier 1 addressing: which of 8 Robot Controller Boards is a frame for?
+
+**PROPOSED** - not yet implemented on the STM32H745 or any Robot Controller
+Board firmware.
+
+FDCAN1 "STACK A" is one shared bus carrying up to 8 Robot Controller Boards.
+URTC's own protocol (`CANBUS.TXT`) assumes exactly one board per CAN segment,
+so its ID blocks (`0x0xx`-`0x2xx` runtime, `0x7Fx` bootloader) are fixed,
+un-addressed constants. STACK A needs a slot dimension URTC's protocol was
+never designed to carry. Proposal: give each slot `N` (0-7, corresponding to
+A1-A8) its own 32-ID window:
+
+```text
+CAN_ID_STACKA_BASE = 0x600
+Slot N window       = 0x600 + (N * 0x20)  ..  0x600 + (N * 0x20) + 0x1F
+```
+
+Within each slot's window, the **same relative offsets URTC's own bootloader
+already uses** are reused verbatim for the Robot Controller Board's own
+firmware (offsets `+0x00`..`+0x0F` - a direct, 1:1 re-based copy of URTC's
+own `0x7F0`-`0x7FF`, so its bootloader state machine can be lifted almost
+directly from URTC's proven implementation instead of designed from
+scratch), plus 2 new axis-telemetry IDs and the Tier-2 relay pair from
+section 5 below:
+
+| Offset | Purpose                              | Mirrors URTC's own (fixed) ID |
+|--------|---------------------------------------|--------------------------------|
+| +0x00  | ENTER_BOOTLOADER                      | 0x7F0 |
+| +0x01  | START_UPDATE (size + HardwareID)      | 0x7F1 |
+| +0x02  | DATA (8-byte firmware chunk)          | 0x7F2 |
+| +0x03  | PAGE_ACK                              | 0x7F3 |
+| +0x04  | END_UPDATE (CRC32 + version)          | 0x7F4 |
+| +0x05  | STATUS (incl. verify-fail reason)     | 0x7F5 |
+| +0x06  | HEARTBEAT (status + % progress)       | 0x7F6 |
+| +0x07  | HMAC_CHUNK (x4, 32 bytes total)       | 0x7F7 |
+| +0x08  | VERSION_QUERY                         | 0x7F8 |
+| +0x09  | VERSION_RESPONSE (app/bootloader)     | 0x7F9 |
+| +0x0A  | BOOTLOADER_VERSION (bootloader-only)  | 0x7FA |
+| +0x0B  | TEC (transmit error counter)          | 0x7FB |
+| +0x0C  | REC (receive error counter)           | 0x7FC |
+| +0x0D  | ALLOW_DOWNGRADE (bypass anti-rollback)| 0x7FD |
+| +0x0E  | BACKUP_READ_REQUEST                   | 0x7FE (request half) |
+| +0x0F  | BACKUP_READ_RESPONSE                  | 0x7FE (response half) |
+| +0x10  | AXIS_STATUS (6x endstop bits + fault) | *(new - no URTC equivalent)* |
+| +0x11  | AXIS_STEP_TELEMETRY                   | *(new - no URTC equivalent)* |
+| +0x12  | RELAY_SEND (tunnel to Tier 2 - see §5)| *(new - no URTC equivalent)* |
+| +0x13  | RELAY_RECV (tunnel from Tier 2 - §5)  | *(new - no URTC equivalent)* |
+| +0x14  | BACKUP_READ_PAGE_ACK                  | 0x7FF |
+| +0x15..+0x1F | Reserved for future Robot Controller Board features | |
+
+**Correction found during implementation** (src/mcu_stm32g474/boot/):
+the original version of this table conflated URTC's 0x7FE and 0x7FF into
++0x0E/+0x0F as if they were a plain request/response pair - they aren't.
+URTC's own protocol overloads a single ID (0x7FE) for BOTH directions of
+BACKUP_READ, told apart by DLC, and uses a SEPARATE ID (0x7FF) purely for
+the page-ack that paces it. This table instead gives BACKUP_READ_REQUEST
+and BACKUP_READ_RESPONSE their own distinct offsets (+0x0E/+0x0F, no DLC-
+based overloading needed since a 32-ID slot window has room to spare) and
+adds +0x14 for the page-ack 0x7FE's DLC-overloading was hiding - a real
+gap this table had until the G474 bootloader was actually implemented
+against it, not a stylistic change.
+
+Same anti-bricking discipline as URTC's own bootloader: a firmware image is
+only copied into the running slot after a full CRC32 + HMAC-SHA256 verify
+against a backup/staging slot, so an interrupted or corrupted CAN-OTA update
+leaves the previously-working firmware intact.
+
+---
+
+## 5. Tiers 2-3: reaching the URTC Tool Head, and its own optional Advanced
+   Expansion Board, through the Robot Controller Board
+
+**PROPOSED**, modeled directly on a pattern URTC's own firmware already
+implements one level down: its expansion-slave I2C bridge (`CANBUS.TXT` IDs
+`0x210`-`0x221`, see `EXPANSION.TXT` for the 6 expansion board variants),
+which relays bootloader and register traffic to a second MCU it has no
+direct CAN access to, unmodified and un-reinterpreted, without needing a
+dedicated fixed ID for every possible downstream command.
+
+The Robot Controller Board does the same thing one hop earlier, but as a
+**generic, ID-agnostic tunnel** (`+0x12`/`+0x13` from section 4's table)
+rather than a fixed 1:1 ID mapping - URTC's own protocol alone spans over a
+hundred distinct IDs (`0x000`-`0x2FF` runtime, `0x7F0`-`0x7FF` bootloader),
+far more than a 32-ID slot window could enumerate individually:
+
+- **RELAY_SEND (+0x12):** payload = target CAN ID (2 bytes, big-endian) +
+  DLC (1 byte) + up to 5 data bytes. Queues a frame to be sent on the Robot
+  Controller Board's own second CAN controller, addressed exactly as read
+  from the payload. A logical operation needing the full 8 data bytes URTC's
+  own frames carry is split across 2 consecutive RELAY_SEND frames - the
+  same "multiple 8-byte relay frames per logical operation" pattern URTC's
+  own HMAC_CHUNK (`0x7F7`/`0x212`, 4 frames) and thermal-pixel-chunk
+  transfers (`0x253`, 4 frames) already establish, not a new one.
+- **RELAY_RECV (+0x13):** polled by the operator (HYDRA-UMC-STUDIO), drains
+  the Robot Controller Board's own FIFO of frames captured off its second CAN
+  controller since the last RELAY_RECV, oldest first - pull-based rather
+  than pushed, to keep STACK A's own bandwidth budget under the operator's
+  control instead of the Robot Controller Board's.
+
+This tunnel is intentionally **target-ID-agnostic**: reaching the URTC
+head's own bootloader (`0x7F0`-`0x7FF`) or its runtime tool protocol
+(`0x000`-`0x2FF`) is just a RELAY_SEND/RELAY_RECV pair with the matching
+target ID in the payload - the Robot Controller Board never needs to
+understand what's on the other end of it. This is also, for free, exactly
+how **Tier 3 (the Advanced Expansion Board)** is reached: its own
+STM32F303CBT6 has no CAN peripheral of its own at all - URTC's firmware
+already bridges to it over a local I2C bus using IDs `0x210`-`0x221`
+whenever it's reached directly (`expansion_board_type` 3 or 4 only - see
+`EXPANSION.TXT`). Tunneling one of *those* IDs through the same
+RELAY_SEND/RELAY_RECV pair reaches the expansion board's own bootloader with
+**zero additional protocol design** - it fully piggybacks on URTC's own
+already-implemented second relay hop, the same way Tier 2 piggybacks on
+URTC's own bootloader being unmodified.
+
+Net effect for HYDRA-UMC-STUDIO's Flasher/Tester: flashing or testing a URTC
+head, or its own Advanced expansion board, is the *same* URTC protocol as if
+it were connected directly, tunneled through 1 or 2 extra relay hops instead
+of zero. The UI shows this hop count to the operator (`hopDescription()` in
+`canOta.ts`) rather than hiding it, since a stall at any one tier needs to be
+diagnosable independently. The Advanced-expansion target is only offered at
+all when that robot's own URTC head last reported `expansion_board_type` 3
+or 4 (queried the same way URTC Flasher already does today, per
+`EXPANSION.TXT` section 4-5) - there's no point offering to flash a chip
+that isn't there.
+
+---
+
+## 6. What already exists vs. what this fills in
+
+| Piece | Status |
+|---|---|
+| CM5 <-> STM32H745 SPI transport | CONFIRMED, documented (README.md §10) |
+| STM32H745's own SPI firmware-update protocol (Tier 0) | **IMPLEMENTED** - `src/mcu_stm32h745/CM4/boot/` is a real bootloader: SPI1 slave, the frame-type-byte scheme this document's §3 describes, CRC32+HMAC-SHA256 verify-into-backup-before-copy-to-main. Compiles clean (`build_firmware.sh h745`). NOT yet verified against real hardware - see that folder's own README.md for the concrete gaps (clock tree, dual-core bring-up). |
+| STM32H745 <-> Robot Controller Board FDCAN1 bus (electrical) | CONFIRMED, documented (README.md §6) |
+| Robot Controller Board slot addressing on that shared bus | **IMPLEMENTED** - `BOARD_ID[2:0]`, a LOCAL DIP switch on each Robot Controller Board (`docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` §1c - CONFIRMED design, not derived from the STACK A connector or stack position, see `docs/PINOUT_STACKA_CONNECTOR.TXT` §1) feeds `ReadSlotBaseId()` in the G474 bootloader - this document's §4 formula is real code now, not just a formula. The CM4 gateway bootloader doesn't read this itself (it's the master, not a stack member) - it takes a target slot number from the SPI1 frame the CM5 sends (`SpiOtaFrame_t.target_slot`, `src/mcu_stm32h745/CM4/boot/bootloader_common.h`) instead. |
+| Robot Controller Board's own MCU identity | **CONFIRMED: STM32G474RET6** (LQFP-64, 512 KB flash, 3x FDCAN - 2 used, see §1). |
+| Robot Controller Board's own bootloader firmware | **IMPLEMENTED** - `src/mcu_stm32g474/boot/` is a real bootloader: FDCAN1, slot-addressed per §4's offset table, same CRC32+HMAC-SHA256 anti-bricking discipline. Compiles clean. NOT yet verified against real hardware. |
+| CM7<->CM4 IPC (needed to flash CM7 itself, since only CM4 owns SPI1/FDCAN1) | **IMPLEMENTED** - `src/mcu_stm32h745/Common/ipc_mailbox.h`, a 2-HSEM-channel shared-SRAM4 mailbox. CM7's own bootloader (`CM7/boot/`) runs the same protocol state machine over this mailbox instead of a bus - the only way to reach CM7 at all, since it has no SPI1/FDCAN1 access of its own. |
+| Robot Controller Board -> URTC Tool Head CAN link (electrical) | Described by the project owner; not yet on a schematic in `hardware/` |
+| Robot Controller Board <-> URTC Tool Head relay tunnel | PROPOSED (this document, §5) - the CM4 gateway bootloader already forwards `+0x12`/`+0x13` opaquely (§5's own design), but the Robot Controller Board's own APPLICATION-side relay logic (not its bootloader) that actually speaks to the URTC head is still not written. |
+| URTC Tool Head firmware + protocol | CONFIRMED, fully implemented - see the `URTC` repo, `docs/CANBUS.TXT` - bare-metal, no RTOS (§2) |
+| URTC's own Advanced Expansion Board (STM32F303CBT6) + its I2C relay | CONFIRMED, fully implemented - see `URTC/docs/EXPANSION.TXT` and `CANBUS.TXT` §"EXPANSION SLAVE BRIDGE" - bare-metal, no RTOS (§2) |
+| Reaching the Advanced Expansion Board from HYDRA-UMC-STUDIO | PROPOSED, but needs no new protocol beyond §5's tunnel - piggybacks on URTC's own existing relay |
+| FreeRTOS on Tier 0 (both cores) and Tier 1 | CONFIRMED design decision (§2). Implementation: a real, verified-compiling skeleton (one task, GPIO toggle) exists for all 3 - `src/mcu_stm32g474/`, `src/mcu_stm32h745/CM7/`, `src/mcu_stm32h745/CM4/` - not yet the real tasks (motion engine, sensor filtering, etc.) All 3 apps now run on their own board's real pinout (`docs/PINOUT_*.TXT`) rather than a Nucleo-dev-board placeholder pin. |
+| HYDRA-UMC-STUDIO Flasher/Tester UI | Implemented against a **simulated (mock)** transport that follows this document's addressing scheme for all 4 tiers, including GitHub-release firmware download (currently wired for the `URTC` repo only) - see that repo's own README for current status. No real transport (SPI or CAN) is wired into HYDRA-UMC-STUDIO itself yet - the bootloaders it would talk to now exist and compile, but haven't run on real hardware, and this dashboard doesn't have a native SPI/CAN backend to drive them with regardless (it's a browser/Node app - see `src/lib/canOta.ts`'s own header for why staying simulated is still the right call for now). |
+
+---
+
+## 7. Superseded documents
+
+`docs/HYDRA-UMC_TECHNICAL.txt`, `docs/HYDRA-UMC_BOM.txt`, and
+`docs/HYDRA-UMC_PINOUT.txt` describe an earlier board revision
+(STM32H757BIT6/LQFP-208, onboard TMC5160A drivers wired directly to robots,
+ESP32-C3, USB hub, Ethernet PHY) that this document's tiered
+STM32H745/Robot-Controller-Board architecture replaced. They're marked
+superseded at the top of each file and kept for historical reference only -
+do not use them as a source of truth for new work.
+
+---
+
+## 8. Known security limitations (accepted risks, pre-hardware)
+
+None of the 3 real bootloaders (`src/mcu_stm32g474/boot/`,
+`src/mcu_stm32h745/CM7/boot/`, `src/mcu_stm32h745/CM4/boot/`)
+have been run against real hardware yet (§6). The items below are known,
+deliberate gaps in the current design - not oversights caught by review
+after the fact - kept here, in the project's own documentation, so they
+stay visible before this project reaches real hardware.
+
+- **No Read-Out Protection (RDP) on any of the 3 chips.** Without it,
+  physical SWD access to any ONE board exposes `HMAC_KEY`
+  (`bootloader_crypto.h`), which is shared across every board of that
+  same type - compromising one Robot Controller Board's key compromises
+  the signing trust for all 8. Writing RDP option bytes wrong is a
+  real, irreversible bricking risk on hardware that doesn't exist to test
+  against yet (the same reasoning URTC's own bootloader has already
+  applied to defer this - see that project's own notes on RDP2 being a
+  one-way door). Revisit once real hardware exists to validate the
+  option-byte sequence against, ideally per-device keys derived from a
+  real per-chip secret (e.g. the STM32's own unique ID) rather than one
+  key shared per board type.
+- **`OFS_AUTHORIZE_DOWNGRADE`'s anti-rollback bypass is a fixed 4-byte
+  value** (`0xD0,0x9E,0x12,0xAD`, identical across all 3 bootloaders,
+  and published in `docs/CANBUS_STM32G474.TXT`/`docs/CANBUS_STM32H745.TXT`
+  since the protocol has to be documented for the Flasher/Tester tooling
+  to implement it). Any node on the relevant bus can authorize a
+  downgrade to an older-but-still-validly-signed image - this doesn't
+  let an attacker install unsigned firmware (HMAC verification still
+  gates that), but it does mean the anti-rollback protection itself has
+  no real access control. A per-device value derived from `HMAC_KEY`
+  would close this, but that requires updating the host-side (Flasher/
+  HYDRA-UMC-STUDIO) protocol implementation in lockstep with all 3
+  bootloaders - a coordinated change deliberately deferred rather than
+  done partially.
+- **`HandleReadbackStart` (readback of the currently-installed firmware)
+  has no authentication on any of the 3 bootloaders.** Any bus node can
+  read back the full installed application - this is a confidentiality
+  gap (firmware exfiltration), not an integrity one (readback is
+  read-only, it cannot be used to install anything). Same "needs a
+  coordinated host+firmware change" reasoning as the anti-rollback bypass
+  above applies to fixing this properly.
+
+None of these 3 items are memory-safety bugs (those - unbounded reads in
+`HandleReadbackStart` from a torn-write metadata page, a mailbox race
+between CM4 and CM7, a semaphore leak in the CM7 readback pacing loop,
+and a missing bounds check in `Relay_ToStackA` - were real bugs, already
+fixed). These 3 are access-control gaps in the protocol's own design,
+left as explicitly accepted risk until real hardware and a coordinated
+host-side update make the proper fix (per-device secrets derived from
+`HMAC_KEY`, ideally with real RDP) practical to implement and verify.

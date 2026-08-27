@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "ecosystem": "HYDRA-UMC",
+  "name": "HYDRA-UMC",
+  "version": "0.0.8",
+  "role": "firmware",
+  "stack": "firmware-c",
+  "technologies": [
+    "STM32H745 (dual-core)",
+    "STM32G474",
+    "FreeRTOS (AMP)",
+    "CMSIS-DSP",
+    "FDCAN",
+    "SWD/JTAG"
+  ],
+  "deployment_target": "user-pc",
+  "maturity": "production",
+  "family": "Core Hardware",
+  "parent": null,
+  "build": "6 independently-versioned components (G474 + H745 CM7 + H745 CM4, app + bootloader each). This registry tracks the G474 application as representative. Real install/build: bash build_firmware.sh.",
+  "notes": "The real motion-control firmware for this ecosystem's own physical robot arm PCB - 6 independently-versioned MCU targets (G474 + H745 CM7/CM4, app + bootloader each). This is the project the whole ecosystem exists to control.",
+  "native_version": {
+    "file": "src/mcu_stm32g474/boot/bootloader_common.h",
+    "pattern": {
+      "major": "#define\\s+FIRMWARE_VERSION_MAJOR\\s+(\\d+)",
+      "minor": "#define\\s+FIRMWARE_VERSION_MINOR\\s+(\\d+)",
+      "patch": "#define\\s+FIRMWARE_VERSION_PATCH\\s+(\\d+)"
+    }
+  }
+}

@@ -1,0 +1,367 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" width="1280" height="800">
+  <defs>
+    <linearGradient id="bgTitanium" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A0D12"/>
+      <stop offset="50%" stop-color="#121720"/>
+      <stop offset="100%" stop-color="#07090C"/>
+    </linearGradient>
+
+    <linearGradient id="greenNeon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00FF66"/>
+      <stop offset="100%" stop-color="#009933"/>
+    </linearGradient>
+
+    <linearGradient id="orangeLaser" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF6600"/>
+      <stop offset="100%" stop-color="#FF3300"/>
+    </linearGradient>
+
+    <linearGradient id="metalArm" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2D3748"/>
+      <stop offset="50%" stop-color="#1A202C"/>
+      <stop offset="100%" stop-color="#0D1117"/>
+    </linearGradient>
+
+    <linearGradient id="loadingSweep" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#21262D"/>
+      <stop offset="30%" stop-color="#21262D"/>
+      <stop offset="50%" stop-color="#00FF66"/>
+      <stop offset="70%" stop-color="#21262D"/>
+      <stop offset="100%" stop-color="#21262D"/>
+      <animate attributeName="x1" from="-100%" to="100%" dur="1.8s" repeatCount="indefinite" />
+      <animate attributeName="x2" from="0%" to="200%" dur="1.8s" repeatCount="indefinite" />
+    </linearGradient>
+
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+
+    <clipPath id="typewriterClip">
+      <rect x="-115" y="0" width="0" height="38">
+        <animate attributeName="width" values="0; 270; 270; 0" keyTimes="0; 0.65; 0.90; 1" dur="4s" repeatCount="indefinite" />
+      </rect>
+    </clipPath>
+
+    <pattern id="pcbGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#00FF66" stroke-width="0.5" opacity="0.05"/>
+    </pattern>
+  </defs>
+
+  <style>
+    .loading-text {
+      fill: url(#loadingSweep);
+      font-family: 'Segoe UI', 'Roboto', sans-serif;
+      font-weight: 700;
+      font-size: 22px;
+      letter-spacing: 9px;
+    }
+
+    .status-pulse {
+      animation: pulseGlow 1.8s infinite ease-in-out;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+
+    .pcb-text {
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      fill: #00FF66;
+      opacity: 0.35;
+    }
+  </style>
+
+  <rect width="1280" height="800" fill="url(#bgTitanium)"/>
+  
+  <rect width="1280" height="800" fill="url(#pcbGrid)"/>
+
+  <g id="pcb-layer" stroke="#00FF66" fill="none">
+    
+    <path d="M 30,30 L 280,30 L 280,180 L 180,280 L 30,280 Z" fill="#00FF66" fill-opacity="0.03" stroke-width="1" stroke-dasharray="4,4" opacity="0.4"/>
+    <path d="M 1000,30 L 1250,30 L 1250,280 L 1100,280 L 1000,180 Z" fill="#00FF66" fill-opacity="0.03" stroke-width="1" stroke-dasharray="4,4" opacity="0.4"/>
+    <path d="M 30,520 L 220,520 L 320,620 L 320,770 L 30,770 Z" fill="#00FF66" fill-opacity="0.03" stroke-width="1" stroke-dasharray="4,4" opacity="0.4"/>
+    <path d="M 960,620 L 1060,520 L 1250,520 L 1250,770 L 960,770 Z" fill="#00FF66" fill-opacity="0.03" stroke-width="1" stroke-dasharray="4,4" opacity="0.4"/>
+
+    <g stroke-width="1.2" opacity="0.25">
+      <path d="M 50,40 L 220,40 L 260,80 L 260,200"/>
+      <path d="M 50,50 L 215,50 L 250,85 L 250,200"/>
+      <path d="M 50,60 L 210,60 L 240,90 L 240,200"/>
+      <path d="M 50,70 L 205,70 L 230,95 L 230,200"/>
+      <path d="M 50,80 L 200,80 L 220,100 L 220,200"/>
+      <path d="M 50,90 L 195,90 L 210,105 L 210,200"/>
+      <path d="M 50,100 L 190,100 L 200,110 L 200,200"/>
+      <path d="M 50,110 L 185,110 L 190,115 L 190,200"/>
+    </g>
+
+    <g stroke-width="1.2" opacity="0.25">
+      <path d="M 1230,40 L 1060,40 L 1020,80 L 1020,200"/>
+      <path d="M 1230,50 L 1065,50 L 1030,85 L 1030,200"/>
+      <path d="M 1230,60 L 1070,60 L 1040,90 L 1040,200"/>
+      <path d="M 1230,70 L 1075,70 L 1050,95 L 1050,200"/>
+      <path d="M 1230,80 L 1080,80 L 1060,100 L 1060,200"/>
+      <path d="M 1230,90 L 1085,90 L 1070,105 L 1070,200"/>
+      <path d="M 1230,100 L 1090,100 L 1080,110 L 1080,200"/>
+    </g>
+
+    <g stroke-width="1.5" opacity="0.3">
+      <path d="M 60,140 L 110,140 
+               L 110,135 L 115,135 L 115,145 L 120,145 L 120,135 L 125,135 L 125,145 L 130,145 L 130,135 L 135,135 L 135,140
+               L 170,140 L 210,180 L 210,250"/>
+      <path d="M 1220,140 L 1170,140 
+               L 1170,135 L 1165,135 L 1165,145 L 1160,145 L 1160,135 L 1155,135 L 1155,145 L 1150,145 L 1150,135 L 1145,135 L 1145,140
+               L 1110,140 L 1070,180 L 1070,250"/>
+    </g>
+
+    <g stroke-width="3" opacity="0.25">
+      <path d="M 40,240 L 140,240 L 180,280 L 180,450 L 120,510 L 40,510"/>
+      <path d="M 1240,240 L 1140,240 L 1100,280 L 1100,450 L 1160,510 L 1240,510"/>
+      <path d="M 200,750 L 450,750 L 520,680 L 760,680 L 830,750 L 1080,750"/>
+    </g>
+
+    <g transform="translate(140, 180)" opacity="0.35">
+      <rect x="-35" y="-35" width="70" height="70" rx="3" stroke="#00FF66" stroke-width="1.5" fill="#00FF66" fill-opacity="0.05"/>
+      <circle cx="-27" cy="-27" r="2.5" fill="#00FF66"/>
+      <text x="0" y="4" text-anchor="middle" class="pcb-text" font-size="9">MCU_M7</text>
+      <path d="M -27.5,-35 V -45 M -22.5,-35 V -45 M -17.5,-35 V -45 M -12.5,-35 V -45 M -7.5,-35 V -45 M -2.5,-35 V -45
+               M 2.5,-35 V -45 M 7.5,-35 V -45 M 12.5,-35 V -45 M 17.5,-35 V -45 M 22.5,-35 V -45 M 27.5,-35 V -45" stroke-width="2"/>
+      <path d="M -27.5,35 V 45 M -22.5,35 V 45 M -17.5,35 V 45 M -12.5,35 V 45 M -7.5,35 V 45 M -2.5,35 V 45
+               M 2.5,35 V 45 M 7.5,35 V 45 M 12.5,35 V 45 M 17.5,35 V 45 M 22.5,35 V 45 M 27.5,35 V 45" stroke-width="2"/>
+      <path d="M -35,-27.5 H -45 M -35,-22.5 H -45 M -35,-17.5 H -45 M -35,-12.5 H -45 M -35,-7.5 H -45 M -35,-2.5 H -45
+               M -35,2.5 H -45 M -35,7.5 H -45 M -35,12.5 H -45 M -35,17.5 H -45 M -35,22.5 H -45 M -35,27.5 H -45" stroke-width="2"/>
+      <path d="M 35,-27.5 H 45 M 35,-22.5 H 45 M 35,-17.5 H 45 M 35,-12.5 H 45 M 35,-7.5 H 45 M 35,-2.5 H 45
+               M 35,2.5 H 45 M 35,7.5 H 45 M 35,12.5 H 45 M 35,17.5 H 45 M 35,22.5 H 45 M 35,27.5 H 45" stroke-width="2"/>
+      <circle cx="-30" cy="-52" r="1.5" fill="#0A0D12" stroke="#00FF66" stroke-width="1"/>
+      <circle cx="-20" cy="-52" r="1.5" fill="#0A0D12" stroke="#00FF66" stroke-width="1"/>
+      <circle cx="-10" cy="-52" r="1.5" fill="#0A0D12" stroke="#00FF66" stroke-width="1"/>
+      <circle cx="0" cy="-52" r="1.5" fill="#0A0D12" stroke="#00FF66" stroke-width="1"/>
+      <circle cx="10" cy="-52" r="1.5" fill="#0A0D12" stroke="#00FF66" stroke-width="1"/>
+      <circle cx="20" cy="-52" r="1.5" fill="#0A0D12" stroke="#00FF66" stroke-width="1"/>
+      <circle cx="30" cy="-52" r="1.5" fill="#0A0D12" stroke="#00FF66" stroke-width="1"/>
+    </g>
+
+    <g transform="translate(1140, 180)" opacity="0.35">
+      <rect x="-40" y="-40" width="80" height="80" stroke="#00FF66" stroke-width="1.5" fill="#00FF66" fill-opacity="0.05"/>
+      <circle cx="-32" cy="-32" r="2.5" fill="#00FF66"/>
+      <text x="0" y="4" text-anchor="middle" class="pcb-text" font-size="9">FPGA_CORE</text>
+      <g fill="#0A0D12" stroke="#00FF66" stroke-width="0.8">
+        <circle cx="-15" cy="-15" r="2"/><circle cx="0" cy="-15" r="2"/><circle cx="15" cy="-15" r="2"/>
+        <circle cx="-15" cy="0" r="2"/><circle cx="0" cy="0" r="2"/><circle cx="15" cy="0" r="2"/>
+        <circle cx="-15" cy="15" r="2"/><circle cx="0" cy="15" r="2"/><circle cx="15" cy="15" r="2"/>
+      </g>
+    </g>
+
+    <g transform="translate(60, 290)" opacity="0.3">
+      <rect x="0" y="0" width="6" height="12" fill="#00FF66" stroke="none"/>
+      <rect x="10" y="0" width="6" height="12" fill="#00FF66" stroke="none"/>
+      <rect x="-3" y="-3" width="22" height="18" stroke="#00FF66" stroke-width="0.8"/>
+      <text x="8" y="-6" text-anchor="middle" class="pcb-text" font-size="7">R1</text>
+      <rect x="0" y="25" width="6" height="12" fill="#00FF66" stroke="none"/>
+      <rect x="10" y="25" width="6" height="12" fill="#00FF66" stroke="none"/>
+      <rect x="-3" y="22" width="22" height="18" stroke="#00FF66" stroke-width="0.8"/>
+      <text x="8" y="19" text-anchor="middle" class="pcb-text" font-size="7">R2</text>
+      <rect x="0" y="50" width="6" height="12" fill="#00FF66" stroke="none"/>
+      <rect x="10" y="50" width="6" height="12" fill="#00FF66" stroke="none"/>
+      <rect x="-3" y="47" width="22" height="18" stroke="#00FF66" stroke-width="0.8"/>
+      <text x="8" y="44" text-anchor="middle" class="pcb-text" font-size="7">C1</text>
+    </g>
+
+    <g transform="translate(1200, 290)" opacity="0.3">
+      <rect x="0" y="0" width="6" height="12" fill="#00FF66" stroke="none"/>
+      <rect x="10" y="0" width="6" height="12" fill="#00FF66" stroke="none"/>
+      <rect x="-3" y="-3" width="22" height="18" stroke="#00FF66" stroke-width="0.8"/>
+      <text x="8" y="-6" text-anchor="middle" class="pcb-text" font-size="7">R3</text>
+      <rect x="0" y="25" width="6" height="12" fill="#00FF66" stroke="none"/>
+      <rect x="10" y="25" width="6" height="12" fill="#00FF66" stroke="none"/>
+      <rect x="-3" y="22" width="22" height="18" stroke="#00FF66" stroke-width="0.8"/>
+      <text x="8" y="19" text-anchor="middle" class="pcb-text" font-size="7">C2</text>
+    </g>
+
+    <g transform="translate(240, 120)" opacity="0.35">
+      <rect x="-18" y="-10" width="36" height="20" rx="9" stroke="#00FF66" stroke-width="1.2"/>
+      <rect x="-12" y="-5" width="5" height="10" fill="#00FF66" stroke="none"/>
+      <rect x="7" y="-5" width="5" height="10" fill="#00FF66" stroke="none"/>
+      <text x="0" y="-13" text-anchor="middle" class="pcb-text" font-size="7">Y1 (25MHz)</text>
+    </g>
+
+    <g transform="translate(350, 40)" opacity="0.3">
+      <rect x="0" y="0" width="120" height="25" stroke="#00FF66" stroke-width="1.2"/>
+      <text x="60" y="-6" text-anchor="middle" class="pcb-text" font-size="8">EXPANSION_BUS_J1</text>
+      <rect x="6" y="4" width="6" height="6" fill="#00FF66"/>
+      <rect x="6" y="15" width="6" height="6" fill="#00FF66"/>
+      <circle cx="24" cy="7" r="3" fill="#00FF66"/><circle cx="24" cy="18" r="3" fill="#00FF66"/>
+      <circle cx="39" cy="7" r="3" fill="#00FF66"/><circle cx="39" cy="18" r="3" fill="#00FF66"/>
+      <circle cx="54" cy="7" r="3" fill="#00FF66"/><circle cx="54" cy="18" r="3" fill="#00FF66"/>
+      <circle cx="69" cy="7" r="3" fill="#00FF66"/><circle cx="69" cy="18" r="3" fill="#00FF66"/>
+      <circle cx="84" cy="7" r="3" fill="#00FF66"/><circle cx="84" cy="18" r="3" fill="#00FF66"/>
+      <circle cx="99" cy="7" r="3" fill="#00FF66"/><circle cx="99" cy="18" r="3" fill="#00FF66"/>
+      <circle cx="114" cy="7" r="3" fill="#00FF66"/><circle cx="114" cy="18" r="3" fill="#00FF66"/>
+    </g>
+
+    <g transform="translate(810, 40)" opacity="0.3">
+      <rect x="0" y="0" width="120" height="25" stroke="#00FF66" stroke-width="1.2"/>
+      <text x="60" y="-6" text-anchor="middle" class="pcb-text" font-size="8">EXPANSION_BUS_J2</text>
+      <rect x="6" y="4" width="6" height="6" fill="#00FF66"/>
+      <rect x="6" y="15" width="6" height="6" fill="#00FF66"/>
+      <circle cx="24" cy="7" r="3" fill="#00FF66"/><circle cx="24" cy="18" r="3" fill="#00FF66"/>
+      <circle cx="39" cy="7" r="3" fill="#00FF66"/><circle cx="39" cy="18" r="3" fill="#00FF66"/>
+      <circle cx="54" cy="7" r="3" fill="#00FF66"/><circle cx="54" cy="18" r="3" fill="#00FF66"/>
+      <circle cx="69" cy="7" r="3" fill="#00FF66"/><circle cx="69" cy="18" r="3" fill="#00FF66"/>
+      <circle cx="84" cy="7" r="3" fill="#00FF66"/><circle cx="84" cy="18" r="3" fill="#00FF66"/>
+      <circle cx="99" cy="7" r="3" fill="#00FF66"/><circle cx="99" cy="18" r="3" fill="#00FF66"/>
+      <circle cx="114" cy="7" r="3" fill="#00FF66"/><circle cx="114" cy="18" r="3" fill="#00FF66"/>
+    </g>
+
+    <g fill="#0A0D12" stroke="#00FF66" opacity="0.35">
+      <g fill="#00FF66">
+        <circle cx="280" cy="220" r="5" stroke-width="1.5"/>
+        <text x="280" y="210" text-anchor="middle" class="pcb-text" font-size="7">TP_3V3</text>
+        
+        <circle cx="1000" cy="220" r="5" stroke-width="1.5"/>
+        <text x="1000" y="210" text-anchor="middle" class="pcb-text" font-size="7">TP_5V</text>
+
+        <circle cx="150" cy="500" r="5" stroke-width="1.5"/>
+        <text x="150" y="490" text-anchor="middle" class="pcb-text" font-size="7">TP_GND</text>
+
+        <circle cx="1130" cy="500" r="5" stroke-width="1.5"/>
+        <text x="1130" y="490" text-anchor="middle" class="pcb-text" font-size="7">TP_CAN_H</text>
+      </g>
+
+      <g stroke-width="1">
+        <circle cx="30" cy="100" r="2"/><circle cx="30" cy="130" r="2"/><circle cx="30" cy="160" r="2"/><circle cx="30" cy="190" r="2"/>
+        <circle cx="30" cy="220" r="2"/><circle cx="30" cy="250" r="2"/><circle cx="30" cy="280" r="2"/>
+        <circle cx="1250" cy="100" r="2"/><circle cx="1250" cy="130" r="2"/><circle cx="1250" cy="160" r="2"/><circle cx="1250" cy="190" r="2"/>
+        <circle cx="1250" cy="220" r="2"/><circle cx="1250" cy="250" r="2"/><circle cx="1250" cy="280" r="2"/>
+      </g>
+    </g>
+
+    <g class="pcb-text" font-size="9" opacity="0.3">
+      <text x="40" y="760">6-LAYER IMPEDANCE CONTROLLED PCB</text>
+      <text x="40" y="775">LAYER 1: TOP SIGNAL / POWER</text>
+      <text x="1240" y="760" text-anchor="end">HYDRA-UMC HW REV 1.0</text>
+      <text x="1240" y="775" text-anchor="end">DESIGNED BY ELECTRO HOBBY 3D</text>
+    </g>
+
+    <g stroke-width="1.2" opacity="0.25">
+      <path d="M 100,720 L 220,720 L 280,660 L 450,660"/>
+      <path d="M 100,700 L 210,700 L 270,640 L 450,640"/>
+      <path d="M 1180,720 L 1060,720 L 1000,660 L 830,660"/>
+      <path d="M 1180,700 L 1070,700 L 1010,640 L 830,640"/>
+    </g>
+  </g>
+
+  <g transform="translate(640, 280)">
+    <g stroke="#1A202C" stroke-width="4.5" fill="none">
+      <path d="M-45,-35 L-160,-135 L-300,-135"/>
+      <path d="M-55,-12 L-200,-55 L-330,-55"/>
+      <path d="M-55,12 L-200,55 L-330,55"/>
+      <path d="M-45,35 L-160,135 L-300,135"/>
+      <path d="M45,-35 L160,-135 L300,-135"/>
+      <path d="M55,-12 L200,-55 L330,-55"/>
+      <path d="M55,12 L200,55 L330,55"/>
+      <path d="M45,35 L160,135 L300,135"/>
+    </g>
+
+    <g stroke="#00E5FF" stroke-width="4" fill="none" filter="url(#neonGlow)" stroke-linecap="round">
+      <path d="M-45,-35 L-160,-135 L-300,-135" stroke-dasharray="30, 220" stroke-dashoffset="0">
+        <animate attributeName="stroke-dashoffset" from="250" to="0" dur="1.2s" repeatCount="indefinite" />
+      </path>
+      <path d="M-55,-12 L-200,-55 L-330,-55" stroke-dasharray="35, 260" stroke-dashoffset="0">
+        <animate attributeName="stroke-dashoffset" from="295" to="0" dur="1.4s" repeatCount="indefinite" begin="0.2s"/>
+      </path>
+      <path d="M-55,12 L-200,55 L-330,55" stroke-dasharray="35, 260" stroke-dashoffset="0">
+        <animate attributeName="stroke-dashoffset" from="295" to="0" dur="1.4s" repeatCount="indefinite" begin="0.4s"/>
+      </path>
+      <path d="M-45,35 L-160,135 L-300,135" stroke-dasharray="30, 220" stroke-dashoffset="0">
+        <animate attributeName="stroke-dashoffset" from="250" to="0" dur="1.2s" repeatCount="indefinite" begin="0.6s"/>
+      </path>
+      
+      <path d="M45,-35 L160,-135 L300,-135" stroke-dasharray="30, 220" stroke-dashoffset="0">
+        <animate attributeName="stroke-dashoffset" from="250" to="0" dur="1.2s" repeatCount="indefinite" />
+      </path>
+      <path d="M55,-12 L200,-55 L330,-55" stroke-dasharray="35, 260" stroke-dashoffset="0">
+        <animate attributeName="stroke-dashoffset" from="295" to="0" dur="1.4s" repeatCount="indefinite" begin="0.2s"/>
+      </path>
+      <path d="M55,12 L200,55 L330,55" stroke-dasharray="35, 260" stroke-dashoffset="0">
+        <animate attributeName="stroke-dashoffset" from="295" to="0" dur="1.4s" repeatCount="indefinite" begin="0.4s"/>
+      </path>
+      <path d="M45,35 L160,135 L300,135" stroke-dasharray="30, 220" stroke-dashoffset="0">
+        <animate attributeName="stroke-dashoffset" from="250" to="0" dur="1.2s" repeatCount="indefinite" begin="0.6s"/>
+      </path>
+    </g>
+
+    <path d="M-300,-146 L-325,-146 L-335,-135 L-325,-124 L-300,-124 Z" fill="#2D3748" stroke="#00FF66" stroke-width="2"/>
+    <polygon points="-330,-67 -365,-55 -330,-43" fill="url(#orangeLaser)" filter="url(#neonGlow)"/>
+    <circle cx="-372" cy="-55" r="4.5" fill="#FF6600"/>
+    <polygon points="-330,43 -360,55 -330,67" fill="#2D3748" stroke="#00FF66" stroke-width="2"/>
+    <rect x="-330" y="118" width="30" height="34" rx="4" fill="#2D3748" stroke="#00FF66" stroke-width="2"/>
+
+    <path d="M300,-146 L325,-146 L335,-135 L325,-124 L300,-124 Z" fill="#2D3748" stroke="#00FF66" stroke-width="2"/>
+    <polygon points="330,-67 365,-55 330,-43" fill="url(#orangeLaser)" filter="url(#neonGlow)"/>
+    <circle cx="372" cy="-55" r="4.5" fill="#FF6600"/>
+    <polygon points="330,43 360,55 330,67" fill="#2D3748" stroke="#00FF66" stroke-width="2"/>
+    <rect x="300" y="118" width="30" height="34" rx="4" fill="#2D3748" stroke="#00FF66" stroke-width="2"/>
+
+    <g>
+      <animateTransform 
+        attributeName="transform" 
+        type="scale" 
+        values="1 1; -1 1; 1 1" 
+        dur="6s" 
+        repeatCount="indefinite" 
+        keyTimes="0; 0.5; 1"
+        calcMode="spline"
+        keySplines="0.4 0 0.2 1; 0.4 0 0.2 1"
+      />
+
+      <polygon points="0,-100 68,-56 68,56 0,100 -68,56 -68,-56" 
+               fill="url(#metalArm)" stroke="#00FF66" stroke-width="3.5" filter="url(#neonGlow)"/>
+               
+      <path d="M-40,-56 L-18,-56 L-18,-12 L18,-12 L18,-56 L40,-56 L40,56 L18,56 L18,12 L-18,12 L-18,56 L-40,56 Z" 
+            fill="url(#greenNeon)"/>
+    </g>
+
+    <circle cx="-160" cy="-135" r="5.5" fill="#00FF66"/>
+    <circle cx="-200" cy="-55" r="5.5" fill="#00FF66"/>
+    <circle cx="-200" cy="55" r="5.5" fill="#00FF66"/>
+    <circle cx="-160" cy="135" r="5.5" fill="#00FF66"/>
+    <circle cx="160" cy="-135" r="5.5" fill="#00FF66"/>
+    <circle cx="200" cy="-55" r="5.5" fill="#00FF66"/>
+    <circle cx="200" cy="55" r="5.5" fill="#00FF66"/>
+    <circle cx="160" cy="135" r="5.5" fill="#00FF66"/>
+  </g>
+
+  <g transform="translate(640, 560)" text-anchor="middle">
+    <text font-family="'Segoe UI', 'Roboto', 'Arial Black', sans-serif" font-weight="900" font-size="72" 
+          fill="#FFFFFF" letter-spacing="8">
+      HYDRA<tspan fill="#00FF66">-UM</tspan><tspan fill="#FF6600">C</tspan>
+    </text>
+    
+    <text y="50" class="loading-text">
+      UNIVERSAL MULTI-AXIS CONTROLLER
+    </text>
+
+    <g transform="translate(0, 80)">
+      <rect x="-210" y="0" width="420" height="38" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1.5"/>
+      <circle cx="-180" cy="19" r="5" fill="#00FF66" class="status-pulse"/>
+      
+      <text x="-115" y="24" text-anchor="start" clip-path="url(#typewriterClip)"
+            font-family="'Courier New', monospace" font-weight="700" font-size="15" 
+            fill="#00FF66" letter-spacing="2.5">
+        INITIALIZING SYSTEM...
+      </text>
+
+      <rect y="10" width="8" height="17" fill="#00FF66" rx="1">
+        <animate attributeName="x" values="-115; 145; 145; -115" keyTimes="0; 0.65; 0.90; 1" dur="4s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="1; 1; 0; 1; 0; 1; 0; 1" keyTimes="0; 0.65; 0.70; 0.75; 0.80; 0.85; 0.90; 1" dur="4s" repeatCount="indefinite" />
+      </rect>
+    </g>
+
+    <text y="152" font-family="'Segoe UI', 'Roboto', sans-serif" font-weight="600" font-size="16" 
+          fill="#FF6600" letter-spacing="3.5" opacity="0.95" filter="url(#neonGlow)">
+      JuanenRac (2026) - Electro Hobby 3D
+    </text>
+  </g>
+</svg>
