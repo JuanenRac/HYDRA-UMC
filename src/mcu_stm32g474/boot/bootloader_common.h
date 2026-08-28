@@ -59,8 +59,8 @@ extern IWDG_HandleTypeDef  hiwdg;
 // 0.1.10) - same rule BOOTLOADER_VERSION_* below already used. Also
 // embedded in the output filename (HYDRA_RCB_APP_v0.0.0.bin).
 #define FIRMWARE_VERSION_MAJOR 0
-#define FIRMWARE_VERSION_MINOR 0
-#define FIRMWARE_VERSION_PATCH 8
+#define FIRMWARE_VERSION_MINOR 1
+#define FIRMWARE_VERSION_PATCH 1
 
 // BOOTLOADER_VERSION_* describes THIS bootloader binary itself. Versioning
 // convention (matches URTC's own shape, but NOT its manual-bump timing -
@@ -69,8 +69,8 @@ extern IWDG_HandleTypeDef  hiwdg;
 // increments and PATCH resets to 0. Also embedded in the output filename
 // by build_firmware.sh (HYDRA_RCB_BOOTLOADER_v0.0.0.bin).
 #define BOOTLOADER_VERSION_MAJOR 0
-#define BOOTLOADER_VERSION_MINOR 0
-#define BOOTLOADER_VERSION_PATCH 8
+#define BOOTLOADER_VERSION_MINOR 1
+#define BOOTLOADER_VERSION_PATCH 0
 
 // -----------------------------------------------------------------------
 // HMAC-SHA256 signing key - PLACEHOLDER, same caveat as URTC's own key

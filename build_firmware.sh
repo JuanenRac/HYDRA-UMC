@@ -1,80 +1,45 @@
-#!/usr/bin/env bash
-# =============================================================================
-# build_firmware.sh - Install tools, verify everything, compile HYDRA-UMC's
-# own MCU firmware binaries from a clean checkout.
-#
-# PROJECT: HYDRA-UMC
-# AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
-# LICENSE: GPL-3.0 (same as the firmware this builds - see LICENSE at repo root)
-#
-# Modeled directly on the sibling URTC repo's own build_firmware.sh (same
-# pinned-vendor-via-git approach, same pass/warn/fail step reporting) - see
-# that script and its own docs/COMPILE_STM32F303.TXT for the pattern this
-# follows. Full reasoning for HYDRA-UMC's own two targets is in
-# docs/COMPILE_STM32G474.TXT and docs/COMPILE_STM32H745.TXT - read those
-# first if anything here needs adjusting; this script automates them, it
-# doesn't replace them.
-#
-# FreeRTOS: both application targets (Robot Controller Board's STM32G474,
-# and the Kinematic Brain's STM32H745 - BOTH cores) run FreeRTOS - see
-# docs/architecture.md for the reasoning. Bootloaders stay bare-metal
-# (matches URTC's own precedent - a bootloader doesn't need a scheduler,
-# keeping it minimal/auditable/fast is the actual goal there).
-#
-# Usage:
-#   ./build_firmware.sh              build every target below
-#   ./build_firmware.sh --clean      wipe the local build/ cache first
-#   ./build_firmware.sh g474         build only the Robot Controller Board (STM32G474RET6)
-#   ./build_firmware.sh h745         build only the Kinematic Brain (STM32H745ZIT6, both cores)
-#
-# STATUS: every application binary below is still a FreeRTOS smoke test
-# (one task, GPIO toggle) proving the toolchain/vendoring/RTOS pipeline
-# works end to end - real motion/vision/relay application logic is not yet
-# written. The BOOTLOADERS are different: all 3 (G474, H745 CM7, H745 CM4)
-# now implement the real CAN-OTA/SPI-OTA protocol (docs/architecture.md
-# sections 3-5) - CRC32+HMAC-SHA256 verify-into-backup-before-copy-to-main,
-# same anti-bricking discipline URTC's own bootloader already proves out.
-# See each src/*/README.md for exactly what's real vs. still TODO.
-# =============================================================================
 set -e
+# HYDRA_UMC_SCRIPT_STANDARD_HEADER_BEGIN
+# *****************************************************************************
+# Project   : HYDRA-UMC
+# Script    : build_firmware.sh
+# Purpose   : Incremental firmware build and versioned artifact packaging workflow.
+# Author    : JuanenRac (Electro Hobby 3D)
+# Email     : electrohobby3d@gmail.com
+# Copyright : (C) 2026 JuanenRac
+# License   : GPL-3.0 - see LICENSE
+# *****************************************************************************
+# HYDRA_UMC_SCRIPT_STANDARD_HEADER_END
+# HYDRA_UMC_SCRIPT_STANDARD_BANNER_BEGIN
+printf '\n*******************************************************************************\n'
+printf '%s\n' "* HYDRA-UMC - build_firmware.sh"
+printf '%s\n' "* Mode      : INCREMENTAL BUILD"
+printf '%s\n' "* Author    : JuanenRac (Electro Hobby 3D)"
+printf '%s\n' "* Email     : electrohobby3d@gmail.com"
+printf '%s\n' "* Copyright : (C) 2026 JuanenRac"
+printf '%s\n' "* License   : GPL-3.0 - see LICENSE"
+printf '%s\n' "* ------------------------------------------------------------------------- *"
+printf '%s\n' "* 1. Increment the project version and synchronise its manifest."
+printf '%s\n' "* 2. Run this project's declared build, verification and packaging commands."
+printf '%s\n' "* 3. Report the result and keep an interactive terminal open."
+printf '%s\n' "*******************************************************************************"
+printf '\n'
+# HYDRA_UMC_SCRIPT_STANDARD_BANNER_END
 HYDRA_UMC_CI_MODE="${HYDRA_UMC_CI:-0}"
 if [ "$HYDRA_UMC_CI_MODE" = "1" ]; then
     echo "HYDRA-UMC CI: version sources are read-only."
 else
-    python3 "$(dirname "$0")/bump_manifest_version.py" || exit 1
+    # HYDRA_UMC_SCRIPT_STANDARD_VERSION_STEP
+    printf '%s\n' "[1/3] Incrementing project version and synchronising its manifest..."
+    # HYDRA_UMC_SCRIPT_STANDARD_VERSION_CAPTURE_BEFORE
+    HYDRA_UMC_VERSION_BEFORE="$(python3 -c 'import json, pathlib, sys; print(json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))["version"])' "$(dirname "$0")/hydra-umc.project.json")"
+    # The registry version is the G474 application version. Its component bump
+    # occurs later, then --sync records that one authoritative bump.
 fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD="$ROOT/build"
 FIRMWARE_OUT="$ROOT/firmware"
-
-# -----------------------------------------------------------------------
-# Banner - printed on every run (not just a comment at the top of this
-# file), so anyone running this from a double-clicked terminal or a fresh
-# shell sees what project/script/author/license they're looking at before
-# any output scrolls past.
-# -----------------------------------------------------------------------
-echo "============================================================================="
-echo " HYDRA-UMC - firmware build"
-echo ""
-echo " Installs tools, verifies everything, and compiles HYDRA-UMC's own MCU"
-echo " firmware binaries from a clean checkout: Robot Controller Board"
-echo " (STM32G474RET6) + Kinematic Brain (STM32H745ZIT6, CM7+CM4) - 6 components"
-echo " total (3 bootloaders + 3 applications), all version-incremental (see"
-echo " bump_version.py)."
-echo ""
-echo " Author:  JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com"
-echo " License: GPL-3.0 - see LICENSE at repo root"
-echo "============================================================================="
-
-# Keeps the window open when this script is double-clicked/launched from a
-# real terminal, on success AND on failure (matches build_firmware.bat's
-# own `pause`) - fires on every exit path via this EXIT trap (normal
-# completion, an explicit `exit N` anywhere above, or `set -e` aborting on
-# a failed command), not just the final line. Skipped when stdin isn't a
-# real terminal (`[ -t 0 ]` false - e.g. CI, a pipe, or another script
-# driving this one) so automation never hangs waiting for a keypress that
-# will never come.
 if [ -t 0 ]; then
     trap 'echo ""; read -r -p "Press Enter to close this window..." _' EXIT
 fi
@@ -149,6 +114,24 @@ else
 fi
 
 mkdir -p "$FIRMWARE_OUT"
+
+# A firmware directory represents one build set, never an accumulation of
+# differently-versioned binaries.  Keep non-generated material intact, but
+# remove every artifact this script can publish before compiling the next set.
+shopt -s nullglob
+firmware_artifacts=(
+    "$FIRMWARE_OUT"/HYDRA_*.bin
+    "$FIRMWARE_OUT"/HYDRA_*.elf
+    "$FIRMWARE_OUT"/HYDRA_*.hex
+    "$FIRMWARE_OUT"/firmware_manifest.json
+)
+if ((${#firmware_artifacts[@]})); then
+    echo ""
+    echo "=== Firmware output cleanup ==="
+    rm -f -- "${firmware_artifacts[@]}"
+    pass "removed ${#firmware_artifacts[@]} generated firmware artifact(s) from firmware/"
+fi
+shopt -u nullglob
 
 build_bin_hex() {
     local elf="$1"
@@ -378,6 +361,17 @@ step "6. Robot Controller Board application (src/mcu_stm32g474/) - FreeRTOS"
 # -----------------------------------------------------------------------
 SRC="$ROOT/src/mcu_stm32g474"
 bump_version "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION "Robot Controller Board application"
+if [ "$HYDRA_UMC_CI_MODE" != "1" ]; then
+    python3 "$ROOT/bump_manifest_version.py" --sync || exit 1
+    # HYDRA_UMC_SCRIPT_STANDARD_VERSION_CAPTURE_AFTER
+    HYDRA_UMC_VERSION_AFTER="$(python3 -c 'import json, pathlib, sys; print(json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))["version"])' "$ROOT/hydra-umc.project.json")"
+    printf '\n*******************************************************************************\n'
+    printf '%s\n' '* VERSION INCREMENT COMPLETED'
+    printf '%s\n' "* v${HYDRA_UMC_VERSION_BEFORE:-unknown} -> v${HYDRA_UMC_VERSION_AFTER:-unknown}"
+    printf '%s\n' '* Project manifest synchronized with the G474 application version.'
+    printf '%s\n' '*******************************************************************************'
+    printf '\n'
+fi
 rm -f "$G4/app_obj"/*.o
 arm-none-eabi-gcc $CFLAGS_G4_APP -I"$SRC" -x c -c "$SRC/STM32G474RE_main.c" -o "$G4/app_obj/STM32G474RE_main.o"
 G4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_PATCH)"

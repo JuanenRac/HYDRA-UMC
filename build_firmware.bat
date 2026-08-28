@@ -1,82 +1,43 @@
 @echo off
-REM =============================================================================
-REM build_firmware.bat - Install tools, verify everything, compile HYDRA-UMC's
-REM own MCU firmware binaries from a clean checkout.
-REM
-REM PROJECT: HYDRA-UMC
-REM AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
-REM LICENSE: GPL-3.0 (same as the firmware this builds - see LICENSE at repo root)
-REM
-REM Modeled directly on the sibling URTC repo's own build_firmware.bat (same
-REM pinned-vendor-via-git approach, same pass/warn/fail step reporting), which
-REM in turn mirrors this project's own build_firmware.sh - the Linux/Mac
-REM version, run end to end against this project's own real source and
-REM verified working. Full reasoning for HYDRA-UMC's own two chip targets is
-REM in docs\COMPILE_STM32G474.TXT and docs\COMPILE_STM32H745.TXT - read those
-REM first if anything here needs adjusting; this script automates them, it
-REM doesn't replace them.
-REM
-REM HONESTY NOTE: this file was written by translating build_firmware.sh's
-REM logic into batch syntax, then actually run end to end on a real Windows
-REM machine with the Arm GNU Toolchain installed (both `g474` and `h745`
-REM targets, then a full default build) - every HAL module, bootloader, and
-REM application linked clean and firmware_manifest.json regenerated with
-REM real CRC32s, matching build_firmware.sh's own output shape. If something
-REM here stops working as written, trust build_firmware.sh's own logic as
-REM the source of truth and adjust this file's own syntax to match its
-REM intent.
-REM
-REM FreeRTOS: both application targets (Robot Controller Board's STM32G474,
-REM and the Kinematic Brain's STM32H745 - BOTH cores) run FreeRTOS - see
-REM docs/architecture.md for the reasoning. Bootloaders stay bare-metal
-REM (matches URTC's own precedent - a bootloader doesn't need a scheduler,
-REM keeping it minimal/auditable/fast is the actual goal there).
-REM
-REM Usage:
-REM   build_firmware.bat              build every target below
-REM   build_firmware.bat --clean      wipe the local build\ cache first
-REM   build_firmware.bat g474         build only the Robot Controller Board (STM32G474RET6)
-REM   build_firmware.bat h745         build only the Kinematic Brain (STM32H745ZIT6, both cores)
-REM
-REM STATUS: every application binary below is still a FreeRTOS smoke test
-REM (one task, GPIO toggle) proving the toolchain/vendoring/RTOS pipeline
-REM works end to end - real motion/vision/relay application logic is not yet
-REM written. The BOOTLOADERS are different: all 3 (G474, H745 CM7, H745 CM4)
-REM implement the real CAN-OTA/SPI-OTA protocol (docs/architecture.md
-REM sections 3-5) - CRC32+HMAC-SHA256 verify-into-backup-before-copy-to-main,
-REM same anti-bricking discipline URTC's own bootloader already proves out.
-REM See each src\*\README.md for exactly what's real vs. still TODO.
-REM =============================================================================
+REM HYDRA_UMC_SCRIPT_STANDARD_HEADER_BEGIN
+REM *****************************************************************************
+REM Project   : HYDRA-UMC
+REM Script    : build_firmware.bat
+REM Purpose   : Incremental firmware build and versioned artifact packaging workflow.
+REM Author    : JuanenRac (Electro Hobby 3D)
+REM Email     : electrohobby3d@gmail.com
+REM Copyright : (C) 2026 JuanenRac
+REM License   : GPL-3.0 - see LICENSE
+REM *****************************************************************************
+REM HYDRA_UMC_SCRIPT_STANDARD_HEADER_END
+REM HYDRA_UMC_SCRIPT_STANDARD_BANNER_BEGIN
+echo.
+echo *****************************************************************************
+echo * HYDRA-UMC - build_firmware.bat
+echo * Mode      : INCREMENTAL BUILD
+echo * Author    : JuanenRac (Electro Hobby 3D)
+echo * Email     : electrohobby3d@gmail.com
+echo * Copyright : (C) 2026 JuanenRac
+echo * License   : GPL-3.0 - see LICENSE
+echo * ------------------------------------------------------------------------- *
+echo * 1. Increment the project version and synchronise its manifest.
+echo * 2. Run this project's declared build, verification and packaging commands.
+echo * 3. Report the result and keep an interactive terminal open.
+echo *****************************************************************************
+echo.
+REM HYDRA_UMC_SCRIPT_STANDARD_BANNER_END
 setlocal enabledelayedexpansion
-python "%~dp0bump_manifest_version.py"
-if errorlevel 1 ( echo VERSION BUMP FAILED. & pause & exit /b 1 )
-
+REM HYDRA_UMC_SCRIPT_STANDARD_VERSION_STEP
+echo [1/3] Incrementing project version and synchronising its manifest...
+REM HYDRA_UMC_SCRIPT_STANDARD_VERSION_CAPTURE_BEFORE
+for /f "usebackq delims=" %%V in (`python -c "import json; print(json.load(open(r'%~dp0hydra-umc.project.json', encoding='utf-8'))['version'])"`) do set "HYDRA_UMC_VERSION_BEFORE=%%V"
+REM The registry version is the G474 application version. Its component bump
+REM occurs later, then --sync records that one authoritative bump.
+echo.
 set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 set "BUILD=%ROOT%\build"
 set "FIRMWARE_OUT=%ROOT%\firmware"
-
-REM -----------------------------------------------------------------------
-REM Banner - printed on every run (not just a comment at the top of this
-REM file), so anyone double-clicking this from Explorer or launching it
-REM from a fresh cmd window sees what project/script/author/license they're
-REM looking at before any output scrolls past.
-REM -----------------------------------------------------------------------
-echo =============================================================================
-echo  HYDRA-UMC - firmware build
-echo.
-echo  Installs tools, verifies everything, and compiles HYDRA-UMC's own MCU
-echo  firmware binaries from a clean checkout: Robot Controller Board
-echo  (STM32G474RET6) + Kinematic Brain (STM32H745ZIT6, CM7+CM4) - 6 components
-echo  total (3 bootloaders + 3 applications), all version-incremental (see
-echo  bump_version.py).
-echo.
-echo  Author:  JuanenRac (Electro Hobby 3D^) - electrohobby3d@gmail.com
-echo  License: GPL-3.0 - see LICENSE at repo root
-echo =============================================================================
-
-REM Pinned versions - see docs\COMPILE_STM32G474.TXT section 3 for why pinned
-REM rather than tracking each repo's own latest master.
 set "G4_HAL_REPO=https://github.com/STMicroelectronics/stm32g4xx_hal_driver.git"
 set "G4_HAL_TAG=v1.2.7"
 set "G4_CMSIS_DEVICE_REPO=https://github.com/STMicroelectronics/cmsis_device_g4.git"
@@ -160,6 +121,16 @@ if errorlevel 1 (
 )
 
 if not exist "%FIRMWARE_OUT%" mkdir "%FIRMWARE_OUT%"
+
+REM A firmware directory represents one build set. Remove only generated
+REM HYDRA artifacts and its generated manifest; preserve any other files.
+echo.
+echo === Firmware output cleanup ===
+del /q "%FIRMWARE_OUT%\HYDRA_*.bin" 2>nul
+del /q "%FIRMWARE_OUT%\HYDRA_*.elf" 2>nul
+del /q "%FIRMWARE_OUT%\HYDRA_*.hex" 2>nul
+del /q "%FIRMWARE_OUT%\firmware_manifest.json" 2>nul
+echo   OK   old generated firmware artifacts removed from firmware\
 
 REM -----------------------------------------------------------------------
 echo.
@@ -343,6 +314,19 @@ echo === 6. Robot Controller Board application ^(src\mcu_stm32g474\^) - FreeRTOS
 REM -----------------------------------------------------------------------
 set "SRC=%ROOT%\src\mcu_stm32g474"
 call :BumpVersion "!SRC!\boot\bootloader_common.h" FIRMWARE_VERSION "Robot Controller Board application"
+python "%~dp0bump_manifest_version.py" --sync
+if errorlevel 1 ( echo VERSION SYNCHRONISATION FAILED. & pause & exit /b 1 )
+REM HYDRA_UMC_SCRIPT_STANDARD_VERSION_CAPTURE_AFTER
+for /f "usebackq delims=" %%V in (`python -c "import json; print(json.load(open(r'%~dp0hydra-umc.project.json', encoding='utf-8'))['version'])"`) do set "HYDRA_UMC_VERSION_AFTER=%%V"
+if not defined HYDRA_UMC_VERSION_BEFORE set "HYDRA_UMC_VERSION_BEFORE=unknown"
+if not defined HYDRA_UMC_VERSION_AFTER set "HYDRA_UMC_VERSION_AFTER=unknown"
+echo.
+echo *****************************************************************************
+echo * VERSION INCREMENT COMPLETED
+echo * v%HYDRA_UMC_VERSION_BEFORE% ^> v%HYDRA_UMC_VERSION_AFTER%
+echo * Project manifest synchronized with the G474 application version.
+echo *****************************************************************************
+echo.
 set "OUT=!G4!\app_obj"
 del /q "!OUT!\*.o" 2>nul
 arm-none-eabi-gcc %CFLAGS_G4_APP% -I"!SRC!" -x c -c "!SRC!\STM32G474RE_main.c" -o "!OUT!\STM32G474RE_main.o"

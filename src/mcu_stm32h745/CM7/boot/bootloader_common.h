@@ -59,12 +59,12 @@ extern IWDG_HandleTypeDef hiwdg;
 // src/mcu_stm32g474/boot/bootloader_common.h's own header comment, same
 // rule applies here verbatim.
 #define FIRMWARE_VERSION_MAJOR 0
-#define FIRMWARE_VERSION_MINOR 0
-#define FIRMWARE_VERSION_PATCH 8
+#define FIRMWARE_VERSION_MINOR 1
+#define FIRMWARE_VERSION_PATCH 0
 
 #define BOOTLOADER_VERSION_MAJOR 0
-#define BOOTLOADER_VERSION_MINOR 0
-#define BOOTLOADER_VERSION_PATCH 8
+#define BOOTLOADER_VERSION_MINOR 1
+#define BOOTLOADER_VERSION_PATCH 0
 
 extern const uint8_t HMAC_KEY[32];
 

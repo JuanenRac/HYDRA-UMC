@@ -2,6 +2,18 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
+## [0.1.1]
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
+
+## [0.1.0]
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
+
+## [0.0.9]
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
+
 ## [0.0.8]
 
 - Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
