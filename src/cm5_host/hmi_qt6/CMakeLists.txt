@@ -18,5 +18,5 @@ set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineWidgets)
 
-add_executable(hydra_hmi src/main.cpp)
+add_executable(hydra_hmi src/main.cpp src/kiosk_view.cpp src/kiosk_view.h)
 target_link_libraries(hydra_hmi PRIVATE Qt6::Widgets Qt6::WebEngineWidgets)

@@ -2,7 +2,7 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
-## [Unreleased] - Reconciled os/ with the real HYDRA-UMC-OS decision
+## [Unreleased] - Pre-hardware readiness: os/ reconciled, real hmi_qt6 kiosk lockdown
 
 - **`os/README.md`** - stopped presenting "Raspberry Pi OS vs. Yocto" as
   still an open decision. The separate repo
@@ -15,6 +15,30 @@ All notable changes to the hardware and core firmware will be documented in this
   updated to reflect it, leaving two contradictory "OS strategy"
   documents in the ecosystem. Documentation-only fix - no firmware
   binary changed, so no version/artifact bump; `os/README.md` itself
+  documents the real reconciliation work (retiring these placeholders in
+  favor of HYDRA-UMC-OS) still ahead.
+- **Added `src/cm5_host/hmi_qt6/src/kiosk_view.{h,cpp}`** (new) - real
+  kiosk lockdown for the `QWebEngineView` shell, written against Qt6's
+  real, documented API: no right-click context menu
+  (`setContextMenuPolicy(Qt::NoContextMenu)`), no accidental close
+  (`closeEvent()` overridden to `ignore()`, covering both the window
+  manager's own Alt+F4 delivery and a stray close() call without needing
+  to trap raw keystrokes), Escape/F11 swallowed as defense-in-depth,
+  cursor hidden after 5s idle (a touch panel has no persistent pointer
+  need) - unlocked only by a technician combo
+  (Ctrl+Alt+Shift+Q). Also added `loadWithRetry()`, a real
+  retry-until-loaded flow so a cold-booting CM5 whose dashboard Node
+  server isn't up yet keeps retrying instead of showing a browser
+  connection-error page once. **`main.cpp`** now builds a real (drawn in
+  code, no image asset yet) `QSplashScreen`, kept on screen through
+  however many retries that flow needs, closed only once the dashboard
+  genuinely finishes loading. Explicitly **NOT verified by actual
+  compilation** - no Qt6 (specifically no `WebEngineWidgets`, the
+  Chromium-based module this needs) is installed on this development
+  machine, and a real Qt6 + WebEngine install is multi-gigabyte, judged
+  too large to fetch just to verify this one app this session; see that
+  folder's own README.md for the exact verification still needed before
+  trusting this builds.
   documents the real reconciliation work (retiring these placeholders in
   favor of HYDRA-UMC-OS) still ahead.
 
