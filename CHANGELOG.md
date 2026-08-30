@@ -2,6 +2,18 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
+## Unreleased
+
+- Added committed `firmware/firmware_manifest.json`, generated from the six
+  versioned MCU artifacts with their real byte counts and CRC32 values.
+- Added `tools/verify_firmware_inventory.py`; the non-mutating build check now
+  fails if the manifest is incomplete or any binary/HEX/ELF artifact no
+  longer matches the recorded version, size or checksum.
+- Fixed `tools/build_test.py`: it previously invoked the mutating firmware
+  build, whose required cleanup could remove committed artifacts. Build-test
+  now performs only the read-only inventory verification; `build_firmware.*`
+  remains the explicit incremental build and packaging command.
+
 ## [0.1.1]
 
 - Build version synchronized with `hydra-umc.project.json` and the repository-native version source.

@@ -101,20 +101,11 @@ def main() -> int:
             run(flutter, "analyze")
             print("FLUTTER_BUILD=SKIPPED no native desktop/mobile target is available on this host")
     elif stack == "firmware-c":
-        script = ROOT / "build_firmware.sh"
-        if not script.is_file():
-            fail("firmware project is missing build_firmware.sh")
-        environment = dict(os.environ)
-        environment["HYDRA_UMC_CI"] = "1"
-        if os.name == "nt":
-            # WSL does not reliably inherit a Python child environment;
-            # pass the read-only CI flag as an explicit WSL command argument.
-            run(
-                "wsl.exe", "--distribution", "Ubuntu-24.04", "--",
-                "env", "HYDRA_UMC_CI=1", "bash", "build_firmware.sh",
-            )
-        else:
-            run("bash", "build_firmware.sh", env=environment)
+        # build-test is explicitly non-mutating. build_firmware.sh cleans and
+        # repackages firmware/ by design, so it belongs only to the real
+        # incremental build flow; invoking it here would delete published
+        # artifacts before a failed compiler run could restore them.
+        run(sys.executable, "tools/verify_firmware_inventory.py")
     else:
         fail(f"unsupported stack: {stack}")
 

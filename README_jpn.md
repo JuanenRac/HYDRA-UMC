@@ -274,6 +274,7 @@ HYDRA-UMC/
 ├── build_firmware.sh            # クリーンなチェックアウトから、上記の全 MCU ファームウェアターゲットを一括ビルド（Linux/Mac）
 ├── build_firmware.bat           # 同じビルド、Windows 版（下記「ファームウェアのビルド」参照）
 ├── generate_manifest.py         # フルビルド後に firmware/firmware_manifest.json（バージョン／CRC32）を再生成
+├── tools/verify_firmware_inventory.py # コミット済み6コンポーネント在庫の読み取り専用検証
 ├── firmware/                    # コミット済みのビルド成果物（.bin/.hex/.elf + マニフェスト）— gitignore 対象外、URTC 自身の出力フォルダと同じ規約、下記「ファームウェアのビルド」参照
 ├── README.md                    # 本ファイル
 └── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md    # <- 各言語訳

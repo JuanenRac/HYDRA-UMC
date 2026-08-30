@@ -307,6 +307,7 @@ HYDRA-UMC/
 ├── build_firmware.sh            # Compila ogni target firmware MCU sopra da un checkout pulito (Linux/Mac)
 ├── build_firmware.bat           # Stessa build, Windows (vedi "Compilare il Firmware" sotto)
 ├── generate_manifest.py         # Rigenera firmware/firmware_manifest.json (versioni/CRC32) dopo una build completa
+├── tools/verify_firmware_inventory.py # Verifica in sola lettura dell'inventario dei sei componenti
 ├── firmware/                    # Output di build committato (.bin/.hex/.elf + manifest) - NON in gitignore, stessa convenzione della cartella di output propria di URTC, vedi "Compilare il Firmware" sotto
 ├── README.md                    # Questo file
 └── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md    # <- traduzioni

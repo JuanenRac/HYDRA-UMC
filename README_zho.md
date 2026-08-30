@@ -274,6 +274,7 @@ HYDRA-UMC/
 ├── build_firmware.sh            # 从全新检出一次性构建上述所有 MCU 固件目标（Linux/Mac）
 ├── build_firmware.bat           # 相同构建，Windows 版（见下方“构建固件”）
 ├── generate_manifest.py         # 完整构建后重新生成 firmware/firmware_manifest.json（版本号/CRC32）
+├── tools/verify_firmware_inventory.py # 对已提交六组件清单的只读验证
 ├── firmware/                    # 已提交的构建产物（.bin/.hex/.elf + 清单文件）—— 未被 gitignore 排除，与 URTC 自身的输出文件夹约定一致，见下方“构建固件”
 ├── README.md                    # 本文件
 └── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md    # <- 各语言译文
