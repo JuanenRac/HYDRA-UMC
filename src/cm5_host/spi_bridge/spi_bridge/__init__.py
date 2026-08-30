@@ -8,6 +8,13 @@ machine and a small local HTTP service SERVER (Node.js) relays to."""
 
 from .bootloader_client import FlashProgress, SpiOtaFlasher, VersionInfo, query_version
 from .protocol import SPI_FRAME_SIZE, SPI_TARGET_CM7, SPI_TARGET_SELF, SPI_TARGET_STACKA, SpiOtaFrame
+from .relay_tunnel import (
+    URTC_BOOTLOADER_CAN_BASE,
+    RelayedTransport,
+    RelayFrame,
+    build_relay_send_fragments,
+    parse_relay_fragment,
+)
 from .transport import RealSpiOtaTransport, SpiOtaTransport, open_spi_transport
 
 __all__ = [
@@ -23,4 +30,9 @@ __all__ = [
     "query_version",
     "FlashProgress",
     "SpiOtaFlasher",
+    "RelayedTransport",
+    "RelayFrame",
+    "build_relay_send_fragments",
+    "parse_relay_fragment",
+    "URTC_BOOTLOADER_CAN_BASE",
 ]

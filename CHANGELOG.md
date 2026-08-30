@@ -31,6 +31,31 @@ All notable changes to the hardware and core firmware will be documented in this
   populated board exists - see `hardware/PCB/kinematic_brain_stm32h745/README.md`).
   Wired into `tools/build_test.py`'s own `firmware-c` branch so this repo's
   normal build-test compiles and tests it too.
+- **Added `src/cm5_host/spi_bridge/spi_bridge/relay_tunnel.py`** - reaches
+  Tier 2 (the URTC Tool Head) through its own Robot Controller Board's
+  real RELAY_SEND/RELAY_RECV tunnel (architecture.md section 5), with a
+  real, explicit 5-byte fragmentation scheme for tunneling a real CAN
+  frame's up-to-8-byte data through the SPI-OTA `SpiOtaFrame_t`'s own
+  8-byte payload field. `RelayedTransport` implements the exact same
+  `SpiOtaTransport` interface the direct Tier 0/1 transport does, so
+  `bootloader_client.py`'s already-tested state machine reaches a real
+  Tier 2 target completely unchanged - no new protocol logic needed on
+  that side. Found and fixed a real design bug while wiring this up:
+  waiting on a RELAY_RECV response for fire-and-forget frame types
+  (ENTER_BOOTLOADER/START_UPDATE/HMAC_CHUNK/DATA, which
+  `bootloader_client.py` never reads a response for) would have added a
+  real, needless multi-second timeout to hundreds of frames across a
+  single flash cycle - fixed by only waiting on the 3 frame types the
+  real protocol actually responds to (QUERY_VERSION/PAGE_ACK/STATUS).
+  `http_service.py`'s routes gained a `relay=1` query parameter. Tier 3
+  (Advanced Expansion Board) needs one further real tunnel hop (URTC's
+  own I2C bridge, CAN IDs 0x210-0x221) - not implemented yet, same real
+  pattern would apply. 9 new regression tests, including a faithful fake
+  Tier-1-relaying-to-Tier-2 stand-in - 31/31 tests passing.
+- **`HYDRA-UMC-STUDIO`/`HYDRA-UMC-SERVER`** (separate repos) now reach
+  Tier 0/1 for real through this service, and Tier 2 through the new
+  relay tunnel above, when `settings.canOta.transport === 'hardware'` -
+  see those repos' own CHANGELOG entries.
 
 ## [0.1.1]
 

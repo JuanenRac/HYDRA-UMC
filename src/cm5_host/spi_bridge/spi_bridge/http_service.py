@@ -9,9 +9,18 @@ HTTP" pattern SERVER already uses for Voice UI/Datalake
 (server.ts's own `POST /api/voice/turn`/`proxyToDatalake`).
 
 Real routes:
-  GET  /version?tier=&slot=            -> query_version()
-  POST /flash?tier=&slot=&hardware_id= -> SpiOtaFlasher.flash(), streamed
-                                            as newline-delimited JSON progress
+  GET  /version?tier=&slot=&relay=   -> query_version()
+  POST /flash?tier=&slot=&hardware_id=&relay= -> SpiOtaFlasher.flash(),
+                                        streamed as newline-delimited JSON
+
+`tier`/`slot` always identify the directly-reachable Tier 0/1 target (the
+one `transport` was already opened against). `relay=1` additionally tunnels
+through it to reach that Robot Controller Board's own URTC Tool Head
+(Tier 2) via `RelayedTransport` - see relay_tunnel.py's own docstring for
+the real RELAY_SEND/RELAY_RECV wire format this wraps. Tier 3 (Advanced
+Expansion Board) needs one further real tunnel hop (URTC's own I2C bridge,
+CAN IDs 0x210-0x221, docs/EXPANSION.TXT in the sibling URTC repo) - not
+implemented here yet; `relay=1` only reaches Tier 2 today.
 
 No TLS, no auth beyond loopback-only binding by default - same trust level
 as the rest of this ecosystem's backend on its own LAN (see
@@ -29,6 +38,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from .bootloader_client import SpiOtaFlasher, query_version
+from .relay_tunnel import RelayedTransport
 from .transport import SpiOtaTransport
 
 
@@ -50,7 +60,8 @@ def make_handler(transport: SpiOtaTransport, hmac_key: bytes) -> type[BaseHTTPRe
             except ValueError:
                 self._send_json(400, {"error": "tier/slot must be integers"})
                 return
-            info = query_version(transport, tier, slot)
+            effective_transport = RelayedTransport(transport, tier, slot) if params.get("relay", ["0"])[0] == "1" else transport
+            info = query_version(effective_transport, tier, slot)
             self._send_json(
                 200,
                 {
@@ -84,7 +95,8 @@ def make_handler(transport: SpiOtaTransport, hmac_key: bytes) -> type[BaseHTTPRe
             self.send_response(200)
             self.send_header("Content-Type", "application/x-ndjson")
             self.end_headers()
-            flasher = SpiOtaFlasher(transport, hmac_key)
+            effective_transport = RelayedTransport(transport, tier, slot) if params.get("relay", ["0"])[0] == "1" else transport
+            flasher = SpiOtaFlasher(effective_transport, hmac_key)
             for progress in flasher.flash(tier, slot, hardware_id, firmware, version_major, version_minor):
                 line = json.dumps(
                     {

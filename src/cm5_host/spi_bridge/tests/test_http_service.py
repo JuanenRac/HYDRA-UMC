@@ -14,6 +14,7 @@ import unittest
 from urllib.request import Request, urlopen
 
 from fake_transport import FakeBootloaderTransport
+from test_relay_tunnel import FakeRelayingTier1Transport
 
 from spi_bridge.http_service import serve
 
@@ -64,6 +65,40 @@ class HttpServiceTests(unittest.TestCase):
         except Exception as error:
             self.assertEqual(error.code, 404)
             error.close()
+
+
+class HttpServiceRelayTests(unittest.TestCase):
+    """relay=1 reaches Tier 2 (URTC Tool Head) through the real RELAY_SEND/
+    RELAY_RECV tunnel - see relay_tunnel.py's own docstring."""
+
+    def setUp(self):
+        self.transport = FakeRelayingTier1Transport(hardware_id=0x0303CC01)
+        self.server = serve(self.transport, hmac_key=b"\x00" * 32, port=0)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.base_url = f"http://127.0.0.1:{self.server.server_port}"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.thread.join()
+        self.server.server_close()
+
+    def test_get_version_with_relay_reaches_the_real_tunneled_urtc_head(self):
+        with urlopen(f"{self.base_url}/version?tier=2&slot=3&relay=1") as response:
+            payload = json.loads(response.read())
+        self.assertTrue(payload["online"])
+        self.assertEqual(payload["hardware_id"], 0x0303CC01)
+
+    def test_post_flash_with_relay_streams_real_progress_ending_in_done(self):
+        firmware = b"\xAB" * 2048
+        request = Request(
+            f"{self.base_url}/flash?tier=2&slot=3&relay=1&hardware_id=0x0303CC01&version_major=0&version_minor=1",
+            data=firmware,
+            method="POST",
+        )
+        with urlopen(request) as response:
+            lines = [json.loads(line) for line in response.read().decode("utf-8").splitlines()]
+        self.assertEqual(lines[-1]["phase"], "done")
 
 
 if __name__ == "__main__":

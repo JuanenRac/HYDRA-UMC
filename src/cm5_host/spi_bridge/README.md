@@ -27,23 +27,44 @@ framing to this project's real SPI framing.
   (`GET /version`, `POST /flash`) that `HYDRA-UMC-SERVER` (Node.js) relays
   to, the same "small local upstream service reached over loopback HTTP"
   pattern SERVER already uses for Voice UI/Datalake.
-- `tests/` — 22 deterministic tests against an in-memory fake transport
-  and a real local HTTP server (only the SPI transport underneath is
-  faked) — see `../../tools/build_test.py`'s own `firmware-c` branch for
-  how this is wired into this repo's normal build-test.
+- `spi_bridge/relay_tunnel.py` — reaches Tier 2 (the URTC Tool Head,
+  through its own Robot Controller Board's RELAY_SEND/RELAY_RECV tunnel,
+  `architecture.md` section 5) with a real, explicit 5-byte fragmentation
+  scheme for a CAN frame's up-to-8-byte data. `RelayedTransport`
+  implements the exact same `SpiOtaTransport` protocol `transport.py`
+  does, so `bootloader_client.py`'s state machine works against Tier 2
+  completely unchanged - pass `relay=1` to `http_service.py`'s routes to
+  use it. Tier 3 (Advanced Expansion Board) needs one further real tunnel
+  hop (URTC's own I2C bridge, CAN IDs 0x210-0x221,
+  `docs/EXPANSION.TXT` in the sibling URTC repo) - not implemented yet,
+  same real pattern would apply.
+- `tests/` — 31 deterministic tests against in-memory fake transports
+  (including a faithful fake Tier 1-relaying-to-Tier-2 stand-in) and real
+  local HTTP servers (only the SPI transport underneath is faked) — see
+  `../../tools/build_test.py`'s own `firmware-c` branch for how this is
+  wired into this repo's normal build-test.
 
 ## What's still needed
 
 - A real STM32H745 board to test any of this against — none exists yet
   (no schematic, see `../../hardware/PCB/kinematic_brain_stm32h745/README.md`).
-- `HYDRA-UMC-SERVER`'s own relay routes (`POST /api/hardware/canota/*`)
-  and `HYDRA-UMC-STUDIO`'s `Flasher.tsx`/`Tester.tsx` wiring the
-  `transport === 'hardware'` case to this service instead of always
-  calling `mock*` — see `HYDRA-UMC-STUDIO/src/lib/canOta.ts`'s own header
-  comment for that switch.
+- Tier 3 (Advanced Expansion Board) - needs the real I2C-bridge tunnel hop
+  documented in `relay_tunnel.py`'s own docstring; the same real pattern
+  as the Tier 2 tunnel already implemented would apply.
 - Real `spidev`/`gpiod` verification once a CM5 + real board exist -
   `spi_speed_hz` defaults conservatively to 10 MHz, not the documented
   50 MHz ceiling, until then.
+
+## What's already wired up
+
+- `HYDRA-UMC-SERVER`'s `GET/POST /api/hardware/canota/{version,flash}`
+  relay to this service's own HTTP routes (`docs/REMOTE_API.md` section 2h
+  in that repo).
+- `HYDRA-UMC-STUDIO`'s `Flasher.tsx`/`Tester.tsx` reach this service for
+  real, through that relay, when `settings.canOta.transport ===
+  'hardware'` - Tier 0 (Kinematic Brain), Tier 1 (Robot Controller Board)
+  and Tier 2 (URTC Tool Head, via `relay=1`) are all real; Tier 3 stays on
+  the simulated transport until the I2C-bridge tunnel above exists.
 
 ## Running the tests
 
