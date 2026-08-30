@@ -11,14 +11,15 @@
     "FreeRTOS (AMP)",
     "CMSIS-DSP",
     "FDCAN",
-    "SWD/JTAG"
+    "SWD/JTAG",
+    "Python (CM5 host: spi_bridge)"
   ],
   "deployment_target": "user-pc",
-  "maturity": "production",
+  "maturity": "experimental",
   "family": "Core Hardware",
   "parent": null,
   "build": "6 independently-versioned components (G474 + H745 CM7 + H745 CM4, app + bootloader each). This registry tracks the G474 application as representative. Real install/build: bash build_firmware.sh.",
-  "notes": "The real motion-control firmware for this ecosystem's own physical robot arm PCB - 6 independently-versioned MCU targets (G474 + H745 CM7/CM4, app + bootloader each). This is the project the whole ecosystem exists to control.",
+  "notes": "The real motion-control firmware for this ecosystem's own physical robot arm PCB - 6 independently-versioned MCU targets (G474 + H745 CM7/CM4, app + bootloader each), plus a real CM5-side SPI-OTA bridge (src/cm5_host/spi_bridge/, Python, unit-tested against fakes). This is the project the whole ecosystem exists to control. Maturity is honestly 'experimental': the bootloaders compile clean but are not yet verified against real silicon, the H745 application firmware is still a FreeRTOS smoke-test stub, and no populated board exists for either custom PCB yet (no schematic).",
   "native_version": {
     "file": "src/mcu_stm32g474/boot/bootloader_common.h",
     "pattern": {

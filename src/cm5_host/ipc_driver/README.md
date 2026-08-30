@@ -1,7 +1,16 @@
-# ipc_driver — CM5 ↔ STM32H745 SPI link
+# ipc_driver — CM5 ↔ STM32H745 SPI link (superseded by `../spi_bridge/`)
 
 **Project:** HYDRA-UMC
-**Status:** 🚧 skeleton only — see `src/ipc_driver.c`'s own header for what's implemented vs. TODO.
+**Status:** 🚧 skeleton only, superseded — the real, working implementation
+of everything this C skeleton was meant to become now lives in
+[`../spi_bridge/`](../spi_bridge/README.md) (Python, real 128-byte framing,
+real bootloader state machine, unit-tested). This C skeleton is kept, not
+deleted, in case a future C/embedded-Linux implementation is preferred
+over the Python one — see `../spi_bridge/README.md` for why Python was
+chosen (reuse of the sibling `URTC-FLASHER` tool's own proven CRC32/HMAC
+state-machine logic, rather than re-deriving it in C). See
+`src/ipc_driver.c`'s own header for what this skeleton itself implements
+vs. TODO.
 
 Linux-side counterpart to the STM32H745's own SPI1 slave-mode IPC
 (`../../mcu_stm32h745/`, README.md section 10): a full-duplex SPI1 link, up

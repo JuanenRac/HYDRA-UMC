@@ -106,6 +106,21 @@ def main() -> int:
         # incremental build flow; invoking it here would delete published
         # artifacts before a failed compiler run could restore them.
         run(sys.executable, "tools/verify_firmware_inventory.py")
+        # src/cm5_host/spi_bridge/ is real Python living inside this
+        # otherwise-firmware-c repo (the CM5-side SPI-OTA bridge) - compile
+        # it and run its own deterministic test suite too, the same way
+        # every "python" stack repo in this ecosystem already does.
+        spi_bridge_root = ROOT / "src" / "cm5_host" / "spi_bridge"
+        if spi_bridge_root.is_dir():
+            compile_python_sources()
+            environment = dict(os.environ)
+            environment["PYTHONPATH"] = os.pathsep.join(
+                (str(spi_bridge_root), str(spi_bridge_root / "tests"), environment.get("PYTHONPATH", ""))
+            )
+            run(
+                sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v",
+                cwd=spi_bridge_root, env=environment,
+            )
     else:
         fail(f"unsupported stack: {stack}")
 

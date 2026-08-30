@@ -1,0 +1,27 @@
+# =============================================================================
+# HYDRA-UMC - spi_bridge Python package metadata
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0 - see repo root LICENSE
+# =============================================================================
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hydra-umc-spi-bridge"
+version = "0.1.0"
+description = "Real CM5 <-> STM32H745 SPI-OTA bridge - protocol, transport, bootloader client and a local HTTP service"
+requires-python = ">=3.11"
+license = {text = "GPL-3.0-or-later"}
+dependencies = []
+
+[project.optional-dependencies]
+# Only open_spi_transport() needs these - imported lazily (see
+# transport.py's own comment) so the rest of the package, including every
+# safety-relevant framing/state-machine/HTTP test, works without them
+# installed.
+hardware = ["spidev>=3.6", "gpiod>=2.1"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["spi_bridge*"]
