@@ -29,7 +29,7 @@
 
 ## 1. 🛠️ PROJEKTÜBERSICHT UND DAS MIKROFABRIK-ÖKOSYSTEM
 
-**HYDRA-UMC** (Universal Multi-axis Controller) ist eine industrietaugliche, verteilte Steuerungsplattform und Hochleistungs-HMI-Architektur für Multi-Achsen-Zellenrobotik, Mikrofabriken, automatisierte Fertigung und komplexe Werkzeugkopf-Orchestrierung.
+**HYDRA-UMC** (Universal Machines Controller) ist eine industrietaugliche, verteilte Steuerungsplattform und Hochleistungs-HMI-Architektur für Multi-Achsen-Zellenrobotik, Mikrofabriken, automatisierte Fertigung und komplexe Werkzeugkopf-Orchestrierung.
 
 Aufgebaut auf einer **heterogenen Host + Echtzeit-Co-Prozessor-Architektur**, entkoppelt HYDRA-UMC das High-Level-Rendering der Benutzeroberfläche, Computer Vision, KI-Inferenz und Cloud-Konnektivität von der Echtzeit-Schritterzeugung, der Feldbusverwaltung und der Ansteuerung der Leistungselektronik.
 
