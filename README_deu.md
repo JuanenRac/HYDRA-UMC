@@ -287,7 +287,7 @@ HYDRA-UMC/
 │   ├── PINOUT_STACKA_CONNECTOR.TXT             # Gemeinsamer 40-poliger STACK-A-Stapelsteckverbinder
 │   ├── CANBUS_STM32H745.TXT                    # Protokoll auf Leitungsebene des Kinematic Brain (SPI1/Mailbox/FDCAN1-Master)
 │   ├── CANBUS_STM32G474.TXT                    # Protokoll auf Leitungsebene des Robot Controller Board (FDCAN1-Slave/FDCAN2)
-│   └── HYDRA-UMC_*.txt/TXT     # Ältere Dokumente - mehrere überholt, siehe das eigene Banner jeder Datei
+│   └── HYDRA-UMC_*.md/txt/TXT  # Ältere Dokumente - Markdown, wenn als Markdown verfasst; siehe das eigene Banner jeder Datei
 ├── hardware/
 │   ├── PCB/
 │   │   ├── kinematic_brain_stm32h745/          # Haupt-Hauptplatine - noch kein Schaltplan, siehe eigenes README

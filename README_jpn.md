@@ -252,7 +252,7 @@ HYDRA-UMC/
 │   ├── PINOUT_STACKA_CONNECTOR.TXT             # 共用の 40 ピン STACK A スタッキングコネクタ
 │   ├── CANBUS_STM32H745.TXT                    # Kinematic Brain のワイヤレベルプロトコル（SPI1／メールボックス／FDCAN1 マスター）
 │   ├── CANBUS_STM32G474.TXT                    # ロボットコントローラーボードのワイヤレベルプロトコル（FDCAN1 スレーブ／FDCAN2）
-│   └── HYDRA-UMC_*.txt/TXT     # 旧版ドキュメント — 複数は置き換え済み、各ファイル自身の注記を参照
+│   └── HYDRA-UMC_*.md/txt/TXT  # 旧版ドキュメント — Markdown として書かれたものは Markdown 化；各ファイル自身の注記を参照
 ├── hardware/
 │   ├── PCB/
 │   │   ├── kinematic_brain_stm32h745/          # メインマザーボード — 回路図はまだなし、自身の README 参照

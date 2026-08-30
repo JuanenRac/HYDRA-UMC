@@ -252,7 +252,7 @@ HYDRA-UMC/
 │   ├── PINOUT_STACKA_CONNECTOR.TXT             # 共用的 40 针 STACK A 堆叠连接器
 │   ├── CANBUS_STM32H745.TXT                    # 运动学大脑线级协议（SPI1/邮箱/FDCAN1 主机）
 │   ├── CANBUS_STM32G474.TXT                    # 机器人控制板线级协议（FDCAN1 从机/FDCAN2）
-│   └── HYDRA-UMC_*.txt/TXT     # 旧版文档 —— 部分已被取代，详见各文件自身的标注
+│   └── HYDRA-UMC_*.md/txt/TXT  # 旧版文档 —— 原本按 Markdown 编写的采用 Markdown；详见各文件自身的标注
 ├── hardware/
 │   ├── PCB/
 │   │   ├── kinematic_brain_stm32h745/          # 主主板 —— 尚无原理图，详见其自身 README

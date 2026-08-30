@@ -274,7 +274,7 @@ that isn't there.
 
 ## 7. Superseded documents
 
-`docs/HYDRA-UMC_TECHNICAL.txt`, `docs/HYDRA-UMC_BOM.txt`, and
+`docs/HYDRA-UMC_TECHNICAL.md`, `docs/HYDRA-UMC_BOM.txt`, and
 `docs/HYDRA-UMC_PINOUT.txt` describe an earlier board revision
 (STM32H757BIT6/LQFP-208, onboard TMC5160A drivers wired directly to robots,
 ESP32-C3, USB hub, Ethernet PHY) that this document's tiered

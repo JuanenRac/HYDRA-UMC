@@ -285,7 +285,7 @@ HYDRA-UMC/
 │   ├── PINOUT_STACKA_CONNECTOR.TXT             # Connettore di impilamento condiviso STACK A a 40 pin
 │   ├── CANBUS_STM32H745.TXT                    # Protocollo a livello di cablaggio del Kinematic Brain (SPI1/mailbox/FDCAN1-master)
 │   ├── CANBUS_STM32G474.TXT                    # Protocollo a livello di cablaggio della Robot Controller Board (FDCAN1-slave/FDCAN2)
-│   └── HYDRA-UMC_*.txt/TXT     # Documenti più vecchi - diversi superati, vedi l'intestazione di ciascun file
+│   └── HYDRA-UMC_*.md/txt/TXT  # Documenti più vecchi - Markdown quando redatti in Markdown; vedi l'intestazione di ciascun file
 ├── hardware/
 │   ├── PCB/
 │   │   ├── kinematic_brain_stm32h745/          # Scheda madre principale - nessuno schematico ancora, vedi il proprio README
