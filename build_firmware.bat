@@ -630,6 +630,16 @@ if errorlevel 1 (
     set /a FAIL+=1
     goto :summary
 )
+REM KinematicBrainCan.c: real FDCAN1 "STACK A" master + Tier 2/3 relay
+REM tunnel - needs bootloader_common.h for the shared CAN_ID_STACKA_BASE/
+REM OFS_* constants, so it's the one CM4 app source that also needs
+REM !SRC!\boot on its include path.
+arm-none-eabi-gcc %CFLAGS_CM4_APP% -I"!SRC!" -I"!SRC!\boot" -x c -c "!SRC!\KinematicBrainCan.c" -o "!OUT!\KinematicBrainCan.o"
+if errorlevel 1 (
+    echo   FAIL KinematicBrainCan.c failed to compile
+    set /a FAIL+=1
+    goto :summary
+)
 set "CM4_APP_MAJOR=?" & set "CM4_APP_MINOR=?" & set "CM4_APP_PATCH=?"
 for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_MAJOR" "!SRC!\boot\bootloader_common.h"') do set "CM4_APP_MAJOR=%%v"
 for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_MINOR" "!SRC!\boot\bootloader_common.h"') do set "CM4_APP_MINOR=%%v"
@@ -646,7 +656,7 @@ arm-none-eabi-objcopy -O ihex "!OUT!\!CM4_APP_NAME!.elf" "!OUT!\!CM4_APP_NAME!.h
 copy /y "!OUT!\!CM4_APP_NAME!.elf" "%FIRMWARE_OUT%\" >nul
 copy /y "!OUT!\!CM4_APP_NAME!.bin" "%FIRMWARE_OUT%\" >nul
 copy /y "!OUT!\!CM4_APP_NAME!.hex" "%FIRMWARE_OUT%\" >nul
-echo   OK   !CM4_APP_NAME!.bin/.hex/.elf built - FreeRTOS GPIO-toggle smoke test, no CM7^<-^>CM4 scheduler sync yet
+echo   OK   !CM4_APP_NAME!.bin/.hex/.elf built - real PLL1 clock config + real FDCAN1 STACK A + Tier 2/3 relay tunnel, still no CM7^<-^>CM4 scheduler sync
 set /a PASS+=1
 :SKIP_H745
 

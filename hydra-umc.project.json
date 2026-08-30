@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "ecosystem": "HYDRA-UMC",
   "name": "HYDRA-UMC",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "role": "firmware",
   "stack": "firmware-c",
   "technologies": [
@@ -19,7 +19,7 @@
   "family": "Core Hardware",
   "parent": null,
   "build": "6 independently-versioned components (G474 + H745 CM7 + H745 CM4, app + bootloader each). This registry tracks the G474 application as representative. Real install/build: bash build_firmware.sh.",
-  "notes": "The real motion-control firmware for this ecosystem's own physical robot arm PCB - 6 independently-versioned MCU targets (G474 + H745 CM7/CM4, app + bootloader each), plus a real CM5-side SPI-OTA bridge (src/cm5_host/spi_bridge/, Python, unit-tested against fakes). This is the project the whole ecosystem exists to control. Maturity is honestly 'experimental': the bootloaders compile clean but are not yet verified against real silicon, the H745 application firmware is still a FreeRTOS smoke-test stub, and no populated board exists for either custom PCB yet (no schematic).",
+  "notes": "The real motion-control firmware for this ecosystem's own physical robot arm PCB - 6 independently-versioned MCU targets (G474 + H745 CM7/CM4, app + bootloader each), plus a real CM5-side SPI-OTA bridge (src/cm5_host/spi_bridge/, Python, unit-tested against fakes). This is the project the whole ecosystem exists to control. Maturity is honestly 'experimental': the bootloaders compile clean but are not yet verified against real silicon, no populated board exists for either custom PCB yet (no schematic). The H745 CM4 application is real now (real PLL1 clock config, real FDCAN1 'STACK A' master, real RELAY_SEND/RELAY_RECV tunnel to Tier 2 - KinematicBrainCan.c) - CM7's own application is still a FreeRTOS smoke-test stub.",
   "native_version": {
     "file": "src/mcu_stm32g474/boot/bootloader_common.h",
     "pattern": {

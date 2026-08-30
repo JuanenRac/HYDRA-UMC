@@ -564,6 +564,12 @@ pass "$CM4_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_boot_obj
 
 bump_version "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM4 application"
 arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -x c -c "$SRC/STM32H745ZI_CM4_main.c" -o "$H7/cm4_app_obj/STM32H745ZI_CM4_main.o"
+# KinematicBrainCan.c: real FDCAN1 "STACK A" master + Tier 2/3 relay tunnel -
+# needs bootloader_common.h for the shared CAN_ID_STACKA_BASE/OFS_* constants
+# (see that file's own header on why this application reuses it rather than
+# duplicating it), so it's the one CM4 app source that also needs $SRC/boot
+# on its include path.
+arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/KinematicBrainCan.c" -o "$H7/cm4_app_obj/KinematicBrainCan.o"
 CM4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_PATCH)"
 CM4_APP_NAME="HYDRA_KB_CM4_APP_${CM4_APP_VER}"
 if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/STM32H745ZITx_CM4_APP.ld" \
@@ -574,7 +580,7 @@ if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/STM32H745ZITx_CM4_APP
 fi
 build_bin_hex "$H7/cm4_app_obj/$CM4_APP_NAME.elf"
 cp "$H7/cm4_app_obj/$CM4_APP_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
-pass "$CM4_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_app_obj/$CM4_APP_NAME.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test, no CM7<->CM4 scheduler sync yet"
+pass "$CM4_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_app_obj/$CM4_APP_NAME.elf" | tail -1 | awk '{print $1}') bytes text) - real PLL1 clock config + real FDCAN1 STACK A + Tier 2/3 relay tunnel, still no CM7<->CM4 scheduler sync"
 
 fi
 

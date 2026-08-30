@@ -5,24 +5,32 @@
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
  * LICENSE: GPL-3.0 - see repo root LICENSE
  *
- * STARTING POINT ONLY - see ../CM7/STM32H745ZI_CM7_main.c's own header for
- * the shared dual-core-bring-up reasoning. This core's real job per
- * README.md section 5: FDCAN1 protocol management (the Tier 1
- * slot-addressed bootloader/relay scheme from docs/architecture.md sections
- * 3-4), analog sensor filtering, safety interlocks, inter-core IPC with
- * CM7. None of that exists here yet - this is a standalone FreeRTOS
- * GPIO-toggle smoke test only, and does not currently wait for or
- * synchronize with CM7 in any way (no HSEM use) - real dual-core bring-up
- * needs that on both sides, not just this one.
+ * This core's real job per README.md section 5: FDCAN1 "STACK A" master
+ * (docs/architecture.md sections 4-5 - slot-addressed AXIS_STATUS/
+ * AXIS_STEP_TELEMETRY queries and the RELAY_SEND/RELAY_RECV tunnel that
+ * reaches Tier 2/3 through each Robot Controller Board), now real - see
+ * KinematicBrainCan.c. Analog sensor filtering and safety interlocks are
+ * still not implemented (this core's other real job, still future work -
+ * needs the sensor pinout wired first, unlike FDCAN1 which already has a
+ * proven init to reuse from the bootloader).
  *
- * PIN: PG10 - one of the 3 explicitly-spare GPIOs in this chip's real
- * pinout (docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 9c) - PE0 (the
- * previous placeholder) is now real hardware: PUMP1 (see that pinout
- * file's section 6). This core's REAL peripherals - SPI1 to the CM5,
- * FDCAN1 to STACK A - are no longer unimplemented: ../boot/bootloader_
- * main.c already initializes both for real (the CAN-OTA gateway). This
- * application entry point just hasn't caught up to reuse that same init
- * yet - see this file's own "real work still needed" note above.
+ * REAL CLOCK CONFIG (see SystemClock_Config() below): this repo's own BOM
+ * (hardware/PCB/kinematic_brain_stm32h745/BOM.TXT) confirms no external
+ * HSE crystal on this board - PLL1 is driven from the internal HSI64
+ * instead. Configured HERE, on this core only, deliberately NOT also on
+ * CM7 (whose own main() still calls the old do-nothing placeholder) -
+ * PLL1 is a single physical chip-wide resource, and this chip's own real
+ * dual-core boot behavior is two FULLY INDEPENDENT resets (no CM7-releases-
+ * CM4 handshake exists in this design - see ../boot/bootloader_main.c's
+ * own header: "CM7 and CM4 both individually reset into their own default
+ * HSI64 state"), so if both cores' application code tried to configure
+ * PLL1 independently, that would be a real register-level race the very
+ * first time real hardware exists to hit it on. Only this core touches
+ * PLL1/RCC until CM7's own real clock config is designed with that race
+ * explicitly resolved (a real HSEM-gated "who configures RCC" handshake -
+ * not done here, out of scope for what this session's work needs: this
+ * core reaching the G474 boards for real, not CM7's own S-curve motion
+ * engine).
  *
  * FreeRTOS note: SVC_Handler/PendSV_Handler/SysTick_Handler are deliberately
  * NOT defined in this file - see FreeRTOSConfig.h's own header comment.
@@ -49,8 +57,83 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "stm32h7xx_hal.h"
+#include "KinematicBrainCan.h"
 
 static IWDG_HandleTypeDef hiwdg;
+
+/* Real PLL1 clock tree: HSI64 -> /M -> VCO -> /P -> SYSCLK, targeting the
+ * real 480 MHz SYSCLK / 240 MHz CM4 core clock this project's own BOM
+ * documents (hardware/PCB/kinematic_brain_stm32h745/BOM.TXT: "Cortex-
+ * M7@480MHz + Cortex-M4@240MHz"). No external HSE crystal on this board
+ * (same BOM, confirmed absent) - PLL1 is driven from the internal HSI64
+ * instead, same real oscillator every bootloader in this project already
+ * assumes as its own reset-default fallback.
+ *
+ * M=8: VCO input = 64MHz/8 = 8MHz exactly, RCC_PLL1VCIRANGE_2's own real
+ * upper bound (4-8MHz) - the real ST convention is that a range's own
+ * upper bound belongs to that range, not the next one up.
+ * N=120, P=2: VCO output = 8MHz*120 = 960MHz (within the real wide-VCO
+ * 192-960MHz ceiling); SYSCLK = 960MHz/2 = 480MHz exactly.
+ * Q=4, R=2: FDCAN/other kernel clocks - not yet selected to source from
+ * PLL1Q/R below (kept at their own HSI-derived defaults for now, matching
+ * MX_FDCAN1_Init()'s own still-TODO kernel-clock re-verification note in
+ * KinematicBrainCan.c) - only SYSCLK itself is switched to PLL1 here.
+ * AHB (HCLK, this core's own bus/CPU clock) = SYSCLK/2 = 240MHz via
+ * D1CPRE=1/HPRE=2, matching the BOM's own real Cortex-M4 target exactly.
+ * APB1/2/3/4 = HCLK/2 = 120MHz, at H7's own real 120MHz APB ceiling.
+ * VOS0 (highest performance regulator scale) + 2WS flash latency are the
+ * real documented prerequisites for running SYSCLK at 480MHz.
+ *
+ * Verify against RM0399 (or a real HAL_RCC_OscConfig/ClockConfig return
+ * value check) the first time real hardware exists to test this against -
+ * same honesty already applied to every other not-yet-hardware-verified
+ * piece of this project. A failed PLL lock here fails safe: HAL_RCC_
+ * OscConfig/ClockConfig return HAL_ERROR rather than silently running at
+ * the wrong frequency, and this function treats that as fatal (blinks a
+ * distinct fast pattern via the watchdog reset path below) rather than
+ * silently continuing on an unconfigured clock. */
+static void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef osc = {0};
+  osc.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  osc.HSIState = RCC_HSI_ON;
+  osc.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  osc.PLL.PLLState = RCC_PLL_ON;
+  osc.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  osc.PLL.PLLM = 8;
+  osc.PLL.PLLN = 120;
+  osc.PLL.PLLP = 2;
+  osc.PLL.PLLQ = 4;
+  osc.PLL.PLLR = 2;
+  osc.PLL.PLLRGE = RCC_PLL1VCIRANGE_2;
+  osc.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
+  osc.PLL.PLLFRACN = 0;
+
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
+  while (__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY) == RESET) { }
+
+  if (HAL_RCC_OscConfig(&osc) != HAL_OK) {
+    /* Fail safe rather than run on an unconfigured/unstable clock - see
+     * this function's own header comment. */
+    __disable_irq();
+    for (;;) { }
+  }
+
+  RCC_ClkInitTypeDef clk = {0};
+  clk.ClockType = RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_D1PCLK1 |
+                  RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2 | RCC_CLOCKTYPE_D3PCLK1;
+  clk.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  clk.SYSCLKDivider = RCC_SYSCLK_DIV1;
+  clk.AHBCLKDivider = RCC_HCLK_DIV2;
+  clk.APB3CLKDivider = RCC_APB3_DIV2;
+  clk.APB1CLKDivider = RCC_APB1_DIV2;
+  clk.APB2CLKDivider = RCC_APB2_DIV2;
+  clk.APB4CLKDivider = RCC_APB4_DIV2;
+  if (HAL_RCC_ClockConfig(&clk, FLASH_LATENCY_2) != HAL_OK) {
+    __disable_irq();
+    for (;;) { }
+  }
+}
 
 static void GPIO_Init(void)
 {
@@ -74,6 +157,26 @@ static void vBlinkTask(void *pvParameters)
   }
 }
 
+/* Real FDCAN1 "STACK A" task - queries AXIS_STATUS for every one of the 8
+ * real slots in round-robin, so the real relay tunnel/telemetry path is
+ * genuinely exercised on a live bus rather than only reachable through a
+ * one-off call. A real timeout on an unpopulated/unresponsive slot is
+ * expected, not an error - see KinematicBrainCan_QueryAxisStatus()'s own
+ * header. */
+static void vStackATask(void *pvParameters)
+{
+  (void)pvParameters;
+  KinematicBrainCan_Init();
+  uint8_t slot = 0;
+  for (;;) {
+    uint8_t status[8];
+    uint8_t dlc = 0;
+    (void)KinematicBrainCan_QueryAxisStatus(slot, status, &dlc, 50);
+    slot = (uint8_t)((slot + 1) % 8);
+    vTaskDelay(pdMS_TO_TICKS(100));
+  }
+}
+
 int main(void)
 {
   /* Re-arm/refresh this same IWDG2 the bootloader already started (see
@@ -87,9 +190,11 @@ int main(void)
   HAL_IWDG_Init(&hiwdg);
 
   HAL_Init();
+  SystemClock_Config();
   GPIO_Init();
 
   xTaskCreate(vBlinkTask, "blink", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+  xTaskCreate(vStackATask, "stacka", configMINIMAL_STACK_SIZE * 2, NULL, tskIDLE_PRIORITY + 1, NULL);
 
   vTaskStartScheduler();
 

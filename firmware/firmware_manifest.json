@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-08-30T11:17:06Z",
+  "generated_at": "2026-08-30T22:12:04Z",
   "project": {
     "name": "HYDRA-UMC",
     "full_name": "Hybrid Dual-core Robotics Automation - Universal Micro-factory Controller",
@@ -24,25 +24,25 @@
       "version": {
         "major": 0,
         "minor": 1,
-        "patch": 0
+        "patch": 1
       },
-      "version_string": "0.1.0",
-      "version_code": 100,
+      "version_string": "0.1.1",
+      "version_code": 101,
       "flash_address": "0x08000000",
       "flash_region_max_bytes": 32768,
       "files": {
         "bin": {
-          "filename": "HYDRA_RCB_BOOTLOADER_v0.1.0.bin",
-          "size_bytes": 14196,
-          "crc32": "0x5C047A4E"
+          "filename": "HYDRA_RCB_BOOTLOADER_v0.1.1.bin",
+          "size_bytes": 13784,
+          "crc32": "0xCA6EB6EA"
         },
         "hex": {
-          "filename": "HYDRA_RCB_BOOTLOADER_v0.1.0.hex",
-          "size_bytes": 40039
+          "filename": "HYDRA_RCB_BOOTLOADER_v0.1.1.hex",
+          "size_bytes": 38877
         },
         "elf": {
-          "filename": "HYDRA_RCB_BOOTLOADER_v0.1.0.elf",
-          "size_bytes": 47908
+          "filename": "HYDRA_RCB_BOOTLOADER_v0.1.1.elf",
+          "size_bytes": 144864
         }
       }
     },
@@ -53,25 +53,25 @@
       "version": {
         "major": 0,
         "minor": 1,
-        "patch": 1
+        "patch": 2
       },
-      "version_string": "0.1.1",
-      "version_code": 101,
+      "version_string": "0.1.2",
+      "version_code": 102,
       "flash_address": "0x08009000",
       "flash_region_max_bytes": 241664,
       "files": {
         "bin": {
-          "filename": "HYDRA_RCB_APP_v0.1.1.bin",
-          "size_bytes": 8940,
-          "crc32": "0xF11B127A"
+          "filename": "HYDRA_RCB_APP_v0.1.2.bin",
+          "size_bytes": 8436,
+          "crc32": "0xB9119B6B"
         },
         "hex": {
-          "filename": "HYDRA_RCB_APP_v0.1.1.hex",
-          "size_bytes": 25237
+          "filename": "HYDRA_RCB_APP_v0.1.2.hex",
+          "size_bytes": 23813
         },
         "elf": {
-          "filename": "HYDRA_RCB_APP_v0.1.1.elf",
-          "size_bytes": 34232
+          "filename": "HYDRA_RCB_APP_v0.1.2.elf",
+          "size_bytes": 79216
         }
       }
     },
@@ -82,25 +82,25 @@
       "version": {
         "major": 0,
         "minor": 1,
-        "patch": 0
+        "patch": 1
       },
-      "version_string": "0.1.0",
-      "version_code": 100,
+      "version_string": "0.1.1",
+      "version_code": 101,
       "flash_address": "0x08000000",
       "flash_region_max_bytes": 131072,
       "files": {
         "bin": {
-          "filename": "HYDRA_KB_CM7_BOOTLOADER_v0.1.0.bin",
-          "size_bytes": 10872,
-          "crc32": "0x1E641639"
+          "filename": "HYDRA_KB_CM7_BOOTLOADER_v0.1.1.bin",
+          "size_bytes": 10428,
+          "crc32": "0x2CFB551F"
         },
         "hex": {
-          "filename": "HYDRA_KB_CM7_BOOTLOADER_v0.1.0.hex",
-          "size_bytes": 30687
+          "filename": "HYDRA_KB_CM7_BOOTLOADER_v0.1.1.hex",
+          "size_bytes": 29435
         },
         "elf": {
-          "filename": "HYDRA_KB_CM7_BOOTLOADER_v0.1.0.elf",
-          "size_bytes": 44148
+          "filename": "HYDRA_KB_CM7_BOOTLOADER_v0.1.1.elf",
+          "size_bytes": 145180
         }
       }
     },
@@ -111,25 +111,25 @@
       "version": {
         "major": 0,
         "minor": 1,
-        "patch": 0
+        "patch": 1
       },
-      "version_string": "0.1.0",
-      "version_code": 100,
+      "version_string": "0.1.1",
+      "version_code": 101,
       "flash_address": "0x08040000",
       "flash_region_max_bytes": 393216,
       "files": {
         "bin": {
-          "filename": "HYDRA_KB_CM7_APP_v0.1.0.bin",
-          "size_bytes": 10068,
-          "crc32": "0x7B56EFAB"
+          "filename": "HYDRA_KB_CM7_APP_v0.1.1.bin",
+          "size_bytes": 9648,
+          "crc32": "0xA1065C50"
         },
         "hex": {
-          "filename": "HYDRA_KB_CM7_APP_v0.1.0.hex",
-          "size_bytes": 28416
+          "filename": "HYDRA_KB_CM7_APP_v0.1.1.hex",
+          "size_bytes": 27225
         },
         "elf": {
-          "filename": "HYDRA_KB_CM7_APP_v0.1.0.elf",
-          "size_bytes": 35944
+          "filename": "HYDRA_KB_CM7_APP_v0.1.1.elf",
+          "size_bytes": 146460
         }
       }
     },
@@ -140,25 +140,25 @@
       "version": {
         "major": 0,
         "minor": 1,
-        "patch": 0
+        "patch": 1
       },
-      "version_string": "0.1.0",
-      "version_code": 100,
+      "version_string": "0.1.1",
+      "version_code": 101,
       "flash_address": "0x08100000",
       "flash_region_max_bytes": 131072,
       "files": {
         "bin": {
-          "filename": "HYDRA_KB_CM4_BOOTLOADER_v0.1.0.bin",
-          "size_bytes": 16724,
-          "crc32": "0x8BA749FC"
+          "filename": "HYDRA_KB_CM4_BOOTLOADER_v0.1.1.bin",
+          "size_bytes": 16516,
+          "crc32": "0x0B60E1DB"
         },
         "hex": {
-          "filename": "HYDRA_KB_CM4_BOOTLOADER_v0.1.0.hex",
-          "size_bytes": 47136
+          "filename": "HYDRA_KB_CM4_BOOTLOADER_v0.1.1.hex",
+          "size_bytes": 46551
         },
         "elf": {
-          "filename": "HYDRA_KB_CM4_BOOTLOADER_v0.1.0.elf",
-          "size_bytes": 54244
+          "filename": "HYDRA_KB_CM4_BOOTLOADER_v0.1.1.elf",
+          "size_bytes": 147096
         }
       }
     },
@@ -169,25 +169,25 @@
       "version": {
         "major": 0,
         "minor": 1,
-        "patch": 0
+        "patch": 1
       },
-      "version_string": "0.1.0",
-      "version_code": 100,
+      "version_string": "0.1.1",
+      "version_code": 101,
       "flash_address": "0x08140000",
       "flash_region_max_bytes": 393216,
       "files": {
         "bin": {
-          "filename": "HYDRA_KB_CM4_APP_v0.1.0.bin",
-          "size_bytes": 9712,
-          "crc32": "0x0471B23B"
+          "filename": "HYDRA_KB_CM4_APP_v0.1.1.bin",
+          "size_bytes": 14156,
+          "crc32": "0x751AE715"
         },
         "hex": {
-          "filename": "HYDRA_KB_CM4_APP_v0.1.0.hex",
-          "size_bytes": 27405
+          "filename": "HYDRA_KB_CM4_APP_v0.1.1.hex",
+          "size_bytes": 39907
         },
         "elf": {
-          "filename": "HYDRA_KB_CM4_APP_v0.1.0.elf",
-          "size_bytes": 36012
+          "filename": "HYDRA_KB_CM4_APP_v0.1.1.elf",
+          "size_bytes": 147864
         }
       }
     }

@@ -2,7 +2,7 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
-## Unreleased
+## [0.1.2] - Real SPI-OTA bridge (CM5 side) + real FDCAN1 STACK A application on the Kinematic Brain
 
 - Added committed `firmware/firmware_manifest.json`, generated from the six
   versioned MCU artifacts with their real byte counts and CRC32 values.
@@ -27,10 +27,7 @@ All notable changes to the hardware and core firmware will be documented in this
   /api/hardware/canota/flash`, `GET /api/hardware/canota/version`). 22
   deterministic tests against an in-memory fake transport - no real
   SPI/GPIO/STM32H745 hardware required to prove the state machine is
-  correct; none of it has been exercised against real silicon yet (no
-  populated board exists - see `hardware/PCB/kinematic_brain_stm32h745/README.md`).
-  Wired into `tools/build_test.py`'s own `firmware-c` branch so this repo's
-  normal build-test compiles and tests it too.
+  correct.
 - **Added `src/cm5_host/spi_bridge/spi_bridge/relay_tunnel.py`** - reaches
   Tier 2 (the URTC Tool Head) through its own Robot Controller Board's
   real RELAY_SEND/RELAY_RECV tunnel (architecture.md section 5), with a
@@ -56,6 +53,40 @@ All notable changes to the hardware and core firmware will be documented in this
   Tier 0/1 for real through this service, and Tier 2 through the new
   relay tunnel above, when `settings.canOta.transport === 'hardware'` -
   see those repos' own CHANGELOG entries.
+- **`src/mcu_stm32h745/CM4/STM32H745ZI_CM4_main.c`** - real `SystemClock_Config()`:
+  HSI64 → PLL1 (M=8/N=120/P=2, `RCC_PLL1VCIRANGE_2`, wide VCO) → SYSCLK
+  480MHz → HCLK 240MHz, matching this project's own BOM (no external HSE
+  crystal on this board; Cortex-M4@240MHz target). Deliberately only on
+  this core, not also CM7 (whose own placeholder is unchanged) - PLL1 is
+  a single chip-wide resource, and this chip's real dual-core boot is two
+  fully independent resets with no CM7-releases-CM4 handshake in this
+  design, so both cores configuring it independently would be a real
+  register-level race; resolving that for CM7 too needs a real HSEM-gated
+  handshake, out of scope for what this session's work needed (this core
+  reaching the G474 boards for real, not CM7's own motion engine).
+- **Added `src/mcu_stm32h745/CM4/KinematicBrainCan.{c,h}`** (new) - real
+  FDCAN1 "STACK A" master application logic, reusing the bootloader's own
+  already-proven `MX_FDCAN1_Init()`: real slot-addressed `AXIS_STATUS`
+  query (+0x10, new offset - architecture.md section 4's own reserved
+  range) and the real RELAY_SEND/RELAY_RECV tunnel (+0x12/+0x13) to Tier
+  2, using the exact same fragmentation scheme as `relay_tunnel.py` above
+  (kept consistent by construction - both written this session against
+  the same spec). Found while implementing this: the real *receiving* end
+  of the tunnel (unpacking a RELAY_SEND fragment and forwarding it out a
+  Robot Controller Board's own second CAN controller to the URTC head)
+  belongs in `src/mcu_stm32g474/`'s own firmware, not here - this core
+  only ever builds/sends RELAY_SEND and polls/reassembles RELAY_RECV as
+  the tunnel's client side. Not implemented in this session - flagged as
+  the next real step, not left ambiguous.
+- Verified with the real, non-mutating toolchain this repo already uses
+  (`arm-none-eabi-gcc` 10.3.1) and then the real, full `build_firmware.sh`
+  incremental build - compiles and links clean end-to-end (41 passed, 0
+  warnings, 0 failed), the strongest verification possible without real
+  hardware. `vBlinkTask`/GPIO-toggle behavior is unchanged; the new
+  `vStackATask` round-robins a real `AXIS_STATUS` query across all 8
+  slots - a real timeout on an unpopulated/unresponsive slot is expected
+  behavior today, not an error, since no Robot Controller Board exists on
+  a real bus to answer yet.
 
 ## [0.1.1]
 

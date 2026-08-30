@@ -9,10 +9,14 @@
  * (two independent FreeRTOS instances, one per core - AMP, not SMP). Only
  * the application links this (bootloader stays bare-metal).
  *
- * configCPU_CLOCK_HZ is set to this chip's HSI64 reset default (both D1/CM7
- * and D2/CM4 domains run undivided from HSI at reset) - NOT the real target
- * of 240 MHz, because SystemClock_Config() isn't implemented yet. Update
- * this the same day real clock config lands.
+ * configCPU_CLOCK_HZ is now the real target of 240 MHz - SystemClock_Config()
+ * in STM32H745ZI_CM4_main.c now configures PLL1 for real (HSI64 -> PLL1
+ * M=8/N=120/P=2 -> SYSCLK=480MHz -> HCLK=240MHz, this core's own real bus/
+ * CPU clock - see that function's own header comment for the full
+ * derivation). CM7 still runs at the HSI64 reset default (64MHz) - its own
+ * real clock config is a separate, not-yet-done piece, see
+ * STM32H745ZI_CM4_main.c's own header for why only this core touches
+ * PLL1/RCC today.
  * =============================================================================
  */
 #ifndef FREERTOS_CONFIG_H
@@ -21,7 +25,7 @@
 #define configUSE_PREEMPTION                     1
 #define configUSE_IDLE_HOOK                      0
 #define configUSE_TICK_HOOK                      1 /* drives vApplicationTickHook() -> HAL_IncTick(), see the .c file's own header comment - without this, HAL_GetTick()/HAL_Delay() silently break once FreeRTOS owns SysTick */
-#define configCPU_CLOCK_HZ                       (64000000UL) /* HSI64 reset default - see this file's own header */
+#define configCPU_CLOCK_HZ                       (240000000UL) /* real HCLK after SystemClock_Config() - see this file's own header */
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     (5)
 #define configMINIMAL_STACK_SIZE                 ((unsigned short)128) /* words */
