@@ -2,7 +2,9 @@
 
 **Project:** HYDRA-UMC
 **Status:** 🚧 strategy + service-wiring scaffolding only — no actual image
-build has been run, no base OS choice has been hardware-verified.
+build has been run here, and the base OS choice below has already been
+made for real in a sibling repo (see next section) — this folder predates
+that repo and hasn't been reconciled with it yet.
 
 This is where the CM5's own OS image build lives — distinct from
 `../src/cm5_host/`, which holds the individual *applications* (HMI
@@ -10,49 +12,67 @@ shell, AI inference, video streaming, SPI IPC driver) that run **on top of**
 whatever this folder produces. Think of it as: `os/` builds and configures
 the box; `src/cm5_host/` is what's installed inside it.
 
-## Base OS choice — PROPOSED, not yet decided for real
+## Base OS choice — already decided, for real, in HYDRA-UMC-OS
 
-Two realistic options, per README.md section 2 ("Raspberry Pi OS / Yocto
-patched with `PREEMPT_RT`"):
+This folder's own text used to present "Raspberry Pi OS vs. Yocto" as
+still an open decision. It isn't, any more: the separate repo
+**[HYDRA-UMC-OS](https://github.com/JuanenRac/HYDRA-UMC-OS)** already
+builds on **Raspberry Pi OS ARM64** for real — a real device agent
+(`agent/`), real non-secret configuration (`config/`), a real hardened
+`hydra-umc-agent.service` unit (`systemd/`), and a real, tested
+provisioning flow (`provisioning/first_boot.sh`,
+`install_cm5_base.sh`, `install_server.sh`, `install_voice_ui.sh`,
+`install_splashscreen.sh`, `preflight_cm5.py` — proven idempotent by its
+own test — `rollback.py`, a real backup/rollback mechanism). None of
+that is hypothetical the way this folder's own placeholders are; see
+that repo's own README/CHANGELOG for exactly what's real there today.
 
-1. **Raspberry Pi OS Lite (64-bit) + `PREEMPT_RT` patchset + first-boot
-   provisioning script** — faster to get working, uses Raspberry Pi
-   Foundation's own well-supported CM5 board support, easier for anyone
-   else to reproduce a dev image. Downside: less control over exactly
-   what's on the image, larger base footprint than a from-scratch build.
-2. **Yocto (a custom `meta-hydra-umc` layer)** — full control, minimal
-   reproducible image, the "real product" answer for something eventually
-   shipped at any volume. Downside: real up-front investment (a working
-   Yocto BSP layer for CM5 + Hailo-8 + Hailo-10 + PREEMPT_RT is itself a
-   project, not a weekend), steeper for anyone else contributing to
-   reproduce.
+Yocto (a custom `meta-hydra-umc` layer) remains a real option for a later
+"productionize" pass once the software side has been validated on real
+hardware, but there is no work toward it anywhere in the ecosystem today
+— Raspberry Pi OS is what every real provisioning script, install
+script, and test in HYDRA-UMC-OS actually targets right now.
 
-**Recommendation for right now (not yet acted on): start with option 1**
-(Raspberry Pi OS + first-boot script) to get real hardware bring-up moving,
-keep option 2 as the later "productionize" step once the software side
-(cm5_host apps, STM32 firmware, PCBs) has actually been validated on real
-hardware — validating on a slower-to-build-but-known-good base first,
-rather than blocking hardware bring-up on a from-scratch OS build. This is
-a recommendation to revisit explicitly, not a decision already made.
+## What this means for this folder
+
+`systemd/hydra-hmi.service` and `systemd/hydra-umc-studio.service` here
+are still exactly what they always were — non-functional placeholders
+referencing binaries/paths that don't exist yet — and now genuinely
+duplicate ground HYDRA-UMC-OS's own `systemd/hydra-umc-agent.service`
+and `provisioning/` already cover for real. Likewise `first_boot/` here
+is still just a placeholder note, while HYDRA-UMC-OS's own
+`provisioning/first_boot.sh` is real and tested. This folder has not
+been reconciled with that repo yet — that reconciliation (most likely:
+retiring this folder's own placeholders in favor of HYDRA-UMC-OS once
+`src/cm5_host/`'s own components actually build real installable
+binaries for its systemd units to reference) is real, undone work, not
+silently glossed over here.
 
 ## Layout
 
-- `systemd/` — unit files wiring `src/cm5_host/`'s own components
-  together (start order, restart policy, dependencies). `hydra-hmi.service`
-  is a starting example — references binaries/paths that don't exist yet
-  (nothing in `cm5_host/` builds a real installable binary today), so this
-  unit won't actually work until they do.
+- `systemd/` — placeholder unit files wiring `src/cm5_host/`'s own
+  components together (start order, restart policy, dependencies).
+  `hydra-hmi.service` is a starting example — references binaries/paths
+  that don't exist yet (nothing in `cm5_host/` builds a real installable
+  binary today), so this unit won't actually work until they do. See
+  "What this means for this folder" above for how this now relates to
+  HYDRA-UMC-OS's own real `systemd/`.
 - `first_boot/` — provisioning script placeholder for whatever a freshly
   flashed SD card/eMMC needs done once (hostname, network config, growing
   the root partition, installing `cm5_host/`'s own services) — not written
-  yet, just the folder and a note on what belongs here.
+  yet, just the folder and a note on what belongs here. HYDRA-UMC-OS's
+  own `provisioning/first_boot.sh` already does the real, tested version
+  of this for its own platform-layer packages.
 
 ## What's still needed
 
-- An actual decision on option 1 vs. 2 above (or a third option not listed)
+- Reconciling this folder with HYDRA-UMC-OS (see above) — the base OS
+  decision itself is no longer open, only which of this folder's own
+  placeholders still need to exist once that reconciliation happens.
 - A real, tested boot chain: bootloader config, kernel/device-tree for CM5
   + this project's own custom hardware (the PCIe Gen3 switch fanning out to
   the Hailo-8 + Hailo-10 M.2 sockets, dual GL3523, STM32H745 SPI link) —
-  none of the device-tree overlays this custom board will need exist yet
+  none of the device-tree overlays this custom board will need exist yet,
+  in this folder or in HYDRA-UMC-OS.
 - Real systemd unit files once `cm5_host/`'s own components actually build
-  and install somewhere
+  and install somewhere.

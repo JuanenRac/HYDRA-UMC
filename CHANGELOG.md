@@ -2,6 +2,22 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
+## [Unreleased] - Reconciled os/ with the real HYDRA-UMC-OS decision
+
+- **`os/README.md`** - stopped presenting "Raspberry Pi OS vs. Yocto" as
+  still an open decision. The separate repo
+  [HYDRA-UMC-OS](https://github.com/JuanenRac/HYDRA-UMC-OS) already
+  builds on Raspberry Pi OS ARM64 for real (a real device agent, real
+  non-secret config, a real hardened systemd unit, a real tested
+  `provisioning/first_boot.sh` and install scripts, a real idempotent
+  preflight check and rollback mechanism) - this folder's own
+  `systemd/`/`first_boot/` placeholders predate that repo and were never
+  updated to reflect it, leaving two contradictory "OS strategy"
+  documents in the ecosystem. Documentation-only fix - no firmware
+  binary changed, so no version/artifact bump; `os/README.md` itself
+  documents the real reconciliation work (retiring these placeholders in
+  favor of HYDRA-UMC-OS) still ahead.
+
 ## [0.1.2] - Real SPI-OTA bridge (CM5 side) + real FDCAN1 STACK A application on the Kinematic Brain
 
 - Added committed `firmware/firmware_manifest.json`, generated from the six
