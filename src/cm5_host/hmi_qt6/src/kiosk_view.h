@@ -30,11 +30,10 @@
  *     standard, real Qt idle-cursor-hide pattern (QCursor(Qt::BlankCursor)
  *     while idle, unsetCursor() on the next motion).
  *
- * NOT YET COMPILED against a real Qt6 install (see ../CMakeLists.txt's
- * own header) - written against Qt6's real, documented public API, not
- * guessed at, but honestly unverified by this session's own toolchain
- * (no Qt6 on this development machine). Verify on target or a real Qt6
- * dev environment before trusting this builds clean.
+ * Verified against a real Qt 6.7.3 (win64_msvc2019_64) install - a real
+ * hydra_hmi.exe compiles clean from this file unmodified (see
+ * ../README.md's own Status section for the exact toolchain). Still only
+ * verified on Windows/MSVC, not yet the real CM5/Linux target build.
  * =============================================================================
  */
 #pragma once

@@ -1,15 +1,19 @@
 # hmi_qt6 — Touch display shell
 
 **Project:** HYDRA-UMC
-**Status:** 🚧 Real kiosk lockdown + splash + retry-until-loaded logic
-written against Qt6's real, documented API — but still genuinely
-**unverified by actual compilation**: no Qt6 (and specifically no
-`WebEngineWidgets`, the Chromium-based module this app needs) is
-installed on this development machine, and a real Qt6 + WebEngine
-install is multi-gigabyte — judged too large/slow to fetch just to
-verify this one app in this session. Verify on target or a real Qt6 dev
-box (`qt6-base-dev` + `qt6-webengine-dev` on Debian/Raspberry Pi OS)
-before trusting any of this builds clean.
+**Status:** ✅ Real kiosk lockdown + splash + retry-until-loaded logic,
+now genuinely **verified by actual compilation**: Qt 6.7.3 (`win64_msvc2019_64`,
+via [aqtinstall](https://github.com/miurahr/aqtinstall) — the same real,
+official prebuilt Qt binaries the Qt Online Installer itself downloads,
+just scriptable) with the real `WebEngineWidgets` module, built against
+this repo's own `CMakeLists.txt` with `cmake -B build -G "Visual Studio
+16 2019" -A x64` + `cmake --build build --config Release` — a real,
+unmodified `hydra_hmi.exe` came out the other end, no source changes
+needed to make it compile. Still only verified on this Windows dev
+machine, not yet on the real CM5/Linux target (`qt6-base-dev` +
+`qt6-webengine-dev` on Debian/Raspberry Pi OS) — the C++ itself is
+platform-generic Qt6 API, but the on-device build is real, separate
+future work, not something this Windows verification substitutes for.
 
 **The real, deployed HDMI kiosk today is HYDRA-UMC-OS's own
 `provisioning/install_kiosk.sh`** (minimal X11 + Chromium, verified on a
@@ -47,9 +51,8 @@ repo's own README), providing what a browser alone doesn't:
 ## Layout
 
 - `CMakeLists.txt` — builds a Qt6 Widgets + WebEngineView app from
-  `main.cpp` + `kiosk_view.{h,cpp}`. Not yet verified to actually
-  configure/build (no Qt6 installed on this development machine) — see
-  Status above.
+  `main.cpp` + `kiosk_view.{h,cpp}`. Verified to actually configure and
+  build a real `hydra_hmi.exe` — see Status above.
 - `src/main.cpp` — entry point: builds the splash screen, constructs
   `KioskView`, wires the splash to close only once the dashboard has
   genuinely finished loading.
@@ -61,9 +64,9 @@ repo's own README), providing what a browser alone doesn't:
 
 ## What's still needed
 
-- **Actual compilation verification** against a real Qt6 + WebEngine
-  install (see Status above) — the single highest-priority next step for
-  this folder, ahead of any further feature work here.
+- **On-device (CM5/Linux) compilation** — verified on Windows/MSVC now
+  (see Status above), not yet against `qt6-base-dev`/`qt6-webengine-dev`
+  on the real target.
 - Wiring to whatever `os/` decides for how services start/supervise each
   other on boot (see `../../../os/README.md` — that decision is no
   longer open at the ecosystem level, HYDRA-UMC-OS already builds on

@@ -4,10 +4,12 @@
 # AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
 # LICENSE: GPL-3.0 - see repo root LICENSE
 #
-# NOT YET VERIFIED - no Qt6 installed on this development machine. Verify
-# `cmake -B build && cmake --build build` on a real Qt6 dev environment
-# (target device or a Linux dev box with qt6-base-dev + qt6-webengine-dev)
-# before trusting this configures/builds cleanly.
+# Verified: `cmake -B build -G "Visual Studio 16 2019" -A x64
+# -DCMAKE_PREFIX_PATH=<qt6-install>/6.7.3/msvc2019_64` then
+# `cmake --build build --config Release` produces a real hydra_hmi.exe,
+# unmodified, against real Qt 6.7.3 (win64_msvc2019_64). Still not yet
+# verified against a Linux/CM5 toolchain (qt6-base-dev +
+# qt6-webengine-dev) - real, separate future work.
 # =============================================================================
 cmake_minimum_required(VERSION 3.16)
 project(hydra_hmi LANGUAGES CXX)

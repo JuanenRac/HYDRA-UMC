@@ -45,13 +45,15 @@ All notable changes to the hardware and core firmware will be documented in this
   connection-error page once. **`main.cpp`** now builds a real (drawn in
   code, no image asset yet) `QSplashScreen`, kept on screen through
   however many retries that flow needs, closed only once the dashboard
-  genuinely finishes loading. Explicitly **NOT verified by actual
-  compilation** - no Qt6 (specifically no `WebEngineWidgets`, the
-  Chromium-based module this needs) is installed on this development
-  machine, and a real Qt6 + WebEngine install is multi-gigabyte, judged
-  too large to fetch just to verify this one app this session; see that
-  folder's own README.md for the exact verification still needed before
-  trusting this builds.
+  genuinely finishes loading. **Now genuinely verified by actual
+  compilation**: real Qt 6.7.3 (`win64_msvc2019_64`, via `aqtinstall`)
+  with the real `WebEngineWidgets` module, built with
+  `cmake -B build -G "Visual Studio 16 2019" -A x64` +
+  `cmake --build build --config Release` against this repo's own
+  `CMakeLists.txt` - a real, unmodified `hydra_hmi.exe` came out the
+  other end, no source changes needed. Still only verified on Windows/
+  MSVC, not yet the real CM5/Linux target (`qt6-base-dev` +
+  `qt6-webengine-dev`) - see that folder's own README.md.
 
 ## [0.1.4] - Real Robot Controller Board (G474) relay tunnel application
 
