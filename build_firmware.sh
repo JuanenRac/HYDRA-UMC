@@ -374,6 +374,14 @@ if [ "$HYDRA_UMC_CI_MODE" != "1" ]; then
 fi
 rm -f "$G4/app_obj"/*.o
 arm-none-eabi-gcc $CFLAGS_G4_APP -I"$SRC" -x c -c "$SRC/STM32G474RE_main.c" -o "$G4/app_obj/STM32G474RE_main.o"
+# RobotControllerRelay.c: real AXIS_STATUS responder + Tier 2/3 relay tunnel
+# app-side logic (docs/architecture.md section 6's own "not yet written" gap,
+# now filled) - needs boot/bootloader_common.h for the shared
+# CAN_ID_STACKA_BASE/OFS_* constants (see that file's own header on why this
+# application re-implements ReadSlotBaseId()/reuses the offsets rather than
+# linking the bootloader's own compiled object), so it's the one G474 app
+# source that also needs $SRC/boot on its include path.
+arm-none-eabi-gcc $CFLAGS_G4_APP -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/RobotControllerRelay.c" -o "$G4/app_obj/RobotControllerRelay.o"
 G4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_PATCH)"
 G4_APP_NAME="HYDRA_RCB_APP_${G4_APP_VER}"
 if ! link_filtered arm-none-eabi-gcc $LDCOMMON_G4 -T"$SRC/STM32G474RETx_APP.ld" \
@@ -384,7 +392,7 @@ if ! link_filtered arm-none-eabi-gcc $LDCOMMON_G4 -T"$SRC/STM32G474RETx_APP.ld" 
 fi
 build_bin_hex "$G4/app_obj/$G4_APP_NAME.elf"
 cp "$G4/app_obj/$G4_APP_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
-pass "$G4_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/app_obj/$G4_APP_NAME.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test, see src/mcu_stm32g474/README.md"
+pass "$G4_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/app_obj/$G4_APP_NAME.elf" | tail -1 | awk '{print $1}') bytes text) - real AXIS_STATUS responder + Tier 2/3 relay tunnel (RobotControllerRelay.c), still HSI clock/no real motion tasks"
 
 fi
 
@@ -609,10 +617,14 @@ echo "$PASS passed, $WARN warnings, $FAIL failed"
 echo ""
 echo "Output binaries are in: $FIRMWARE_OUT/"
 echo ""
-echo "Reminder: every _APP binary above is still a FreeRTOS GPIO-toggle"
-echo "smoke test - real motion/vision/relay application logic is not yet"
-echo "written. Every _BOOTLOADER binary IS the real CAN-OTA/SPI-OTA protocol"
-echo "(bare-metal, no FreeRTOS by design) - not yet verified against real"
-echo "hardware. See each src/*/README.md and docs/architecture.md."
+echo "Reminder: the CM4 and G474 _APP binaries now carry real FDCAN Tier"
+echo "0/1 traffic (STACK A master + AXIS_STATUS responder) and the real"
+echo "Tier 2/3 RELAY_SEND/RELAY_RECV tunnel end to end - CM7's own _APP"
+echo "and every board's real motion-control code (step/dir/en pulse"
+echo "generation, S-curve profiles) are still the FreeRTOS GPIO-toggle"
+echo "smoke test, not yet written. Every _BOOTLOADER binary IS the real"
+echo "CAN-OTA/SPI-OTA protocol (bare-metal, no FreeRTOS by design) - none"
+echo "of this is yet verified against real hardware. See each"
+echo "src/*/README.md and docs/architecture.md."
 
 if [ "$FAIL" -gt 0 ]; then exit 1; fi

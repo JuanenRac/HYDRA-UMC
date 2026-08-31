@@ -9,7 +9,7 @@ This is the firmware for the **Robot Controller Board** (Tier 1 of
 reached over FDCAN1 "STACK A" from the STM32H745 "Kinematic Brain", and
 itself relaying one hop further to that robot's own URTC Tool Head.
 
-## Status: real bootloader, application still a skeleton
+## Status: real bootloader, real relay/status application logic, motion control still a skeleton
 
 Everything here compiles and links today (`../../build_firmware.sh g474`,
 verified against a full `--clean` rebuild).
@@ -27,16 +27,25 @@ real hardware — see `boot/bootloader_main.c`'s own header for the FDCAN
 bit-timing assumption (16MHz HSI-derived) that needs revisiting once a real
 clock tree exists.
 
-`STM32G474RE_main.c` (the application, not the bootloader) is still a
-**FreeRTOS** GPIO-toggle smoke test (one task, `xTaskCreate`) proving the
-toolchain/HAL/linker/RTOS pipeline itself works — not real motion firmware
-yet. It now blinks a real pin (`PC13`, `STATUS_LED` per the pinout doc)
-instead of a Nucleo-dev-board placeholder, but doesn't yet initialize any
-of this board's other real peripherals (the 6x TMC5160A SPI4 daisy-chain,
-STEP/DIR/EN, 6x endstops, FDCAN2 to the URTC head) — those are pinned out
-in `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` but not yet wired up here.
-See each file's own header comment for exactly what's still TODO, all
-tracked against `../../docs/architecture.md`.
+`STM32G474RE_main.c` (the application, not the bootloader) now runs 2 real
+FreeRTOS tasks: `vBlinkTask`, still the original toolchain/HAL/linker/RTOS
+smoke test (blinks the real `PC13`/`STATUS_LED` pin), and **`vRelayTask`**,
+which is real: it polls **`RobotControllerRelay.c`** — a real AXIS_STATUS
+(+0x10) responder reading this board's own 6 endstop + 3 fault-sense GPIOs,
+and a real RELAY_SEND/RELAY_RECV (+0x12/+0x13) tunnel forwarding opaque CAN
+traffic between FDCAN1 (uplink, STACK A) and FDCAN2 (downlink, this robot's
+own URTC Tool Head) — the exact real fragmentation scheme
+`../mcu_stm32h745/CM4/KinematicBrainCan.c` (Tier 0) and
+`../cm5_host/spi_bridge/spi_bridge/relay_tunnel.py` (CM5) already implement,
+closing the real gap `docs/architecture.md` section 6 used to flag as "the
+Robot Controller Board's own APPLICATION-side relay logic... still not
+written". `OFS_ENTER_BOOTLOADER` (+0x00) is intentionally still a no-op -
+see `RobotControllerRelay.h`'s own header for why. Real 6-axis STEP/DIR/EN
+motion generation and the 6x TMC5160A SPI2 daisy-chain are still not
+written - those are pinned out in
+`docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` but not yet wired up here. See
+each file's own header comment for exactly what's still TODO, all tracked
+against `../../docs/architecture.md`.
 
 **FreeRTOS:** `FreeRTOSConfig.h` in this folder configures the kernel (16
 KB heap, 1000 Hz tick — see that file's own header for why
@@ -53,7 +62,7 @@ sources — see `../../docs/COMPILE_STM32G474.TXT` section 3a.
 | Flash | 512 KB |
 | RAM | 128 KB (80 KB SRAM1 + 16 KB SRAM2, contiguous, both mapped as one region here) + 32 KB CCM SRAM at `0x10000000` (unused/reserved) |
 | CAN | 3x FDCAN peripherals — 2 used: one uplink to the STM32H745's own FDCAN1 (Tier 1), one downlink to this robot's own URTC Tool Head (Tier 2 relay) |
-| Real job (not yet implemented) | 6-axis STEP/DIR/ENABLE generation, endstop reading, CAN-OTA bootloader (own firmware + relay to URTC head), FDCAN slot-addressed protocol from `docs/architecture.md` section 3 |
+| Real job | CAN-OTA bootloader (own firmware + relay to URTC head) and the FDCAN slot-addressed AXIS_STATUS/relay-tunnel protocol - both real and implemented. 6-axis STEP/DIR/ENABLE generation - not yet implemented. |
 
 ### Flash layout (512 KB total — see `STM32G474RETx_APP.ld`'s own header for exact addresses)
 
@@ -82,7 +91,8 @@ command this script runs, and why).
 
 | File | Purpose |
 |---|---|
-| `STM32G474RE_main.c` | Application entry point — currently a FreeRTOS GPIO-toggle smoke test only |
+| `STM32G474RE_main.c` | Application entry point — `vBlinkTask` (smoke test) + `vRelayTask` (real, see below) |
+| `RobotControllerRelay.c/h` | Real AXIS_STATUS responder + Tier 2/3 RELAY_SEND/RELAY_RECV tunnel to the URTC head (FDCAN1 uplink + FDCAN2 downlink) |
 | `STM32G474RETx_APP.ld` | Application linker script (main flash slot) |
 | `FreeRTOSConfig.h` | FreeRTOS kernel config for this board's application (bootloader never includes this) |
 | `boot/bootloader_main.c` | Bootloader entry point (bare-metal) — clock config, FDCAN1 + BOARD_ID init, real CAN-OTA main loop |

@@ -5,18 +5,20 @@
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
  * LICENSE: GPL-3.0 - see repo root LICENSE
  *
- * STARTING POINT ONLY - proves the toolchain/HAL/linker/FreeRTOS setup
- * documented in docs/COMPILE_STM32G474.TXT actually produces a working
- * binary (a single FreeRTOS task toggling a GPIO, the traditional "does
- * this chip even boot, and does the scheduler actually run" smoke test),
- * not a real robot-controller-board application yet. Real work still
- * needed here, tracked against HYDRA-UMC/docs/architecture.md:
- *   - Real tasks: FDCAN Tier 1 protocol handling, 6-axis STEP/DIR/EN pulse
- *     generation, endstop polling - vBlinkTask below is a placeholder for
- *     where those tasks (plural - this is why a real scheduler is used
- *     instead of a superloop) will live, not itself one of them
- *   - FDCAN1 init + the Tier 1 slot-addressed protocol (architecture.md §3)
- *   - FDCAN2 (or 3) init + the Tier 2/3 relay tunnel (architecture.md §4)
+ * Real now: FDCAN1 (uplink, STACK A) responding to real AXIS_STATUS
+ * queries with real endstop/fault GPIO state, and FDCAN2 (downlink) running
+ * the real Tier 2/3 RELAY_SEND/RELAY_RECV tunnel to this robot's own URTC
+ * Tool Head - see RobotControllerRelay.c, the app-side relay logic
+ * docs/architecture.md section 6's own status table used to flag as "not
+ * yet written". vBlinkTask below is still just the toolchain/HAL/linker/
+ * FreeRTOS smoke test (does this chip even boot, does the scheduler
+ * actually run) - vRelayTask is the first REAL task. Still needed here,
+ * tracked against HYDRA-UMC/docs/architecture.md:
+ *   - 6-axis STEP/DIR/EN pulse generation (architecture.md's own "real
+ *     tasks" list) - no motion-control code exists yet, only the relay/
+ *     status responder above
+ *   - OFS_ENTER_BOOTLOADER handling - see RobotControllerRelay.h's own
+ *     header for why this is a real, separately-tracked gap
  *   - Real clock tree config (left at HSI 16 MHz default below - fine for
  *     this smoke test, NOT fine for real FDCAN bit timing or step-pulse
  *     precision) - FreeRTOSConfig.h's own configCPU_CLOCK_HZ must be
@@ -64,6 +66,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "stm32g4xx_hal.h"
+#include "RobotControllerRelay.h"
 
 static void Error_Handler(void)
 {
@@ -95,6 +98,23 @@ static void vBlinkTask(void *pvParameters)
   }
 }
 
+/* Real task: services this board's own AXIS_STATUS/RELAY_SEND/RELAY_RECV
+ * traffic on FDCAN1 and buffers URTC-head traffic off FDCAN2 - see
+ * RobotControllerRelay.c's own header for the full real design. Polled
+ * every 5ms rather than blocking-per-frame: this task also has to keep
+ * servicing FDCAN2 capture even when FDCAN1 has nothing queued, so a
+ * short, bounded delay between passes (not vTaskDelay(0), which would
+ * starve lower-priority tasks) is the right real scheduling shape here,
+ * not a single-peripheral blocking wait. */
+static void vRelayTask(void *pvParameters)
+{
+  (void)pvParameters;
+  for (;;) {
+    RobotControllerRelay_Poll();
+    vTaskDelay(pdMS_TO_TICKS(5));
+  }
+}
+
 int main(void)
 {
   /* Re-arm/refresh this same IWDG the bootloader already started (see this
@@ -119,8 +139,10 @@ int main(void)
    * update FreeRTOSConfig.h's own configCPU_CLOCK_HZ in the same commit. */
 
   GPIO_Init();
+  RobotControllerRelay_Init();
 
   xTaskCreate(vBlinkTask, "blink", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+  xTaskCreate(vRelayTask, "relay", configMINIMAL_STACK_SIZE * 2, NULL, tskIDLE_PRIORITY + 2, NULL);
 
   vTaskStartScheduler();
 

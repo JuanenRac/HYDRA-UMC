@@ -39,8 +39,45 @@ All notable changes to the hardware and core firmware will be documented in this
   too large to fetch just to verify this one app this session; see that
   folder's own README.md for the exact verification still needed before
   trusting this builds.
-  documents the real reconciliation work (retiring these placeholders in
-  favor of HYDRA-UMC-OS) still ahead.
+
+## [0.1.4] - Real Robot Controller Board (G474) relay tunnel application
+
+- **Added `src/mcu_stm32g474/RobotControllerRelay.{h,c}`** (new) - the
+  real application-side logic `docs/architecture.md` section 6's own
+  status table explicitly flagged as missing: "the Robot Controller
+  Board's own APPLICATION-side relay logic (not its bootloader) that
+  actually speaks to the URTC head is still not written." Real FDCAN2
+  init (downlink to this robot's own URTC Tool Head,
+  `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` section 1b), a real
+  AXIS_STATUS (+0x10) responder reading this board's own 6 endstop + 3
+  fault-sense GPIOs (`docs/CANBUS_STM32G474.TXT`'s own documented
+  txData[0]/[1] layout), and a real RELAY_SEND/RELAY_RECV (+0x12/+0x13)
+  tunnel forwarding opaque CAN traffic between FDCAN1 (uplink, STACK A)
+  and FDCAN2 - the exact real 2-fragment-max scheme (2-byte target/source
+  CAN ID BE + 1-byte total DLC + up to 5 data bytes) already implemented,
+  to the same spec, on both `src/mcu_stm32h745/CM4/KinematicBrainCan.c`
+  (Tier 0, the bus master this tunnel talks to) and
+  `src/cm5_host/spi_bridge/spi_bridge/relay_tunnel.py` (CM5). A bounded,
+  drop-oldest 8-entry FIFO buffers FDCAN2 traffic between RELAY_RECV
+  polls - no dynamic allocation, matching this project's own embedded
+  convention throughout. `ReadSlotBaseId()`/FDCAN1 init are real,
+  intentional duplicates of the bootloader's own already-proven
+  functions of the same name (two separate linked binaries, same
+  precedent `KinematicBrainCan.c` already established for Tier 0).
+  `OFS_ENTER_BOOTLOADER` (+0x00) is deliberately still a no-op - a real,
+  separately-tracked gap (needs a boot-selection mechanism that doesn't
+  exist anywhere in this project yet), not silently glossed over.
+  `STM32G474RE_main.c` now runs a real second FreeRTOS task
+  (`vRelayTask`) polling this module, alongside the original
+  `vBlinkTask` smoke test.
+- Verified with the real toolchain (`arm-none-eabi-gcc` 10.3.1): isolated
+  compile of both new/changed files with zero warnings, then the full,
+  real `build_firmware.sh all` incremental build across all 6 MCU
+  targets - compiles and links clean end-to-end (41 passed, 0 warnings,
+  0 failed), `firmware/firmware_manifest.json` regenerated and verified
+  against the real artifacts (`tools/verify_firmware_inventory.py`).
+  `docs/architecture.md` section 6's own status table updated to
+  IMPLEMENTED for this row.
 
 ## [0.1.2] - Real SPI-OTA bridge (CM5 side) + real FDCAN1 STACK A application on the Kinematic Brain
 
