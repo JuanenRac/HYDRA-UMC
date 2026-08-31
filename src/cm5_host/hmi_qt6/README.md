@@ -11,6 +11,14 @@ verify this one app in this session. Verify on target or a real Qt6 dev
 box (`qt6-base-dev` + `qt6-webengine-dev` on Debian/Raspberry Pi OS)
 before trusting any of this builds clean.
 
+**The real, deployed HDMI kiosk today is HYDRA-UMC-OS's own
+`provisioning/install_kiosk.sh`** (minimal X11 + Chromium, verified on a
+real CM5, see that repo's own CHANGELOG) - not this Qt6 shell. This folder
+stays a documented future alternative, not something to install alongside
+it: both would fight over the same tty1/display, and nobody has decided
+this one replaces the Chromium kiosk yet. Verify it compiles and pick one
+before ever installing both on the same device.
+
 **Relationship to HYDRA-UMC-STUDIO:** the actual dashboard UI (robot jog
 control, trajectories, cameras, modules, Flasher/Tester, etc.) is
 **HYDRA-UMC-STUDIO** — a separate, already-substantial React + Vite + Node
