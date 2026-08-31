@@ -2,7 +2,20 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
-## [Unreleased] - Pre-hardware readiness: os/ reconciled, real hmi_qt6 kiosk lockdown
+## [Unreleased] - Pre-hardware readiness: os/ reconciled, real hmi_qt6 kiosk lockdown, dashboard visibility fixed
+
+- **`hydra-umc.project.json`** - `maturity` was `"experimental"`, a value
+  HYDRA-UMC-UPDATER's own manifest validator has never accepted
+  (`VALID_MATURITY = {"scaffolding", "functional", "established",
+  "production"}`, `project_manifest.py`). A manifest that fails
+  validation is silently excluded from remote discovery
+  (`github_client.py`'s own `_fetch_discovered_manifest`) - this repo,
+  the ecosystem's own flagship firmware project, had been invisible on
+  the public dashboard for real, not by design. Changed to `"functional"`,
+  the closest honest match to this repo's real status: real, compiling,
+  linking firmware across all 6 targets, genuinely not yet verified
+  against real silicon. Verified against the real validator
+  (`hydra_umc_updater.project_manifest.parse_manifest`) - parses clean.
 
 - **`os/README.md`** - stopped presenting "Raspberry Pi OS vs. Yocto" as
   still an open decision. The separate repo

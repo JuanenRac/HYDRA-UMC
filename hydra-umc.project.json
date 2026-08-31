@@ -15,7 +15,7 @@
     "Python (CM5 host: spi_bridge)"
   ],
   "deployment_target": "user-pc",
-  "maturity": "experimental",
+  "maturity": "functional",
   "family": "Core Hardware",
   "parent": null,
   "build": "6 independently-versioned components (G474 + H745 CM7 + H745 CM4, app + bootloader each). This registry tracks the G474 application as representative. Real install/build: bash build_firmware.sh.",
