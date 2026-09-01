@@ -434,13 +434,12 @@ This project is part of a larger robotics ecosystem by the same author (JuanenRa
 - 🏭 **Industrial Gateway:** [HYDRA-UMC-GATEWAY-INDUSTRIAL](https://github.com/JuanenRac/HYDRA-UMC-GATEWAY-INDUSTRIAL), [HYDRA-UMC-OPCUA-SERVER](https://github.com/JuanenRac/HYDRA-UMC-OPCUA-SERVER), [HYDRA-UMC-MQTT-BROKER](https://github.com/JuanenRac/HYDRA-UMC-MQTT-BROKER), [HYDRA-UMC-MTCONNECT-ADAPTER](https://github.com/JuanenRac/HYDRA-UMC-MTCONNECT-ADAPTER)
 - 🛠️ **Complementary Tools:** [HYDRA-UMC-WATCH](https://github.com/JuanenRac/HYDRA-UMC-WATCH), [HYDRA-UMC-TOOL-CLI](https://github.com/JuanenRac/HYDRA-UMC-TOOL-CLI), [HYDRA-UMC-DASHBOARD-AI](https://github.com/JuanenRac/HYDRA-UMC-DASHBOARD-AI)
 
-## 👤 Author
-
+## 👤 AUTHOR
 **JuanenRac** (Electro Hobby 3D)
 📧 electrohobby3d@gmail.com
-📺 youtube.com/@electrohobby3d
+📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
 
-## 📜 License and Copyright Notices
+## 📜 LICENSE
 
 HYDRA-UMC is (c) 2026 JuanenRac (Electro Hobby 3D). This notice must be included in any distributions of this project or derivative works.
 

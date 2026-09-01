@@ -342,12 +342,11 @@ build_firmware.bat --clean  :: 先清空已缓存的 HAL/CMSIS
 - 🛠️ **配套工具：** [HYDRA-UMC-WATCH](https://github.com/JuanenRac/HYDRA-UMC-WATCH)、[HYDRA-UMC-TOOL-CLI](https://github.com/JuanenRac/HYDRA-UMC-TOOL-CLI)、[HYDRA-UMC-DASHBOARD-AI](https://github.com/JuanenRac/HYDRA-UMC-DASHBOARD-AI)
 
 ## 👤 作者
-
-**JuanenRac**（Electro Hobby 3D）
+**JuanenRac** (Electro Hobby 3D)
 📧 electrohobby3d@gmail.com
-📺 youtube.com/@electrohobby3d
+📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
 
-## 📜 许可与版权声明
+## 📜 许可证
 
 HYDRA-UMC 版权所有 (c) 2026 JuanenRac（Electro Hobby 3D）。任何形式的本项目分发或衍生作品，均须包含此声明。
 
