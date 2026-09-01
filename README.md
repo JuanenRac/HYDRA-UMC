@@ -415,6 +415,7 @@ comment for the full mechanism.
 This project is part of a larger robotics ecosystem by the same author (JuanenRac / Electro Hobby 3D), made up of many projects spanning vision, orchestration, digital twins, and industrial connectivity. Worth knowing about, since a request might actually be about one of these rather than this repository:
 
 **Directly related to HYDRA-UMC** — projects that plug straight into this firmware
+- **[URTC](https://github.com/JuanenRac/URTC)** — the tool head firmware every robot arm this board drives mounts, one hop further over its own CAN downlink.
 - **[HYDRA-UMC-VISION-NODE](https://github.com/JuanenRac/HYDRA-UMC-VISION-NODE)** — closes the perception/E-STOP loop against this firmware over SPI/CAN.
 - **[HYDRA-UMC-SAFETY-ZONES](https://github.com/JuanenRac/HYDRA-UMC-SAFETY-ZONES)** — triggers this firmware's E-STOP the moment it detects an intrusion.
 - **[HYDRA-UMC-VISUAL-SERVOING-API](https://github.com/JuanenRac/HYDRA-UMC-VISUAL-SERVOING-API)** — sends kinematic corrections directly to this firmware.
