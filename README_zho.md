@@ -360,14 +360,3 @@ HYDRA-UMC 版权所有 (c) 2026 JuanenRac（Electro Hobby 3D）。任何形式�
 3. **文档**（本 README、维修手册，以及 `./docs` 下的参考文件）采用 **知识共享 署名-相同方式共享 4.0 国际版（CC BY-SA 4.0）**。完整文本见 https://creativecommons.org/licenses/by-sa/4.0/ 。
 
 若你基于本项目进行二次开发，请留意这一许可协议的划分：对固件或烧录工具的代码修改应保持 GPL-3.0，硬件修改应保持 CERN-OHL-S，文档衍生作品应保持 CC BY-SA —— 并均需注明源自本项目。
-
-## 🛠️ BUILD & RUN
-
-请在发布构建前使用不改动版本的构建检查：
-
-| 操作 | Windows | Linux / macOS |
-|---|---|---|
-| 构建检查（不修改版本或 CHANGELOG） | `build-test.bat` | `./build-test.sh` |
-| 运行 / 开发（如提供） | `run*.bat` 或 `dev*.bat` | `./run*.sh` 或 `./dev*.sh` |
-
-`build-test.bat` 和 `build-test.sh` 会编译或验证项目技术栈，但不会递增 `hydra-umc.project.json`，也不会修改 `CHANGELOG.md`。它们仅可能生成正常的编译器输出。现有的 `build*.bat`、`build*.sh`、`run*` 和 `dev*` 脚本保留各自的版本化或运行时行为；需要该行为时请使用它们。
