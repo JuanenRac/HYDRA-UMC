@@ -436,6 +436,7 @@ Header-Kommentar von `bump_version.py` für den vollständigen Mechanismus.
 Dieses Projekt ist Teil eines größeren Robotik-Ökosystems desselben Autors (JuanenRac / Electro Hobby 3D), das aus vielen Projekten rund um Vision, Orchestrierung, digitale Zwillinge und industrielle Konnektivität besteht. Gut zu wissen, da eine Anfrage tatsächlich eines dieser Projekte betreffen könnte statt dieses Repository:
 
 **Direkt mit HYDRA-UMC verbunden** — Projekte, die sich direkt an diese Firmware anschließen
+- **[URTC](https://github.com/JuanenRac/URTC)** — die Werkzeugkopf-Firmware, die jeder von dieser Platine angesteuerte Roboterarm montiert, einen Hop weiter über seine eigene CAN-Downlink-Verbindung.
 - **[HYDRA-UMC-VISION-NODE](https://github.com/JuanenRac/HYDRA-UMC-VISION-NODE)** — schließt die Wahrnehmungs-/E-STOP-Schleife mit dieser Firmware über SPI/CAN.
 - **[HYDRA-UMC-SAFETY-ZONES](https://github.com/JuanenRac/HYDRA-UMC-SAFETY-ZONES)** — löst den E-STOP dieser Firmware aus, sobald ein Eindringen erkannt wird.
 - **[HYDRA-UMC-VISUAL-SERVOING-API](https://github.com/JuanenRac/HYDRA-UMC-VISUAL-SERVOING-API)** — sendet kinematische Korrekturen direkt an diese Firmware.

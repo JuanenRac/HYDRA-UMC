@@ -427,6 +427,7 @@ commento di intestazione di `bump_version.py` per il meccanismo completo.
 Questo progetto fa parte di un ecosistema robotico più ampio dello stesso autore (JuanenRac / Electro Hobby 3D), composto da molti progetti che spaziano tra visione, orchestrazione, gemelli digitali e connettività industriale. Vale la pena conoscerlo, poiché una richiesta potrebbe in realtà riguardare uno di questi anziché questo repository:
 
 **Direttamente correlati a HYDRA-UMC** — progetti che si collegano direttamente a questo firmware
+- **[URTC](https://github.com/JuanenRac/URTC)** — il firmware della testa utensile che monta ogni braccio robotico pilotato da questa scheda, un salto più in là tramite il proprio collegamento CAN discendente.
 - **[HYDRA-UMC-VISION-NODE](https://github.com/JuanenRac/HYDRA-UMC-VISION-NODE)** — chiude il ciclo percezione/E-STOP con questo firmware via SPI/CAN.
 - **[HYDRA-UMC-SAFETY-ZONES](https://github.com/JuanenRac/HYDRA-UMC-SAFETY-ZONES)** — attiva l'E-STOP di questo firmware non appena rileva un'intrusione.
 - **[HYDRA-UMC-VISUAL-SERVOING-API](https://github.com/JuanenRac/HYDRA-UMC-VISUAL-SERVOING-API)** — invia correzioni cinematiche direttamente a questo firmware.

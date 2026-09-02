@@ -433,6 +433,7 @@ acarreo sigue hacia el MAJOR de la misma forma. Ver el propio
 Este proyecto forma parte de un ecosistema de robótica más amplio del mismo autor (JuanenRac / Electro Hobby 3D), compuesto por muchos proyectos que abarcan visión, orquestación, gemelos digitales y conectividad industrial. Vale la pena conocerlo, ya que una petición podría en realidad tratarse de uno de estos en vez de este repositorio:
 
 **Directamente relacionados con HYDRA-UMC** — proyectos que se conectan directamente con este firmware
+- **[URTC](https://github.com/JuanenRac/URTC)** — el firmware del cabezal de herramienta que monta cada brazo robótico que controla esta placa, un salto más lejos por su propio enlace CAN.
 - **[HYDRA-UMC-VISION-NODE](https://github.com/JuanenRac/HYDRA-UMC-VISION-NODE)** — cierra el bucle de percepción/E-STOP frente a este firmware vía SPI/CAN.
 - **[HYDRA-UMC-SAFETY-ZONES](https://github.com/JuanenRac/HYDRA-UMC-SAFETY-ZONES)** — dispara la parada de emergencia (E-STOP) de este firmware en cuanto detecta una intrusión.
 - **[HYDRA-UMC-VISUAL-SERVOING-API](https://github.com/JuanenRac/HYDRA-UMC-VISUAL-SERVOING-API)** — envía correcciones cinemáticas directamente a este firmware.

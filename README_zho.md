@@ -323,6 +323,7 @@ build_firmware.bat --clean  :: 先清空已缓存的 HAL/CMSIS
 本项目是同一作者（JuanenRac / Electro Hobby 3D）旗下更大规模机器人生态系统的一部分，该生态系统由众多项目组成，涵盖视觉、编排、数字孪生与工业连接等领域。值得留意 —— 因为某个需求实际指向的可能是这些项目之一，而非本仓库：
 
 **与 HYDRA-UMC 直接相关** —— 直接对接本固件的项目
+- **[URTC](https://github.com/JuanenRac/URTC)** —— 本板卡驱动的每条机械臂所搭载的工具头固件,通过其自身的 CAN 下行链路再深入一跳。
 - **[HYDRA-UMC-VISION-NODE](https://github.com/JuanenRac/HYDRA-UMC-VISION-NODE)** —— 通过 SPI/CAN 与本固件闭合感知/急停回路。
 - **[HYDRA-UMC-SAFETY-ZONES](https://github.com/JuanenRac/HYDRA-UMC-SAFETY-ZONES)** —— 一旦检测到入侵，立即触发本固件的急停。
 - **[HYDRA-UMC-VISUAL-SERVOING-API](https://github.com/JuanenRac/HYDRA-UMC-VISUAL-SERVOING-API)** —— 将运动学修正指令直接发送给本固件。

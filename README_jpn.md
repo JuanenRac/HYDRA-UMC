@@ -323,6 +323,7 @@ build_firmware.bat --clean  :: ベンダリング済み HAL/CMSIS キャッシ�
 本プロジェクトは、同一著者（JuanenRac／Electro Hobby 3D）による、より大きなロボティクスエコシステムの一部です。このエコシステムは、ビジョン、オーケストレーション、デジタルツイン、産業用接続にまたがる多数のプロジェクトで構成されています。ご要望が実際にはこれらのプロジェクトのいずれかに関するものであり、本リポジトリのものではない可能性もあるため、知っておく価値があります。
 
 **HYDRA-UMC と直接関連** —— 本ファームウェアに直接接続するプロジェクト
+- **[URTC](https://github.com/JuanenRac/URTC)** —— このボードが駆動するすべてのロボットアームが搭載するツールヘッドファームウェアで、独自のCANダウンリンクを介してさらに1ホップ先にあります。
 - **[HYDRA-UMC-VISION-NODE](https://github.com/JuanenRac/HYDRA-UMC-VISION-NODE)** —— SPI/CAN 経由で本ファームウェアとの知覚／緊急停止ループを閉じます。
 - **[HYDRA-UMC-SAFETY-ZONES](https://github.com/JuanenRac/HYDRA-UMC-SAFETY-ZONES)** —— 侵入を検知した瞬間に本ファームウェアの緊急停止をトリガーします。
 - **[HYDRA-UMC-VISUAL-SERVOING-API](https://github.com/JuanenRac/HYDRA-UMC-VISUAL-SERVOING-API)** —— 運動学的補正指令を本ファームウェアへ直接送信します。
