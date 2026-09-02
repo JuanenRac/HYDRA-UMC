@@ -296,7 +296,9 @@ HYDRA-UMC/
 │   │   ├── hmi_qt6/             # Shell kiosk Qt6 che avvolge la propria dashboard di HYDRA-UMC-STUDIO
 │   │   ├── ai_inference/        # Pipeline Hailo-8 TAPPAS / YOLOv8
 │   │   ├── video_streamer/      # Server RTSP/WebRTC multi-camera (MediaMTX)
-│   │   └── ipc_driver/          # Collegamento SPI CM5 <-> STM32H745 (userspace)
+│   │   ├── ipc_driver/          # Collegamento SPI CM5 <-> STM32H745 (userspace) - scheletro C incompleto, conservato come riferimento
+│   │   └── spi_bridge/          # Vero bridge SPI-OTA CM5<->STM32H745 (Python) - sostituisce ipc_driver/,
+│   │                              adatta la macchina a stati CRC32/HMAC già collaudata di URTC-FLASHER
 │   ├── mcu_stm32h745/           # Firmware del Kinematic Brain (Livello 0) - dual-core
 │   │   ├── CM7/                 # Motore di movimento, timer hardware (+ il proprio boot/)
 │   │   ├── CM4/                 # Driver FDCAN, filtraggio sensori (+ il proprio boot/)
@@ -306,8 +308,14 @@ HYDRA-UMC/
 ├── images/                      # Banner del README + icona + splashscreen (SVG)
 ├── build_firmware.sh            # Compila ogni target firmware MCU sopra da un checkout pulito (Linux/Mac)
 ├── build_firmware.bat           # Stessa build, Windows (vedi "Compilare il Firmware" sotto)
+├── build-test.sh / build-test.bat # Controllo build/compilazione senza incremento di versione
 ├── generate_manifest.py         # Rigenera firmware/firmware_manifest.json (versioni/CRC32) dopo una build completa
-├── tools/verify_firmware_inventory.py # Verifica in sola lettura dell'inventario dei sei componenti
+├── bump_version.py              # Incremento di versione stile contachilometri, eseguito da build_firmware.sh/.bat
+├── bump_manifest_version.py     # Sincronizza la versione di hydra-umc.project.json con quella nativa (--sync)
+├── tools/
+│   ├── verify_firmware_inventory.py # Verifica in sola lettura dell'inventario dei sei componenti
+│   ├── build_test.py                # Controllo build/compilazione senza incremento di versione
+│   └── ci_validate.py               # Validazione manifest/CHANGELOG/docs usata dalla CI
 ├── firmware/                    # Output di build committato (.bin/.hex/.elf + manifest) - NON in gitignore, stessa convenzione della cartella di output propria di URTC, vedi "Compilare il Firmware" sotto
 ├── README.md                    # Questo file
 └── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md    # <- traduzioni

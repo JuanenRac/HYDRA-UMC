@@ -263,7 +263,9 @@ HYDRA-UMC/
 │   │   ├── hmi_qt6/             # 封装 HYDRA-UMC-STUDIO 自身仪表盘的 Qt6 一体机外壳
 │   │   ├── ai_inference/        # Hailo-8 TAPPAS / YOLOv8 推理管线
 │   │   ├── video_streamer/      # 多摄像头 RTSP/WebRTC 服务器（MediaMTX）
-│   │   └── ipc_driver/          # CM5 <-> STM32H745 SPI 链路（用户空间）
+│   │   ├── ipc_driver/          # CM5 <-> STM32H745 SPI 链路（用户空间）—— 未完成的 C 骨架，保留作参考
+│   │   └── spi_bridge/          # 真正的 CM5<->STM32H745 SPI-OTA 桥接（Python）—— 取代 ipc_driver/，
+│   │                              沿用 URTC-FLASHER 自身已验证的 CRC32/HMAC 引导加载程序状态机
 │   ├── mcu_stm32h745/           # 运动学大脑固件（第 0 层）—— 双核
 │   │   ├── CM7/                 # 运动引擎、硬件定时器（+ 自身的 boot/）
 │   │   ├── CM4/                 # FDCAN 驱动、传感器滤波（+ 自身的 boot/）
@@ -273,8 +275,14 @@ HYDRA-UMC/
 ├── images/                      # README 横幅 + 图标 + 启动画面（SVG）
 ├── build_firmware.sh            # 从全新检出一次性构建上述所有 MCU 固件目标（Linux/Mac）
 ├── build_firmware.bat           # 相同构建，Windows 版（见下方“构建固件”）
+├── build-test.sh / build-test.bat # 不递增版本号的构建/编译检查
 ├── generate_manifest.py         # 完整构建后重新生成 firmware/firmware_manifest.json（版本号/CRC32）
-├── tools/verify_firmware_inventory.py # 对已提交六组件清单的只读验证
+├── bump_version.py              # 里程表式版本递增，由 build_firmware.sh/.bat 运行
+├── bump_manifest_version.py     # 将 hydra-umc.project.json 的版本与原生版本同步（--sync）
+├── tools/
+│   ├── verify_firmware_inventory.py # 对已提交六组件清单的只读验证
+│   ├── build_test.py                # 不递增版本号的构建/编译检查
+│   └── ci_validate.py               # CI 使用的 manifest/CHANGELOG/docs 校验
 ├── firmware/                    # 已提交的构建产物（.bin/.hex/.elf + 清单文件）—— 未被 gitignore 排除，与 URTC 自身的输出文件夹约定一致，见下方“构建固件”
 ├── README.md                    # 本文件
 └── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md    # <- 各语言译文

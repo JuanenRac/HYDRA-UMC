@@ -289,7 +289,9 @@ HYDRA-UMC/
 │   │   ├── hmi_qt6/             # Qt6 kiosk shell wrapping HYDRA-UMC-STUDIO's own dashboard
 │   │   ├── ai_inference/        # Hailo-8 TAPPAS / YOLOv8 pipeline
 │   │   ├── video_streamer/      # Multi-camera RTSP/WebRTC server (MediaMTX)
-│   │   └── ipc_driver/          # CM5 <-> STM32H745 SPI link (userspace)
+│   │   ├── ipc_driver/          # CM5 <-> STM32H745 SPI link (userspace) - unfinished C skeleton, kept for reference
+│   │   └── spi_bridge/          # Real CM5<->STM32H745 SPI-OTA bridge (Python) - replaces ipc_driver/,
+│   │                              adapts URTC-FLASHER's own proven CRC32/HMAC bootloader state machine
 │   ├── mcu_stm32h745/           # Kinematic Brain firmware (Tier 0) - dual-core
 │   │   ├── CM7/                 # Motion engine, hardware timers (+ its own boot/)
 │   │   ├── CM4/                 # FDCAN drivers, sensor filtering (+ its own boot/)
@@ -299,8 +301,14 @@ HYDRA-UMC/
 ├── images/                      # README banner + icon + splashscreen (SVG)
 ├── build_firmware.sh            # Builds every MCU firmware target above from a clean checkout (Linux/Mac)
 ├── build_firmware.bat           # Same build, Windows (see "Building the Firmware" below)
+├── build-test.sh / build-test.bat # Non-versioning build/compile check
 ├── generate_manifest.py         # Regenerates firmware/firmware_manifest.json (versions/CRC32) after a full build
-├── tools/verify_firmware_inventory.py # Read-only verification of the committed six-component inventory
+├── bump_version.py              # Odometer-style version bump, run by build_firmware.sh/.bat
+├── bump_manifest_version.py     # Syncs hydra-umc.project.json's version to the native one (--sync)
+├── tools/
+│   ├── verify_firmware_inventory.py # Read-only verification of the committed six-component inventory
+│   ├── build_test.py                # Non-versioning build/compile check
+│   └── ci_validate.py               # Manifest/CHANGELOG/docs validation used by CI
 ├── firmware/                    # Committed build output (.bin/.hex/.elf + manifest) - NOT gitignored, same convention as URTC's own output folder, see "Building the Firmware" below
 ├── README.md                    # This file
 └── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md    # <- translations

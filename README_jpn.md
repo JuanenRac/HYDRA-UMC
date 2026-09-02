@@ -263,7 +263,9 @@ HYDRA-UMC/
 │   │   ├── hmi_qt6/             # HYDRA-UMC-STUDIO 自身のダッシュボードをラップする Qt6 キオスクシェル
 │   │   ├── ai_inference/        # Hailo-8 TAPPAS／YOLOv8 パイプライン
 │   │   ├── video_streamer/      # マルチカメラ RTSP/WebRTC サーバー（MediaMTX）
-│   │   └── ipc_driver/          # CM5 <-> STM32H745 SPI リンク（ユーザースペース）
+│   │   ├── ipc_driver/          # CM5 <-> STM32H745 SPI リンク（ユーザースペース）— 未完成の C スケルトン、参考として保持
+│   │   └── spi_bridge/          # 本物の CM5<->STM32H745 SPI-OTA ブリッジ（Python）— ipc_driver/ を置き換え、
+│   │                              URTC-FLASHER 自身の実証済み CRC32/HMAC ブートローダー状態機械を流用
 │   ├── mcu_stm32h745/           # Kinematic Brain ファームウェア（第 0 階層）— デュアルコア
 │   │   ├── CM7/                 # モーションエンジン、ハードウェアタイマー（+ 自身の boot/）
 │   │   ├── CM4/                 # FDCAN ドライバー、センサーフィルタリング（+ 自身の boot/）
@@ -273,8 +275,14 @@ HYDRA-UMC/
 ├── images/                      # README バナー + アイコン + スプラッシュスクリーン（SVG）
 ├── build_firmware.sh            # クリーンなチェックアウトから、上記の全 MCU ファームウェアターゲットを一括ビルド（Linux/Mac）
 ├── build_firmware.bat           # 同じビルド、Windows 版（下記「ファームウェアのビルド」参照）
+├── build-test.sh / build-test.bat # バージョンを更新しないビルド/コンパイル確認
 ├── generate_manifest.py         # フルビルド後に firmware/firmware_manifest.json（バージョン／CRC32）を再生成
-├── tools/verify_firmware_inventory.py # コミット済み6コンポーネント在庫の読み取り専用検証
+├── bump_version.py              # オドメーター式バージョンインクリメント、build_firmware.sh/.bat が実行
+├── bump_manifest_version.py     # hydra-umc.project.json のバージョンをネイティブ側と同期（--sync）
+├── tools/
+│   ├── verify_firmware_inventory.py # コミット済み6コンポーネント在庫の読み取り専用検証
+│   ├── build_test.py                # バージョンを更新しないビルド/コンパイル確認
+│   └── ci_validate.py               # CI が使用する manifest/CHANGELOG/docs の検証
 ├── firmware/                    # コミット済みのビルド成果物（.bin/.hex/.elf + マニフェスト）— gitignore 対象外、URTC 自身の出力フォルダと同じ規約、下記「ファームウェアのビルド」参照
 ├── README.md                    # 本ファイル
 └── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md    # <- 各言語訳

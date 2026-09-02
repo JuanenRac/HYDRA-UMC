@@ -298,7 +298,9 @@ HYDRA-UMC/
 │   │   ├── hmi_qt6/             # Qt6-Kiosk-Shell, die das eigene Dashboard von HYDRA-UMC-STUDIO umhüllt
 │   │   ├── ai_inference/        # Hailo-8-TAPPAS-/YOLOv8-Pipeline
 │   │   ├── video_streamer/      # Multi-Kamera-RTSP/WebRTC-Server (MediaMTX)
-│   │   └── ipc_driver/          # CM5 <-> STM32H745 SPI-Verbindung (Userspace)
+│   │   ├── ipc_driver/          # CM5 <-> STM32H745 SPI-Verbindung (Userspace) - unfertiges C-Skelett, als Referenz behalten
+│   │   └── spi_bridge/          # Echte CM5<->STM32H745 SPI-OTA-Brücke (Python) - ersetzt ipc_driver/,
+│   │                              übernimmt die eigene, bereits bewährte CRC32/HMAC-Bootloader-Zustandsmaschine von URTC-FLASHER
 │   ├── mcu_stm32h745/           # Kinematic-Brain-Firmware (Ebene 0) - Dual-Core
 │   │   ├── CM7/                 # Bewegungs-Engine, Hardware-Timer (+ eigene boot/)
 │   │   ├── CM4/                 # FDCAN-Treiber, Sensorfilterung (+ eigene boot/)
@@ -308,8 +310,14 @@ HYDRA-UMC/
 ├── images/                      # README-Banner + Icon + Splashscreen (SVG)
 ├── build_firmware.sh            # Baut jedes obige MCU-Firmware-Ziel aus einem sauberen Checkout (Linux/Mac)
 ├── build_firmware.bat           # Derselbe Build, Windows (siehe "Die Firmware bauen" unten)
+├── build-test.sh / build-test.bat # Build-/Kompilierprüfung ohne Versionserhöhung
 ├── generate_manifest.py         # Regeneriert firmware/firmware_manifest.json (Versionen/CRC32) nach einem vollständigen Build
-├── tools/verify_firmware_inventory.py # Schreibgeschützte Prüfung des Inventars mit sechs Komponenten
+├── bump_version.py              # Versionserhöhung im Kilometerzähler-Stil, ausgeführt von build_firmware.sh/.bat
+├── bump_manifest_version.py     # Synchronisiert die Version von hydra-umc.project.json mit der nativen (--sync)
+├── tools/
+│   ├── verify_firmware_inventory.py # Schreibgeschützte Prüfung des Inventars mit sechs Komponenten
+│   ├── build_test.py                # Build-/Kompilierprüfung ohne Versionserhöhung
+│   └── ci_validate.py               # Manifest-/CHANGELOG-/Doku-Validierung, von der CI genutzt
 ├── firmware/                    # Committete Build-Ausgabe (.bin/.hex/.elf + Manifest) - NICHT in gitignore, dieselbe Konvention wie der eigene Ausgabeordner von URTC, siehe "Die Firmware bauen" unten
 ├── README.md                    # Diese Datei
 └── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md    # <- Übersetzungen
