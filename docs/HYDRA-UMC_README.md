@@ -1,3 +1,10 @@
+> ⚠️ **SUPERSEDED / OUTDATED - DO NOT USE FOR NEW WORK.** This document describes
+> an intermediate board revision already on STM32H745ZIT6/LQFP-144 with a single
+> FDCAN1 bus, but still single-NPU (Hailo-8 only, no Hailo-10 cognitive
+> accelerator, no PCIe switch fan-out). The CURRENT architecture (dual Hailo-8 +
+> Hailo-10 over an onboard PCIe Gen3 switch) is documented in `README.md` and
+> `docs/architecture.md`. Kept here for historical reference only.
+
 # 🚀 HYDRA-UMC TECHNICAL SPECIFICATION
 ### 🤖 The Ultimate Dual-Core Micro-Factory & Multi-Robot Controller Platform (V2.2 - Single FDCAN Bus)
 

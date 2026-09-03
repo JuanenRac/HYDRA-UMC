@@ -278,9 +278,13 @@ that isn't there.
 `docs/HYDRA-UMC_PINOUT.txt` describe an earlier board revision
 (STM32H757BIT6/LQFP-208, onboard TMC5160A drivers wired directly to robots,
 ESP32-C3, USB hub, Ethernet PHY) that this document's tiered
-STM32H745/Robot-Controller-Board architecture replaced. They're marked
-superseded at the top of each file and kept for historical reference only -
-do not use them as a source of truth for new work.
+STM32H745/Robot-Controller-Board architecture replaced. `docs/HYDRA-UMC_README.md`
+is a second, later-but-still-superseded snapshot: already on STM32H745ZIT6/
+LQFP-144 with the single FDCAN1 bus, but still single-NPU (Hailo-8 only,
+predating the Hailo-10 cognitive accelerator and its PCIe switch fan-out).
+All four are marked superseded at the top of each file and kept for
+historical reference only - do not use them as a source of truth for new
+work.
 
 ---
 
