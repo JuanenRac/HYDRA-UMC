@@ -9,6 +9,7 @@ is faked, exactly mirroring HYDRA-UMC-BRIDGE-PRINTER3D's own real fixture-
 HTTP-server test pattern used throughout this ecosystem this session."""
 
 import json
+import socket
 import threading
 import unittest
 from urllib.request import Request, urlopen
@@ -57,6 +58,29 @@ class HttpServiceTests(unittest.TestCase):
             lines = [json.loads(line) for line in response.read().decode("utf-8").splitlines()]
         self.assertEqual(lines[-1]["phase"], "done")
         self.assertEqual(lines[-1]["percent"], 100)
+
+    def test_post_flash_with_a_malformed_content_length_is_rejected(self):
+        # Real regression: do_POST() used to call int(Content-Length) with
+        # no try/except at all - a non-numeric header crashed the handler
+        # thread with an unhandled ValueError and sent back no HTTP
+        # response whatsoever, instead of the clean 400 every other
+        # malformed param on this route already gets. A raw socket is
+        # needed here since urllib always computes a real Content-Length
+        # itself.
+        sock = socket.create_connection(("127.0.0.1", self.server.server_port), timeout=5)
+        try:
+            sock.sendall(
+                b"POST /flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1 HTTP/1.1\r\n"
+                b"Host: 127.0.0.1\r\n"
+                b"Content-Length: not-a-number\r\n"
+                b"Connection: close\r\n"
+                b"\r\n"
+            )
+            sock.settimeout(5)
+            response = sock.recv(65536)
+        finally:
+            sock.close()
+        self.assertIn(b"400", response.split(b"\r\n", 1)[0])
 
     def test_unknown_route_is_a_real_404(self):
         try:

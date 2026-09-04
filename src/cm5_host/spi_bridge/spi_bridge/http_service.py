@@ -89,7 +89,11 @@ def make_handler(transport: SpiOtaTransport, hmac_key: bytes) -> type[BaseHTTPRe
                 self._send_json(400, {"error": "tier/slot/hardware_id/version_major/version_minor must be integers"})
                 return
 
-            content_length = int(self.headers.get("Content-Length", "0"))
+            try:
+                content_length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                self._send_json(400, {"error": "Content-Length must be an integer"})
+                return
             firmware = self.rfile.read(content_length)
 
             self.send_response(200)

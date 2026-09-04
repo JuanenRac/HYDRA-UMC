@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hydra-umc-spi-bridge"
-version = "0.1.0"
+version = "0.1.1"
 description = "Real CM5 <-> STM32H745 SPI-OTA bridge - protocol, transport, bootloader client and a local HTTP service"
 requires-python = ">=3.11"
 license = {text = "GPL-3.0-or-later"}

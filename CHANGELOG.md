@@ -4,6 +4,18 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased] - Pre-hardware readiness: os/ reconciled, real hmi_qt6 kiosk lockdown, dashboard visibility fixed
 
+- **Real bug fixed in `src/cm5_host/spi_bridge/spi_bridge/http_service.py`**
+  (`hydra-umc-spi-bridge` 0.1.0 -> 0.1.1): `POST /flash`'s `do_POST()`
+  called `int(self.headers.get("Content-Length", "0"))` with no
+  try/except at all - a malformed (non-numeric) `Content-Length` header
+  raised an uncaught `ValueError` in the request-handler thread, closing
+  the connection with no HTTP response at all instead of the clean `400`
+  every other malformed param on this route already gets (`tier`/`slot`/
+  `hardware_id`/`version_major`/`version_minor` were already guarded).
+  Confirmed live with a raw socket (urllib always computes a real
+  Content-Length itself, so this needed a hand-built request to
+  reproduce) before and after the fix. New regression test in
+  `tests/test_http_service.py`; python -m pytest: 32 passed (was 31).
 - **`hydra-umc.project.json`** - `maturity` was `"experimental"`, a value
   HYDRA-UMC-UPDATER's own manifest validator has never accepted
   (`VALID_MATURITY = {"scaffolding", "functional", "established",
