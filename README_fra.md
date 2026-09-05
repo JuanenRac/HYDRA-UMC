@@ -126,7 +126,7 @@ flowchart TB
 * 💾 **Architecture Mémoire Interne :**
   * 💾 **2 Mo** de flash interne double banque
   * 🧠 **1 Mo** de SRAM interne totale (512 Ko AXI SRAM + 128 Ko ITCM / 128 Ko DTCM + SRAM1/SRAM2/SRAM3)
-* 🧵 **RTOS :** **FreeRTOS**, une instance indépendante par cœur (AMP, pas SMP - aucun état d'ordonnanceur partagé entre le Cœur 1 et le Cœur 2). Squelette de firmware : `src/mcu_stm32h745/`, voir `docs/architecture.md` section 2.
+* 🧵 **RTOS :** **FreeRTOS**, une instance indépendante par cœur (AMP, pas SMP - aucun état d'ordonnanceur partagé entre le Cœur 1 et le Cœur 2). `src/mcu_stm32h745/` : le Cœur 2 (CM4) exécute déjà une vraie application maître FDCAN1 « STACK A » (`CM4/STM32H745ZI_CM4_main.c`) ; le `main()` du Cœur 1 (CM7) appelle encore l'ancien placeholder qui ne fait rien - voir `docs/architecture.md` section 2.
 
 ---
 
@@ -138,7 +138,7 @@ La carte mère agit comme contrôleur maître pour jusqu'à 8 modules robotiques
 * ⚡ **Transceiver de Couche Physique :** 1x Transceiver CAN FD haute vitesse (p. ex. TI `TCAN1044AVD` / NXP `TJA1443`) - matériel compatible FD choisi pour la même raison de marge future que le périphérique ci-dessus, même si le trafic d'aujourd'hui reste des trames classiques.
 * 🔀 **Topologie du Bus :**
   * 🅰️ **STACK A (`FDCAN1`) :** Dessert les Modules Esclaves A1 à A8.
-* ⏱️ **Spécifications du Protocole :** ~1 Mbps de débit binaire nominal (CAN Classique, charge utile max de 8 octets par trame). La récupération automatique après bus-off est prévue pour être gérée par le Cortex-M4 - pas encore implémentée dans le firmware applicatif (le `main.c` actuel du CM4 est un squelette de mise en route/clignotement, voir `src/mcu_stm32h745/CM4/`), suivi comme un travail futur réel plutôt qu'une capacité déjà livrée.
+* ⏱️ **Spécifications du Protocole :** ~1 Mbps de débit binaire nominal (CAN Classique, charge utile max de 8 octets par trame). La récupération automatique après bus-off est prévue pour être gérée par le Cortex-M4 - pas encore implémentée ; l'application actuelle du CM4 (`src/mcu_stm32h745/CM4/STM32H745ZI_CM4_main.c`) exécute déjà une vraie tâche maître FDCAN1 « STACK A » (requêtes `AXIS_STATUS` en round-robin sur les 8 slots, voir `KinematicBrainCan.c`) plus le rafraîchissement du watchdog, mais la récupération après bus-off en particulier reste un travail futur réel, pas une capacité déjà livrée.
 * 🔌 **Connecteur Physique :** Connecteur/embase d'EMPILEMENT 40 broches, pas 2.54mm (+24V ×10 broches, GND ×10 broches, +5V ×4 broches auxiliaires, FDCAN1 H/L, `BOARD_PRESENT_N`, 13 de réserve) - les 8 Cartes Robot Controller Board s'EMPILENT physiquement l'une sur l'autre d'un côté de cette carte (topologie CONFIRMÉE, pas un backplane), chaque carte faisant passer directement les 40 signaux vers ce qui est monté au-dessus. L'adressage des emplacements est un commutateur DIP LOCAL par carte (`BOARD_ID[2:0]`, README.md section 12), non dérivé de ce connecteur. Table complète des broches et topologie d'empilement dans `docs/PINOUT_STACKA_CONNECTOR.TXT`. Définition de connecteur identique à la fois sur le propre port du Kinematic Brain et sur chaque paire de ports des Cartes Robot Controller Board.
 
 ```mermaid
@@ -245,8 +245,12 @@ flowchart LR
   connecteur STACK A (chaque carte est le même PCB interchangeable). Voir
   `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` §1c.
 * 🧵 **RTOS :** **FreeRTOS** (son bootloader reste bare-metal - aucun
-  ordonnanceur n'est nécessaire pour recevoir/vérifier/sauter). Squelette
-  de firmware : `src/mcu_stm32g474/`.
+  ordonnanceur n'est nécessaire pour recevoir/vérifier/sauter).
+  Application réelle : `src/mcu_stm32g474/STM32G474RE_main.c` exécute
+  une vraie tâche de relais (`RobotControllerRelay.c` - liaison
+  descendante FDCAN2 vers l'URTC Tool Head, un répondeur `AXIS_STATUS`
+  et le tunnel `RELAY_SEND`/`RELAY_RECV`) aux côtés de la tâche de
+  clignotement avec rafraîchissement du watchdog.
 * 📡 **Mises à jour firmware CAN-OTA, sur 4 niveaux de profondeur :** le
   STM32H745 lui-même (via sa liaison SPI existante vers le CM5), cette
   carte, sa Tête d'Outil URTC (STM32F303CCT6), et - seulement lorsqu'elle

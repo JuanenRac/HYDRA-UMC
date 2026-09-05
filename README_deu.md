@@ -126,7 +126,7 @@ flowchart TB
 * 💾 **Interne Speicherarchitektur:**
   * 💾 **2 MB** interner Dual-Bank-Flash
   * 🧠 **1 MB** gesamte interne SRAM (512 KB AXI-SRAM + 128 KB ITCM / 128 KB DTCM + SRAM1/SRAM2/SRAM3)
-* 🧵 **RTOS:** **FreeRTOS**, eine unabhängige Instanz pro Kern (AMP, nicht SMP - kein gemeinsamer Scheduler-Zustand zwischen Kern 1 und Kern 2). Firmware-Grundgerüst: `src/mcu_stm32h745/`, siehe `docs/architecture.md` Abschnitt 2.
+* 🧵 **RTOS:** **FreeRTOS**, eine unabhängige Instanz pro Kern (AMP, nicht SMP - kein gemeinsamer Scheduler-Zustand zwischen Kern 1 und Kern 2). `src/mcu_stm32h745/`: Kern 2 (CM4) führt bereits eine echte FDCAN1-„STACK A“-Master-Anwendung aus (`CM4/STM32H745ZI_CM4_main.c`); Kern 1 (CM7)s eigenes `main()` ruft noch den alten, nichts tuenden Platzhalter auf - siehe `docs/architecture.md` Abschnitt 2.
 
 ---
 
@@ -138,7 +138,7 @@ Die Hauptplatine fungiert als Master-Controller für bis zu 8 einzelne robotisch
 * ⚡ **Physical-Layer-Transceiver:** 1x High-Speed-CAN-FD-Transceiver (z. B. TI `TCAN1044AVD` / NXP `TJA1443`) - FD-fähige Hardware, aus demselben Zukunftsspielraum-Grund gewählt wie die obige Peripherie, auch wenn der heutige Verkehr aus klassischen Rahmen besteht.
 * 🔀 **Bus-Topologie:**
   * 🅰️ **STACK A (`FDCAN1`):** Bedient die Slave-Module A1 bis A8.
-* ⏱️ **Protokoll-Spezifikationen:** ~1 Mbps nominale Bitrate (klassisches CAN, max. 8-Byte-Payload pro Rahmen). Die automatische Bus-Off-Erholung ist geplant, vom Cortex-M4 verwaltet zu werden - noch nicht in der Anwendungsfirmware implementiert (die aktuelle `main.c` des CM4 ist ein Bring-up-/Blink-Grundgerüst, siehe `src/mcu_stm32h745/CM4/`), als reale zukünftige Arbeit verzeichnet, nicht als bereits gelieferte Fähigkeit.
+* ⏱️ **Protokoll-Spezifikationen:** ~1 Mbps nominale Bitrate (klassisches CAN, max. 8-Byte-Payload pro Rahmen). Die automatische Bus-Off-Erholung ist geplant, vom Cortex-M4 verwaltet zu werden - noch nicht implementiert; die heutige Anwendung des CM4 (`src/mcu_stm32h745/CM4/STM32H745ZI_CM4_main.c`) führt bereits eine echte FDCAN1-„STACK A“-Master-Task aus (Round-Robin-`AXIS_STATUS`-Abfragen über alle 8 Slots, siehe `KinematicBrainCan.c`) plus Watchdog-Refresh, aber die Bus-Off-Erholung selbst bleibt reale zukünftige Arbeit, keine bereits gelieferte Fähigkeit.
 * 🔌 **Physischer Steckverbinder:** 40-poliger STAPEL-Steckverbinder/Sockel mit 2.54mm-Abstand (+24V ×10 Pins, GND ×10 Pins, +5V ×4 Hilfspins, FDCAN1 H/L, `BOARD_PRESENT_N`, 13 Reserve) - die 8 Robot-Controller-Boards werden physisch aufeinander GESTAPELT, auf einer Seite dieses Boards (BESTÄTIGTE Topologie, kein Backplane), wobei jedes Board alle 40 Signale direkt an das durchreicht, was darüber montiert wird. Die Slot-Adressierung erfolgt über einen LOKALEN DIP-Schalter pro Board (`BOARD_ID[2:0]`, README.md Abschnitt 12), nicht abgeleitet von diesem Steckverbinder. Vollständige Pin-Tabelle und Stapel-Topologie in `docs/PINOUT_STACKA_CONNECTOR.TXT`. Identische Steckverbinder-Definition sowohl am eigenen Port des Kinematic Brain als auch an jedem Portpaar der Robot-Controller-Boards.
 
 ```mermaid
@@ -246,7 +246,11 @@ flowchart LR
   `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` §1c.
 * 🧵 **RTOS:** **FreeRTOS** (dessen Bootloader bleibt bare-metal - kein
   Scheduler wird benötigt, um zu empfangen/verifizieren/zu springen).
-  Firmware-Grundgerüst: `src/mcu_stm32g474/`.
+  Echte Anwendung: `src/mcu_stm32g474/STM32G474RE_main.c` führt eine
+  echte Relay-Task aus (`RobotControllerRelay.c` - FDCAN2-Downlink zum
+  URTC Tool Head, ein `AXIS_STATUS`-Responder und der
+  `RELAY_SEND`/`RELAY_RECV`-Tunnel) neben der Blink-Task mit
+  Watchdog-Refresh.
 * 📡 **CAN-OTA-Firmware-Updates, 4 Ebenen tief:** der STM32H745 selbst
   (über seine bestehende SPI-Verbindung zum CM5), dieses Board, sein
   URTC-Werkzeugkopf (STM32F303CCT6), und - nur wenn installiert - die

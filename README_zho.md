@@ -126,7 +126,7 @@ flowchart TB
 * 💾 **内部存储架构：**
   * 💾 **2 MB** 双区内部闪存
   * 🧠 **1 MB** 内部 SRAM 总容量（512 KB AXI SRAM + 128 KB ITCM / 128 KB DTCM + SRAM1/SRAM2/SRAM3）
-* 🧵 **RTOS：** **FreeRTOS**，每个核心运行独立实例（AMP 而非 SMP —— 核心 1 与核心 2 之间不共享调度器状态）。固件骨架：`src/mcu_stm32h745/`，详见 `docs/architecture.md` 第 2 节。
+* 🧵 **RTOS：** **FreeRTOS**，每个核心运行独立实例（AMP 而非 SMP —— 核心 1 与核心 2 之间不共享调度器状态）。`src/mcu_stm32h745/`：核心 2（CM4）已经运行着真实的 FDCAN1 “STACK A” 主机应用（`CM4/STM32H745ZI_CM4_main.c`）；核心 1（CM7）自身的 `main()` 目前仍在调用那个什么都不做的旧占位实现——详见 `docs/architecture.md` 第 2 节。
 
 ---
 
@@ -138,7 +138,7 @@ flowchart TB
 * ⚡ **物理层收发器：** 1 路高速 CAN FD 收发器（例如 TI `TCAN1044AVD` / NXP `TJA1443`）—— 出于与上述外设相同的未来余量考量而选用具备 FD 能力的硬件，尽管当前流量仍为经典帧。
 * 🔀 **总线拓扑：**
   * 🅰️ **STACK A（`FDCAN1`）：** 服务于从属模块 A1 至 A8。
-* ⏱️ **协议规格：** 标称比特率约 1 Mbps（经典 CAN，每帧最大 8 字节载荷）。自动总线关闭恢复计划由 Cortex-M4 管理 —— 目前尚未在应用固件中实现（当前 CM4 的 `main.c` 仍是启动/闪烁骨架代码，见 `src/mcu_stm32h745/CM4/`），作为真实的未来工作项跟踪，而非已交付的能力。
+* ⏱️ **协议规格：** 标称比特率约 1 Mbps（经典 CAN，每帧最大 8 字节载荷）。自动总线关闭恢复计划由 Cortex-M4 管理 —— 目前尚未实现；当前 CM4 的应用（`src/mcu_stm32h745/CM4/STM32H745ZI_CM4_main.c`）已经运行着真实的 FDCAN1 “STACK A” 主机任务（对全部 8 个插槽轮询 `AXIS_STATUS`，见 `KinematicBrainCan.c`），并会刷新看门狗，但总线关闭恢复本身仍是真实的未来工作项，而非已交付的能力。
 * 🔌 **物理连接器：** 40 针、2.54mm 间距的堆叠式排针/插座（+24V ×10 针，GND ×10 针，辅助 +5V ×4 针，FDCAN1 H/L，`BOARD_PRESENT_N`，13 针备用）—— 8 块机器人控制板在本板一侧依次物理堆叠（已确认为此拓扑，而非背板式），每块板都将全部 40 路信号直通传递给堆叠在其上方的下一块板。插槽地址由每块板自身的本地 DIP 开关决定（`BOARD_ID[2:0]`，README.md 第 12 节），而非由此连接器派生。完整引脚表与堆叠拓扑见 `docs/PINOUT_STACKA_CONNECTOR.TXT`。运动学大脑自身端口与每块机器人控制板的一对端口，均采用完全相同的连接器定义。
 
 ```mermaid
@@ -229,7 +229,7 @@ flowchart LR
 
 * 🎛️ **MCU：** STMicroelectronics **STM32G474RET6**（Cortex-M4 @ 170 MHz，LQFP-64，512 KB 闪存），使用其自带 3 路 FDCAN 外设中的 2 路 —— 一路作为连接 STM32H745 的 FDCAN 上行链路，另一路作为连接自身 URTC 头部的 CAN 下行链路。详见 `docs/architecture.md` §1。
 * 🔢 **地址分配：** `BOARD_ID[2:0]` —— 每块板上的本地 3 位 DIP 开关，安装时手动设置为 0-7，为每块板赋予自己的 FDCAN1 插槽基础地址 —— 并非由物理堆叠位置或 STACK A 连接器派生（每块板都是完全相同、可互换的 PCB）。详见 `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` §1c。
-* 🧵 **RTOS：** **FreeRTOS**（其引导加载程序保持裸机运行 —— 接收/校验/跳转无需调度器）。固件骨架：`src/mcu_stm32g474/`。
+* 🧵 **RTOS：** **FreeRTOS**（其引导加载程序保持裸机运行 —— 接收/校验/跳转无需调度器）。真实应用：`src/mcu_stm32g474/STM32G474RE_main.c` 运行着真实的中继任务（`RobotControllerRelay.c`——通往 URTC Tool Head 的 FDCAN2 下行链路、一个 `AXIS_STATUS` 响应器，以及 `RELAY_SEND`/`RELAY_RECV` 隧道），与带看门狗刷新的闪烁任务并行运行。
 * 📡 **CAN-OTA 固件更新，深达 4 个层级：** STM32H745 自身（通过其与 CM5 之间既有的 SPI 链路）、本板、其 URTC 工具头（STM32F303CCT6），以及 —— 仅当已安装时 —— 该工具头自身的高级扩展板（STM32F303CBT6，`expansion_board_type` 为 3 或 4，详见 URTC 自身的 `docs/EXPANSION.TXT`），均可从 HYDRA-UMC-STUDIO 的烧录器/测试器中完成烧录与诊断，全程无需 JTAG/SWD 探针，也无需 USB-CAN 转接器。完整地址方案、无需任何新协议设计即可触达最后两个层级的中继隧道，以及当前实现状态：详见 `docs/architecture.md`。
 
 完整的分层架构详见 `docs/architecture.md`（本节仅为摘要），其中包括哪些内容是已确认的硬件事实、哪些仍是尚待实现的提议方案。该文档第 8 节还记录了当前引导加载程序已知且已被接受的安全局限（尚无读出保护、共享的防回滚绕过值、未经身份验证的回读）——这些均是硬件到位前的刻意留白，而非疏漏。
