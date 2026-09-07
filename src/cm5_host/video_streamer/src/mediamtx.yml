@@ -1,0 +1,27 @@
+# =============================================================================
+# mediamtx.yml - Starting MediaMTX (rtsp-simple-server) config for the 8
+# HYDRA-UMC camera feeds.
+# PROJECT: HYDRA-UMC
+# AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
+# LICENSE: GPL-3.0 - see repo root LICENSE
+#
+# NOT YET VERIFIED against real hardware - see ../README.md. /dev/videoN
+# device paths assumed in enumeration order (0-7), which real hardware
+# across 2 GL3523 hubs may not actually produce - re-verify against real
+# udev output before trusting this device mapping.
+# =============================================================================
+
+rtspAddress: :8554
+webrtcAddress: :8889
+api: yes
+apiAddress: :9997
+
+paths:
+  cam1: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video0 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam1 }
+  cam2: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video1 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam2 }
+  cam3: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video2 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam3 }
+  cam4: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video3 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam4 }
+  cam5: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video4 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam5 }
+  cam6: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video5 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam6 }
+  cam7: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video6 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam7 }
+  cam8: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video7 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam8 }

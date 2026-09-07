@@ -1,0 +1,219 @@
+================================================================================
+       CM5 CARRIER INTERFACE PINOUT - HOST COMPUTING SUBSYSTEM
+              PROPOSED signal routing across real CM5 pins
+================================================================================
+STATUS: PROPOSED. Section 1 (the 200-pin dual-Hirose-DF40 signal list) is
+CONFIRMED - taken directly from Table 5 ("Pinout for the Raspberry Pi
+Compute Module 5") in docs/datasheets/Raspberry Pi CM5.pdf, an official,
+complete, public pin definition, not something HYDRA-UMC designs. What IS
+PROPOSED here is which of those fixed CM5 signals this board routes to
+which onboard peripheral, and the 40-pin accessory header layout in
+section 3. Re-verify against the same table before schematic capture -
+this file only reorganizes it by function.
+
+This carries README.md sections 2-4 and 10 (CM5 host subsystem, USB vision
+subsystem, IPC) forward into an actual pin-level design.
+
+--------------------------------------------------------------------------------
+1. CM5 MODULE CONNECTOR - dual Hirose DF40 mezzanine, 100 pins each
+   (README.md section 11) - signal groups actually used on this board
+--------------------------------------------------------------------------------
+Connector 1 (CM5 pins 1-100):
+
+  Ethernet (pins 1-12, 4 differential pairs + LED/status, README.md §2):
+    Ethernet_Pair0_P/N, Ethernet_Pair1_P/N, Ethernet_Pair2_P/N,
+    Ethernet_Pair3_P/N -> RJ45 magnetics (CM5 has an INTEGRATED Ethernet
+    PHY, unlike CM4 - no external PHY chip needed, just magnetics + RJ45).
+    Ethernet_nLED2/nLED3, Ethernet_SYNC_OUT -> link/speed LEDs on the RJ45,
+    SYNC_OUT unused (IEEE1588 PTP, not used by this project).
+
+  Fan (CM5-native, separate from the 3x process fans on the STM32H745 -
+  README.md section 5/8 - this is specifically a CM5-cooling fan):
+    Fan_PWM, Fan_Tacho -> optional CM5 heatsink fan header, independent of
+    the STM32H745's own 3x fan channels (docs/
+    PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 5).
+
+  USB3 (2 native SuperSpeed PHYs, README.md section 4):
+    USB3-0-RX_P/N, USB3-0-TX_P/N, USB3-0-DP/DM -> GL3523-A upstream port
+      (feeds ports 1-4, README.md §4)
+    USB3-1-RX_P/N, USB3-1-TX_P/N, USB3-1-DP/DM -> GL3523-B upstream port
+      (feeds ports 5-8, README.md §4)
+    VBUS_EN -> shared enable for both hubs' VBUS switches (README.md §4
+      TPS2065/SY6280 per-port switches)
+    Note: README.md section 4 currently says "RP1 USB3 Channel #1/#2" -
+    CM5 does not have an RP1 companion chip (that is specific to the
+    Raspberry Pi 5 board); these are the CM5's own native BCM2712 USB3
+    PHYs, confirmed by this table. Functionally identical routing, just a
+    naming correction worth making in README.md section 4 at some point -
+    not otherwise consequential to this pinout.
+
+  USB2 (1 native High-Speed PHY - CONFIRMED singular, docs/datasheets/
+  Raspberry Pi CM5.pdf §2.5: "1 x USB 2.0 port (high speed)". README.md
+  section 4a):
+    USB_N (pin 103), USB_P (pin 105) -> upstream port of a small USB 2.0
+      hub IC (GL850G/FE1.1s, TBD) -> 2x downstream USB 2.0 Type-A ports for
+      gamepad/mouse/keyboard. This is the ONLY native USB2 pair CM5 exposes
+      at the connector - it cannot be split into 2 physical ports without
+      this hub, which is why one is now in the BOM (hardware/PCB/
+      kinematic_brain_stm32h745/BOM.TXT item 19).
+    USB_OTG_ID (pin 101) -> tie per the hub's own host-mode strapping
+      requirement (this board only ever needs CM5 acting as USB host, never
+      device, so this pin is grounded/strapped fixed, not routed to a
+      connector).
+
+  PCIe Gen2/3 x1 (README.md section 3, Hailo-8 + Hailo-10):
+    PCIe_CLK_P/N (100MHz ref clock, CM5 is the clock source), PCIe_RX_P/N,
+    PCIe_TX_P/N, PCIe_nRST, PCIe_CLK_nREQ, PCIE_nWAKE, PCIE_PWR_EN -> the
+    board's onboard PCIe Gen3 switch (hardware/PCB/kinematic_brain_
+    stm32h745/BOM.TXT item 05 - candidate ASMedia ASM2806 family or
+    equivalent, exact part TBD), NOT directly to an M.2 socket. The CM5
+    connector exposes only ONE PCIe lane (confirmed here, per Table 5 of
+    the CM5 datasheet), so this switch fans that single upstream x1 lane
+    out to 2 independent downstream x1 lanes, one per M.2 socket below -
+    needed because 2 simultaneous M.2 AI accelerators can't both wire
+    directly to a single lane. All 7 signals above are required for a
+    compliant PCIe Gen2/3 x1 edge connector on the CM5-to-switch link, per
+    this table.
+      Switch downstream port 1 -> M.2 Key-M socket for Hailo-8 (BOM item
+      05a, the existing accelerator, unchanged in role).
+      Switch downstream port 2 -> M.2 Key-M socket for Hailo-10 (BOM item
+      05b, added alongside the Hailo-8, not a replacement).
+    Each downstream port carries its own equivalent 7-signal PCIe x1 set
+    from the switch to its M.2 socket - exact switch-side pinout depends
+    on the still-TBD switch part number and is not transcribed here.
+
+  MIPI0 (4-lane + clock, configurable DSI or CSI on CM5):
+    MIPI0_D0..D3_P/N, MIPI0_C_P/N -> 5-inch display FPC connector, driven
+    as DSI0. (MIPI1, pins 175-196, is NOT used by this board - reserved
+    for a future camera or second display; leave unpopulated.)
+
+  HDMI0 (full TMDS, README.md - user asked for "un puerto hdmi", singular):
+    HDMI0_TX0/1/2_P/N, HDMI0_CLK_P/N, HDMI0_HOTPLUG, HDMI0_CEC, HDMI0_SDA/
+    SCL (DDC) -> the board's single physical HDMI connector. (HDMI1, pins
+    143-166, is NOT used - reserved for a future second display output;
+    leave unpopulated, same treatment as MIPI1 above.)
+
+  Camera-adjacent GPIO (not used by this board's own design, noted for
+  completeness): CAM_GPIO0 (GPIO34), CAM_GPIO1 (GPIO35) - available if a
+  future revision adds a direct camera sensor input alongside the 8x USB
+  vision ports; unused today.
+
+Connector 2 (CM5 pins 101-200): only the differential-pair signals listed
+above (USB3-1, PCIe, MIPI0/1, HDMI0/1) actually live on this half per Table
+5's own pin map - "if none of the signals on the second connector are used
+you may omit it" (the datasheet's own note) does not apply here since USB3
+Port 1, half of PCIe, and both display interfaces are on this connector -
+both DF40s are required.
+
+--------------------------------------------------------------------------------
+2. SPI LINK TO STM32H745 (README.md section 10) - which CM5 GPIO this uses
+--------------------------------------------------------------------------------
+CONFIRMED pin identities (Table 5): GPIO7=pin37, GPIO8=pin39, GPIO9=pin40,
+GPIO10=pin44, GPIO11=pin38 - the same 5 GPIOs that form "SPI0" (CE1, CE0,
+MISO, MOSI, SCLK) on every standard Raspberry Pi 40-pin header, because
+CM5's own connector carries the identical GPIO0-27 set the external 40-pin
+header exposes (see section 3).
+
+Pin  | Signal (CM5 table name) | Role on this board
+-----+--------------------------+---------------------------------------
+GPIO8  (CE0)  | SPI0 chip-select   -> STM32H745 SPI1_NSS (slave)
+GPIO11 (SCLK) | SPI0 clock         -> STM32H745 SPI1_SCK
+GPIO9  (MISO) | SPI0 data in       -> STM32H745 SPI1_MISO
+GPIO10 (MOSI) | SPI0 data out      -> STM32H745 SPI1_MOSI
+GPIO25         | free GPIO          -> HYDRA_DATA_READY handshake (matches
+     |                          |    docs/PINOUT_STM32H745_KINEMATIC_BRAIN.
+     |                          |    TXT section 1)
+
+PROPOSED design decision: these 5 GPIOs are dedicated to the internal
+STM32 link and are therefore NOT wired out to the external 40-pin
+accessory header in section 3 (silkscreen/BOM note: positions corresponding
+to GPIO7/8/9/10/11 read "N/C - reserved, internal STM32 link" on that
+header) - a physical pin cannot serve two masters, and the internal link
+takes priority since it is core to this board's own function. Every other
+standard 40-pin position (power, GND, and all other GPIO) is wired normally
+for HAT compatibility.
+
+--------------------------------------------------------------------------------
+3. 40-PIN GPIO HEADER (Raspberry Pi 5 / standard "B+" pinout, README.md's
+   own "conector de 40 pines estilo raspberry pi 5")
+--------------------------------------------------------------------------------
+CONFIRMED (Table 5): CM5 exposes the identical GPIO2-27 + ID_SD/ID_SC set
+used by every 40-pin-header Raspberry Pi since the B+. This board's header
+reproduces that standard pinout exactly, so standard HATs remain physically
+and electrically compatible, EXCEPT for the 5 SPI0 positions reserved per
+section 2 above.
+
+Header | Signal      | CM5 table pin | Notes
+-------+-------------+----------------+--------------------------------
+ 1     | 3V3         | (CM5_3.3V)     |
+ 2     | 5V          | (+5V)          |
+ 3     | GPIO2 (SDA1)| pin?           | I2C1, standard position
+ 4     | 5V          |                |
+ 5     | GPIO3 (SCL1)|                | I2C1, standard position
+ 6     | GND         |                |
+ 7     | GPIO4       |                |
+ 8     | GPIO14(TXD0)|                | UART0
+ 9     | GND         |                |
+10     | GPIO15(RXD0)|                | UART0
+11     | GPIO17      |                |
+12     | GPIO18      |                |
+13     | GPIO27      |                |
+14     | GND         |                |
+15     | GPIO22      |                |
+16     | GPIO23      |                |
+17     | 3V3         |                |
+18     | GPIO24      |                |
+19     | GPIO10(MOSI)| pin44          | RESERVED - internal STM32 link,
+       |             |                | see section 2. N/C on this header.
+20     | GND         |                |
+21     | GPIO9 (MISO)| pin40          | RESERVED - see section 2. N/C.
+22     | GPIO25      | pin41          | RESERVED - HYDRA_DATA_READY, see
+       |             |                | section 2. N/C on this header.
+23     | GPIO11(SCLK)| pin38          | RESERVED - see section 2. N/C.
+24     | GPIO8 (CE0) | pin39          | RESERVED - see section 2. N/C.
+25     | GND         |                |
+26     | GPIO7 (CE1) | pin37          | RESERVED - see section 2. N/C.
+27     | ID_SD       | pin36          | HAT ID EEPROM (standard function)
+28     | ID_SC       | pin35          | HAT ID EEPROM (standard function)
+29     | GPIO5       |                |
+30     | GND         |                |
+31     | GPIO6       |                |
+32     | GPIO12      |                |
+33     | GPIO13      |                |
+34     | GND         |                |
+35     | GPIO19      |                |
+36     | GPIO16      |                |
+37     | GPIO26      |                |
+38     | GPIO20      |                |
+39     | GND         |                |
+40     | GPIO21      |                |
+
+Exact CM5-table pin numbers for header positions 1-18/27-40 intentionally
+left as "standard position" rather than re-transcribed here - they are the
+well-known, unchanged-since-2014 Raspberry Pi 40-pin assignment and the
+values that matter for THIS board (the 5 reserved SPI0 positions) are
+called out with their real CM5 pin numbers above; re-derive the rest from
+Table 5 directly if a from-scratch check is ever needed.
+
+--------------------------------------------------------------------------------
+4. RECONCILIATION NOTE
+--------------------------------------------------------------------------------
+No prior HYDRA-UMC doc conflicts with this file - README.md sections 2-4
+and 10 already described these interfaces at the subsystem level; this file
+is the first pin-level treatment of the CM5 side and does not change any
+existing spec, only adds detail under it (aside from the RP1-naming note in
+section 1, which is cosmetic).
+
+--------------------------------------------------------------------------------
+5. CROSS-REFERENCES
+--------------------------------------------------------------------------------
+- docs/datasheets/Raspberry Pi CM5.pdf - Table 5 (full 200-pin definition),
+  Chapter 4 - source of truth for every CM5-side signal name in this file.
+- docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 1 - the STM32 side of
+  the SPI1 link in section 2 above.
+- hardware/PCB/kinematic_brain_stm32h745/BOM.TXT items 05/05a/05b - the
+  PCIe Gen3 switch and its 2 downstream M.2 sockets (Hailo-8 + Hailo-10)
+  referenced in section 1 above.
+- README.md sections 2 (host), 3 (Hailo-8 + Hailo-10 dual PCIe AI
+  accelerator subsystem), 4 (USB vision), 10 (IPC).
+================================================================================

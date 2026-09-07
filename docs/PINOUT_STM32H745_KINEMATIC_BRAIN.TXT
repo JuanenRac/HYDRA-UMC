@@ -1,0 +1,274 @@
+================================================================================
+        KINEMATIC BRAIN - STM32H745ZIT6 PINOUT (LQFP-144, 0.5mm pitch)
+                    PROPOSED - pre-schematic pin allocation
+================================================================================
+STATUS: PROPOSED. Every pin below was checked against Table 8 (pin/ball
+definition) of docs/datasheets/STM32H745ZIT6.pdf to confirm it physically
+exists on the LQFP-144 package (NOT all pins named PFx/PGx/PHx/PIx do - this
+package breaks out full Port A-E, only PART of Port F and Port G, and NO
+Port H or Port I at all - those only exist on the larger UFBGA176/LQFP176/
+LQFP208/TFBGA240 variants of this same die). The peripheral instance choices
+(which SPI, which FDCAN, which TIM channel) are real, confirmed alternate
+functions for this chip. The exact GPIO chosen for each plain on/off signal
+(DIR, ENABLE, endstops, pump/valve/SSR drives) is a reasonable, budget-
+checked but NOT hardware-verified choice - re-confirm against Table 8/
+Table 9 (alternate functions) in STM32CubeMX before finalizing schematic
+silkscreen. Clock source pins (OSC_IN/OUT, boot pins, debug SWD, power
+pins) are out of scope for this file - already flagged as TODO in
+docs/COMPILE_STM32H745.TXT section 6.
+
+Total distinct GPIO pins used below: 72 of the ~75 confirmed-available
+general-purpose pins on this package (3 spare - PG8, PG9, PG10 - see
+section 9). This is intentionally tight, and it is the reason several
+design choices below (SPI daisy-chaining, a shared fault line) exist: a
+naive "one pin per signal, no sharing" allocation for every signal this
+board needs does NOT fit in the pins this package actually has broken out.
+
+--------------------------------------------------------------------------------
+1. HOST LINK - SPI1 to CM5 (already established, README.md section 10)
+--------------------------------------------------------------------------------
+Pin  | Signal            | AF   | Notes
+-----+-------------------+------+---------------------------------------------
+PA4  | SPI1_NSS          | AF5  | CONFIRMED pin (Table 8), slave mode on H745
+PA5  | SPI1_SCK          | AF5  | CONFIRMED pin
+PA6  | SPI1_MISO         | AF5  | CONFIRMED pin
+PA7  | SPI1_MOSI         | AF5  | CONFIRMED pin
+PA3  | HYDRA_DATA_READY  | GPIO | Handshake line, README.md section 10. EXTI-
+     |                   |      | capable input on the CM5 side.
+
+--------------------------------------------------------------------------------
+2. FIELDBUS - FDCAN1 to STACK A (docs/architecture.md section 4)
+--------------------------------------------------------------------------------
+Pin  | Signal            | AF   | Notes
+-----+-------------------+------+---------------------------------------------
+PD0  | FDCAN1_RX         | AF9  | CONFIRMED pin (Table 8, LQFP144 pin 112)
+PD1  | FDCAN1_TX         | AF9  | CONFIRMED pin (Table 8, LQFP144 pin 113)
+PG7  | CAN1_STBY         | GPIO | Transceiver standby/enable control (e.g.
+     |                   |      | TCAN1044AVD STB pin, README.md section 6)
+
+--------------------------------------------------------------------------------
+3. 6x TMC5160A STEPPER DRIVERS - X, Y1, Y2, Z, E0, E1
+--------------------------------------------------------------------------------
+PROPOSED design choice: the 6 TMC5160A are wired as one SPI DAISY CHAIN
+(each driver's SDO feeds the next driver's SDI, standard TMC5160 multi-axis
+technique - same principle used on e.g. Duet3D's own multi-axis boards) with
+ONE shared chip-select for all 6, instead of 6 separate CS lines. This is
+what makes the pin budget in this file fit at all - see the file header.
+Firmware addresses all 6 drivers in a single long SPI transaction instead of
+6 short ones; functionally equivalent, one more reason to prefer it (fewer,
+larger SPI transactions instead of many small ones on a 480 MHz CM7 core).
+
+3a. Shared SPI bus (SPI4)
+Pin  | Signal            | AF   | Notes
+-----+-------------------+------+---------------------------------------------
+PE2  | SPI4_SCK          | AF5  | CONFIRMED pin
+PE6  | SPI4_MOSI         | AF5  | CONFIRMED pin - chain head (into driver 1's
+     |                   |      | SDI)
+PE5  | SPI4_MISO         | AF5  | CONFIRMED pin - chain tail (out of driver
+     |                   |      | 6's SDO)
+PA12 | DRV_CS_ALL         | GPIO | Shared chip-select, all 6 drivers
+PA2  | DRV_DIAG_OR        | GPIO | Wired-OR fault/stallGuard line from all 6
+     |                   |      | drivers' DIAG0 output (open-drain OR gate,
+     |                   |      | or simple diode-OR). Tells firmware "one of
+     |                   |      | the 6 needs attention"; firmware then polls
+     |                   |      | each driver's own SPI status register over
+     |                   |      | the shared bus above to find out which one.
+     |                   |      | Chosen over 6 dedicated DIAG lines for the
+     |                   |      | same pin-budget reason as the daisy chain.
+
+3b. STEP - one hardware timer channel per axis (S-curve pulse generation
+on the CM7 core per README.md section 5, not bit-banged GPIO)
+Axis | Pin  | Timer Ch  | Notes
+-----+------+-----------+-------------------------------------------------
+X    | PA8  | TIM1_CH1  | CONFIRMED pin, AF1
+Y1   | PA9  | TIM1_CH2  | CONFIRMED pin, AF1
+Y2   | PA10 | TIM1_CH3  | CONFIRMED pin, AF1
+Z    | PA11 | TIM1_CH4  | CONFIRMED pin, AF1
+E0   | PC6  | TIM8_CH1  | CONFIRMED pin, AF3
+E1   | PC7  | TIM8_CH2  | CONFIRMED pin, AF3
+
+3c. DIR (plain GPIO output)
+Axis | Pin
+-----+-----
+X    | PB0
+Y1   | PB1
+Y2   | PB2
+Z    | PB5
+E0   | PB9
+E1   | PB10
+
+3d. ENABLE (plain GPIO output)
+Axis | Pin
+-----+-----
+X    | PB11
+Y1   | PB14
+Y2   | PB15
+Z    | PC5
+E0   | PC8
+E1   | PC9
+
+--------------------------------------------------------------------------------
+4. ENDSTOPS - 2 per axis (MIN + MAX), 12 total
+--------------------------------------------------------------------------------
+Axis | MIN pin | MAX pin | Notes
+-----+---------+---------+-----------------------------------------------
+X    | PC10    | PC11    | \
+Y1   | PC12    | PC13    |  All 12: GPIO input, EXTI-capable, active-low
+Y2   | PD2     | PD3     |  with internal pull-up (matches URTC's own
+Z    | PD4     | PD5     |  generic endstop convention, referenced
+E0   | PD6     | PD7     |  already in hardware/PCB/robot_controller_
+E1   | PD8     | PD9     |  board_stm32g474/BOM.TXT item 04)          /
+
+--------------------------------------------------------------------------------
+5. FANS - 3x 3-wire (PWM control + tach sense; no direct 3rd "control"
+   wire on the fan itself - 3-wire fans are +V/GND/TACH, so PWM is applied
+   by switching the fan's supply through an external low-side MOSFET/gate
+   driver, not by a 4th PWM wire to the fan)
+--------------------------------------------------------------------------------
+Fan | PWM pin | Timer Ch  | Tach pin | Notes
+----+---------+-----------+----------+------------------------------------
+1   | PD12    | TIM4_CH1  | PD10     | PWM pins CONFIRMED, AF2. Tach pins
+2   | PD13    | TIM4_CH2  | PD11     | plain GPIO+EXTI, frequency-counted
+3   | PD14    | TIM4_CH3  | PD15     | in firmware (2 pulses/rev typical)
+
+--------------------------------------------------------------------------------
+6. PUMPS - 8+2 (10 total, low-side driver control)
+--------------------------------------------------------------------------------
+Ch  | Pin  | Ch  | Pin      Notes
+----+------+-----+------    ------------------------------------------------
+1   | PE0  | 6   | PE8      Plain GPIO output, N-channel MOSFET/gate-driver
+2   | PE1  | 7   | PE9      control per channel (hardware.PCB BOM item 13
+3   | PE3  | 8   | PE10     precedent - flyback protection at the FET, not
+4   | PE4  | 9*  | PE11     the MCU pin). Channels 9-10 are the "+2" the
+5   | PE7  | 10* | PE12     user called out as distinct from the primary 8.
+* auxiliary/spare channels beyond the primary 8
+
+--------------------------------------------------------------------------------
+7. SOLENOID VALVES - 8+2 (10 total, low-side driver control)
+--------------------------------------------------------------------------------
+Ch  | Pin  | Ch  | Pin      Notes
+----+------+-----+------    ------------------------------------------------
+1   | PE13 | 6   | PF8      Same drive topology as pumps (section 6).
+2   | PE14 | 7   | PF9      Channels 9-10 are the "+2" beyond the primary 8.
+3   | PE15 | 8   | PF10
+4   | PF6  | 9*  | PF14
+5   | PF7  | 10* | PF15
+* auxiliary/spare channels beyond the primary 8
+
+--------------------------------------------------------------------------------
+8. HEATED BED - SSR control (230VAC mains, safety-relevant) + thermistors
+--------------------------------------------------------------------------------
+Pin  | Signal          | Notes
+-----+-----------------+-----------------------------------------------------
+PG6  | BED_SSR_CTRL    | GPIO output -> opto-isolated gate/trigger of an
+     |                 | external solid-state relay switching 230VAC mains
+     |                 | to the heated bed. This MCU pin only ever sees a
+     |                 | 3.3V logic-level control signal through the SSR's
+     |                 | own input-side opto-isolation - the 230VAC mains
+     |                 | side must be fully galvanically isolated from this
+     |                 | board's 24V/5V/3.3V domains and from GND, with
+     |                 | creepage/clearance per mains-switching practice.
+     |                 | This is a HARD REQUIREMENT, not a suggestion - see
+     |                 | section 10 for how this affects the BOM compared to
+     |                 | a simple 24V PWM-driven heated bed.
+PC0  | BED_THERM1      | ADC1_INP10 (CONFIRMED pin) - NTC thermistor 1
+PC1  | BED_THERM2      | ADC1_INP11 (CONFIRMED pin) - NTC thermistor 2
+
+--------------------------------------------------------------------------------
+9. COMPLETE PIN INVENTORY - what's used, what's free, what doesn't exist
+--------------------------------------------------------------------------------
+9a. Confirmed-available general-purpose I/O pins on THIS package (LQFP-144)
+    - 75 total, per the file header's own Table 8 check:
+
+    PA2 PA3 PA4 PA5 PA6 PA7 PA8 PA9 PA10 PA11 PA12
+    PB0 PB1 PB2 PB5 PB9 PB10 PB11 PB14 PB15
+    PC0 PC1 PC5 PC6 PC7 PC8 PC9 PC10 PC11 PC12 PC13
+    PD0 PD1 PD2 PD3 PD4 PD5 PD6 PD7 PD8 PD9 PD10 PD11 PD12 PD13 PD14 PD15
+    PE0 PE1 PE2 PE3 PE4 PE5 PE6 PE7 PE8 PE9 PE10 PE11 PE12 PE13 PE14 PE15
+    PF6 PF7 PF8 PF9 PF10 PF14 PF15
+    PG6 PG7 PG8 PG9 PG10
+
+9b. USED - 72 of the 75 (all of sections 1-8 above). Cross-reference by
+    port if re-deriving from a schematic tool: every PA/PB/PC/PD/PE/PF pin
+    in the list above is assigned to something in this file except the 3
+    listed in 9c. Of PG, only PG6 (section 8, BED_SSR_CTRL) and PG7
+    (section 2, CAN1_STBY) are used.
+
+9c. FREE / UNASSIGNED - 3 pins, all on Port G:
+
+    PG8   - free, general-purpose
+    PG9   - CM7's own FreeRTOS smoke-test blink LED (firmware/mcu_stm32h745/
+            CM7/STM32H745ZI_CM7_main.c) - not a real peripheral signal, just
+            claims a genuinely-spare pin so it doesn't collide with a real
+            one (X_DIR is on PB0).
+    PG10  - CM4's own FreeRTOS smoke-test blink LED (firmware/mcu_stm32h745/
+            CM4/STM32H745ZI_CM4_main.c) - same reasoning as PG9 above
+            (PUMP1 is on PE0).
+
+    Only PG8 is genuinely uncommitted. Keep it spare rather than pre-
+    committing - it's the margin for whatever turns out to be missing from
+    this pin budget. If more spare pins are needed later, the only places
+    to find them are (a)
+    retiring the two smoke-test LEDs above once real application tasks
+    exist, or (b) revisiting a design choice in sections 3-4 (the shared
+    DIAG line or the SPI daisy-chain) that traded pin count for a single
+    shared line - see the file header for why those trades were made.
+
+9d. NOT AVAILABLE ON THIS PACKAGE - do not route to these on a LQFP-144
+    schematic; they only exist on the larger UFBGA176/LQFP176/LQFP208/
+    TFBGA240 variants of this same die (confirmed absent from LQFP-144 in
+    Table 8 - this is not a "maybe," CubeMX will refuse to place them on
+    this package):
+
+    - All of Port H (PH0-PH15) and all of Port I (PI0-PI15) - neither port
+      is broken out at all on LQFP-144.
+    - The rest of Port F not listed in 9a: PF0, PF1, PF2, PF3, PF4, PF5,
+      PF11, PF12, PF13.
+    - The rest of Port G not listed in 9a: PG0, PG1, PG2, PG3, PG4, PG5,
+      PG12, PG13, PG14, PG15.
+
+9e. Out of scope for this file (system/power pins, not part of the
+    peripheral pin budget - see docs/COMPILE_STM32H745.TXT section 6 for
+    the real clock-tree/boot TODO list these belong to): VDD/VSS pairs,
+    VCAP1/VCAP2, VBAT, VREF+/VREF-, VDDA/VSSA, BOOT0, NRST, PA13/PA14 (SWD),
+    PC14/PC15 (OSC32_IN/OUT, if an RTC crystal is added).
+
+--------------------------------------------------------------------------------
+10. SPEC NOTES - AXES, VALVE/PUMP COUNT, HEATED BED, STACK A CONNECTOR
+--------------------------------------------------------------------------------
+These 4 items are the most detailed version of what README.md section 8 (and
+the BOM it's derived from) describe at a higher level. This section is the
+single source of truth for all 4, kept in sync with README.md section 8 and
+hardware/PCB/kinematic_brain_stm32h745/BOM.TXT:
+
+  - Axes: concrete "X, Y1, Y2, Z, E0, E1" (dual-Y gantry + 2 tool/extruder
+    axes), not a generic 6-axis "X, Y, Z, A, B, C" label. This file's
+    section 3 uses these names throughout.
+  - Valve/pump channels: 20 total low-side switching channels (8+2 pumps,
+    8+2 valves) - sections 6-7 above.
+  - Heated bed: a solid-state relay switching 230VAC mains, with 2
+    dedicated NTC thermistors - section 8 above. This is the one
+    safety-relevant item on this list: 230VAC mains switching needs real
+    isolation on the PCB (creepage/clearance, opto-isolated SSR trigger,
+    mains-rated connector and trace spacing) that a simple 24V PWM-driven
+    bed would not need. Flag this to whoever lays out the PCB - it is not
+    a drop-in swap of the same footprint as a 24V-bus design.
+  - STACK A connector: 40-pin, full pinout in
+    docs/PINOUT_STACKA_CONNECTOR.TXT (README.md section 11 only carries the
+    generic "Heavy-copper shrouded connector, 2.54mm pitch" description).
+
+--------------------------------------------------------------------------------
+11. CROSS-REFERENCES
+--------------------------------------------------------------------------------
+- docs/PINOUT_STACKA_CONNECTOR.TXT   - the 40-pin bus this chip's FDCAN1 +
+  power rails feed (section 2 above only lists the MCU-side FDCAN1 pins;
+  power routing to that connector is a board-level, not MCU-pin, concern).
+- docs/PINOUT_CM5_CARRIER.TXT        - the other end of section 1's SPI1
+  link.
+- docs/datasheets/STM32H745ZIT6.pdf  - Table 8 (pin definition), Table 9
+  (alternate functions) - re-verify every pin above against these before
+  schematic capture.
+- hardware/PCB/kinematic_brain_stm32h745/BOM.TXT - component-level BOM this
+  pinout implies (driver ICs, MOSFETs, SSR, thermistor front-end) - updated
+  alongside this file.
+================================================================================

@@ -1,0 +1,329 @@
+=============================================================================
+CAN BUS COMMAND MAP - ROBOT CONTROLLER BOARD (STM32G474RET6)
+PROJECT: HYDRA-UMC
+AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
+LICENSE: This document is licensed under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
+         Firmware source is GPL-3.0; hardware design files are CERN-OHL-S v2 - see the repo README.
+MCU: STM32G474RET6 (512KB flash: 128KB bootloader / 128KB metadata / 384KB
+     main application slot / 384KB backup-staging slot - see hardware/PCB/
+     robot_controller_board_stm32g474/README.md). Slot addressing covers up
+     to 8 boards (BOARD_ID 0-7, see section 0 below).
+=============================================================================
+
+STATUS: the BOOTLOADER portion of this map (section 2) is REAL, implemented,
+compiling firmware - firmware/mcu_stm32g474/boot/. The APPLICATION portion
+(section 1, this board's own runtime protocol - motion commands, endstop
+telemetry, the Tier 2/3 relay tunnel) is PROPOSED at the ID-allocation level
+only (matches docs/architecture.md section 4's own table) - no application
+firmware implements any of it yet (firmware/mcu_stm32g474/STM32G474RE_main.c
+is still a FreeRTOS GPIO-toggle smoke test). Modeled directly on URTC's own
+CANBUS.TXT (sibling repo) - same big-endian multi-byte convention, same
+bootloader command semantics, re-based onto a slot-addressed bus URTC's own
+single-board protocol never needed.
+
+CRITICAL RECONSTRUCTION NOTE: All multi-byte fields are transmitted in
+BIG-ENDIAN format (Most Significant Byte [MSB] first on the wire), same
+convention as URTC's own protocol.
+
+-----------------------------------------------------------------------------
+0. ADDRESSING - how a raw FDCAN1 ID maps to "which board, which command"
+-----------------------------------------------------------------------------
+This board sits on a SHARED bus (FDCAN1 "STACK A") carrying up to 8 Robot
+Controller Boards in parallel (docs/PINOUT_STACKA_CONNECTOR.TXT - a
+physical stack, not a backplane). URTC's own protocol assumes exactly one
+board per CAN segment, so every ID below is a SLOT-RELATIVE OFFSET, not a
+fixed absolute ID:
+
+    slot_base_id = CAN_ID_STACKA_BASE + (BOARD_ID * STACKA_SLOT_WINDOW)
+                 = 0x600 + (BOARD_ID * 0x20)
+
+BOARD_ID (0-7) is NOT read from the bus or the STACK A connector - it's a
+LOCAL 3-position DIP switch on this board's own PCB (docs/PINOUT_
+STM32G474_ROBOT_CONTROLLER.TXT section 1c, hardware/PCB/robot_controller_
+board_stm32g474/BOM.TXT item 10), manually set by whoever installs the
+board. Every board runs the identical firmware image; only the DIP switch
+differs board to board. `ReadSlotBaseId()` (firmware/mcu_stm32g474/boot/
+bootloader_main.c) computes the formula above once at boot.
+
+Every ID in sections 1-2 below is written as "+0xNN" - the actual wire ID
+for a given board is `slot_base_id + 0xNN`. Example: board with BOARD_ID=3
+has slot_base_id = 0x600 + 3*0x20 = 0x660, so its +0x01 (START_UPDATE) is
+wire ID 0x661.
+
+-----------------------------------------------------------------------------
+1. APPLICATION COMMANDS (+0x10 - +0x1F within a slot's 32-ID window) -
+   PROPOSED, no firmware implements any of this yet
+-----------------------------------------------------------------------------
+ID: +0x10 [Robot Controller Board -> Kinematic Brain]
+Axis status
+DLC: 2 bytes (PROPOSED layout, not yet implemented)
+Data:
+  - txData[0]: Endstop bitmask - one bit per axis (bit0=axis1 ... bit5=axis6,
+               docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 3),
+               1=triggered. Axis numbering here is per-robot, NOT the
+               Kinematic Brain's own X/Y1/Y2/Z/E0/E1 naming.
+  - txData[1]: Fault flags - bit0=any TMC5160A DRV_DIAG_OR asserted
+               (docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 2a),
+               bit1=local 5V power-good lost (PGOOD_5V), bit2=local 3.3V
+               power-good lost (PGOOD_3V3) - both sensed per section 4 of
+               that same pinout file. bits 3-7 reserved.
+
+ID: +0x11 [Robot Controller Board -> Kinematic Brain]
+Axis step telemetry
+DLC: up to 8 bytes (PROPOSED, exact layout TBD - likely a per-axis position/
+     velocity snapshot, format not decided since the motion-control
+     application logic that would produce it doesn't exist yet)
+
+ID: +0x12 [Kinematic Brain -> Robot Controller Board]
+RELAY_SEND - generic tunnel to this robot's own URTC Tool Head
+DLC: up to 8 bytes
+Data:
+  - rxData[0:1]: Target CAN ID on this board's OWN second FDCAN controller
+                 (FDCAN2, downlink to the URTC head - docs/PINOUT_STM32G474_
+                 ROBOT_CONTROLLER.TXT section 1b), big-endian, 11-bit
+                 standard ID in the low bits.
+  - rxData[2]: DLC of the frame to actually send on FDCAN2 (0-5, since only
+               5 data bytes remain in this 8-byte RELAY_SEND frame after
+               the 2-byte ID + 1-byte DLC header)
+  - rxData[3:7]: up to 5 data bytes to relay onward on FDCAN2, addressed
+                 exactly as read from rxData[0:1]
+  Effect: queues a frame on this board's own FDCAN2, addressed and sized
+          exactly as specified - this board never interprets the target ID
+          or payload, it's opaque cargo (docs/architecture.md section 5).
+          A logical operation needing more than 5 data bytes (e.g. URTC's
+          own HMAC_CHUNK, which is 8 bytes) is split across 2 consecutive
+          RELAY_SEND frames - same "multiple relay frames per logical
+          operation" pattern URTC's own CANBUS.TXT already establishes for
+          its expansion-board bridge (0x180/0x1EF).
+
+ID: +0x13 [Kinematic Brain -> Robot Controller Board, or answered
+           unprompted]
+RELAY_RECV - drains this board's own FDCAN2 receive FIFO back to the
+Kinematic Brain
+DLC: any (request), 8 bytes (each response frame)
+Data (request): ignored
+Data (response):
+  - txData[0:1]: Source CAN ID the relayed frame actually arrived on
+                 (FDCAN2, big-endian)
+  - txData[2]: DLC of the relayed frame (0-5)
+  - txData[3:7]: up to 5 data bytes of the relayed frame
+  Effect: pull-based (docs/architecture.md section 5) - the Kinematic
+          Brain polls this to drain whatever this board's own FDCAN2 has
+          captured since the last poll, oldest first, rather than this
+          board pushing every URTC-head frame onto the already-shared
+          STACK A bus unprompted.
+
+ID: +0x14 - +0x1F Reserved for future Robot Controller Board features -
+    see docs/architecture.md section 4's own table for what's already
+    spoken for (+0x14 = BACKUP_READ_PAGE_ACK, bootloader-side, section 2
+    below - the one exception inside this otherwise "application" range).
+
+-----------------------------------------------------------------------------
+2. BOOTLOADER PROTOCOL (+0x00 - +0x0F, +0x14) - REAL, implemented,
+   firmware/mcu_stm32g474/boot/
+-----------------------------------------------------------------------------
+Same command set as URTC's own bootloader (README's "Building & Flashing"
+section, that repo's docs/CANBUS.TXT bottom section) - 0x7F0-0x7FF re-based
+onto slot-relative +0x00-+0x0F, verbatim byte layouts, verbatim semantics.
++0x00 is handled by the RUNNING APPLICATION (not yet implemented, so this
+board currently has no way to voluntarily re-enter its own bootloader
+except via a physical reset - PROPOSED, tracked as a real gap, not silently
+assumed working); +0x01-+0x04/+0x07/+0x0D-+0x0F/+0x14 are handled by the
+BOOTLOADER (which only runs before an application exists, or after a
+future +0x00 resets into it). Every command except +0x08/+0x0B answers
+using the SAME slot-relative ID with a DIFFERENT low-nibble offset.
+
+ID: +0x00 [Kinematic Brain -> Robot Controller Board, handled by the
+           APPLICATION - not yet implemented]
+ENTER_BOOTLOADER
+DLC: any (payload ignored)
+Effect (once an application exists): resets into this board's own
+bootloader, same "sent to the app, app resets into its own bootloader"
+pattern as URTC's own 0x7F0.
+
+ID: +0x01 [Kinematic Brain -> Robot Controller Board, handled by the
+           BOOTLOADER]
+START_UPDATE
+DLC: 8 bytes
+Data:
+  - rxData[0:3]: Total firmware image size in bytes, big-endian (must be
+                 1-393216, i.e. up to the 384KB APP_MAX_SIZE)
+  - rxData[4:7]: Declared HardwareID, big-endian - must equal
+                 THIS_HARDWARE_ID (0x47343031, "G401") or the update is
+                 rejected before any flash is touched (+0x05 status frame,
+                 VERIFY_FAIL_REASON_HARDWARE_ID)
+Effect: erases the BACKUP slot only (main slot untouched), resets all
+        per-update state, replies +0x05 status (0x02=erasing, then
+        0x03=receiving).
+
+ID: +0x02 [Kinematic Brain -> Robot Controller Board, handled by the
+           BOOTLOADER]
+DATA
+DLC: up to 8 bytes
+Data: raw firmware bytes, sequential, written to the BACKUP slot only -
+      never the main slot. Buffered internally; a +0x03 PAGE_ACK is sent
+      once every 2048-byte logical page is fully received and flash-
+      verified.
+
+ID: +0x03 [Robot Controller Board -> Kinematic Brain, sent by the
+           BOOTLOADER]
+PAGE_ACK
+DLC: 4 bytes
+Data:
+  - txData[0:3]: Big-endian page index just written (0-based)
+
+ID: +0x04 [Kinematic Brain -> Robot Controller Board, handled by the
+           BOOTLOADER]
+END_UPDATE
+DLC: 8 bytes
+Data:
+  - rxData[0:3]: Expected CRC32 of the full image, big-endian
+  - rxData[4:5]: Version major, big-endian
+  - rxData[6:7]: Version minor, big-endian
+Effect: verifies byte count, CRC32, and HMAC-SHA256 (against the 4 chunks
+        received via +0x07) on the BACKUP slot. All three must pass, and
+        the declared version must not be older than the currently-
+        installed one (unless authorized via +0x0D) or the update is
+        rejected with a +0x05 verify-fail reason - the MAIN slot is never
+        touched on any rejection. On success: records COPY_PENDING
+        metadata, copies BACKUP into MAIN sector-by-sector (+0x05 status
+        0x07=copying, heartbeats with progress), then resets into the new
+        application.
+
+ID: +0x05 [Robot Controller Board -> Kinematic Brain, sent by the
+           BOOTLOADER]
+STATUS
+DLC: 1 byte (or 2 - see below)
+Data:
+  - txData[0]: 0x01=LISTENING, 0x02=ERASING, 0x03=RECEIVING,
+               0x04=VERIFY_OK, 0x05=VERIFY_FAIL, 0x06=VERIFYING,
+               0x07=COPYING, 0xFF=ERROR
+  - txData[1] (only present when txData[0]==0x05): verify-fail reason -
+               0x01=INCOMPLETE (byte count or HMAC-chunk count mismatch),
+               0x02=CRC32 mismatch, 0x03=HMAC-SHA256 mismatch,
+               0x04=HardwareID mismatch, 0x05=anti-rollback (declared
+               version older than installed, and not authorized via +0x0D)
+
+ID: +0x06 [Robot Controller Board -> Kinematic Brain, sent by the
+           BOOTLOADER, every ~1s while listening or mid-update]
+HEARTBEAT
+DLC: 2 bytes
+Data:
+  - txData[0]: same status codes as +0x05's own txData[0]
+  - txData[1]: progress percent (0-100), or 0xFF if not applicable
+                (e.g. while just listening)
+
+ID: +0x07 [Kinematic Brain -> Robot Controller Board, handled by the
+           BOOTLOADER]
+HMAC_CHUNK
+DLC: 8 bytes
+Data: one of 4 sequential 8-byte chunks making up the expected 32-byte
+      HMAC-SHA256 for this update. Send all 4 right after +0x01 and before
+      the first +0x02 DATA frame.
+
+ID: +0x08 [Kinematic Brain -> Robot Controller Board, handled by EITHER
+           the application (not yet implemented) or the bootloader,
+           whichever is currently running]
+QUERY_VERSION
+DLC: any (payload ignored)
+Effect: answers with +0x09 (and, only if the bootloader is the one
+        answering, +0x0A alongside it).
+
+ID: +0x09 [Robot Controller Board -> Kinematic Brain, sent by whichever
+           side answered +0x08]
+VERSION_RESPONSE
+DLC: 8 bytes
+Data:
+  - txData[0]: 0x00=application answering, 0x01=bootloader answering
+  - txData[1:4]: HardwareID, big-endian (0 if no valid metadata exists yet)
+  - txData[5:6]: Version major, big-endian
+  - txData[7]: Version minor
+
+ID: +0x0A [Robot Controller Board -> Kinematic Brain, sent ONLY by the
+           BOOTLOADER, alongside +0x09, whenever the bootloader answers
+           +0x08]
+BOOTLOADER_VERSION_RESPONSE
+DLC: 3 bytes
+Data:
+  - txData[0]: Bootloader version major
+  - txData[1]: Bootloader version minor
+  - txData[2]: Bootloader version patch
+
+ID: +0x0B [Kinematic Brain -> Robot Controller Board, handled by EITHER
+           the application or the bootloader, whichever is running - same
+           dual-answerable convention as +0x08]
+QUERY_ERROR_COUNTERS
+DLC: any (payload ignored)
+Effect: answers with +0x0C.
+
+ID: +0x0C [Robot Controller Board -> Kinematic Brain, sent by whichever
+           side answered +0x0B]
+ERROR_COUNTERS_RESPONSE
+DLC: 2 bytes
+Data:
+  - txData[0]: TEC (Transmit Error Counter), read directly from this
+               board's own FDCAN1 peripheral's ECR register
+  - txData[1]: REC (Receive Error Counter), same register
+
+ID: +0x0D [Kinematic Brain -> Robot Controller Board, handled by the
+           BOOTLOADER]
+AUTHORIZE_DOWNGRADE
+DLC: 4 bytes
+Data:
+  - rxData[0:3]: Magic payload 0xD0, 0x9E, 0x12, 0xAD - anything else is
+                 silently ignored
+Effect: authorizes ONLY the current update attempt (reset by every fresh
+        +0x01) to install a version older than what's running, bypassing
+        +0x04's own anti-rollback check just this once. A deliberate
+        downgrade is a real, occasionally-needed operation, but it must
+        never happen by accident - same reasoning as URTC's own 0x7FD.
+
+ID: +0x0E [Kinematic Brain -> Robot Controller Board, handled by the
+           BOOTLOADER]
+BACKUP_READ_REQUEST
+DLC: any (payload ignored)
+Effect: starts streaming the current MAIN slot back over CAN, unmodified -
+        ignored while an update is already in progress. First reply is
+        +0x0F with DLC=4 (total byte count, 0 if nothing valid is
+        installed); every reply after that is +0x0F with DLC=8, raw bytes
+        sequential from the start of the main slot, paced by +0x14 acks
+        from the master (one ack per 2048-byte logical page).
+
+ID: +0x0F [Robot Controller Board -> Kinematic Brain, sent by the
+           BOOTLOADER, answers +0x0E]
+BACKUP_READ_RESPONSE
+DLC: 4 bytes (first reply) or 8 bytes (every reply after)
+Data: see +0x0E's own Effect note above.
+
+ID: +0x14 [Kinematic Brain -> Robot Controller Board, handled by the
+           BOOTLOADER]
+BACKUP_READ_PAGE_ACK
+DLC: 4 bytes
+Data:
+  - rxData[0:3]: Big-endian page index being acknowledged (0-based) - must
+                 match the page the bootloader is currently waiting on, or
+                 the readback is abandoned (desync, not retried
+                 automatically)
+Note: added during implementation - not in docs/architecture.md's
+      original section 4 table, which conflated this with +0x0E/+0x0F.
+      See that document's own correction note for why a separate ack ID
+      was needed (mirrors URTC's own 0x7FF, distinct from 0x7FE).
+
+-----------------------------------------------------------------------------
+3. CROSS-REFERENCES
+-----------------------------------------------------------------------------
+- docs/architecture.md section 4       - the original ID-offset table this
+  document expands into full wire-level detail.
+- docs/CANBUS_STM32H745.TXT             - the Kinematic Brain's own side of
+  this same protocol (SPI1 Tier 0, and the FDCAN1 master/relay-gateway
+  perspective of everything in section 2 above).
+- docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT - real MCU pins behind every
+  peripheral this document assumes (FDCAN1, FDCAN2, BOARD_ID DIP switch).
+- URTC/docs/CANBUS.TXT (sibling repo)  - the original protocol this
+  document's section 2 is re-based from, byte-for-byte compatible in
+  everything except the base ID itself.
+- firmware/mcu_stm32g474/boot/         - the real, compiling implementation
+  of section 2 (bootloader_common.h has the exact OFS_* offsets as C
+  #defines, guaranteed to match this document since both were written
+  from the same source of truth).
+=============================================================================

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="bgTitaniumIcon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A0D12"/>
+      <stop offset="50%" stop-color="#121720"/>
+      <stop offset="100%" stop-color="#07090C"/>
+    </linearGradient>
+
+    <linearGradient id="greenNeonIcon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00FF66"/>
+      <stop offset="100%" stop-color="#009933"/>
+    </linearGradient>
+
+    <linearGradient id="metalArmIcon" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2D3748"/>
+      <stop offset="50%" stop-color="#1A202C"/>
+      <stop offset="100%" stop-color="#0D1117"/>
+    </linearGradient>
+
+    <filter id="neonGlowIcon" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <rect width="32" height="32" rx="4" fill="url(#bgTitaniumIcon)"/>
+
+  <g transform="translate(16, 16) scale(0.135)">
+    <g>
+      <animateTransform 
+        attributeName="transform" 
+        type="scale" 
+        values="1 1; -1 1; 1 1" 
+        dur="6s" 
+        repeatCount="indefinite" 
+        keyTimes="0; 0.5; 1"
+        calcMode="spline"
+        keySplines="0.4 0 0.2 1; 0.4 0 0.2 1"
+      />
+
+      <polygon points="0,-100 68,-56 68,56 0,100 -68,56 -68,-56" 
+               fill="url(#metalArmIcon)" 
+               stroke="#00FF66" 
+               stroke-width="8" 
+               filter="url(#neonGlowIcon)"/>
+               
+      <path d="M-40,-56 L-18,-56 L-18,-12 L18,-12 L18,-56 L40,-56 L40,56 L18,56 L18,12 L-18,12 L-18,56 L-40,56 Z" 
+            fill="url(#greenNeonIcon)"/>
+    </g>
+  </g>
+</svg>

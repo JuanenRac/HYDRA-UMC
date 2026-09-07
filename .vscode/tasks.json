@@ -1,0 +1,41 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build: Robot Controller Board (STM32G474)",
+      "type": "shell",
+      "command": "bash",
+      "args": ["build_firmware.sh", "g474"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Build: Kinematic Brain (STM32H745, both cores)",
+      "type": "shell",
+      "command": "bash",
+      "args": ["build_firmware.sh", "h745"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Build: All Firmware",
+      "type": "shell",
+      "command": "bash",
+      "args": ["build_firmware.sh"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Build: Clean + All Firmware",
+      "type": "shell",
+      "command": "bash",
+      "args": ["build_firmware.sh", "--clean", "all"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    }
+  ]
+}

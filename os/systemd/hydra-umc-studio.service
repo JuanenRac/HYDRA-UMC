@@ -1,0 +1,26 @@
+# =============================================================================
+# hydra-umc-studio.service - starting example systemd unit for the dashboard
+# PROJECT: HYDRA-UMC
+# AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
+# LICENSE: GPL-3.0 - see repo root LICENSE
+#
+# NOT YET VERIFIED on a real CM5 target - matches HYDRA-UMC-STUDIO's own
+# README ("npm start", serves on :3000), but WorkingDirectory/path below is
+# a placeholder until this project decides where that sibling repo actually
+# gets deployed on-device.
+# =============================================================================
+[Unit]
+Description=HYDRA-UMC STUDIO Dashboard (Node server)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/hydra-umc/hydra-umc-studio
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+RestartSec=2
+User=hydra
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

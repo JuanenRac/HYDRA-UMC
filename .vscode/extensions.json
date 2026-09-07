@@ -1,0 +1,16 @@
+{
+  // Recommended extensions for working on HYDRA-UMC's own firmware
+  // (STM32G474/STM32H745), CM5 host apps, and hardware scaffolding.
+  // See README.md's own "Development Environment" section for what each
+  // is for and how it maps to this repo's own build_firmware.sh.
+  "recommendations": [
+    "stmicroelectronics.stm32-vscode-extension", // STM32 project/build/debug integration
+    "marus25.cortex-debug",                       // ARM Cortex-M debugging (SWD/JTAG via ST-Link, J-Link, or a generic GDB server)
+    "ms-vscode.cmake-tools",                       // CMake integration (src/cm5_host/hmi_qt6's own CMakeLists.txt)
+    "ms-vscode.cpptools",                          // C/C++ IntelliSense for every src/ and cm5_host/ source file
+    "ms-python.python",                            // ai_inference/ pipeline scripts, generate_manifest.py-style tooling
+    "ms-vscode.hexeditor",                         // inspecting build_firmware.sh's own .bin output
+    "redhat.vscode-yaml",                          // video_streamer/src/mediamtx.yml
+    "eamodio.gitlens"
+  ]
+}

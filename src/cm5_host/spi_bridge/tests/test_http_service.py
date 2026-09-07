@@ -1,0 +1,129 @@
+# =============================================================================
+# HYDRA-UMC - spi_bridge http_service tests
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0 - see repo root LICENSE
+# =============================================================================
+"""Real end-to-end HTTP tests against the real local service (a real
+socket, a real HTTP request/response) - only the SPI transport underneath
+is faked, exactly mirroring HYDRA-UMC-BRIDGE-PRINTER3D's own real fixture-
+HTTP-server test pattern used throughout this ecosystem this session."""
+
+import json
+import socket
+import threading
+import unittest
+from urllib.request import Request, urlopen
+
+from fake_transport import FakeBootloaderTransport
+from test_relay_tunnel import FakeRelayingTier1Transport
+
+from spi_bridge.http_service import serve
+
+
+class HttpServiceTests(unittest.TestCase):
+    def setUp(self):
+        self.transport = FakeBootloaderTransport(hardware_id=0x48374334)
+        self.server = serve(self.transport, hmac_key=b"\x00" * 32, port=0)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.base_url = f"http://127.0.0.1:{self.server.server_port}"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.thread.join()
+        self.server.server_close()
+
+    def test_get_version_returns_the_real_queried_hardware_id(self):
+        with urlopen(f"{self.base_url}/version?tier=2&slot=0") as response:
+            payload = json.loads(response.read())
+        self.assertTrue(payload["online"])
+        self.assertEqual(payload["hardware_id"], 0x48374334)
+
+    def test_get_version_with_a_non_integer_param_is_rejected(self):
+        try:
+            urlopen(f"{self.base_url}/version?tier=not-a-number")
+            self.fail("expected an HTTPError")
+        except Exception as error:  # urllib.error.HTTPError
+            self.assertEqual(error.code, 400)
+            error.close()
+
+    def test_post_flash_streams_real_progress_lines_ending_in_done(self):
+        firmware = b"\x00" * 2048
+        request = Request(
+            f"{self.base_url}/flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1",
+            data=firmware,
+            method="POST",
+        )
+        with urlopen(request) as response:
+            lines = [json.loads(line) for line in response.read().decode("utf-8").splitlines()]
+        self.assertEqual(lines[-1]["phase"], "done")
+        self.assertEqual(lines[-1]["percent"], 100)
+
+    def test_post_flash_with_a_malformed_content_length_is_rejected(self):
+        # Real regression: do_POST() used to call int(Content-Length) with
+        # no try/except at all - a non-numeric header crashed the handler
+        # thread with an unhandled ValueError and sent back no HTTP
+        # response whatsoever, instead of the clean 400 every other
+        # malformed param on this route already gets. A raw socket is
+        # needed here since urllib always computes a real Content-Length
+        # itself.
+        sock = socket.create_connection(("127.0.0.1", self.server.server_port), timeout=5)
+        try:
+            sock.sendall(
+                b"POST /flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1 HTTP/1.1\r\n"
+                b"Host: 127.0.0.1\r\n"
+                b"Content-Length: not-a-number\r\n"
+                b"Connection: close\r\n"
+                b"\r\n"
+            )
+            sock.settimeout(5)
+            response = sock.recv(65536)
+        finally:
+            sock.close()
+        self.assertIn(b"400", response.split(b"\r\n", 1)[0])
+
+    def test_unknown_route_is_a_real_404(self):
+        try:
+            urlopen(f"{self.base_url}/unknown")
+            self.fail("expected an HTTPError")
+        except Exception as error:
+            self.assertEqual(error.code, 404)
+            error.close()
+
+
+class HttpServiceRelayTests(unittest.TestCase):
+    """relay=1 reaches Tier 2 (URTC Tool Head) through the real RELAY_SEND/
+    RELAY_RECV tunnel - see relay_tunnel.py's own docstring."""
+
+    def setUp(self):
+        self.transport = FakeRelayingTier1Transport(hardware_id=0x0303CC01)
+        self.server = serve(self.transport, hmac_key=b"\x00" * 32, port=0)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.base_url = f"http://127.0.0.1:{self.server.server_port}"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.thread.join()
+        self.server.server_close()
+
+    def test_get_version_with_relay_reaches_the_real_tunneled_urtc_head(self):
+        with urlopen(f"{self.base_url}/version?tier=2&slot=3&relay=1") as response:
+            payload = json.loads(response.read())
+        self.assertTrue(payload["online"])
+        self.assertEqual(payload["hardware_id"], 0x0303CC01)
+
+    def test_post_flash_with_relay_streams_real_progress_ending_in_done(self):
+        firmware = b"\xAB" * 2048
+        request = Request(
+            f"{self.base_url}/flash?tier=2&slot=3&relay=1&hardware_id=0x0303CC01&version_major=0&version_minor=1",
+            data=firmware,
+            method="POST",
+        )
+        with urlopen(request) as response:
+            lines = [json.loads(line) for line in response.read().decode("utf-8").splitlines()]
+        self.assertEqual(lines[-1]["phase"], "done")
+
+
+if __name__ == "__main__":
+    unittest.main()
