@@ -1,0 +1,169 @@
+=============================================================================
+CAN BUS / SPI-OTA COMMAND MAP - KINEMATIC BRAIN (STM32H745ZIT6, dual-core)
+PROJECT: HYDRA-UMC
+AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
+LICENSE: This document is licensed under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
+         Firmware source is GPL-3.0; hardware design files are CERN-OHL-S v2 - see the repo README.
+MCU: STM32H745ZIT6 (2MB flash: 1MB Bank 1/CM7 + 1MB Bank 2/CM4, each 128KB
+     bootloader sector / 128KB metadata sector / 384KB main / 384KB backup -
+     see firmware/mcu_stm32h745/README.md). CM4 owns SPI1 (to the CM5) and
+     FDCAN1 ("STACK A", up to 8 Robot Controller Boards); CM7 owns neither -
+     it's reached only through the CM7<->CM4 IPC mailbox (section 2 below).
+=============================================================================
+
+STATUS: sections 1-3 (SPI1 frame format, IPC mailbox frame format, the 3-way
+gateway routing) are REAL, implemented, compiling firmware -
+firmware/mcu_stm32h745/CM4/boot/, CM7/boot/, Common/ipc_mailbox.h. Section 4
+(this chip's own APPLICATION-level protocol - motion commands, axis
+telemetry for its own local X/Y1/Y2/Z/E0/E1 stage) is PROPOSED at the ID-
+allocation level only - no application firmware implements it yet.
+
+Unlike docs/CANBUS_STM32G474.TXT (a single bus, one command map), this chip
+speaks to 3 DIFFERENT physical/logical transports depending on what's being
+reached - this document is organized by transport, not by a single ID list.
+
+-----------------------------------------------------------------------------
+1. SPI1 - CM4 <-> CM5 (the only externally-reachable point of the whole
+   4-tier chain, docs/architecture.md section 1)
+-----------------------------------------------------------------------------
+Physical: SPI1, up to 50 MHz, CM4 in SLAVE mode, `HYDRA_DATA_READY` GPIO
+handshake (README.md section 10) - the SAME physical link this chip's own
+telemetry protocol already uses in normal (non-OTA) operation; CAN-OTA mode
+reuses it rather than adding a second physical interface.
+
+Frame: `SpiOtaFrame_t` (firmware/mcu_stm32h745/CM4/boot/bootloader_
+common.h), 128 bytes, full-duplex (CM5 and CM4 exchange one frame per SPI
+transaction - CM4's outgoing frame was prepared from whatever the PREVIOUS
+transaction's response was, since SPI cannot push data the master hasn't
+clocked for):
+
+    Byte 0    : target_tier  (0=SELF, 1=CM7, 2=STACKA - see section 3)
+    Byte 1    : target_slot  (0-7, meaningful only when target_tier==STACKA)
+    Byte 2    : frame_type   (an OFS_* value - see docs/CANBUS_STM32G474.TXT
+                              section 2's own table; the SAME numeric offsets
+                              are reused here as a byte instead of an FDCAN
+                              ID addend, so command semantics are identical
+                              regardless of which bus ultimately carries a
+                              given request)
+    Byte 3    : dlc          (0-8, meaningful bytes in the payload below)
+    Bytes 4-11: payload      (up to 8 bytes, same layouts as docs/CANBUS_
+                              STM32G474.TXT section 2's own per-command Data
+                              fields)
+    Bytes 12-127: reserved, padded 0xFF
+
+Example: to START_UPDATE (+0x01) this chip's OWN CM4 core (self-flash), the
+CM5 sends a frame with target_tier=0, frame_type=0x01, dlc=8, payload =
+[size(4 bytes BE), HardwareID(4 bytes BE)] - byte-for-byte the same payload
+docs/CANBUS_STM32G474.TXT section 2's own +0x01 entry describes, just
+carried in an SPI frame instead of an FDCAN frame with ID slot_base+0x01.
+
+-----------------------------------------------------------------------------
+2. IPC MAILBOX - CM4 <-> CM7 (reaches the core with no external bus of
+   its own)
+-----------------------------------------------------------------------------
+Physical: SRAM4 (D3 domain, 64KB @ 0x38000000, the only RAM region both
+cores can see) + 2 hardware semaphore (HSEM) channels for synchronization -
+firmware/mcu_stm32h745/Common/ipc_mailbox.h.
+
+Frame: `IpcFrame_t`, 16 bytes, single-producer/single-consumer per
+direction (CM4 only ever writes `.cmd` / reads `.resp`; CM7 only ever reads
+`.cmd` / writes `.resp` - no locking beyond the 2 HSEM channels is needed
+since each field has exactly one writer):
+
+    Byte 0    : frame_type (OFS_* - same numeric space as section 1)
+    Byte 1    : dlc (0-8)
+    Bytes 2-9 : payload (up to 8 bytes)
+    Bytes 10-15: reserved
+
+Protocol: CM4 writes an `IpcFrame_t` into `mailbox->cmd`, then takes
+`IPC_HSEM_CMD_ID` (signals "new command posted"). CM7's own bootloader main
+loop polls that semaphore, reads `.cmd` once taken, releases it (frees the
+slot for CM4's next post), runs the command through the SAME protocol
+handler functions every other bootloader in this project uses
+(HandleStartUpdate/HandleData/etc. - firmware/mcu_stm32h745/CM7/boot/
+bootloader_protocol.c), writes the result into `mailbox->resp`, and takes
+`IPC_HSEM_RESP_ID`. CM4's own `Relay_ToCM7()` (firmware/mcu_stm32h745/CM4/
+boot/bootloader_protocol.c) blocks up to 200ms waiting for that semaphore,
+then relays whatever landed in `.resp` back to the CM5 over SPI1 (section 1)
+as the next `SpiOtaFrame_t`.
+
+-----------------------------------------------------------------------------
+3. FDCAN1 "STACK A" - CM4 as the bus MASTER (this chip is always the one
+   initiating; see docs/CANBUS_STM32G474.TXT for the full command table
+   from a Robot Controller Board's own perspective as the one ANSWERING)
+-----------------------------------------------------------------------------
+Physical: FDCAN1, PD0(RX)/PD1(TX) - docs/PINOUT_STM32H745_KINEMATIC_
+BRAIN.TXT section 2. Classic-CAN-frame-only (no BRS, no FD payloads beyond
+8 bytes) - same constraint every bootloader in this project shares, so the
+SAME command byte layouts apply regardless of which chip sent them.
+
+When CM4's own SPI1 gateway (section 1) receives a frame with
+target_tier=STACKA, `Relay_ToStackA()` (firmware/mcu_stm32h745/CM4/boot/
+bootloader_protocol.c) computes:
+
+    slot_base_id = 0x600 + (target_slot * 0x20)
+    wire_id      = slot_base_id + frame_type
+
+...sends that single FDCAN1 frame with the SPI frame's own dlc/payload
+unchanged, then waits up to 200ms for ANY FDCAN1 frame whose ID falls
+inside that same slot's 32-ID window (`slot_base_id` to `slot_base_id +
+0x1F`) and relays it back over SPI1 as the response. This works for BOTH
+directions of the bootloader/application protocol without CM4 needing to
+know which specific command elicits which specific response - it just
+matches on the slot window, same generic-tunnel philosophy docs/
+architecture.md section 5 already establishes for the Robot Controller
+Board's own RELAY_SEND/RELAY_RECV.
+
+This also transparently reaches Tiers 2-3 (a robot's own URTC Tool Head,
+and that head's optional Advanced Expansion Board): a `RELAY_SEND`
+(+0x12)/`RELAY_RECV` (+0x13) frame targeting a STACK A slot is just another
+frame_type byte as far as this chip's own gateway is concerned - it never
+needs to understand what's on the other end of the Robot Controller
+Board's own second relay hop. See docs/CANBUS_STM32G474.TXT section 1 for
+what THAT board does with a RELAY_SEND/RELAY_RECV frame once it arrives.
+
+-----------------------------------------------------------------------------
+4. APPLICATION COMMANDS - this chip's own local stage (PROPOSED, no
+   firmware implements any of this yet)
+-----------------------------------------------------------------------------
+The Kinematic Brain's own local 6-axis stage (docs/PINOUT_STM32H745_
+KINEMATIC_BRAIN.TXT section 3) has real, confirmed job semantics
+(CONFIRMED by the project owner):
+
+    X, Y1, Y2  - dual-Y gantry, the machine's own XY table
+    Z          - Z height of that table/head
+    E0         - NEMA stepper indexing the ATC (Automatic Tool Changer)
+                 revolver/turret - a ROTARY axis, not a linear one, despite
+                 sharing the same STEP/DIR/EN/TMC5160A interface as X/Y1/
+                 Y2/Z (docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 3
+                 doesn't distinguish linear vs. rotary at the electrical
+                 level - that distinction only matters to the motion-
+                 planning application logic that doesn't exist yet)
+    E1         - FUTURE, not yet installed: a conveyor belt's own NEMA
+                 motor. Wired and pinned out today (same TMC5160A/STEP/
+                 DIR/EN interface as every other axis) but with nothing
+                 physically connected until that feature is built.
+
+This local stage is reached over SPI1 (section 1 above) with
+target_tier=SELF once CM4's own application exists (not yet - CM4's
+`STM32H745ZI_CM4_main.c` is still a FreeRTOS GPIO-toggle smoke test). No
+CAN ID allocation is needed for it (it's not on FDCAN1 at all - purely
+local to this chip, actuated directly by CM7's own hardware timer pulse
+generation per README.md section 5), but the SPI1 frame_type byte range
++0x10-+0x1F (application commands, same range docs/CANBUS_STM32G474.TXT
+section 1 uses for the Robot Controller Board's own application layer) is
+reserved for whatever this local-stage protocol ends up needing - not
+designed further here.
+
+-----------------------------------------------------------------------------
+5. CROSS-REFERENCES
+-----------------------------------------------------------------------------
+- docs/CANBUS_STM32G474.TXT      - the full bootloader command table (every
+  byte layout) that sections 1 and 3 above reuse - not duplicated here.
+- docs/architecture.md sections 3-5 - the original design this document
+  turns into full wire-level detail.
+- docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT - real MCU pins (SPI1, FDCAN1,
+  the local stage's own TMC5160A/STEP/DIR/EN interface).
+- firmware/mcu_stm32h745/CM4/boot/, CM7/boot/, Common/ipc_mailbox.h - the
+  real, compiling implementation of sections 1-3.
+=============================================================================

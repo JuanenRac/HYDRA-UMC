@@ -1,0 +1,27 @@
+# =============================================================================
+# hydra-hmi.service - starting example systemd unit for the Qt6 kiosk shell
+# PROJECT: HYDRA-UMC
+# AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
+# LICENSE: GPL-3.0 - see repo root LICENSE
+#
+# NOT YET FUNCTIONAL - ExecStart references a binary path that doesn't
+# exist yet (firmware/cm5_host/hmi_qt6/ has no build output today - see
+# that folder's own README.md). Written to show the intended shape
+# (depends on the dashboard's own Node service starting first) rather
+# than as something to install and enable today.
+# =============================================================================
+[Unit]
+Description=HYDRA-UMC Kiosk HMI Shell
+After=hydra-umc-studio.service network.target
+Requires=hydra-umc-studio.service
+
+[Service]
+Type=simple
+ExecStart=/opt/hydra-umc/bin/hydra_hmi
+Restart=on-failure
+RestartSec=2
+User=hydra
+Environment=QT_QPA_PLATFORM=eglfs
+
+[Install]
+WantedBy=graphical.target

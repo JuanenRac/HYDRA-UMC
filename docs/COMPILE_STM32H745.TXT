@@ -1,0 +1,230 @@
+=============================================================================
+COMPILE_STM32H745.TXT - Building the Kinematic Brain firmware (STM32H745ZIT6, dual-core)
+PROJECT: HYDRA-UMC
+AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
+LICENSE: This document is licensed under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
+=============================================================================
+Every command in this document was actually run against this project's own
+real source tree while writing it, via ./build_firmware.sh h745 - not
+reconstructed from memory. See docs/COMPILE_STM32G474.TXT's own section 1-2
+for the shared tooling/vendoring philosophy (same pattern, applied here to
+a dual-core chip) - this document focuses on what's DIFFERENT for dual-core.
+
+-----------------------------------------------------------------------------
+1. What you're building - 4 binaries, 1 chip, 2 cores
+-----------------------------------------------------------------------------
+Kinematic Brain (STM32H745ZIT6, LQFP-144, 2 MB flash / 1 MB RAM total,
+Cortex-M7 @ up to 480 MHz + Cortex-M4 @ up to 240 MHz - see
+HYDRA-UMC/docs/architecture.md section 1 and README.md section 5 for this
+board's role):
+    - CM7 bootloader:   firmware/mcu_stm32h745/CM7/boot/ -> HYDRA_KB_CM7_BOOTLOADER.bin/.hex/.elf  (bare-metal)
+    - CM7 application:  firmware/mcu_stm32h745/CM7/      -> HYDRA_KB_CM7_APP.bin/.hex/.elf         (FreeRTOS)
+    - CM4 bootloader:   firmware/mcu_stm32h745/CM4/boot/ -> HYDRA_KB_CM4_BOOTLOADER.bin/.hex/.elf  (bare-metal)
+    - CM4 application:  firmware/mcu_stm32h745/CM4/      -> HYDRA_KB_CM4_APP.bin/.hex/.elf         (FreeRTOS)
+
+Both applications run FreeRTOS (CONFIRMED design decision, docs/
+architecture.md section 2) - as TWO INDEPENDENT instances, one per core
+(this is a dual-core AMP chip, no shared scheduler state between CM7 and
+CM4 - see that same section for why). Neither bootloader runs FreeRTOS -
+see section 3a below for what the applications need beyond the bootloaders.
+
+Each core gets its OWN flash bank (1 MB each of the chip's 2 MB total) and
+its OWN bootloader+app+backup split within that bank - see each *.ld
+script's own header comment for the exact byte ranges. All 4 outputs land
+in firmware_out/ (gitignored - FreeRTOS/bare-metal smoke-test binaries, not
+real firmware yet).
+
+-----------------------------------------------------------------------------
+2. Tools - same as STM32G474 (docs/COMPILE_STM32G474.TXT section 2)
+-----------------------------------------------------------------------------
+No additional tools needed for dual-core specifically - same
+arm-none-eabi-gcc toolchain builds both cores, just with different
+-mcpu/-mfpu flags per core (section 4 below).
+
+-----------------------------------------------------------------------------
+3. Getting the ST HAL/CMSIS files
+-----------------------------------------------------------------------------
+    stm32h7xx_hal_driver    v1.11.6  https://github.com/STMicroelectronics/stm32h7xx_hal_driver.git
+    cmsis_device_h7         v1.10.7  https://github.com/STMicroelectronics/cmsis_device_h7.git
+    cmsis_core              v5.9.0_20250520  (same repo/tag as G474 - see that
+                             document's own section 3 note on this repo's
+                             layout; both core_cm4.h and core_cm7.h live
+                             under the same Core/Include/ tree, one fetch
+                             covers both cores)
+
+IMPORTANT - the SAME startup file and system file serve BOTH cores, unlike
+a typical single-core chip:
+    Source/Templates/gcc/startup_stm32h745xx.s   - shared, compiled twice
+                                                     (once per core, see section 4)
+    Source/Templates/system_stm32h7xx_dualcore_boot_cm4_cm7.c
+                                                   - the "both cores boot
+                                                     independently from
+                                                     their own flash bank"
+                                                     variant. cmsis_device_h7
+                                                     ships 4 different
+                                                     system_stm32h7xx*.c
+                                                     variants for different
+                                                     boot strategies
+                                                     (dualcore_boot_cm4_cm7,
+                                                     dualcore_bootcm4_cm7gated,
+                                                     dualcore_bootcm7_cm4gated,
+                                                     singlecore) - this one
+                                                     was picked because it
+                                                     matches this board's own
+                                                     "both cores always run"
+                                                     design (README.md
+                                                     section 5's own AMP
+                                                     description), not
+                                                     because it's the only
+                                                     option. Revisit this
+                                                     choice explicitly if the
+                                                     real boot strategy ends
+                                                     up needing one core to
+                                                     release the other
+                                                     instead (see this
+                                                     document's own section 6
+                                                     for what that would mean).
+                             build_firmware.sh copies whichever variant it
+                             uses to a plain system_stm32h7xx.c locally, per
+                             core - the source filename itself doesn't need
+                             to survive into the build tree.
+
+-----------------------------------------------------------------------------
+3a. FreeRTOS kernel sources (applications only, not the bootloaders)
+-----------------------------------------------------------------------------
+See docs/COMPILE_STM32G474.TXT section 3a for the shared vendoring
+philosophy and gotcha (HAL_IncTick() via vApplicationTickHook() once
+FreeRTOS owns SysTick - identical reasoning here, both cores). FreeRTOS-
+Kernel itself is fetched ONCE (build/vendor/freertos/, shared with G474 -
+chip-agnostic kernel source) at the SAME pinned tag:
+
+    FreeRTOS-Kernel   V11.3.0   https://github.com/FreeRTOS/FreeRTOS-Kernel.git
+
+What's different here vs. G474: each CORE needs its own PORT, and its own
+compiled object set (own FreeRTOSConfig.h per core - different heap size,
+see each core's own file):
+
+    CM7: portable/GCC/ARM_CM7/r0p1/port.c - NOTE the r0p1 subfolder. This
+         port is specifically for the Cortex-M7 r0p1 silicon revision
+         (works around a documented errata in that revision's own MPU
+         behavior around FreeRTOS's own context switch) - FreeRTOS-Kernel
+         does NOT ship a plain non-r0p1 ARM_CM7 port; r0p1 is correct
+         regardless of which exact r0pX silicon this specific STM32H745
+         actually is, per FreeRTOS's own upstream guidance (the workaround
+         is harmless on later revisions too).
+    CM4: portable/GCC/ARM_CM4F/port.c - identical port G474 already uses.
+
+Compiled into build/h745/cm7_freertos_obj/ and build/h745/cm4_freertos_obj/
+respectively (kept separate, same "never link a CM7 object into a CM4
+build" discipline as the HAL objects - section 4 above).
+
+-----------------------------------------------------------------------------
+4. Common compiler flags - per core
+-----------------------------------------------------------------------------
+CM7 (note the CORE_CM7 define AND the different -mcpu/-mfpu from CM4 - the
+M7 has a double-precision FPU, fpv5-d16, vs. the M4's single-precision
+fpv4-sp-d16):
+    CFLAGS_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard \
+                -DSTM32H745xx -DCORE_CM7 \
+                -Ipath/to/CMSIS_Include -Ipath/to/HAL_Include \
+                -O2 -Wall -ffunction-sections -fdata-sections"
+
+CM4:
+    CFLAGS_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard \
+                -DSTM32H745xx -DCORE_CM4 \
+                -Ipath/to/CMSIS_Include -Ipath/to/HAL_Include \
+                -O2 -Wall -ffunction-sections -fdata-sections"
+
+-DSTM32H745xx is the SAME device define for both cores (this is one chip,
+not two) - CORE_CM7 vs. CORE_CM4 is what actually changes which vector
+table / which of the shared CMSIS device header's core-specific sections
+get compiled. Getting this define wrong (e.g. building CM4 code with
+CORE_CM7 set) produces a binary that compiles and links without error but
+targets the wrong core's peripheral/memory map - not something the
+toolchain catches for you, a real mistake worth double-checking.
+
+Only 11 HAL modules compiled today per core, for the GPIO-toggle smoke test
+(HAL core, Cortex, GPIO, RCC + RCC_EX, PWR + PWR_EX, FLASH + FLASH_EX, EXTI,
+MDMA) - same "only what's used" reasoning as G474's own document. The 2
+cores' HAL object sets are kept in SEPARATE directories
+(build/h745/hal_obj_cm7/, build/h745/hal_obj_cm4/) even though several
+modules compile to functionally similar code for both - never link a CM7
+object into a CM4 build or vice versa, mirroring the same discipline URTC's
+own document establishes for its own master/slave separation.
+
+-----------------------------------------------------------------------------
+5. Flash partitioning - per core, per bank
+-----------------------------------------------------------------------------
+CM7 (Flash Bank 1, 0x08000000-0x080FFFFF):
+    0x08000000  Bootloader        64 KB
+    0x08010000  Metadata           4 KB
+    0x08011000  App main slot    476 KB
+    0x08088000  App backup slot  476 KB
+    0x080FF000  Reserved           4 KB
+
+CM4 (Flash Bank 2, 0x08100000-0x081FFFFF): identical split, offset by
++0x100000 (see firmware/mcu_stm32h745/CM4/STM32H745ZITx_CM4_APP.ld's own
+header for the exact addresses).
+
+RAM: CM7 uses D1-domain AXI SRAM (512 KB @ 0x24000000); CM4 uses D2-domain
+SRAM1+2+3 (288 KB @ 0x30000000) - deliberately separate regions so neither
+core's own RAM use can starve the other. D3-domain SRAM4 (64 KB @
+0x38000000) is left unmapped by both cores' linker scripts today, reserved
+for a future CM7<->CM4 shared-memory/IPC-mailbox region once that's
+actually designed - see this document's own section 6.
+
+PROPOSED throughout this section, modeled on the same bootloader+app+backup
+philosophy as G474's own split (docs/COMPILE_STM32G474.TXT section 5) and
+URTC's own proven original - not yet verified against real hardware.
+
+-----------------------------------------------------------------------------
+6. What dual-core bring-up still needs that this skeleton doesn't have
+-----------------------------------------------------------------------------
+This is the single biggest gap between what compiles today and a real
+Kinematic Brain firmware - be aware of it before assuming "it builds" means
+"it's close to working on real silicon":
+
+  - CM4 boot release: depending on the chip's own BCM4 option byte, CM4
+    either boots on its own automatically (matches the
+    dualcore_boot_cm4_cm7 system file variant picked in section 3) or stays
+    held in reset until CM7 explicitly releases it (RCC_GetBootCM4() /
+    HAL_RCCEx_ReleaseCortexM4 sequence) - this skeleton assumes the former
+    and never touches the latter API at all. Confirm which the real board
+    is configured for before assuming CM4 boots unattended.
+  - HSEM (hardware semaphore peripheral): the normal mechanism for
+    CM7<->CM4 synchronization (e.g. "don't touch shared SRAM4 until the
+    other core signals it's safe") - not initialized or used anywhere in
+    this skeleton.
+  - I/D-cache: SCB_EnableICache()/SCB_EnableDCache() on CM7 - left off for
+    this first smoke test's simplicity, but matters a lot for real
+    performance and for correctness around any DMA/peripheral shared memory
+    (cache coherency) once real motion-engine code lands.
+  - Real clock tree (HSE + PLL1 to 480 MHz CM7 / 240 MHz CM4, with the
+    correct D1/D2/D3 domain voltage scaling) - both cores currently run at
+    HSI reset defaults.
+  - The actual SPI1 slave-mode IPC to the CM5 (README.md section 10) and
+    the Tier-0 SPI-OTA bootloader protocol (docs/architecture.md section 3)
+    - neither exists in this skeleton's bootloader or app code yet, both
+    currently just jump straight from bootloader to app unconditionally.
+  - Each core starts its OWN FreeRTOS scheduler independently
+    (vTaskStartScheduler() in each core's own main()) - there's no
+    coordination between the two "go live" moments today (e.g. CM7 waiting
+    for confirmation CM4 is also up before starting real motion tasks) -
+    another thing HSEM-based sync (above) would need to cover once real
+    tasks replace vBlinkTask in both.
+
+None of this blocks compiling or verifying the toolchain/linker setup
+itself (that's what this document and build_firmware.sh both already
+verify) - it blocks real hardware bring-up, which is separate, real
+engineering work.
+
+-----------------------------------------------------------------------------
+7. Verifying your own build
+-----------------------------------------------------------------------------
+Last verified: all 4 binaries (2 bare-metal bootloaders, 2 FreeRTOS
+applications) build cleanly, 0 warnings, 0 errors, via a full --clean
+rebuild (`./build_firmware.sh --clean h745`), and via a combined
+`./build_firmware.sh --clean all` alongside the G474 target in the same run.
+=============================================================================
+END OF FILE
+=============================================================================
