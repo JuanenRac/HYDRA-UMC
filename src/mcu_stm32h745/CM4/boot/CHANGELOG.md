@@ -19,7 +19,7 @@ drift out of sync with what was actually compiled.
 | Version | Notes |
 |---|---|
 | **0.0.7** | Verification build - confirms the automatic version-bump mechanism still increments this bootloader's own version correctly after an unrelated maintenance pass. No source changes to this bootloader itself. |
-| **0.0.6** | Same fix as the G474/CM7 bootloaders' own 0.0.6 entries (hallazgo #110, full-ecosystem audit): `HAL_IWDG_Init()` was being called after `HAL_Init()`/`SystemClock_Config()` in `main()`, leaving startup unwatched until that point - moved to the first line of `main()`. (0.0.4 was a verification build, no source changes; 0.0.5 was an orphaned intermediate build superseded by this one.) |
+| **0.0.6** | Same fix as the G474/CM7 bootloaders' own 0.0.6 entries: `HAL_IWDG_Init()` was being called after `HAL_Init()`/`SystemClock_Config()` in `main()`, leaving startup unwatched until that point - moved to the first line of `main()`. (0.0.4 was a verification build, no source changes; 0.0.5 was an orphaned intermediate build superseded by this one.) |
 | **0.0.4** | Verification build - same build-mechanism verification pattern as 0.0.1-0.0.3. No source changes to this bootloader itself. |
 | **0.0.3** | Verification build - confirms `build_firmware.bat` (the Windows mirror of `build_firmware.sh`) calls the exact same `bump_version.py` step and increments this bootloader's own version identically to the Linux/Mac script. No source changes to this bootloader itself. |
 | **0.0.2** | Verification build - second of two consecutive builds run to confirm `bump_version.py` correctly increments this bootloader's own version build over build. No source changes to this bootloader itself. |
