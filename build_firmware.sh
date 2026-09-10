@@ -113,6 +113,36 @@ else
     echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
 fi
 
+# -----------------------------------------------------------------------
+step "1b. Host logic tests (plain gcc, not arm-none-eabi-gcc)"
+# -----------------------------------------------------------------------
+# HAL-free logic pulled out of the MCU sources (relay_rx_queue.h - the
+# Robot Controller Board's FDCAN2 capture ring) is exercised on the host,
+# no G474/H745 board needed. On-target verification (E-STOP timing,
+# watchdog, physical CAN, motor timing) still needs the boards.
+if [ "${HYDRA_UMC_SKIP_HOST_TESTS:-0}" = "1" ]; then
+    warn "host logic tests skipped (HYDRA_UMC_SKIP_HOST_TESTS=1)"
+elif ! command -v "${HOST_CC:-cc}" >/dev/null 2>&1 && ! command -v gcc >/dev/null 2>&1; then
+    warn "no host C compiler (cc/gcc) found - skipping host logic tests"
+else
+    HOST_CC="${HOST_CC:-$(command -v cc || command -v gcc)}"
+    HOST_BIN="$ROOT/build/host_tests"
+    mkdir -p "$ROOT/build"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src" \
+        -o "$HOST_BIN" "$ROOT/tests/test_relay_rx_queue.c"; then
+        pass "host test suite compiled ($HOST_CC -std=c11 -Wall -Wextra)"
+    else
+        fail "host test suite failed to compile"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+    if "$HOST_BIN"; then
+        pass "relay_rx_queue host logic tests passed"
+    else
+        fail "relay_rx_queue host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+fi
+
 mkdir -p "$FIRMWARE_OUT"
 
 # A firmware directory represents one build set, never an accumulation of

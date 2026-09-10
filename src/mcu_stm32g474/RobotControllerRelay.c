@@ -20,6 +20,7 @@
  * =============================================================================
  */
 #include "RobotControllerRelay.h"
+#include "relay_rx_queue.h"
 #include "stm32g4xx_hal.h"
 #include "boot/bootloader_common.h" /* shared CAN_ID_STACKA_BASE/STACKA_SLOT_WINDOW/OFS_* */
 #include <string.h>
@@ -316,52 +317,20 @@ static uint8_t TryGetMessage(FDCAN_HandleTypeDef *hfdcan, uint32_t *out_id, uint
  * FDCAN2 hardware RX FIFO0 itself provides before this software layer
  * even gets involved.
  * ----------------------------------------------------------------------- */
-typedef struct {
-    uint16_t can_id;
-    uint8_t dlc;
-    uint8_t data[8];
-} RelayCapturedFrame_t;
-
-#define RELAY_RX_QUEUE_DEPTH 8
-static RelayCapturedFrame_t relay_rx_queue[RELAY_RX_QUEUE_DEPTH];
-static uint8_t relay_rx_head; /* next slot to fill */
-static uint8_t relay_rx_tail; /* next slot to drain */
-static uint8_t relay_rx_count;
-
-static void RelayRxQueue_Push(uint16_t can_id, const uint8_t *data, uint8_t dlc)
-{
-    if (relay_rx_count >= RELAY_RX_QUEUE_DEPTH) {
-        /* Queue full - drop the OLDEST entry to make room, same
-         * "freshest data over a growing backlog" policy this ecosystem
-         * already applies to live data elsewhere (e.g. HYDRA-UMC-VISION-
-         * STREAMER's own FrameBuffer) rather than dropping the newest
-         * (which would silently discard whatever the operator is
-         * actively waiting on right now). */
-        relay_rx_tail = (uint8_t)((relay_rx_tail + 1) % RELAY_RX_QUEUE_DEPTH);
-        relay_rx_count--;
-    }
-    RelayCapturedFrame_t *slot = &relay_rx_queue[relay_rx_head];
-    slot->can_id = can_id;
-    slot->dlc = dlc > 8 ? 8 : dlc;
-    memcpy(slot->data, data, slot->dlc);
-    relay_rx_head = (uint8_t)((relay_rx_head + 1) % RELAY_RX_QUEUE_DEPTH);
-    relay_rx_count++;
-}
-
-static uint8_t RelayRxQueue_Pop(RelayCapturedFrame_t *out)
-{
-    if (relay_rx_count == 0) return 0;
-    *out = relay_rx_queue[relay_rx_tail];
-    relay_rx_tail = (uint8_t)((relay_rx_tail + 1) % RELAY_RX_QUEUE_DEPTH);
-    relay_rx_count--;
-    return 1;
-}
+/* The ring buffer itself (struct, RELAY_RX_QUEUE_DEPTH, Push/Pop, the
+ * drop-oldest-when-full policy) now lives in relay_rx_queue.h - a HAL-free
+ * header so it can be regression-tested on the host with plain gcc. The
+ * `static inline` functions there generate exactly the code this had when
+ * it was written inline here; only the single-instance state moved into a
+ * struct. See tests/test_relay_rx_queue.c. */
+static RelayRxQueue_t relay_rx_queue;
 
 /* -----------------------------------------------------------------------
  * Public API
  * ----------------------------------------------------------------------- */
 void RobotControllerRelay_Init(void)
 {
+    RelayRxQueue_Reset(&relay_rx_queue);
     slot_base = ReadSlotBaseId_App();
     MX_FDCAN1_App_Init();
     MX_FDCAN2_Init();
@@ -380,7 +349,7 @@ void RobotControllerRelay_Poll(void)
         uint8_t data[8];
         uint8_t dlc;
         if (TryGetMessage(&hfdcan2_app, &id, data, &dlc)) {
-            RelayRxQueue_Push((uint16_t)id, data, dlc);
+            RelayRxQueue_Push(&relay_rx_queue, (uint16_t)id, data, dlc);
         }
     }
 
@@ -434,7 +403,7 @@ void RobotControllerRelay_Poll(void)
          * rather than blocking, is the correct real "nothing new yet"
          * signal - it just re-polls again). */
         RelayCapturedFrame_t frame;
-        if (!RelayRxQueue_Pop(&frame)) return; /* nothing queued - real, expected idle state, not an error */
+        if (!RelayRxQueue_Pop(&relay_rx_queue, &frame)) return; /* nothing queued - real, expected idle state, not an error */
 
         uint8_t first_len = frame.dlc <= RELAY_FRAGMENT_DATA_BYTES ? frame.dlc : RELAY_FRAGMENT_DATA_BYTES;
         uint8_t fragment[8];

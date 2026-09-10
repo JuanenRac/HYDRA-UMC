@@ -4,6 +4,21 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased] - Pre-hardware readiness: os/ reconciled, real hmi_qt6 kiosk lockdown, dashboard visibility fixed
 
+- **Host logic tests for the Robot Controller Board's FDCAN2 capture ring**
+  (new `tests/`). The ring buffer that `RobotControllerRelay.c` fills from
+  FDCAN2 and drains for `RELAY_RECV` was inline module state - no way to
+  test its contract without a G474 board. It is now a HAL-free header,
+  `src/mcu_stm32g474/relay_rx_queue.h` (`static inline`, only `<stdint.h>`
+  / `<string.h>` - the generated code is identical, only the single-
+  instance state moved into a struct), which a host test compiles and
+  exercises with plain `gcc`: FIFO order, wrap-around past the fixed
+  depth, the **drop-the-oldest-when-full** policy (never the newest -
+  the property the `RELAY_RECV` drain path depends on), and DLC-over-8
+  clamping. Wired into `build_firmware.sh` as step "1b" (skipped cleanly
+  when no host C compiler is present). Verified compiling and passing
+  under `gcc 14.2 -std=c11 -Wall -Wextra`, and the full
+  `arm-none-eabi-gcc` firmware build re-run to confirm the extraction did
+  not change the G474 target build.
 - **Real bug fixed in `src/cm5_host/spi_bridge/spi_bridge/http_service.py`**
   (`hydra-umc-spi-bridge` 0.1.0 -> 0.1.1): `POST /flash`'s `do_POST()`
   called `int(self.headers.get("Content-Length", "0"))` with no
