@@ -78,9 +78,13 @@ All notable changes to the hardware and core firmware will be documented in this
   `cmake -B build -G "Visual Studio 16 2019" -A x64` +
   `cmake --build build --config Release` against this repo's own
   `CMakeLists.txt` - a real, unmodified `hydra_hmi.exe` came out the
-  other end, no source changes needed. Still only verified on Windows/
-  MSVC, not yet the real CM5/Linux target (`qt6-base-dev` +
-  `qt6-webengine-dev`) - see that folder's own README.md.
+  other end, no source changes needed. **Now also verified on the real
+  CM5/Linux target**: the same unmodified CMake project, built on a real
+  Debian 13 (trixie) aarch64 CM5 against the real `qt6-base-dev`/
+  `qt6-webengine-dev` (6.8.2) Debian packages, produced a real ARM64 ELF
+  `hydra_hmi` binary - see that folder's own README.md for what's still
+  left (a real on-screen run against the CM5's own HDMI output/GPU
+  driver stack).
 
 ## [0.1.4] - Real Robot Controller Board (G474) relay tunnel application
 

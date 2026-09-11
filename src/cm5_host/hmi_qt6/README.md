@@ -2,18 +2,26 @@
 
 **Project:** HYDRA-UMC
 **Status:** ✅ Real kiosk lockdown + splash + retry-until-loaded logic,
-now genuinely **verified by actual compilation**: Qt 6.7.3 (`win64_msvc2019_64`,
-via [aqtinstall](https://github.com/miurahr/aqtinstall) — the same real,
+verified by actual compilation on BOTH real targets now. Windows/MSVC:
+Qt 6.7.3 (`win64_msvc2019_64`, via
+[aqtinstall](https://github.com/miurahr/aqtinstall) — the same real,
 official prebuilt Qt binaries the Qt Online Installer itself downloads,
-just scriptable) with the real `WebEngineWidgets` module, built against
-this repo's own `CMakeLists.txt` with `cmake -B build -G "Visual Studio
-16 2019" -A x64` + `cmake --build build --config Release` — a real,
-unmodified `hydra_hmi.exe` came out the other end, no source changes
-needed to make it compile. Still only verified on this Windows dev
-machine, not yet on the real CM5/Linux target (`qt6-base-dev` +
-`qt6-webengine-dev` on Debian/Raspberry Pi OS) — the C++ itself is
-platform-generic Qt6 API, but the on-device build is real, separate
-future work, not something this Windows verification substitutes for.
+just scriptable) with the real `WebEngineWidgets` module, `cmake -B build
+-G "Visual Studio 16 2019" -A x64` + `cmake --build build --config
+Release` — a real, unmodified `hydra_hmi.exe` came out the other end, no
+source changes needed. **CM5/Linux (the real deployment target):** the
+same unmodified `CMakeLists.txt`/`main.cpp`/`kiosk_view.{h,cpp}`, built
+on a real Debian 13 (trixie) aarch64 CM5 against the real
+`qt6-base-dev`/`qt6-webengine-dev` (6.8.2) + `cmake`/`build-essential`
+Debian packages — `cmake -B build -DCMAKE_BUILD_TYPE=Release` +
+`cmake --build build` produced a real ARM64 ELF `hydra_hmi` binary, no
+source changes needed there either. Launching it (`QT_QPA_PLATFORM=offscreen`,
+no real display attached over SSH) starts and initializes cleanly, then
+reports it can't create a GL/Vulkan context - expected for a headless SSH
+session with no real GPU/DRM access, not a code defect; running it against
+the actual HDMI display with the CM5's own GPU driver stack is still real,
+separate future work, same as picking this shell over the deployed
+Chromium kiosk below.
 
 **The real, deployed HDMI kiosk today is HYDRA-UMC-OS's own
 `provisioning/install_kiosk.sh`** (minimal X11 + Chromium, verified on a
@@ -52,7 +60,8 @@ repo's own README), providing what a browser alone doesn't:
 
 - `CMakeLists.txt` — builds a Qt6 Widgets + WebEngineView app from
   `main.cpp` + `kiosk_view.{h,cpp}`. Verified to actually configure and
-  build a real `hydra_hmi.exe` — see Status above.
+  build a real `hydra_hmi.exe`/`hydra_hmi` on both Windows/MSVC and a
+  real CM5 (Debian 13 aarch64) — see Status above.
 - `src/main.cpp` — entry point: builds the splash screen, constructs
   `KioskView`, wires the splash to close only once the dashboard has
   genuinely finished loading.
@@ -64,9 +73,12 @@ repo's own README), providing what a browser alone doesn't:
 
 ## What's still needed
 
-- **On-device (CM5/Linux) compilation** — verified on Windows/MSVC now
-  (see Status above), not yet against `qt6-base-dev`/`qt6-webengine-dev`
-  on the real target.
+- **A real on-screen run against the CM5's own HDMI output and GPU
+  driver stack** — the on-device compile itself is now verified (see
+  Status above); what's left is launching the built `hydra_hmi` with a
+  real display attached (not `QT_QPA_PLATFORM=offscreen` over SSH) and
+  confirming the kiosk lockdown/splash/retry behavior on real hardware,
+  the same way `install_kiosk.sh`'s own Chromium kiosk already has.
 - Wiring to whatever `os/` decides for how services start/supervise each
   other on boot (see `../../../os/README.md` — that decision is no
   longer open at the ecosystem level, HYDRA-UMC-OS already builds on

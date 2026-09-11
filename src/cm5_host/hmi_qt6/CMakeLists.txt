@@ -4,12 +4,17 @@
 # AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
 # LICENSE: GPL-3.0 - see repo root LICENSE
 #
-# Verified: `cmake -B build -G "Visual Studio 16 2019" -A x64
-# -DCMAKE_PREFIX_PATH=<qt6-install>/6.7.3/msvc2019_64` then
-# `cmake --build build --config Release` produces a real hydra_hmi.exe,
-# unmodified, against real Qt 6.7.3 (win64_msvc2019_64). Still not yet
-# verified against a Linux/CM5 toolchain (qt6-base-dev +
-# qt6-webengine-dev) - real, separate future work.
+# Verified on 2 real targets, this file unmodified on both:
+#   - Windows/MSVC: `cmake -B build -G "Visual Studio 16 2019" -A x64
+#     -DCMAKE_PREFIX_PATH=<qt6-install>/6.7.3/msvc2019_64` then
+#     `cmake --build build --config Release` -> a real hydra_hmi.exe
+#     against real Qt 6.7.3 (win64_msvc2019_64).
+#   - CM5/Linux (the real deployment target): a real Debian 13 (trixie)
+#     aarch64 CM5, `qt6-base-dev`/`qt6-webengine-dev` 6.8.2 from the
+#     Debian repos, `cmake -B build -DCMAKE_BUILD_TYPE=Release` +
+#     `cmake --build build` -> a real ARM64 ELF `hydra_hmi` binary.
+# Still open: a real on-screen run against the CM5's own HDMI output and
+# GPU driver stack (see the project README's own "What's still needed").
 # =============================================================================
 cmake_minimum_required(VERSION 3.16)
 project(hydra_hmi LANGUAGES CXX)
