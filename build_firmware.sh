@@ -141,6 +141,29 @@ else
         fail "relay_rx_queue host logic tests FAILED"
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
+
+    # A.11: DlcToFdcanDataLength exists as a real per-target copy in BOTH
+    # src/mcu_stm32g474/ and src/mcu_stm32h745/CM4/ (see that header's own
+    # comment on why a genuinely shared file isn't possible here) - the
+    # exact same test source is compiled and run TWICE, once per target's
+    # own include path, so a real behavioral drift between the two copies
+    # is a real test failure, not just unnoticed.
+    for DLC_TARGET_DIR in "$ROOT/src/mcu_stm32g474" "$ROOT/src/mcu_stm32h745/CM4"; do
+        DLC_HOST_BIN="$ROOT/build/host_tests_dlc"
+        if "$HOST_CC" -std=c11 -Wall -Wextra -I"$DLC_TARGET_DIR" \
+            -o "$DLC_HOST_BIN" "$ROOT/tests/test_dlc_to_fdcan_data_length.c"; then
+            pass "dlc_to_fdcan_data_length host test suite compiled for $DLC_TARGET_DIR"
+        else
+            fail "dlc_to_fdcan_data_length host test suite failed to compile for $DLC_TARGET_DIR"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+        if "$DLC_HOST_BIN"; then
+            pass "dlc_to_fdcan_data_length host logic tests passed for $DLC_TARGET_DIR"
+        else
+            fail "dlc_to_fdcan_data_length host logic tests FAILED for $DLC_TARGET_DIR"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+    done
 fi
 
 mkdir -p "$FIRMWARE_OUT"

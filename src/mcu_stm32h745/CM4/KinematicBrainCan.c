@@ -15,6 +15,7 @@
  * =============================================================================
  */
 #include "KinematicBrainCan.h"
+#include "dlc_to_fdcan_data_length.h"
 #include "stm32h7xx_hal.h"
 #include "bootloader_common.h" /* shared CAN_ID_STACKA_BASE/STACKA_SLOT_WINDOW/OFS_* - see that header's own comment on why this application reuses it, not a copy */
 #include <string.h>
@@ -102,16 +103,11 @@ void KinematicBrainCan_Init(void)
 /* DLC 0-8 map directly onto FDCAN_DLC_BYTES_0..8 for Classic CAN (no
  * FDCAN_DLC_BYTES_12/16/... escape codes apply below DLC 8) - a real,
  * closed lookup, not a formula, since the raw enum values aren't a simple
- * DLC*shift relationship in the real HAL headers. */
-static uint32_t DlcToFdcanDataLength(uint8_t dlc)
-{
-    static const uint32_t table[9] = {
-        FDCAN_DLC_BYTES_0, FDCAN_DLC_BYTES_1, FDCAN_DLC_BYTES_2, FDCAN_DLC_BYTES_3,
-        FDCAN_DLC_BYTES_4, FDCAN_DLC_BYTES_5, FDCAN_DLC_BYTES_6, FDCAN_DLC_BYTES_7,
-        FDCAN_DLC_BYTES_8,
-    };
-    return table[dlc > 8 ? 8 : dlc];
-}
+ * DLC*shift relationship in the real HAL headers. DlcToFdcanDataLength()
+ * itself now lives in dlc_to_fdcan_data_length.h (A.11) - see that
+ * header's own comment for why RobotControllerRelay.c (src/
+ * mcu_stm32g474/) carries a byte-identical copy rather than sharing this
+ * one directly. */
 
 static uint8_t SendClassicFrame(uint32_t can_id, const uint8_t *data, uint8_t dlc)
 {

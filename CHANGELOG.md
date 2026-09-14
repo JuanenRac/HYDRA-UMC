@@ -86,6 +86,28 @@ All notable changes to the hardware and core firmware will be documented in this
   left (a real on-screen run against the CM5's own HDMI output/GPU
   driver stack).
 
+## [0.1.5] - A.11: DlcToFdcanDataLength extracted to a HAL-free header + host tests
+
+- **`DlcToFdcanDataLength()`** was a private `static` function duplicated
+  identically inside both `RobotControllerRelay.c` (Robot Controller
+  Board, G474) and `KinematicBrainCan.c` (Kinematic Brain CM4, H745) -
+  the same real DLC-to-byte-length table, un-testable without a board
+  and silently able to drift between the two copies. Pulled out into a
+  HAL-free `dlc_to_fdcan_data_length.h` (`static inline`, only
+  `<stdint.h>` - same real pattern `relay_rx_queue.h` already
+  established, see the entry above), one real per-target copy in each
+  MCU's own directory (this project builds each target from its own
+  isolated include path - a genuinely shared file across G474/H745
+  isn't possible here). The exact same host test source
+  (`tests/test_dlc_to_fdcan_data_length.c`) is compiled and run TWICE
+  by `build_firmware.sh`'s own step "1b" - once per target's own copy -
+  so a real behavioral drift between the two would be a real test
+  failure, not just unnoticed. Confirmed with an injected regression
+  (a wrong table value) failing correctly, reverted before committing.
+  Full `arm-none-eabi-gcc` firmware build re-run for all 6 components -
+  bootloaders and applications for both boards - to confirm the
+  extraction changed no target binary's own real behavior.
+
 ## [0.1.4] - Real Robot Controller Board (G474) relay tunnel application
 
 - **Added `src/mcu_stm32g474/RobotControllerRelay.{h,c}`** (new) - the
