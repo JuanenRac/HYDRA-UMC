@@ -33,6 +33,7 @@
 #include "bootloader_crypto.h"
 #include "bootloader_flash.h"
 #include "bootloader_protocol.h"
+#include "boot_decision.h"
 
 FDCAN_HandleTypeDef hfdcan1;
 IWDG_HandleTypeDef  hiwdg;
@@ -224,6 +225,8 @@ int main(void) {
                     HandleErrorCounterQuery();
                 } else if (ofs == OFS_BACKUP_READ_REQUEST) {
                     HandleReadbackStart();
+                } else if (ofs == OFS_CONFIRM_HEALTHY) {
+                    HandleConfirmHealthy();
                 }
             }
         }
@@ -233,8 +236,34 @@ int main(void) {
         }
     }
 
+    // PROM-CORE-E04: a cryptographically valid app is not necessarily a
+    // WORKING one - see boot_decision.h's own header comment for the full
+    // design. FirmwareMetadata_t's own boot_attempts is read fresh here
+    // (never trusted from the app_valid check above, which only reads the
+    // magic/state), incremented and persisted to flash BEFORE jumping (so
+    // a crash-and-reset immediately after jump is captured even though
+    // this bootloader itself never regains control otherwise), and only
+    // jumped to while under BOOT_MAX_ATTEMPTS.
+    uint8_t should_jump = 0;
     if (!enter_update_mode && app_valid) {
+        FirmwareMetadata_t boot_meta;
+        uint8_t have_meta = Metadata_Read(&boot_meta) && boot_meta.magic == METADATA_MAGIC_VALID;
+        uint32_t boot_attempts = have_meta ? boot_meta.boot_attempts : 0;
+        should_jump = BootDecision_ShouldJump(app_valid, boot_attempts);
+        if (should_jump && have_meta) {
+            boot_meta.boot_attempts = boot_attempts + 1;
+            Metadata_EraseAndWrite(&boot_meta); // best-effort: a write failure here still jumps (never worse than before this fix), just without the updated count persisted
+        }
+    }
+
+    if (should_jump) {
         JumpToApplication();
+    } else if (!enter_update_mode && app_valid) {
+        // Refused only because of the real boot-attempt count above (a
+        // structurally invalid app, or an explicit update request, was
+        // already handled elsewhere) - stays recoverable over CAN instead
+        // of silently crash-looping into the same suspect app forever.
+        CAN_SendHeartbeat(STATUS_ROLLBACK_SUSPECT, 0xFF);
     }
 
     CAN_SendStatus(STATUS_LISTENING);
@@ -265,6 +294,8 @@ int main(void) {
                     HandleAuthorizeDowngrade(rxData);
                 } else if (ofs == OFS_BACKUP_READ_REQUEST) {
                     HandleReadbackStart();
+                } else if (ofs == OFS_CONFIRM_HEALTHY) {
+                    HandleConfirmHealthy();
                 }
             }
         }

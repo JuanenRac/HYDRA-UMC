@@ -25,6 +25,7 @@
 #include "bootloader_flash.h"
 #include "bootloader_protocol.h"
 #include "ipc_mailbox.h"
+#include "boot_decision.h"
 
 SPI_HandleTypeDef   hspi1;
 FDCAN_HandleTypeDef hfdcan1;
@@ -204,6 +205,8 @@ static uint8_t DispatchFrame(SpiOtaFrame_t *in, uint8_t tx_wire[SPI_FRAME_SIZE])
             HandleAuthorizeDowngrade(in->payload);
         } else if (in->frame_type == OFS_BACKUP_READ_REQUEST) {
             HandleReadbackStart();
+        } else if (in->frame_type == OFS_CONFIRM_HEALTHY) {
+            HandleConfirmHealthy();
         }
     }
     return 0;
@@ -273,8 +276,24 @@ int main(void) {
         if (Protocol_TakePendingResponse(&pending)) FrameToWire(&pending, tx_wire);
     }
 
+    // PROM-CORE-E04: see mcu_stm32g474/boot/bootloader_main.c's own
+    // comment for the full design.
+    uint8_t should_jump = 0;
     if (!enter_update_mode && app_valid) {
+        FirmwareMetadata_t boot_meta;
+        uint8_t have_meta = Metadata_Read(&boot_meta) && boot_meta.magic == METADATA_MAGIC_VALID;
+        uint32_t boot_attempts = have_meta ? boot_meta.boot_attempts : 0;
+        should_jump = BootDecision_ShouldJump(app_valid, boot_attempts);
+        if (should_jump && have_meta) {
+            boot_meta.boot_attempts = boot_attempts + 1;
+            Metadata_EraseAndWrite(&boot_meta);
+        }
+    }
+
+    if (should_jump) {
         JumpToApplication();
+    } else if (!enter_update_mode && app_valid) {
+        CAN_SendHeartbeat(STATUS_ROLLBACK_SUSPECT, 0xFF);
     }
 
     CAN_SendStatus(STATUS_LISTENING);

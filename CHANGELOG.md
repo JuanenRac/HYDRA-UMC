@@ -4,6 +4,51 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased] - Pre-hardware readiness: os/ reconciled, real hmi_qt6 kiosk lockdown, dashboard visibility fixed
 
+- **PROM-CORE-E04: all 3 real bootloaders (Robot Controller Board / G474,
+  Kinematic Brain CM4, Kinematic Brain CM7 - BOOTLOADER_VERSION bumped to
+  0.1.5/0.1.4/0.1.4) gained a real boot-attempt counter and refuse-to-jump
+  safeguard.** The real update mechanism (backup-slot verify -> CRC32 +
+  HMAC -> copy to main slot) already refused to ever install an unverified
+  image, and the anti-rollback check already refused a silent downgrade -
+  neither caught a DIFFERENT real failure: a cryptographically valid,
+  correctly-flashed application that is simply BROKEN at runtime.
+  `ApplicationIsValid()` only ever checked the metadata's own state/magic,
+  never whether the code it points at actually runs correctly once jumped
+  to. New `boot_decision.h` (a real per-target copy, byte-identical across
+  all 3, like `dlc_to_fdcan_data_length.h`): `FirmwareMetadata_t` gains a
+  `boot_attempts` field, incremented and persisted to flash right before
+  every real jump; a new CAN/SPI command (`OFS_CONFIRM_HEALTHY`, offset
+  0x15) resets it back to 0 - sent by an external master (never the
+  application itself, which would need every application firmware in this
+  ecosystem to link in this bootloader's own flash-write code, real,
+  separate, NOT-yet-designed future work this change stays out of scope
+  of). After `BOOT_MAX_ATTEMPTS` (3) consecutive un-confirmed boots, the
+  bootloader refuses to jump again and stays in listening mode instead
+  (`STATUS_ROLLBACK_SUSPECT`) - fails CLOSED and stays recoverable over
+  the bus, never a silent automatic restore of a prior image (this
+  codebase does not keep a real "golden slot" anywhere yet - that is
+  separate, larger future work, not conflated with this fix). This is a
+  genuinely new design for this ecosystem - no existing project here
+  already has a boot-counter/confirm pattern to port from (checked against
+  both this project's own prior bootloader and sibling repo URTC's - URTC
+  does not have this yet either, real, separate future work if full
+  ecosystem parity is wanted later).
+
+  Verification, stated precisely: the real `arm-none-eabi-gcc` toolchain
+  this project already depends on confirmed clean compilation (`-Wall
+  -Wextra`, 0 warnings) of every modified source against all three real
+  target include paths, AND a full real link into a working bootloader
+  `.elf` for all three. The new host-only pure-logic test
+  (`tests/test_boot_decision.c`, wired into `build_firmware.sh`'s own
+  host-tests step, run 3x - one per target, same pattern as
+  `test_dlc_to_fdcan_data_length.c`) was syntax-checked clean against all
+  three targets but NOT actually executed this session - no native host C
+  compiler was available in this environment; it must run for real
+  (compile AND execute) the next time `build_firmware.sh` itself runs on
+  a real Linux host. Real hardware validation (an actual crash-loop-then-
+  recover cycle on a physical board) remains separate, larger, entirely
+  unaddressed future work (PROM-CORE-E05's own physical-bench scope).
+
 - **Host logic tests for the Robot Controller Board's FDCAN2 capture ring**
   (new `tests/`). The ring buffer that `RobotControllerRelay.c` fills from
   FDCAN2 and drains for `RELAY_RECV` was inline module state - no way to

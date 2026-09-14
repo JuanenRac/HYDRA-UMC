@@ -263,6 +263,20 @@ void HandleAuthorizeDowngrade(uint8_t *data) {
     }
 }
 
+// PROM-CORE-E04: see mcu_stm32g474/boot/bootloader_protocol.c's own
+// comment for the full design.
+void HandleConfirmHealthy(void) {
+    FirmwareMetadata_t meta;
+    if (!Metadata_Read(&meta) || meta.magic != METADATA_MAGIC_VALID) {
+        return;
+    }
+    if (meta.boot_attempts == 0) {
+        return;
+    }
+    meta.boot_attempts = 0;
+    Metadata_EraseAndWrite(&meta);
+}
+
 // Backup readback: simplified relative to every other tier's own version
 // (no separate page-ack pacing loop) - the pending-response single-slot
 // buffer already provides natural backpressure, since this core can't

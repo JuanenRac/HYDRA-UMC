@@ -64,7 +64,7 @@ extern IWDG_HandleTypeDef hiwdg;
 
 #define BOOTLOADER_VERSION_MAJOR 0
 #define BOOTLOADER_VERSION_MINOR 1
-#define BOOTLOADER_VERSION_PATCH 3
+#define BOOTLOADER_VERSION_PATCH 4
 
 extern const uint8_t HMAC_KEY[32];
 
@@ -91,6 +91,11 @@ extern const uint8_t HMAC_KEY[32];
 #define OFS_BACKUP_READ_REQUEST                       0x0E
 #define OFS_BACKUP_READ_RESPONSE                        0x0F
 #define OFS_BACKUP_READ_PAGE_ACK                          0x14
+// PROM-CORE-E04: see mcu_stm32g474/boot/bootloader_common.h's own comment
+// for the full design - sent BY an external CAN/SPI master (relayed
+// through CM4's own gateway), never by the application itself. Resets
+// FirmwareMetadata_t's own boot_attempts back to 0.
+#define OFS_CONFIRM_HEALTHY                                 0x15
 
 #define STATUS_LISTENING     0x01
 #define STATUS_ERASING       0x02
@@ -105,6 +110,10 @@ extern const uint8_t HMAC_KEY[32];
 #define VERIFY_FAIL_REASON_HARDWARE_ID 0x04
 #define VERIFY_FAIL_REASON_ROLLBACK    0x05
 #define STATUS_ERROR          0xFF
+// PROM-CORE-E04: reported once this bootloader has refused to jump to an
+// app that reset back here BOOT_MAX_ATTEMPTS times in a row without ever
+// being confirmed healthy - see boot_decision.h.
+#define STATUS_ROLLBACK_SUSPECT 0x08
 
 #define META_STATE_APP_VALID     1
 #define META_STATE_COPY_PENDING  2
@@ -118,6 +127,10 @@ typedef struct {
     uint32_t size;
     uint32_t crc32;
     uint8_t  hmac[32];
+    // PROM-CORE-E04: appended at the end - see mcu_stm32g474/boot/
+    // bootloader_common.h's own field-level comment for why this is
+    // always a real, explicit 0 on a fresh install.
+    uint32_t boot_attempts;
 } FirmwareMetadata_t;
 
 // Sent by this bootloader as a mailbox response (not a CAN/SPI frame

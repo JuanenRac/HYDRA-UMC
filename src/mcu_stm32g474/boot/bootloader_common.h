@@ -70,7 +70,7 @@ extern IWDG_HandleTypeDef  hiwdg;
 // by build_firmware.sh (HYDRA_RCB_BOOTLOADER_v0.0.0.bin).
 #define BOOTLOADER_VERSION_MAJOR 0
 #define BOOTLOADER_VERSION_MINOR 1
-#define BOOTLOADER_VERSION_PATCH 4
+#define BOOTLOADER_VERSION_PATCH 5
 
 // -----------------------------------------------------------------------
 // HMAC-SHA256 signing key - PLACEHOLDER, same caveat as URTC's own key
@@ -145,6 +145,11 @@ uint32_t ReadSlotBaseId(void);
 // here collapsed into 2 offsets by mistake. Master->bootloader, DLC=4,
 // big-endian page index - same convention as +0x03, opposite direction.
 #define OFS_BACKUP_READ_PAGE_ACK          0x14
+// PROM-CORE-E04: sent BY an external CAN master (never the application
+// itself - see boot_decision.h's own header comment for why) once it has
+// observed the current application behaving normally for a while. Any
+// DLC. Resets FirmwareMetadata_t's own boot_attempts back to 0.
+#define OFS_CONFIRM_HEALTHY                0x15
 
 // Status/verify-fail codes - identical values to URTC's own, so a shared
 // host-side decoder (HYDRA-UMC-STUDIO's canOta.ts) can use one status enum
@@ -162,11 +167,20 @@ uint32_t ReadSlotBaseId(void);
 #define VERIFY_FAIL_REASON_HARDWARE_ID 0x04
 #define VERIFY_FAIL_REASON_ROLLBACK    0x05
 #define STATUS_ERROR          0xFF
+// PROM-CORE-E04: reported (via CAN_SendHeartbeat) once this bootloader has
+// refused to jump to an app that reset back here BOOT_MAX_ATTEMPTS times in
+// a row without ever being confirmed healthy - see boot_decision.h.
+#define STATUS_ROLLBACK_SUSPECT 0x08
 
 // -----------------------------------------------------------------------
-// Firmware metadata (single 2K page, one struct) - byte-identical layout to
-// URTC's own, deliberately, so tooling that already parses one can parse
-// the other with zero changes.
+// Firmware metadata (single 2K page, one struct). Layout WAS byte-identical
+// to URTC's own (deliberately, so tooling that already parses one can parse
+// the other with zero changes) - PROM-CORE-E04's new `boot_attempts` field
+// below is appended at the END, so URTC's own metadata (which does not have
+// it yet) still parses the fields it knows about correctly; only this
+// project's own tooling reading the new field needs updating. URTC gaining
+// the SAME field later (real, separate future work - not done in this
+// change) would restore full byte-identical parity.
 // -----------------------------------------------------------------------
 #define META_STATE_APP_VALID     1
 #define META_STATE_COPY_PENDING  2
@@ -180,6 +194,14 @@ typedef struct {
     uint32_t size;
     uint32_t crc32;
     uint8_t  hmac[32];
+    // PROM-CORE-E04: appended at the end. Every real writer already
+    // zero-initializes the whole struct first (`FirmwareMetadata_t pending
+    // = {0};` in HandleEndUpdate) before setting the fields it cares about,
+    // so this is always a real, explicit 0 on a fresh install - never an
+    // uninitialized/garbage read. A metadata page with no valid magic at
+    // all (a genuinely blank chip) never reaches this field either:
+    // ApplicationIsValid()'s own magic check already fails first.
+    uint32_t boot_attempts;
 } FirmwareMetadata_t;
 
 void CAN_SendHeartbeat(uint8_t status, uint8_t progress_percent);

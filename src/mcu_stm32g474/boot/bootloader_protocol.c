@@ -304,6 +304,24 @@ void HandleAuthorizeDowngrade(uint8_t *data) {
     }
 }
 
+// PROM-CORE-E04: resets FirmwareMetadata_t's own boot_attempts back to 0 -
+// see boot_decision.h's own header comment for the full design and why
+// this is sent BY an external CAN master, never by the application itself.
+// A no-op (never an error) when there is no valid metadata to update yet -
+// same honest "nothing to do" precedent HandleReadbackStart's own guards
+// already use, not a real failure worth reporting over CAN.
+void HandleConfirmHealthy(void) {
+    FirmwareMetadata_t meta;
+    if (!Metadata_Read(&meta) || meta.magic != METADATA_MAGIC_VALID) {
+        return;
+    }
+    if (meta.boot_attempts == 0) {
+        return; // already 0 - skip the real erase/write cycle
+    }
+    meta.boot_attempts = 0;
+    Metadata_EraseAndWrite(&meta);
+}
+
 static uint8_t WaitForReadbackPageAck(uint32_t page_index) {
     uint32_t wait_start = HAL_GetTick();
     while ((HAL_GetTick() - wait_start) < 3000) {
