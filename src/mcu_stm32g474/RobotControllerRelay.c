@@ -21,6 +21,7 @@
  */
 #include "RobotControllerRelay.h"
 #include "relay_rx_queue.h"
+#include "dlc_to_fdcan_data_length.h"
 #include "stm32g4xx_hal.h"
 #include "boot/bootloader_common.h" /* shared CAN_ID_STACKA_BASE/STACKA_SLOT_WINDOW/OFS_* */
 #include <string.h>
@@ -252,20 +253,12 @@ static uint8_t ReadAxisStatusFrame(uint8_t out[8])
 
 /* -----------------------------------------------------------------------
  * Real Classic CAN send/receive helpers - identical shape to
- * KinematicBrainCan.c's own (same DLC<->FDCAN_DLC_BYTES_n table, same
- * padded-8-byte AddMessageToTxFifoQ call), parameterized over WHICH
- * FDCAN peripheral so the same helpers serve both FDCAN1 (uplink) and
- * FDCAN2 (downlink) without duplicating this logic a second time.
+ * KinematicBrainCan.c's own (same DlcToFdcanDataLength() table - see
+ * dlc_to_fdcan_data_length.h, A.11 - same padded-8-byte
+ * AddMessageToTxFifoQ call), parameterized over WHICH FDCAN peripheral
+ * so the same helpers serve both FDCAN1 (uplink) and FDCAN2 (downlink)
+ * without duplicating this logic a second time.
  * ----------------------------------------------------------------------- */
-static uint32_t DlcToFdcanDataLength(uint8_t dlc)
-{
-    static const uint32_t table[9] = {
-        FDCAN_DLC_BYTES_0, FDCAN_DLC_BYTES_1, FDCAN_DLC_BYTES_2, FDCAN_DLC_BYTES_3,
-        FDCAN_DLC_BYTES_4, FDCAN_DLC_BYTES_5, FDCAN_DLC_BYTES_6, FDCAN_DLC_BYTES_7,
-        FDCAN_DLC_BYTES_8,
-    };
-    return table[dlc > 8 ? 8 : dlc];
-}
 
 static uint8_t SendClassicFrame(FDCAN_HandleTypeDef *hfdcan, uint32_t can_id, const uint8_t *data, uint8_t dlc)
 {
