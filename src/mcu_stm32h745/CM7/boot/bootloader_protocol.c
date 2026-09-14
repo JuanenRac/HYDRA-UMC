@@ -268,6 +268,20 @@ void HandleAuthorizeDowngrade(uint8_t *data) {
     }
 }
 
+// PROM-CORE-E04: see mcu_stm32g474/boot/bootloader_protocol.c's own
+// comment for the full design.
+void HandleConfirmHealthy(void) {
+    FirmwareMetadata_t meta;
+    if (!Metadata_Read(&meta) || meta.magic != METADATA_MAGIC_VALID) {
+        return;
+    }
+    if (meta.boot_attempts == 0) {
+        return;
+    }
+    meta.boot_attempts = 0;
+    Metadata_EraseAndWrite(&meta);
+}
+
 // Backup readback over the mailbox: CM4 relays a BACKUP_READ_REQUEST
 // command in, this core streams the main slot back as a sequence of
 // IPC_SendResponse(OFS_BACKUP_READ_RESPONSE, ...) frames, pausing after

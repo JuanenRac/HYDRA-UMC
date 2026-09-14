@@ -164,6 +164,29 @@ else
             echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
         fi
     done
+
+    # PROM-CORE-E04: boot_decision.h exists as a real per-target copy in
+    # all THREE real bootloaders (src/mcu_stm32g474/boot/,
+    # src/mcu_stm32h745/CM4/boot/, src/mcu_stm32h745/CM7/boot/) - the exact
+    # same test source is compiled and run three times, once per target's
+    # own include path, so a real behavioral drift between the three
+    # copies is a real test failure, not just unnoticed.
+    for BOOT_DECISION_TARGET_DIR in "$ROOT/src/mcu_stm32g474/boot" "$ROOT/src/mcu_stm32h745/CM4/boot" "$ROOT/src/mcu_stm32h745/CM7/boot"; do
+        BOOT_DECISION_HOST_BIN="$ROOT/build/host_tests_boot_decision"
+        if "$HOST_CC" -std=c11 -Wall -Wextra -I"$BOOT_DECISION_TARGET_DIR" \
+            -o "$BOOT_DECISION_HOST_BIN" "$ROOT/tests/test_boot_decision.c"; then
+            pass "boot_decision host test suite compiled for $BOOT_DECISION_TARGET_DIR"
+        else
+            fail "boot_decision host test suite failed to compile for $BOOT_DECISION_TARGET_DIR"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+        if "$BOOT_DECISION_HOST_BIN"; then
+            pass "boot_decision host logic tests passed for $BOOT_DECISION_TARGET_DIR"
+        else
+            fail "boot_decision host logic tests FAILED for $BOOT_DECISION_TARGET_DIR"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+    done
 fi
 
 mkdir -p "$FIRMWARE_OUT"
