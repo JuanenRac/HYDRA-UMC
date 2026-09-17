@@ -82,6 +82,32 @@ class HttpServiceTests(unittest.TestCase):
             sock.close()
         self.assertIn(b"400", response.split(b"\r\n", 1)[0])
 
+    def test_post_flash_with_an_oversized_content_length_is_rejected(self):
+        # Real regression: do_POST() used to call
+        # self.rfile.read(content_length) straight off the unvalidated
+        # Content-Length header - a client claiming a multi-gigabyte body
+        # would make this handler thread block reading (and buffering)
+        # that many bytes, a real DoS/OOM risk. A raw socket declares an
+        # oversized header without actually sending gigabytes on the wire;
+        # the handler must reject it from the header alone, before ever
+        # calling rfile.read().
+        from spi_bridge.http_service import MAX_FIRMWARE_BODY_BYTES
+
+        sock = socket.create_connection(("127.0.0.1", self.server.server_port), timeout=5)
+        try:
+            sock.sendall(
+                b"POST /flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1 HTTP/1.1\r\n"
+                b"Host: 127.0.0.1\r\n"
+                b"Content-Length: " + str(MAX_FIRMWARE_BODY_BYTES + 1).encode("ascii") + b"\r\n"
+                b"Connection: close\r\n"
+                b"\r\n"
+            )
+            sock.settimeout(5)
+            response = sock.recv(65536)
+        finally:
+            sock.close()
+        self.assertIn(b"413", response.split(b"\r\n", 1)[0])
+
     def test_unknown_route_is_a_real_404(self):
         try:
             urlopen(f"{self.base_url}/unknown")

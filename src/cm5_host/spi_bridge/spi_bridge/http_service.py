@@ -41,6 +41,14 @@ from .bootloader_client import SpiOtaFlasher, query_version
 from .relay_tunnel import RelayedTransport
 from .transport import SpiOtaTransport
 
+# The largest real firmware image on this bus is the STM32H745's own 2 MB
+# flash (the STM32G474 Robot Controller Board tops out at 512 KB) - 4 MiB
+# is generous headroom above that while still refusing an oversized/bogus
+# Content-Length before it is ever handed to rfile.read(), which otherwise
+# blocks reading exactly that many bytes regardless of how large the value
+# claimed is (real DoS/OOM risk from a malicious or malformed client).
+MAX_FIRMWARE_BODY_BYTES = 4 * 1024 * 1024
+
 
 def make_handler(transport: SpiOtaTransport, hmac_key: bytes) -> type[BaseHTTPRequestHandler]:
     """Builds a request handler bound to one already-open transport - kept
@@ -93,6 +101,12 @@ def make_handler(transport: SpiOtaTransport, hmac_key: bytes) -> type[BaseHTTPRe
                 content_length = int(self.headers.get("Content-Length", "0"))
             except ValueError:
                 self._send_json(400, {"error": "Content-Length must be an integer"})
+                return
+            if content_length < 0 or content_length > MAX_FIRMWARE_BODY_BYTES:
+                self._send_json(
+                    413,
+                    {"error": f"Content-Length exceeds the {MAX_FIRMWARE_BODY_BYTES} byte firmware body limit"},
+                )
                 return
             firmware = self.rfile.read(content_length)
 

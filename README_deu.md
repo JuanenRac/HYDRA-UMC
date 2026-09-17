@@ -194,7 +194,7 @@ Die Platine arbeitet mit einer einzigen industriellen **24V-DC**-Eingangsversorg
 
 Die Kommunikation zwischen dem CM5 (Host) und dem STM32H745 (Co-Prozessor) nutzt eine hardwaregestützte Zero-Copy-SPI-Verbindung:
 
-* 🔗 **Physischer Transport:** Vollduplex-SPI1 mit bis zu 50 MHz im Slave-Modus auf dem STM32 und Master-Modus auf dem CM5.
+* 🔗 **Physischer Transport:** Vollduplex-SPI1, ausgelegt für bis zu 50 MHz im Slave-Modus auf dem STM32 und Master-Modus auf dem CM5 - der reale CM5-seitige Treiber (`src/cm5_host/ipc_driver/src/ipc_driver.c`) verwendet heute konservativ 10 MHz, da die dazu passende SPI1-Slave-Konfiguration des STM32H745 noch nicht an echter Hardware verifiziert wurde.
 * 🤝 **Handshake-Leitung:** `HYDRA_DATA_READY`-GPIO-Leitung.
 * ⚡ **Ausführungsablauf:** Der Cortex-M4 bereitet einen 128-Byte-Telemetrierahmen im gemeinsamen AXI-SRAM vor, aktiviert `HYDRA_DATA_READY`, und der CM5 holt das Paket über High-Speed-SPI-DMA ohne Polling-Overhead ab.
 

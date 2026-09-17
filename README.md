@@ -194,7 +194,7 @@ The board operates from a single industrial **24V DC** input supply bus:
 
 Communication between CM5 (Host) and STM32H745 (Co-Processor) utilizes a hardware-assisted, zero-copy SPI link:
 
-* 🔗 **Physical Transport:** Full-Duplex SPI1 running up to 50 MHz in Slave Mode on STM32 and Master Mode on CM5.
+* 🔗 **Physical Transport:** Full-Duplex SPI1, designed for up to 50 MHz in Slave Mode on STM32 and Master Mode on CM5 - the real CM5-side driver (`src/cm5_host/ipc_driver/src/ipc_driver.c`) defaults to a conservative 10 MHz today, since the STM32H745 SPI1 slave-side mode/bit-order config it needs to match hasn't been verified against real hardware yet.
 * 🤝 **Handshake Line:** `HYDRA_DATA_READY` GPIO line.
 * ⚡ **Execution Flow:** The Cortex-M4 prepares a 128-byte telemetry frame in shared AXI SRAM, asserts `HYDRA_DATA_READY`, and the CM5 fetches the packet via high-speed SPI DMA without polling overhead.
 
