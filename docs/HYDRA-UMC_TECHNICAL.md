@@ -151,7 +151,7 @@ The HYDRA baseboard acts as a dual-master controller for 8 individual slave robo
 * **Nominal Bitrate (Arbitration):** 1 Mbps
 * **Data Bitrate (Payload):** 5 Mbps to 8 Mbps (64-byte payload frames)
 * **Bus Isolation:** Dedicated Ground return and power rails per stack connector.
-* **Bus Health Monitoring:** Auto-bus-off recovery mechanisms managed directly by the Cortex-M4 core.
+* **Bus Health Monitoring:** Auto-bus-off recovery is planned to be managed directly by the Cortex-M4 core - not yet implemented (still real future work, see `src/mcu_stm32h745/CM4/STM32H745ZI_CM4_main.c`).
 
 ---
 

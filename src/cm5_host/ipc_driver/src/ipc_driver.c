@@ -18,6 +18,12 @@
  *   - Verify SPI mode/bit order against the real STM32H745 SPI1 slave config
  *     once that firmware exists (assumed Mode 0, MSB-first below - not
  *     confirmed against real hardware)
+ * DONE: hydra_ipc_open()/hydra_ipc_read_frame() now really request
+ * HYDRA_DATA_READY via libgpiod v2's edge-event API and block on a real
+ * rising edge before the SPI transfer, instead of polling the bus
+ * unconditionally - still unverified against real hardware (no STM32H745
+ * firmware exists yet to assert the line), but the handshake itself is
+ * real code now, not a stub.
  * =============================================================================
  */
 
@@ -32,6 +38,7 @@
 #include <linux/spi/spidev.h>
 #include <gpiod.h>
 #include <poll.h>
+#include <time.h>
 
 struct hydra_ipc_handle {
   int spi_fd;
@@ -75,13 +82,45 @@ hydra_ipc_handle_t *hydra_ipc_open(const hydra_ipc_config_t *cfg)
     return NULL;
   }
 
-  /* TODO: request the HYDRA_DATA_READY line as an input with edge-rising
-   * detection via libgpiod v2's request API - left unimplemented pending
-   * confirmation of which libgpiod version this project's own target OS
-   * image ships (see ../../../os/README.md). h->data_ready_req stays NULL
-   * for now; hydra_ipc_read_frame() below falls back to a plain SPI poll
-   * without waiting on the interrupt line. */
-  (void)cfg->data_ready_line;
+  /* Requests HYDRA_DATA_READY as an input with rising-edge detection via
+   * libgpiod v2's request API (this project's own target OS image ships
+   * libgpiod v2 - see ../../../os/README.md). hydra_ipc_read_frame() below
+   * waits on this same request for a real edge event instead of polling
+   * the SPI bus unconditionally. */
+  struct gpiod_line_settings *settings = gpiod_line_settings_new();
+  if (!settings) {
+    gpiod_chip_close(h->chip);
+    close(h->spi_fd);
+    free(h);
+    return NULL;
+  }
+  gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_INPUT);
+  gpiod_line_settings_set_edge_detection(settings, GPIOD_LINE_EDGE_RISING);
+
+  struct gpiod_line_config *line_cfg = gpiod_line_config_new();
+  struct gpiod_request_config *req_cfg = gpiod_request_config_new();
+  if (!line_cfg || !req_cfg ||
+      gpiod_line_config_add_line_settings(line_cfg, &cfg->data_ready_line, 1, settings) < 0) {
+    if (req_cfg) gpiod_request_config_free(req_cfg);
+    if (line_cfg) gpiod_line_config_free(line_cfg);
+    gpiod_line_settings_free(settings);
+    gpiod_chip_close(h->chip);
+    close(h->spi_fd);
+    free(h);
+    return NULL;
+  }
+  gpiod_request_config_set_consumer(req_cfg, "hydra_ipc_driver");
+
+  h->data_ready_req = gpiod_chip_request_lines(h->chip, req_cfg, line_cfg);
+  gpiod_request_config_free(req_cfg);
+  gpiod_line_config_free(line_cfg);
+  gpiod_line_settings_free(settings);
+  if (!h->data_ready_req) {
+    gpiod_chip_close(h->chip);
+    close(h->spi_fd);
+    free(h);
+    return NULL;
+  }
 
   return h;
 }
@@ -93,10 +132,35 @@ int hydra_ipc_read_frame(hydra_ipc_handle_t *h, uint8_t out[HYDRA_IPC_FRAME_SIZE
     return -1;
   }
 
-  /* TODO: wait on HYDRA_DATA_READY (h->data_ready_req) before transferring,
-   * once that's implemented above - polling the SPI bus unconditionally
-   * like this is a placeholder, not the real handshake. */
-  (void)timeout_ms;
+  /* Real handshake: block until HYDRA_DATA_READY asserts (rising edge) or
+   * timeout_ms elapses (0 per hydra_ipc_config_t contract means forever -
+   * pass NULL for the timeout struct in that case, libgpiod's own "wait
+   * forever" convention). Reading a frame off the bus before this line
+   * asserts risks a torn/stale transfer from the STM32H745 side. */
+  struct timespec ts;
+  struct timespec *wait_ts = NULL;
+  if (timeout_ms > 0) {
+    ts.tv_sec = timeout_ms / 1000;
+    ts.tv_nsec = (long)(timeout_ms % 1000) * 1000000L;
+    wait_ts = &ts;
+  }
+  int ready = gpiod_line_request_wait_edge_events(h->data_ready_req, wait_ts);
+  if (ready < 0) {
+    return -1;
+  }
+  if (ready == 0) {
+    errno = ETIMEDOUT;
+    return -1;
+  }
+  struct gpiod_edge_event_buffer *events = gpiod_edge_event_buffer_new(1);
+  if (!events) {
+    return -1;
+  }
+  int read_count = gpiod_line_request_read_edge_events(h->data_ready_req, events, 1);
+  gpiod_edge_event_buffer_free(events);
+  if (read_count < 0) {
+    return -1;
+  }
 
   struct spi_ioc_transfer tr;
   memset(&tr, 0, sizeof(tr));

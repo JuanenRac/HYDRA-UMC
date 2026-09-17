@@ -4,6 +4,30 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased] - Pre-hardware readiness: os/ reconciled, real hmi_qt6 kiosk lockdown, dashboard visibility fixed
 
+- **Real DoS cap on the SPI-OTA flash upload route, real HYDRA_DATA_READY
+  handshake in the CM5-side IPC driver, and 3 doc/code drift fixes.**
+  `src/cm5_host/spi_bridge/spi_bridge/http_service.py`'s `POST /flash` used to call
+  `self.rfile.read(content_length)` straight off the client-supplied `Content-Length`
+  header with no upper bound - a malicious or malformed client could claim a
+  multi-gigabyte body and block/OOM the handler thread. It now rejects anything
+  above `MAX_FIRMWARE_BODY_BYTES` (4 MiB, well above the largest real target flash,
+  the STM32H745's own 2 MB) with a clean `413` before ever reading the body; new
+  regression test proves it. `src/cm5_host/ipc_driver/src/ipc_driver.c` (the CM5 <->
+  STM32H745 SPI userspace driver) used to poll the SPI bus unconditionally, with a
+  TODO left where the real `HYDRA_DATA_READY` GPIO handshake should be -
+  `hydra_ipc_open()`/`hydra_ipc_read_frame()` now really request that line via
+  libgpiod v2's edge-event API and block on a real rising edge (or `timeout_ms`)
+  before transferring, instead of reading whatever happens to be on the bus at
+  poll time; still unverified against real hardware (no STM32H745 firmware exists
+  yet to assert the line), but the handshake itself is real code now. Also fixed:
+  `docs/HYDRA-UMC_README.md`/`docs/HYDRA-UMC_TECHNICAL.md` claimed FDCAN1 auto
+  bus-off recovery was already "managed by the Cortex-M4" - it is not implemented
+  yet (the root `README.md`/its 6 translations already said so correctly; only
+  these two docs had drifted); and the SPI1 "up to 50 MHz" claim in `README.md`
+  and its 6 translations now states plainly that the real CM5-side driver defaults
+  to a conservative 10 MHz until the STM32H745's own SPI1 slave-side config is
+  verified against real hardware, matching `ipc_driver.c`'s own comment.
+
 - **PROM-CORE-E04: all 3 real bootloaders (Robot Controller Board / G474,
   Kinematic Brain CM4, Kinematic Brain CM7 - BOOTLOADER_VERSION bumped to
   0.1.5/0.1.4/0.1.4) gained a real boot-attempt counter and refuse-to-jump

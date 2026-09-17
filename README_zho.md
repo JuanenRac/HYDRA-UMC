@@ -194,7 +194,7 @@ flowchart LR
 
 CM5（主机）与 STM32H745（协处理器）之间的通信，采用硬件辅助的零拷贝 SPI 链路：
 
-* 🔗 **物理传输层：** 全双工 SPI1，最高 50 MHz —— STM32 端为从机模式，CM5 端为主机模式。
+* 🔗 **物理传输层：** 全双工 SPI1，设计上限为 50 MHz —— STM32 端为从机模式，CM5 端为主机模式;不过 CM5 端的真实驱动(`src/cm5_host/ipc_driver/src/ipc_driver.c`)目前保守地使用 10 MHz,因为与之匹配的 STM32H745 SPI1 从机配置尚未在真实硬件上验证。
 * 🤝 **握手信号线：** `HYDRA_DATA_READY` GPIO 信号线。
 * ⚡ **执行流程：** Cortex-M4 在共享的 AXI SRAM 中准备一个 128 字节的遥测数据帧，拉高 `HYDRA_DATA_READY` 信号，随后 CM5 通过高速 SPI DMA 获取该数据包，全程无需轮询开销。
 
