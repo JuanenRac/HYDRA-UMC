@@ -2,7 +2,7 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
-## [Unreleased] - Pre-hardware readiness: os/ reconciled, real hmi_qt6 kiosk lockdown, dashboard visibility fixed
+## [0.1.6] - Pre-hardware readiness: SPI-OTA DoS cap, real HYDRA_DATA_READY handshake, boot-attempt counter and FDCAN2 capture-ring host tests
 
 - **Real DoS cap on the SPI-OTA flash upload route, real HYDRA_DATA_READY
   handshake in the CM5-side IPC driver, and 3 doc/code drift fixes.**
