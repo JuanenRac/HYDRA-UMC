@@ -28,7 +28,7 @@ All notable changes to the hardware and core firmware will be documented in this
   to a conservative 10 MHz until the STM32H745's own SPI1 slave-side config is
   verified against real hardware, matching `ipc_driver.c`'s own comment.
 
-- **PROM-CORE-E04: all 3 real bootloaders (Robot Controller Board / G474,
+- **All 3 real bootloaders (Robot Controller Board / G474,
   Kinematic Brain CM4, Kinematic Brain CM7 - BOOTLOADER_VERSION bumped to
   0.1.5/0.1.4/0.1.4) gained a real boot-attempt counter and refuse-to-jump
   safeguard.** The real update mechanism (backup-slot verify -> CRC32 +
@@ -71,7 +71,7 @@ All notable changes to the hardware and core firmware will be documented in this
   (compile AND execute) the next time `build_firmware.sh` itself runs on
   a real Linux host. Real hardware validation (an actual crash-loop-then-
   recover cycle on a physical board) remains separate, larger, entirely
-  unaddressed future work (PROM-CORE-E05's own physical-bench scope).
+  unaddressed future work (a physical-bench scope on its own).
 
 - **Host logic tests for the Robot Controller Board's FDCAN2 capture ring**
   (new `tests/`). The ring buffer that `RobotControllerRelay.c` fills from
