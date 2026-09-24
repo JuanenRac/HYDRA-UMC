@@ -61,6 +61,7 @@ extern IWDG_HandleTypeDef  hiwdg;
 #define FIRMWARE_VERSION_MAJOR 0
 #define FIRMWARE_VERSION_MINOR 1
 #define FIRMWARE_VERSION_PATCH 6
+#define FIRMWARE_VERSION_BUILD 0
 
 // BOOTLOADER_VERSION_* describes THIS bootloader binary itself. Versioning
 // convention (matches URTC's own shape, but NOT its manual-bump timing -
