@@ -263,7 +263,7 @@ void HandleAuthorizeDowngrade(uint8_t *data) {
     }
 }
 
-// PROM-CORE-E04: see mcu_stm32g474/boot/bootloader_protocol.c's own
+// see mcu_stm32g474/boot/bootloader_protocol.c's own
 // comment for the full design.
 void HandleConfirmHealthy(void) {
     FirmwareMetadata_t meta;

@@ -3,7 +3,7 @@
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
  * GPL-3.0 - see LICENSE
  * =============================================================================
- * PROM-CORE-E04: locks in the pure boot-attempt decision every real
+ * locks in the pure boot-attempt decision every real
  * bootloader_main.c (src/mcu_stm32g474/, src/mcu_stm32h745/CM4/,
  * src/mcu_stm32h745/CM7/) makes right before jumping to the application -
  * see boot_decision.h's own header comment for the full design. This exact

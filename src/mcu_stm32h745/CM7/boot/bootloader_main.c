@@ -113,7 +113,7 @@ int main(void) {
         }
     }
 
-    // PROM-CORE-E04: see mcu_stm32g474/boot/bootloader_main.c's own
+    // see mcu_stm32g474/boot/bootloader_main.c's own
     // comment for the full design.
     uint8_t should_jump = 0;
     if (!enter_update_mode && app_valid) {

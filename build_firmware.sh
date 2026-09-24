@@ -165,7 +165,7 @@ else
         fi
     done
 
-    # PROM-CORE-E04: boot_decision.h exists as a real per-target copy in
+    # boot_decision.h exists as a real per-target copy in
     # all THREE real bootloaders (src/mcu_stm32g474/boot/,
     # src/mcu_stm32h745/CM4/boot/, src/mcu_stm32h745/CM7/boot/) - the exact
     # same test source is compiled and run three times, once per target's

@@ -3,7 +3,7 @@
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 // GPL-3.0 - see repo root LICENSE
 //
-// PROM-CORE-E04: the real update mechanism (backup-slot verify -> CRC32 +
+// the real update mechanism (backup-slot verify -> CRC32 +
 // HMAC -> copy to main slot, see bootloader_flash.c's own Flash_CopyRegion)
 // already refuses to ever copy an unverified image into the main slot, and
 // HandleEndUpdate()'s own anti-rollback check already refuses to silently
@@ -62,7 +62,7 @@
 // treated as equivalently verified to the rest of this project's own
 // host-tested logic. Real hardware validation (an actual crash-loop-then-
 // recover cycle on a physical board) is separate, larger, still entirely
-// unaddressed future work (PROM-CORE-E05's own "physical bench" scope).
+// unaddressed future work (this project's own "physical bench" scope).
 // =============================================================================
 #ifndef BOOT_DECISION_H
 #define BOOT_DECISION_H
