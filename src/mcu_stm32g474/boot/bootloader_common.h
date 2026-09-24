@@ -145,7 +145,7 @@ uint32_t ReadSlotBaseId(void);
 // here collapsed into 2 offsets by mistake. Master->bootloader, DLC=4,
 // big-endian page index - same convention as +0x03, opposite direction.
 #define OFS_BACKUP_READ_PAGE_ACK          0x14
-// PROM-CORE-E04: sent BY an external CAN master (never the application
+// sent BY an external CAN master (never the application
 // itself - see boot_decision.h's own header comment for why) once it has
 // observed the current application behaving normally for a while. Any
 // DLC. Resets FirmwareMetadata_t's own boot_attempts back to 0.
@@ -167,7 +167,7 @@ uint32_t ReadSlotBaseId(void);
 #define VERIFY_FAIL_REASON_HARDWARE_ID 0x04
 #define VERIFY_FAIL_REASON_ROLLBACK    0x05
 #define STATUS_ERROR          0xFF
-// PROM-CORE-E04: reported (via CAN_SendHeartbeat) once this bootloader has
+// reported (via CAN_SendHeartbeat) once this bootloader has
 // refused to jump to an app that reset back here BOOT_MAX_ATTEMPTS times in
 // a row without ever being confirmed healthy - see boot_decision.h.
 #define STATUS_ROLLBACK_SUSPECT 0x08
@@ -175,7 +175,7 @@ uint32_t ReadSlotBaseId(void);
 // -----------------------------------------------------------------------
 // Firmware metadata (single 2K page, one struct). Layout WAS byte-identical
 // to URTC's own (deliberately, so tooling that already parses one can parse
-// the other with zero changes) - PROM-CORE-E04's new `boot_attempts` field
+// the other with zero changes) - 's new `boot_attempts` field
 // below is appended at the END, so URTC's own metadata (which does not have
 // it yet) still parses the fields it knows about correctly; only this
 // project's own tooling reading the new field needs updating. URTC gaining
@@ -194,7 +194,7 @@ typedef struct {
     uint32_t size;
     uint32_t crc32;
     uint8_t  hmac[32];
-    // PROM-CORE-E04: appended at the end. Every real writer already
+    // appended at the end. Every real writer already
     // zero-initializes the whole struct first (`FirmwareMetadata_t pending
     // = {0};` in HandleEndUpdate) before setting the fields it cares about,
     // so this is always a real, explicit 0 on a fresh install - never an

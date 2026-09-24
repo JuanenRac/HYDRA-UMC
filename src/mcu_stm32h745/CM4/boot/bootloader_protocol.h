@@ -29,7 +29,7 @@ void HandleVersionQuery(void);
 void HandleErrorCounterQuery(void);
 void HandleAuthorizeDowngrade(uint8_t *data);
 void HandleReadbackStart(void);
-void HandleConfirmHealthy(void); // PROM-CORE-E04 - see boot_decision.h
+void HandleConfirmHealthy(void); // - see boot_decision.h
 
 uint8_t ApplicationIsValid(void);
 void JumpToApplication(void);

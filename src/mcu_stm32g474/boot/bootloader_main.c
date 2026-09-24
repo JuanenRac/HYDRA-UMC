@@ -236,7 +236,7 @@ int main(void) {
         }
     }
 
-    // PROM-CORE-E04: a cryptographically valid app is not necessarily a
+    // a cryptographically valid app is not necessarily a
     // WORKING one - see boot_decision.h's own header comment for the full
     // design. FirmwareMetadata_t's own boot_attempts is read fresh here
     // (never trusted from the app_valid check above, which only reads the

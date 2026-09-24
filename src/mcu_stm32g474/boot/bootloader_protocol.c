@@ -304,7 +304,7 @@ void HandleAuthorizeDowngrade(uint8_t *data) {
     }
 }
 
-// PROM-CORE-E04: resets FirmwareMetadata_t's own boot_attempts back to 0 -
+// resets FirmwareMetadata_t's own boot_attempts back to 0 -
 // see boot_decision.h's own header comment for the full design and why
 // this is sent BY an external CAN master, never by the application itself.
 // A no-op (never an error) when there is no valid metadata to update yet -

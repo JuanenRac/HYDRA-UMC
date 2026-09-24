@@ -103,7 +103,7 @@ extern const uint8_t HMAC_KEY[32];
 #define OFS_BACKUP_READ_PAGE_ACK                          0x14
 #define OFS_RELAY_SEND                                      0x12 // opaque to this core - just forwarded, see this file's own header
 #define OFS_RELAY_RECV                                        0x13 // opaque to this core - just forwarded
-// PROM-CORE-E04: see mcu_stm32g474/boot/bootloader_common.h's own comment
+// see mcu_stm32g474/boot/bootloader_common.h's own comment
 // for the full design - sent BY an external SPI/CAN master, never by the
 // application itself. Resets FirmwareMetadata_t's own boot_attempts back
 // to 0.
@@ -122,7 +122,7 @@ extern const uint8_t HMAC_KEY[32];
 #define VERIFY_FAIL_REASON_HARDWARE_ID 0x04
 #define VERIFY_FAIL_REASON_ROLLBACK    0x05
 #define STATUS_ERROR          0xFF
-// PROM-CORE-E04: reported once this bootloader has refused to jump to an
+// reported once this bootloader has refused to jump to an
 // app that reset back here BOOT_MAX_ATTEMPTS times in a row without ever
 // being confirmed healthy - see boot_decision.h.
 #define STATUS_ROLLBACK_SUSPECT 0x08
@@ -139,7 +139,7 @@ typedef struct {
     uint32_t size;
     uint32_t crc32;
     uint8_t  hmac[32];
-    // PROM-CORE-E04: appended at the end - see mcu_stm32g474/boot/
+    // appended at the end - see mcu_stm32g474/boot/
     // bootloader_common.h's own field-level comment for why this is
     // always a real, explicit 0 on a fresh install.
     uint32_t boot_attempts;
