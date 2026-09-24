@@ -12,3 +12,6 @@ build/
 # Python bytecode (generated locally; never source)
 __pycache__/
 *.py[cod]
+
+# Editor settings are per-machine (this one holds an absolute local path)
+.vscode/
