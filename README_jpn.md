@@ -11,7 +11,8 @@
   <a href="README_ita.md">🇮🇹 Italiano</a> |
   <a href="README_deu.md">🇩🇪 Deutsch</a> |
   <a href="README_zho.md">🇨🇳 简体中文</a> |
-  🇯🇵 <b>日本語</b>
+  🇯🇵 <b>日本語</b> |
+  <a href="README_por.md">🇵🇹 Português</a>
 </p>
 
 ### 🤖 究極のデュアルコア・マイクロファクトリー＆マルチロボットコントローラープラットフォーム（V1.0 — デュアル PCIe Hailo-8 + Hailo-10 AI アクセラレータ & デュアル USB 3.0 ハブ）
@@ -285,7 +286,7 @@ HYDRA-UMC/
 │   └── ci_validate.py               # CI が使用する manifest/CHANGELOG/docs の検証
 ├── firmware/                    # コミット済みのビルド成果物（.bin/.hex/.elf + マニフェスト）— gitignore 対象外、URTC 自身の出力フォルダと同じ規約、下記「ファームウェアのビルド」参照
 ├── README.md                    # 本ファイル
-└── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md    # <- 各言語訳
+└── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md / README_por.md    # <- 各言語訳
 ```
 
 各階層が実際に何を行い、どのように接続されているかは `docs/architecture.md` を参照。上記の各フォルダに含まれる `README.md` には、このトップレベルの要約以上の詳細が記載されています。

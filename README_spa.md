@@ -11,7 +11,8 @@
   <a href="README_ita.md">🇮🇹 Italiano</a> |
   <a href="README_deu.md">🇩🇪 Deutsch</a> |
   <a href="README_zho.md">🇨🇳 简体中文</a> |
-  <a href="README_jpn.md">🇯🇵 日本語</a>
+  <a href="README_jpn.md">🇯🇵 日本語</a> |
+  <a href="README_por.md">🇵🇹 Português</a>
 </p>
 
 ### 🤖 La Plataforma Definitiva de Micro-Fábrica de Doble Núcleo y Controlador Multi-Robot (V1.0 - Doble Acelerador de IA por PCIe Hailo-8 + Hailo-10 y Doble Hub USB 3.0)
@@ -321,7 +322,7 @@ HYDRA-UMC/
 │   └── ci_validate.py               # Validación de manifest/CHANGELOG/docs usada por la CI
 ├── firmware/                    # Salida de compilación comiteada (.bin/.hex/.elf + manifest) - NO en gitignore, misma convención que la propia carpeta de salida de URTC, ver "Compilando el Firmware" abajo
 ├── README.md                    # Este archivo
-└── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md    # <- traducciones
+└── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md / README_por.md    # <- traducciones
 ```
 
 Ver `docs/architecture.md` para lo que realmente hace cada nivel y cómo se

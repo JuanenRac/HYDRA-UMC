@@ -11,7 +11,8 @@
   <a href="README_ita.md">🇮🇹 Italiano</a> |
   <a href="README_deu.md">🇩🇪 Deutsch</a> |
   <a href="README_zho.md">🇨🇳 简体中文</a> |
-  <a href="README_jpn.md">🇯🇵 日本語</a>
+  <a href="README_jpn.md">🇯🇵 日本語</a> |
+  <a href="README_por.md">🇵🇹 Português</a>
 </p>
 
 ### 🤖 La Plateforme Ultime de Micro-Usine à Double Cœur et Contrôleur Multi-Robot (V1.0 - Double Accélérateur IA PCIe Hailo-8 + Hailo-10 et Double Hub USB 3.0)
@@ -323,7 +324,7 @@ HYDRA-UMC/
 │   └── ci_validate.py               # Validation manifest/CHANGELOG/docs utilisée par la CI
 ├── firmware/                    # Sortie de build commitée (.bin/.hex/.elf + manifest) - PAS dans gitignore, même convention que le propre dossier de sortie d'URTC, voir "Compiler le Firmware" ci-dessous
 ├── README.md                    # Ce fichier
-└── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md    # <- traductions
+└── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md / README_por.md    # <- traductions
 ```
 
 Voir `docs/architecture.md` pour ce que fait réellement chaque niveau et

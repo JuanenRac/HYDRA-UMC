@@ -11,7 +11,8 @@
   <a href="README_ita.md">🇮🇹 Italiano</a> |
   <a href="README_deu.md">🇩🇪 Deutsch</a> |
   🇨🇳 <b>简体中文</b> |
-  <a href="README_jpn.md">🇯🇵 日本語</a>
+  <a href="README_jpn.md">🇯🇵 日本語</a> |
+  <a href="README_por.md">🇵🇹 Português</a>
 </p>
 
 ### 🤖 终极双核微工厂与多机器人控制器平台（V1.0 — 双 PCIe Hailo-8 + Hailo-10 AI 加速器 与 双 USB 3.0 集线器）
@@ -285,7 +286,7 @@ HYDRA-UMC/
 │   └── ci_validate.py               # CI 使用的 manifest/CHANGELOG/docs 校验
 ├── firmware/                    # 已提交的构建产物（.bin/.hex/.elf + 清单文件）—— 未被 gitignore 排除，与 URTC 自身的输出文件夹约定一致，见下方“构建固件”
 ├── README.md                    # 本文件
-└── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md    # <- 各语言译文
+└── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md / README_por.md    # <- 各语言译文
 ```
 
 各层级具体职能及其相互连接方式详见 `docs/architecture.md`；上方每个自带 `README.md` 的文件夹，都比这份顶层摘要提供更多细节。

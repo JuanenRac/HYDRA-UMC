@@ -306,9 +306,9 @@ static uint8_t TryGetMessage(FDCAN_HandleTypeDef *hfdcan, uint32_t *out_id, uint
  * RobotControllerRelay_Poll() draining FDCAN2's own hardware RX FIFO
  * every pass; drained, oldest first, by RELAY_RECV requests from Tier 0.
  * 8 deep: generous relative to how fast a single operator (HYDRA-UMC-
- * STUDIO) polls RELAY_RECV, matching the real depth this board's own
- * FDCAN2 hardware RX FIFO0 itself provides before this software layer
- * even gets involved.
+ * STUDIO) polls RELAY_RECV, deeper than the 3 frames this board's own
+ * FDCAN2 hardware RX FIFO0 holds before this software layer even gets
+ * involved (RobotControllerRelay_Poll empties that FIFO every pass).
  * ----------------------------------------------------------------------- */
 /* The ring buffer itself (struct, RELAY_RX_QUEUE_DEPTH, Push/Pop, the
  * drop-oldest-when-full policy) now lives in relay_rx_queue.h - a HAL-free
@@ -330,30 +330,10 @@ void RobotControllerRelay_Init(void)
     AxisStatusGpio_Init();
 }
 
-void RobotControllerRelay_Poll(void)
+/* Answers one message of this board's own slot window on FDCAN1 (uplink). Every other slot's own traffic (and every other board's STACK A heartbeats) is silently ignored,
+ * same "wide-open hardware filter, check in software" reasoning as the bootloader. */
+static void ServiceUplinkMessage(uint32_t rx_id, const uint8_t rx_data[8], uint8_t rx_dlc)
 {
-    /* 1. Drain FDCAN2 (downlink) into the capture queue - real traffic
-     *    from this robot's own URTC Tool Head, buffered until RELAY_RECV
-     *    drains it. Bounded to one message per poll pass on purpose (see
-     *    TryGetMessage's own header) - the caller's own loop period
-     *    determines how quickly this queue drains the hardware FIFO. */
-    {
-        uint32_t id;
-        uint8_t data[8];
-        uint8_t dlc;
-        if (TryGetMessage(&hfdcan2_app, &id, data, &dlc)) {
-            RelayRxQueue_Push(&relay_rx_queue, (uint16_t)id, data, dlc);
-        }
-    }
-
-    /* 2. Service FDCAN1 (uplink) - this board's own slot window only;
-     *    every other slot's own traffic (and every other board's STACK A
-     *    heartbeats) is silently ignored, same "wide-open hardware
-     *    filter, check in software" reasoning as the bootloader. */
-    uint32_t rx_id;
-    uint8_t rx_data[8];
-    uint8_t rx_dlc;
-    if (!TryGetMessage(&hfdcan1_app, &rx_id, rx_data, &rx_dlc)) return;
     if (rx_id < slot_base || rx_id > slot_base + 0x1F) return;
     uint32_t offset = rx_id - slot_base;
 
@@ -419,4 +399,30 @@ void RobotControllerRelay_Poll(void)
      * offset: intentionally ignored - see this module's own .h header on
      * why ENTER_BOOTLOADER is a real, named, not-yet-implemented gap
      * rather than silently pretended-working. */
+}
+
+/* How many messages one pass takes out of each FDCAN receive FIFO. The hardware FIFO of the STM32G4's FDCAN holds only 3 frames and the task sleeps between passes, so
+ * taking one message per pass lost frames in silence when a burst (the fragments of an HMAC transfer, the tool head's telemetry) arrived within one sleep. */
+#define RELAY_POLL_BURST 8
+
+void RobotControllerRelay_Poll(void)
+{
+    /* 1. Drain FDCAN2 (downlink) into the capture queue - real traffic from this robot's own URTC Tool Head, buffered until RELAY_RECV drains it. Takes up to
+     *    RELAY_POLL_BURST messages, so a burst larger than the hardware FIFO is not lost between two passes. */
+    for (int taken = 0; taken < RELAY_POLL_BURST; taken++) {
+        uint32_t id;
+        uint8_t data[8];
+        uint8_t dlc;
+        if (!TryGetMessage(&hfdcan2_app, &id, data, &dlc)) break;
+        RelayRxQueue_Push(&relay_rx_queue, (uint16_t)id, data, dlc);
+    }
+
+    /* 2. Service FDCAN1 (uplink), the same way. */
+    for (int taken = 0; taken < RELAY_POLL_BURST; taken++) {
+        uint32_t rx_id;
+        uint8_t rx_data[8];
+        uint8_t rx_dlc;
+        if (!TryGetMessage(&hfdcan1_app, &rx_id, rx_data, &rx_dlc)) break;
+        ServiceUplinkMessage(rx_id, rx_data, rx_dlc);
+    }
 }

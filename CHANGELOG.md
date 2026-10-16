@@ -2,6 +2,14 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
+## [0.1.8]
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
+
+## [0.1.8] - The relay empties the FDCAN FIFOs
+
+- **No more frames lost between two passes.** The Robot Controller Board's relay took one message out of each FDCAN receive FIFO per pass and then slept, while the hardware FIFO of the STM32G4 holds only three frames: a burst (the fragments of an HMAC transfer, the tool head's telemetry) lost frames in silence. A pass now takes up to eight messages from each FIFO, and the uplink handler is its own function.
+
 ## [0.1.7] - A healthy board is no longer parked at its fourth start, and the bootloader key comes from the build
 
 - **Boot counting.** Every start used to add one to the count of unconfirmed starts and nothing ever confirmed an application healthy, so the bootloader refused to start the application at the fourth power-up of a perfectly good board. The count now only climbs across watchdog resets (a hang or a spinning fault handler); power-ups, button resets and software restarts are clean starts that bring it back to 0 and write nothing to flash (which also ends the erase of the metadata page at every start). A crash-looping application is still tried three times and then parked, and the next power-up gives it another try. The three bootloaders share the logic, covered by host tests (ten power-ups of a healthy board, and a crash loop that is parked after three tries).
