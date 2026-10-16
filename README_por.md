@@ -331,7 +331,7 @@ Os 6 componentes de firmware (3 bootloaders + 3 aplicações: o STM32G474 da pla
 
 Este projeto faz parte do ecossistema de robótica HYDRA-UMC do mesmo autor (JuanenRac / Electro Hobby 3D). Vale a pena conhecê-los, porque um pedido pode ser, na verdade, sobre um destes e não sobre este repositório.
 
-**Diretamente relacionados** — projetos que se ligam diretamente a este
+**Diretamente relacionados** — projetos que se ligam diretamente a este firmware
 - **[URTC](https://github.com/JuanenRac/URTC)** — firmware da placa física Universal Robot Tool Controller, mais de 25 perfis de ferramenta por barramento CAN; o firmware da cabeça de ferramenta que monta cada braço robótico que esta placa aciona, um salto mais além pela sua própria ligação CAN descendente.
 - **[HYDRA-UMC-OS](https://github.com/JuanenRac/HYDRA-UMC-OS)** — camada de produto reproduzível do Raspberry Pi OS para o CM5: agente só de leitura, configuração/perfis validados, aprovisionamento Wi-Fi de primeiro contacto; o SO em que corre o anfitrião CM5 desta placa.
 - **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — o verdadeiro backend sem interface (REST/WebSocket) com que falam todos os clientes de controlo; o seu serviço `spi_bridge` fala com este firmware pela ligação SPI-OTA real CM5↔STM32H745.
