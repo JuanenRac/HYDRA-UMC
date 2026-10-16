@@ -2,10 +2,6 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
-## [0.1.8]
-
-- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
-
 ## [0.1.8] - The relay empties the FDCAN FIFOs
 
 - **No more frames lost between two passes.** The Robot Controller Board's relay took one message out of each FDCAN receive FIFO per pass and then slept, while the hardware FIFO of the STM32G4 holds only three frames: a burst (the fragments of an HMAC transfer, the tool head's telemetry) lost frames in silence. A pass now takes up to eight messages from each FIFO, and the uplink handler is its own function.
