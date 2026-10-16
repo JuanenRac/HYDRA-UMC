@@ -34,6 +34,7 @@ from .protocol import (
     ENTER_BOOTLOADER_MAGIC,
     OFS_DATA,
     OFS_END_UPDATE,
+    OFS_CONFIRM_HEALTHY,
     OFS_ENTER_BOOTLOADER,
     OFS_HEARTBEAT,
     OFS_HMAC_CHUNK,
@@ -77,6 +78,19 @@ def query_version(transport: SpiOtaTransport, target_tier: int, target_slot: int
     firmware_major = struct.unpack(">H", response.payload[5:7])[0]
     firmware_minor = response.payload[7]
     return VersionInfo(True, is_bootloader, hardware_id, firmware_major, firmware_minor)
+
+
+def confirm_healthy(transport: SpiOtaTransport, target_tier: int, target_slot: int) -> bool:
+    """Tells a bootloader that the application it started is healthy, which sets its count of unconfirmed starts back to 0. A board parked in the bootloader after repeated
+    watchdog resets (heartbeat STATUS_ROLLBACK_SUSPECT) is let go by this once somebody has looked at it; the bootloader answers nothing, so a True only says the frame was
+    sent. The bootloader only listens for it in its start-up window or while it is parked, so send it while the target is in the bootloader. False when the transport fails."""
+
+    request = SpiOtaFrame(target_tier, target_slot, OFS_CONFIRM_HEALTHY, 1, b"\x00")
+    try:
+        transport.transceive(request)
+    except OSError:
+        return False
+    return True
 
 
 @dataclass(frozen=True)

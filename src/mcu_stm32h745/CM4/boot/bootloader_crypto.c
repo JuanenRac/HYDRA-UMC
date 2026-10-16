@@ -17,12 +17,20 @@
 // though both cores are on the SAME physical chip - CM4's own self-update
 // path and its relayed-to-CM7 path are still two separate metadata/backup-
 // slot trust checks, each against its own bank's own key.
+#ifdef HYDRA_FW_HMAC_KEY_BYTES
+// The key of a real build: build_firmware.sh turns HYDRA_FW_HMAC_KEY_HEX (64 hex digits, kept outside the repository) into these 32 bytes. The tools that sign update
+// images for the boards must hold the same key.
+const uint8_t HMAC_KEY[32] = { HYDRA_FW_HMAC_KEY_BYTES };
+#else
+// DEVELOPMENT KEY, PUBLISHED IN THIS REPOSITORY: anybody can sign an image that a board built like this accepts. It exists only so that a bench build works with no setup;
+// build_firmware.sh says so out loud and refuses it altogether when HYDRA_UMC_RELEASE=1. Build with HYDRA_FW_HMAC_KEY_HEX set for anything that is to be trusted.
 const uint8_t HMAC_KEY[32] = {
     0x48, 0x59, 0x44, 0x52, 0x41, 0x2D, 0x55, 0x4D,
     0x43, 0x2D, 0x4B, 0x42, 0x2D, 0x43, 0x4D, 0x34,
     0x2D, 0x32, 0x30, 0x32, 0x36, 0x2D, 0x21, 0x21,
     0x21, 0x47, 0x41, 0x54, 0x45, 0x57, 0x41, 0x59
 };
+#endif
 
 typedef struct {
     uint32_t state[8];

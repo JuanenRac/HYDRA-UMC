@@ -369,7 +369,23 @@ fi
 # -----------------------------------------------------------------------
 step "4. Robot Controller Board - common compiler flags and shared HAL objects"
 # -----------------------------------------------------------------------
-CFLAGS_G4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32G474xx -DUSE_HAL_DRIVER -I$G4/common/CMSIS_Include -I$G4/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections"
+# The key the bootloaders verify update images with. A real build gets it from HYDRA_FW_HMAC_KEY_HEX (64 hex digits, kept outside the repository, the same key the signing
+# tools hold); without it the bootloaders carry the DEVELOPMENT key that is published in this repository, which authenticates nothing, and HYDRA_UMC_RELEASE=1 refuses that.
+HMAC_DEFS=""
+if [ -n "${HYDRA_FW_HMAC_KEY_HEX:-}" ]; then
+    if ! printf '%s' "$HYDRA_FW_HMAC_KEY_HEX" | grep -Eq '^[0-9A-Fa-f]{64}$'; then
+        fail "HYDRA_FW_HMAC_KEY_HEX must be exactly 64 hexadecimal digits"; exit 1
+    fi
+    KEY_BYTES="$(printf '%s' "$HYDRA_FW_HMAC_KEY_HEX" | sed -E 's/(..)/0x,/g; s/,$//')"
+    HMAC_DEFS="-DHYDRA_FW_HMAC_KEY_BYTES=$KEY_BYTES"
+    pass "bootloaders are built with the release key from HYDRA_FW_HMAC_KEY_HEX"
+elif [ "${HYDRA_UMC_RELEASE:-0}" = "1" ]; then
+    fail "HYDRA_UMC_RELEASE=1 needs HYDRA_FW_HMAC_KEY_HEX: the development key is published in the repository"; exit 1
+else
+    warn "bootloaders are built with the DEVELOPMENT key, which is public: do not put these images on a board that anybody else can reach"
+fi
+
+CFLAGS_G4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32G474xx -DUSE_HAL_DRIVER -I$G4/common/CMSIS_Include -I$G4/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $HMAC_DEFS"
 LDCOMMON_G4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
 # App CFLAGS additionally need this target's own FreeRTOSConfig.h directory
 # plus FreeRTOS's own headers/port headers - the bootloader (bare-metal, no
@@ -533,9 +549,9 @@ step "8. Kinematic Brain - common compiler flags and shared HAL objects (per cor
 HAL_MODULES_H7="stm32h7xx_hal stm32h7xx_hal_cortex stm32h7xx_hal_gpio stm32h7xx_hal_rcc stm32h7xx_hal_rcc_ex stm32h7xx_hal_pwr stm32h7xx_hal_pwr_ex stm32h7xx_hal_flash stm32h7xx_hal_flash_ex stm32h7xx_hal_exti stm32h7xx_hal_mdma stm32h7xx_hal_fdcan stm32h7xx_hal_iwdg stm32h7xx_hal_spi stm32h7xx_hal_hsem"
 
 for CORE in CM7 CM4; do
-    CFLAGS_H7="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections"
+    CFLAGS_H7="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $HMAC_DEFS"
     if [ "$CORE" = "CM7" ]; then
-        CFLAGS_H7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections"
+        CFLAGS_H7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $HMAC_DEFS"
     fi
     LOWER=$(echo "$CORE" | tr 'A-Z' 'a-z')
     OBJDIR="$H7/hal_obj_$LOWER"

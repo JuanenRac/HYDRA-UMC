@@ -27,6 +27,8 @@
 //   - Every real jump increments and persists it to flash BEFORE jumping -
 //     so a crash-and-reset immediately after jump is captured even though
 //     the bootloader itself never regains control afterward otherwise.
+//   - Since the count only climbs across WATCHDOG resets (see BootDecision_EffectiveAttempts below), a healthy board never reaches the limit by being
+//     powered on and off; `OFS_CONFIRM_HEALTHY` is the way to clear it by hand when a board is parked.
 //   - `OFS_CONFIRM_HEALTHY` (a new CAN command, bootloader_protocol.c's own
 //     HandleConfirmHealthy()) resets it back to 0 - sent by an external CAN
 //     master (HYDRA-UMC-OS's own agent, or a human) once it has observed the
@@ -87,6 +89,27 @@ static inline uint8_t BootDecision_ShouldJump(uint8_t app_valid, uint32_t boot_a
         return 0;
     }
     return (boot_attempts < BOOT_MAX_ATTEMPTS) ? 1 : 0;
+}
+
+// ---- what kind of reset brought the board here --------------------------------------------------------------------------------------------------
+// An application that is genuinely broken ends in a WATCHDOG reset (a hang, a fault handler that spins). A board that was simply switched off and on,
+// reset with its button or restarted on purpose by software is not a broken application: counting those as "unconfirmed attempts" parked every healthy
+// board at its fourth start, because nothing ever confirmed the application healthy. So the count only climbs across watchdog resets; any other start
+// is a clean one: the count goes back to 0 and nothing is written to flash (which also stops the page of metadata being erased at every power-on).
+#define BOOT_RESET_CLEAN 0u
+#define BOOT_RESET_WATCHDOG 1u
+
+// The count that decides this start: what flash holds after a watchdog reset, 0 after any other.
+static inline uint32_t BootDecision_EffectiveAttempts(uint32_t stored, uint8_t reset_kind) {
+    return (reset_kind == BOOT_RESET_WATCHDOG) ? stored : 0u;
+}
+
+// The count to keep for the next start once this one jumps: one more after a watchdog reset, 0 after a clean start.
+static inline uint32_t BootDecision_NextAttempts(uint32_t effective, uint8_t reset_kind) {
+    if (reset_kind != BOOT_RESET_WATCHDOG) {
+        return 0u;
+    }
+    return (effective < 0xFFFFFFFFu) ? effective + 1u : effective;
 }
 
 #endif // BOOT_DECISION_H

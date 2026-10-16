@@ -2,6 +2,12 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
+## [0.1.7] - A healthy board is no longer parked at its fourth start, and the bootloader key comes from the build
+
+- **Boot counting.** Every start used to add one to the count of unconfirmed starts and nothing ever confirmed an application healthy, so the bootloader refused to start the application at the fourth power-up of a perfectly good board. The count now only climbs across watchdog resets (a hang or a spinning fault handler); power-ups, button resets and software restarts are clean starts that bring it back to 0 and write nothing to flash (which also ends the erase of the metadata page at every start). A crash-looping application is still tried three times and then parked, and the next power-up gives it another try. The three bootloaders share the logic, covered by host tests (ten power-ups of a healthy board, and a crash loop that is parked after three tries).
+- **Confirm from the CM5.** `confirm_healthy()` in the SPI bridge sends the confirmation frame (`OFS_CONFIRM_HEALTHY`) that lets a person clear a parked board, with its constant and a test.
+- **The signing key is a build input.** `build_firmware.sh` takes `HYDRA_FW_HMAC_KEY_HEX` and hands it to the bootloaders; without it the build carries the development key that is published in the repository, warns loudly, and `HYDRA_UMC_RELEASE=1` refuses it.
+
 ## [0.1.6] - Pre-hardware readiness: SPI-OTA DoS cap, real HYDRA_DATA_READY handshake, boot-attempt counter and FDCAN2 capture-ring host tests
 
 - **Real DoS cap on the SPI-OTA flash upload route, real HYDRA_DATA_READY

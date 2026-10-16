@@ -51,6 +51,43 @@ int main(void)
     TEST_ASSERT(BOOT_MAX_ATTEMPTS >= 1, "BOOT_MAX_ATTEMPTS must allow at least one real attempt");
     TEST_ASSERT(BOOT_MAX_ATTEMPTS <= 10, "BOOT_MAX_ATTEMPTS must stay a real, small, deliberate number");
 
+    /* Only a WATCHDOG reset counts against the application: a board switched off and on, reset with its button or restarted by software is a clean start, so a healthy
+     * board that nobody confirms never reaches the limit (it used to be parked at its fourth start). */
+    TEST_ASSERT(BootDecision_EffectiveAttempts(2, BOOT_RESET_CLEAN) == 0, "a clean start ignores the stored count");
+    TEST_ASSERT(BootDecision_EffectiveAttempts(2, BOOT_RESET_WATCHDOG) == 2, "a watchdog reset keeps the stored count");
+    TEST_ASSERT(BootDecision_NextAttempts(0, BOOT_RESET_CLEAN) == 0, "a clean start leaves the count at 0 (nothing to write)");
+    TEST_ASSERT(BootDecision_NextAttempts(1, BOOT_RESET_WATCHDOG) == 2, "a watchdog reset adds one");
+    TEST_ASSERT(BootDecision_NextAttempts(0xFFFFFFFFu, BOOT_RESET_WATCHDOG) == 0xFFFFFFFFu, "the count never wraps");
+
+    /* Ten power-ups of a healthy board: always jumps, the stored count never leaves 0. */
+    {
+        uint32_t stored = 0;
+        for (int boot = 0; boot < 10; boot++) {
+            uint32_t effective = BootDecision_EffectiveAttempts(stored, BOOT_RESET_CLEAN);
+            TEST_ASSERT(BootDecision_ShouldJump(1, effective) == 1, "a healthy board is jumped to at every power-up");
+            stored = BootDecision_NextAttempts(effective, BOOT_RESET_CLEAN);
+        }
+        TEST_ASSERT(stored == 0, "ten clean power-ups leave the count at 0");
+    }
+
+    /* A crashing application: the first start is clean, then the watchdog resets it again and again. It is tried BOOT_MAX_ATTEMPTS times and then parked; a power-up tries it again. */
+    {
+        uint32_t stored = 0;
+        uint32_t effective = BootDecision_EffectiveAttempts(stored, BOOT_RESET_CLEAN);
+        TEST_ASSERT(BootDecision_ShouldJump(1, effective) == 1, "the clean start jumps");
+        stored = BootDecision_NextAttempts(effective, BOOT_RESET_CLEAN);
+        int jumps = 0;
+        for (int boot = 0; boot < 10; boot++) {
+            effective = BootDecision_EffectiveAttempts(stored, BOOT_RESET_WATCHDOG);
+            if (!BootDecision_ShouldJump(1, effective)) break;
+            jumps++;
+            stored = BootDecision_NextAttempts(effective, BOOT_RESET_WATCHDOG);
+        }
+        TEST_ASSERT(jumps == BOOT_MAX_ATTEMPTS, "a crash-looping application is tried the limit number of times, then parked");
+        effective = BootDecision_EffectiveAttempts(stored, BOOT_RESET_CLEAN);
+        TEST_ASSERT(BootDecision_ShouldJump(1, effective) == 1, "a power-up gives a parked board another try");
+    }
+
     printf("%d failure(s)\n", failures);
     return failures == 0 ? 0 : 1;
 }

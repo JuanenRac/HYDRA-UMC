@@ -330,6 +330,28 @@ stay visible before this project reaches real hardware.
   coordinated host+firmware change" reasoning as the anti-rollback bypass
   above applies to fixing this properly.
 
+- **The signing key a bootloader carries is chosen by the build.** A real
+  build passes `HYDRA_FW_HMAC_KEY_HEX` (64 hexadecimal digits, kept outside
+  the repository and held by the tools that sign update images) to
+  `build_firmware.sh`, which hands it to the three bootloaders at compile time.
+  Without it a bench build carries a **development key that is published in
+  this repository**: any image signed with it is accepted by such a board, so
+  it authenticates nothing; the script says so and refuses it altogether when
+  `HYDRA_UMC_RELEASE=1`. The single key per board type and the missing RDP
+  above still apply.
+- **A board that is not confirmed healthy is not parked by power cycles.**
+  The bootloader counts the starts of an application that ended in a
+  *watchdog* reset (a hang, a fault handler that spins) and stops jumping to it
+  at `BOOT_MAX_ATTEMPTS`, staying in the bootloader (heartbeat
+  `STATUS_ROLLBACK_SUSPECT`). Power-ups, button resets and software restarts are
+  clean starts: they bring the count back to 0 and write nothing to flash, so a
+  healthy board nobody confirms never reaches the limit. `OFS_CONFIRM_HEALTHY`
+  (sent with `spi_bridge.bootloader_client.confirm_healthy`) lets a person clear a
+  parked board; so does the next power-up, which gives it another try. On the H745
+  both cores read the same reset-cause register and the first to clear it hides the
+  cause from the other, so a crash-looping application on the second core may not
+  be parked; the board is never parked by mistake.
+
 None of these 3 items are memory-safety bugs (those - unbounded reads in
 `HandleReadbackStart` from a torn-write metadata page, a mailbox race
 between CM4 and CM7, a semaphore leak in the CM7 readback pacing loop,

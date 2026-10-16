@@ -7,8 +7,8 @@ import unittest
 
 from fake_transport import FakeBootloaderTransport
 
-from spi_bridge.bootloader_client import SpiOtaFlasher, query_version
-from spi_bridge.protocol import SPI_TARGET_STACKA
+from spi_bridge.bootloader_client import SpiOtaFlasher, confirm_healthy, query_version
+from spi_bridge.protocol import OFS_CONFIRM_HEALTHY, SPI_TARGET_STACKA
 
 
 class QueryVersionTests(unittest.TestCase):
@@ -29,6 +29,19 @@ class QueryVersionTests(unittest.TestCase):
         transport.raise_on_transceive = OSError("SPI device not found")
         info = query_version(transport, SPI_TARGET_STACKA, 0)
         self.assertFalse(info.online)
+
+
+class ConfirmHealthyTests(unittest.TestCase):
+    def test_the_confirmation_frame_goes_to_the_target(self):
+        transport = FakeBootloaderTransport()
+        self.assertTrue(confirm_healthy(transport, SPI_TARGET_STACKA, 3))
+        sent = transport.sent_frames[-1]
+        self.assertEqual((sent.target_tier, sent.target_slot, sent.frame_type), (SPI_TARGET_STACKA, 3, OFS_CONFIRM_HEALTHY))
+
+    def test_a_transport_failure_is_reported_not_raised(self):
+        transport = FakeBootloaderTransport()
+        transport.raise_on_transceive = OSError("SPI device not found")
+        self.assertFalse(confirm_healthy(transport, SPI_TARGET_STACKA, 0))
 
 
 class SpiOtaFlasherTests(unittest.TestCase):

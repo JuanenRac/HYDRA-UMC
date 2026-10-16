@@ -192,6 +192,10 @@ int main(void) {
     HAL_IWDG_Init(&hiwdg);
 
     HAL_Init();
+
+    // What kind of reset brought the board here, read before anything clears it (see boot_decision.h): only a watchdog reset counts against the application.
+    const uint8_t reset_kind = (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST) || __HAL_RCC_GET_FLAG(RCC_FLAG_WWDGRST)) ? BOOT_RESET_WATCHDOG : BOOT_RESET_CLEAN;
+    __HAL_RCC_CLEAR_RESET_FLAGS();
     SystemClock_Config();
 
     uint32_t slot_base = ReadSlotBaseId();
@@ -248,11 +252,15 @@ int main(void) {
     if (!enter_update_mode && app_valid) {
         FirmwareMetadata_t boot_meta;
         uint8_t have_meta = Metadata_Read(&boot_meta) && boot_meta.magic == METADATA_MAGIC_VALID;
-        uint32_t boot_attempts = have_meta ? boot_meta.boot_attempts : 0;
+        const uint32_t stored_attempts = have_meta ? boot_meta.boot_attempts : 0;
+        const uint32_t boot_attempts = BootDecision_EffectiveAttempts(stored_attempts, reset_kind);
         should_jump = BootDecision_ShouldJump(app_valid, boot_attempts);
         if (should_jump && have_meta) {
-            boot_meta.boot_attempts = boot_attempts + 1;
-            Metadata_EraseAndWrite(&boot_meta); // best-effort: a write failure here still jumps (never worse than before this fix), just without the updated count persisted
+            const uint32_t next_attempts = BootDecision_NextAttempts(boot_attempts, reset_kind);
+            if (next_attempts != stored_attempts) {   // a clean start with the count already at 0 writes nothing
+                boot_meta.boot_attempts = next_attempts;
+                Metadata_EraseAndWrite(&boot_meta); // best-effort: a write failure here still jumps (never worse than before this fix), just without the updated count persisted
+            }
         }
     }
 
