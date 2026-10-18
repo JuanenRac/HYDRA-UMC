@@ -28,6 +28,16 @@
 
 ---
 
+## 📋 In breve
+
+| | |
+|---|---|
+| Versione | `0.2.1` |
+| Maturità | Funzionale |
+| Tecnologia | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN |
+| Destinazione | Una scheda con microcontrollore (il firmware); compilato su un PC |
+| Su hardware reale | Non ancora: per questa versione non risulta alcuna esecuzione su hardware reale |
+
 ## 1. 🛠️ PANORAMICA DEL PROGETTO E DELL'ECOSISTEMA MICRO-FABBRICA
 
 **HYDRA-UMC** (Universal Machines Controller) è una piattaforma di controllo distribuito di livello industriale e un'architettura HMI ad alte prestazioni progettata per robotica cellulare multi-asse, micro-fabbriche, produzione automatizzata e orchestrazione complessa di testine utensile.
