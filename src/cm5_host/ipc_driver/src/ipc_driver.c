@@ -162,9 +162,16 @@ int hydra_ipc_read_frame(hydra_ipc_handle_t *h, uint8_t out[HYDRA_IPC_FRAME_SIZE
     return -1;
   }
 
+  /* A NULL tx_buf makes spidev clock out zeros, and an all-zero frame is a
+   * real command to the bootloader (SELF tier, frame type 0 =
+   * ENTER_BOOTLOADER). While only reading, send an idle frame of 0xFF - the
+   * padding value the frame format already uses - which matches no command. */
+  uint8_t idle_frame[HYDRA_IPC_FRAME_SIZE];
+  memset(idle_frame, 0xFF, sizeof(idle_frame));
+
   struct spi_ioc_transfer tr;
   memset(&tr, 0, sizeof(tr));
-  tr.tx_buf = 0;
+  tr.tx_buf = (unsigned long)(uintptr_t)idle_frame;
   tr.rx_buf = (unsigned long)(uintptr_t)out;
   tr.len = HYDRA_IPC_FRAME_SIZE;
   tr.speed_hz = h->spi_speed_hz;

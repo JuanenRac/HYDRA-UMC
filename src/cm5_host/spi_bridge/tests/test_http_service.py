@@ -117,6 +117,89 @@ class HttpServiceTests(unittest.TestCase):
             error.close()
 
 
+class HttpServiceGuardTests(unittest.TestCase):
+    """One SPI link, one operation at a time; bad targets and garbage frames are answered, not crashed on."""
+
+    def _serve(self, transport):
+        server = serve(transport, hmac_key=b"\x00" * 32, port=0)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+
+        def stop():
+            server.shutdown()
+            thread.join()
+            server.server_close()
+
+        self.addCleanup(stop)
+        return f"http://127.0.0.1:{server.server_port}"
+
+    def _status(self, url, data=None, method="GET"):
+        try:
+            with urlopen(Request(url, data=data, method=method)) as response:
+                return response.status, response.read()
+        except Exception as error:  # urllib.error.HTTPError
+            body = error.read()
+            error.close()
+            return error.code, body
+
+    def test_flash_without_the_image_version_is_refused_up_front(self):
+        base = self._serve(FakeBootloaderTransport())
+        status, _ = self._status(f"{base}/flash?tier=2&slot=0&hardware_id=0x48374334", data=b"\x00" * 16, method="POST")
+        self.assertEqual(status, 400)
+
+    def test_a_tier_or_slot_outside_the_bus_is_refused(self):
+        base = self._serve(FakeBootloaderTransport())
+        self.assertEqual(self._status(f"{base}/version?tier=3&slot=0")[0], 400)
+        self.assertEqual(self._status(f"{base}/version?tier=2&slot=8")[0], 400)
+        status, _ = self._status(
+            f"{base}/flash?tier=9&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1", data=b"\x00" * 16, method="POST"
+        )
+        self.assertEqual(status, 400)
+
+    def test_a_second_operation_while_a_flash_runs_gets_409_and_leaves_the_flash_alone(self):
+        entered = threading.Event()
+        release = threading.Event()
+
+        class BlockingTransport(FakeBootloaderTransport):
+            def transceive(self, frame):
+                entered.set()
+                release.wait(10)
+                return super().transceive(frame)
+
+        base = self._serve(BlockingTransport())
+        flash = threading.Thread(
+            target=self._status,
+            args=(f"{base}/flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1",),
+            kwargs={"data": b"\x00" * 2048, "method": "POST"},
+            daemon=True,
+        )
+        flash.start()
+        self.assertTrue(entered.wait(5))
+        status, _ = self._status(f"{base}/version?tier=2&slot=0")
+        self.assertEqual(status, 409)
+        release.set()
+        flash.join(10)
+
+    def test_a_corrupt_reply_is_answered_as_an_offline_board_not_a_dropped_connection(self):
+        transport = FakeBootloaderTransport()
+        transport.raise_on_transceive = ValueError("dlc must be 0-8")
+        base = self._serve(transport)
+        status, body = self._status(f"{base}/version?tier=2&slot=0")
+        self.assertEqual(status, 200)
+        self.assertFalse(json.loads(body)["online"])
+
+    def test_a_corrupt_reply_in_the_middle_of_a_flash_ends_the_stream_with_an_error_line(self):
+        transport = FakeBootloaderTransport()
+        transport.raise_on_transceive = ValueError("dlc must be 0-8")
+        base = self._serve(transport)
+        status, body = self._status(
+            f"{base}/flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1", data=bytes(2048), method="POST"
+        )
+        self.assertEqual(status, 200)
+        last = json.loads(body.decode("utf-8").splitlines()[-1])
+        self.assertEqual(last["phase"], "error")
+
+
 class HttpServiceRelayTests(unittest.TestCase):
     """relay=1 reaches Tier 2 (URTC Tool Head) through the real RELAY_SEND/
     RELAY_RECV tunnel - see relay_tunnel.py's own docstring."""

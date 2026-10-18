@@ -59,7 +59,14 @@ class RealSpiOtaTransport:
         raw_response = bytes(self._spi.xfer2(list(raw_request)))
         if len(raw_response) != SPI_FRAME_SIZE:
             raise OSError(f"SPI transfer returned {len(raw_response)} bytes, expected {SPI_FRAME_SIZE}")
-        return SpiOtaFrame.from_bytes(raw_response)
+        try:
+            return SpiOtaFrame.from_bytes(raw_response)
+        except ValueError as error:
+            # A line that floats or a board that is mid-reset answers with
+            # bytes that are not a frame (dlc above 8, all 0xFF...): report it
+            # like any other failed transfer instead of letting a ValueError
+            # escape through the callers.
+            raise OSError(f"SPI transfer returned a corrupt frame: {error}") from error
 
     def wait_data_ready(self, timeout_seconds: float) -> bool:
         event = self._data_ready_line.event_wait(timeout=timeout_seconds)
@@ -116,7 +123,13 @@ def open_spi_transport(
 
     class _DataReadyLine:
         def event_wait(self, timeout: float) -> bool:
-            return data_ready_request.wait_edge_events(timeout=timeout)
+            if not data_ready_request.wait_edge_events(timeout=timeout):
+                return False
+            # wait_edge_events() only says an edge is pending; until the event
+            # is read it stays pending and every later wait would return True
+            # at once. Read (and drop) what is there.
+            data_ready_request.read_edge_events()
+            return True
 
         def release(self) -> None:
             data_ready_request.release()

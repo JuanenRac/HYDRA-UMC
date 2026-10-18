@@ -21,17 +21,18 @@ see HYDRA-UMC/docs/architecture.md section 1 for this board's role: one per
 robot, up to 8 per HYDRA-UMC controller, FDCAN1 uplink to the STM32H745
 "Kinematic Brain" + a second CAN downlink to that robot's own URTC Tool
 Head):
-    - Bootloader: firmware/mcu_stm32g474/boot/ -> HYDRA_RCB_BOOTLOADER.bin/.hex/.elf
+    - Bootloader: src/mcu_stm32g474/boot/ -> HYDRA_RCB_BOOTLOADER.bin/.hex/.elf
                   Bare-metal, no FreeRTOS - see docs/architecture.md section 2.
-    - Application: firmware/mcu_stm32g474/     -> HYDRA_RCB_APP.bin/.hex/.elf
+    - Application: src/mcu_stm32g474/     -> HYDRA_RCB_APP.bin/.hex/.elf
                   Runs FreeRTOS (CONFIRMED design decision - architecture.md
                   section 2) - see section 3a below for the extra vendoring
                   step this needs beyond the bootloader.
 
-Both outputs land in firmware_out/ at the repo root once built (NOT
-committed - see .gitignore; these are FreeRTOS GPIO-toggle smoke-test
-binaries, not real firmware yet - see firmware/mcu_stm32g474/README.md for
-what's still real engineering work).
+Both outputs land in firmware/ at the repo root once built (committed on
+purpose, see the README - they are indexed by firmware_manifest.json; the
+application is the AXIS_STATUS responder and relay tunnel, not the motion
+firmware yet - see src/mcu_stm32g474/README.md for what's still real
+engineering work).
 
 -----------------------------------------------------------------------------
 2. Tools you need
@@ -98,7 +99,7 @@ This board's own application uses the ARM_CM4F port
 coalescing - portable/MemMang/heap_4.c). Compiled sources: tasks.c, queue.c,
 list.c, timers.c, event_groups.c, port.c, heap_4.c - into
 build/g474/freertos_obj/, using this board's OWN
-firmware/mcu_stm32g474/FreeRTOSConfig.h (via an extra -I on the app-only
+src/mcu_stm32g474/FreeRTOSConfig.h (via an extra -I on the app-only
 CFLAGS_G4_APP - the bootloader's own CFLAGS_G4 never sees this directory,
 since it never includes FreeRTOS.h).
 
@@ -118,16 +119,16 @@ that function's own comment in STM32G474RE_main.c.
             -Ipath/to/CMSIS_Include -Ipath/to/HAL_Include \
             -O2 -Wall -ffunction-sections -fdata-sections"
 
-Only 10 of the ~100+ available HAL modules are compiled today - just enough
-for the GPIO-toggle smoke test (HAL core, Cortex, GPIO, RCC + RCC_EX, PWR +
-PWR_EX, FLASH + FLASH_EX, EXTI). Extend HAL_MODULES_G4 in build_firmware.sh
+Only 12 of the ~100+ available HAL modules are compiled today - just enough
+for the bootloader and the relay application (HAL core, Cortex, GPIO, RCC +
+RCC_EX, PWR + PWR_EX, FLASH + FLASH_EX, EXTI, FDCAN, IWDG). Extend HAL_MODULES_G4 in build_firmware.sh
 as real FDCAN/timer/motion code lands - same "only what's used" reasoning
 URTC's own document explains in more depth for its own, larger module list.
 
 -----------------------------------------------------------------------------
 5. Flash partitioning (this board's own bootloader+app+backup split)
 -----------------------------------------------------------------------------
-See firmware/mcu_stm32g474/STM32G474RETx_APP.ld's own header comment for
+See src/mcu_stm32g474/STM32G474RETx_APP.ld's own header comment for
 the exact byte ranges - summarized:
 
     0x08000000  Bootloader        32 KB
@@ -148,14 +149,14 @@ header comment).
 --- Bootloader ---
     arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard \
         -specs=nano.specs -specs=nosys.specs \
-        -Tfirmware/mcu_stm32g474/boot/STM32G474RETx_BOOTLOADER.ld -Wl,--gc-sections \
+        -Tsrc/mcu_stm32g474/boot/STM32G474RETx_BOOTLOADER.ld -Wl,--gc-sections \
         startup.o system_stm32g4xx.o bootloader_main.o hal_obj/*.o \
         -o HYDRA_RCB_BOOTLOADER.elf
 
 --- Application (links the FreeRTOS objects from section 3a too) ---
     arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard \
         -specs=nano.specs -specs=nosys.specs \
-        -Tfirmware/mcu_stm32g474/STM32G474RETx_APP.ld -Wl,--gc-sections \
+        -Tsrc/mcu_stm32g474/STM32G474RETx_APP.ld -Wl,--gc-sections \
         startup.o system_stm32g4xx.o STM32G474RE_main.o hal_obj/*.o freertos_obj/*.o \
         -o HYDRA_RCB_APP.elf
 

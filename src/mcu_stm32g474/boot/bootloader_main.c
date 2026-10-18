@@ -34,6 +34,7 @@
 #include "bootloader_flash.h"
 #include "bootloader_protocol.h"
 #include "boot_decision.h"
+#include "dlc_to_fdcan_data_length.h"
 
 FDCAN_HandleTypeDef hfdcan1;
 IWDG_HandleTypeDef  hiwdg;
@@ -175,10 +176,11 @@ int main(void) {
     // watchdog is already ticking and will still recover the board,
     // instead of leaving the chip wedged with no independent watchdog
     // running yet. Safe to call this early: IWDG runs off its own
-    // always-on LSI domain (no RCC/clock-tree dependency), and
-    // HAL_IWDG_Init()'s PVU/RVU register-update-flag wait polls hardware
-    // status bits directly, not HAL_GetTick() - so it doesn't need
-    // HAL_Init()'s SysTick config to have run first either. Same IWDG
+    // always-on LSI domain (no RCC/clock-tree dependency). HAL_IWDG_Init()
+    // waits for the PVU/RVU register-update flags and does time that wait
+    // with HAL_GetTick(); before HAL_Init() the tick does not advance, so
+    // that timeout cannot fire here - the wait ends when the hardware clears
+    // the flags (a few LSI cycles) and would spin on if it never did. Same IWDG
     // config shape as URTC's own bootloader (independent watchdog -
     // survives NVIC_SystemReset(), so a 0x-relative-ENTER_BOOTLOADER-
     // triggered reset inherits an already-ticking countdown). Prescaler/
@@ -189,6 +191,7 @@ int main(void) {
     hiwdg.Instance = IWDG;
     hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
     hiwdg.Init.Reload = 999;
+    hiwdg.Init.Window = IWDG_WINDOW_DISABLE; // full-range window: a zero window would reset the chip on the first refresh
     HAL_IWDG_Init(&hiwdg);
 
     HAL_Init();
@@ -218,11 +221,15 @@ int main(void) {
                     continue;
                 }
                 uint32_t ofs = (rxHeader.Identifier >= slot_base) ? (rxHeader.Identifier - slot_base) : 0xFFFF;
-                uint32_t dlc = rxHeader.DataLength >> 16;
+                uint32_t dlc = FdcanDataLengthToDlc(rxHeader.DataLength);
                 if (ofs == OFS_START_UPDATE && dlc == 8) {
-                    enter_update_mode = 1;
-                    HandleStartUpdate(rxData);
-                    break;
+                    // Only an accepted request takes the board out of its normal
+                    // start-up: a refused one (bad size or hardware ID, from any
+                    // node on the bus) leaves the listening window running.
+                    if (HandleStartUpdate(rxData)) {
+                        enter_update_mode = 1;
+                        break;
+                    }
                 } else if (ofs == OFS_QUERY_VERSION) {
                     HandleVersionQuery();
                 } else if (ofs == OFS_QUERY_ERROR_COUNTERS) {
@@ -285,7 +292,7 @@ int main(void) {
                     continue;
                 }
                 uint32_t ofs = (rxHeader.Identifier >= slot_base) ? (rxHeader.Identifier - slot_base) : 0xFFFF;
-                uint32_t dlc = rxHeader.DataLength >> 16;
+                uint32_t dlc = FdcanDataLengthToDlc(rxHeader.DataLength);
                 if (ofs == OFS_START_UPDATE && dlc == 8) {
                     HandleStartUpdate(rxData);
                 } else if (ofs == OFS_HMAC_CHUNK && dlc == 8) {

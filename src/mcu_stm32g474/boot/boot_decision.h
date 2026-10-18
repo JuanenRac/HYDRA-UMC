@@ -53,18 +53,12 @@
 // warnings) of every real modified bootloader source file (bootloader_main.c/
 // bootloader_common.h/bootloader_protocol.c/.h) against all THREE real
 // target include paths, AND a full real link into a working bootloader
-// .elf for all three (g474/CM4/CM7) - not merely "it looks right". What
-// this did NOT get, this session: tests/test_boot_decision.c's own pure
-// logic was syntax-checked (compiles clean against all three targets) but
-// never actually EXECUTED - no native host C compiler was available in
-// this environment to run it the way build_firmware.sh's own host-tests
-// step (a genuinely different, native compiler from the ARM cross-compiler
-// above) normally would; it must run for real the next time
-// build_firmware.sh itself runs on a real Linux host, before this is
-// treated as equivalently verified to the rest of this project's own
-// host-tested logic. Real hardware validation (an actual crash-loop-then-
-// recover cycle on a physical board) is separate, larger, still entirely
-// unaddressed future work (this project's own "physical bench" scope).
+// .elf for all three (g474/CM4/CM7) - not merely "it looks right".
+// tests/test_boot_decision.c's own pure logic is compiled and executed for
+// all three copies by build_firmware.sh's host-tests step (native compiler).
+// Real hardware validation (an actual crash-loop-then-recover cycle on a
+// physical board) is separate, larger, still entirely unaddressed future
+// work (this project's own "physical bench" scope).
 // =============================================================================
 #ifndef BOOT_DECISION_H
 #define BOOT_DECISION_H

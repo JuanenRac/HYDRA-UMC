@@ -407,6 +407,8 @@ real motion/vision/relay firmware. See `docs/architecture.md` (especially
 section 6's status table and section 8's known, accepted security
 limitations) for exactly what's real vs. still open.
 
+> **Safety status:** this repository does not contain an E-STOP path, software limits, safety interlocks, the power-loss (PVD) dump to FRAM, or any motion command yet. Wherever the sections above (or another project in the ecosystem) describe them, that is the intended design: nothing may rely on it for safety until it is implemented and tested on a real board. What the applications do today: the CM4 and G474 ones run the STACK A AXIS_STATUS poll/response and the Tier 2/3 relay tunnel; the CM7 one is still a GPIO-toggle smoke test.
+
 ## 🔢 Versioning
 
 All 6 firmware components (3 bootloaders + 3 applications - Robot

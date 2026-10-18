@@ -21,6 +21,7 @@
  */
 #include "RobotControllerRelay.h"
 #include "relay_rx_queue.h"
+#include "relay_send_reassembly.h"
 #include "dlc_to_fdcan_data_length.h"
 #include "stm32g4xx_hal.h"
 #include "boot/bootloader_common.h" /* shared CAN_ID_STACKA_BASE/STACKA_SLOT_WINDOW/OFS_* */
@@ -292,8 +293,7 @@ static uint8_t TryGetMessage(FDCAN_HandleTypeDef *hfdcan, uint32_t *out_id, uint
     FDCAN_RxHeaderTypeDef rx;
     uint8_t rx_data[8];
     if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rx, rx_data) != HAL_OK) return 0;
-    uint8_t dlc = (uint8_t)(rx.DataLength >> 16); /* FDCAN_DLC_BYTES_n encodes byte count in bits [19:16] - real HAL convention */
-    if (dlc > 8) dlc = 8;
+    uint8_t dlc = (uint8_t)FdcanDataLengthToDlc(rx.DataLength); /* the HAL already shifted the DLC field down: DataLength is the plain 0..15 code */
     *out_id = rx.Identifier;
     *out_dlc = dlc;
     memcpy(out_data, rx_data, dlc);
@@ -317,6 +317,8 @@ static uint8_t TryGetMessage(FDCAN_HandleTypeDef *hfdcan, uint32_t *out_id, uint
  * it was written inline here; only the single-instance state moved into a
  * struct. See tests/test_relay_rx_queue.c. */
 static RelayRxQueue_t relay_rx_queue;
+/* Holds the first fragment of a RELAY_SEND frame until its second one arrives. */
+static RelaySendReassembly_t relay_send_reassembly;
 
 /* -----------------------------------------------------------------------
  * Public API
@@ -324,6 +326,7 @@ static RelayRxQueue_t relay_rx_queue;
 void RobotControllerRelay_Init(void)
 {
     RelayRxQueue_Reset(&relay_rx_queue);
+    RelaySendReassembly_Reset(&relay_send_reassembly);
     slot_base = ReadSlotBaseId_App();
     MX_FDCAN1_App_Init();
     MX_FDCAN2_Init();
@@ -345,24 +348,27 @@ static void ServiceUplinkMessage(uint32_t rx_id, const uint8_t rx_data[8], uint8
     }
 
     if (offset == OFS_RELAY_SEND) {
-        /* Real RELAY_SEND fragment - matches KinematicBrainCan.c's own
-         * SendRelayFragments() byte-for-byte: rxData[0:2] = target CAN ID
-         * (BE), rxData[2] = real total DLC (informational only on this
-         * side - a fragment's OWN length is what matters for forwarding,
-         * not the logical operation's total), rxData[3:] = up to 5 real
-         * data bytes to forward verbatim on FDCAN2. This board never
-         * reassembles a multi-fragment RELAY_SEND into one longer FDCAN2
-         * frame (FDCAN2 frames cap at 8 bytes same as FDCAN1 - a real
-         * >5-byte URTC operation, e.g. HMAC_CHUNK, is ALREADY split into
-         * 2 real 8-byte URTC-side frames one level up, at the Kinematic
-         * Brain, before either ever reaches this board - see
-         * KinematicBrainCan.c's own SendRelayFragments comment). Forwards
-         * each RELAY_SEND fragment as its own real FDCAN2 frame,
-         * unmodified cargo. */
+        /* RELAY_SEND fragment - matches KinematicBrainCan.c's own
+         * SendRelayFragments() byte-for-byte: rx_data[0:2] = target CAN ID
+         * (BE), rx_data[2] = the TOTAL data length of the frame being
+         * relayed, rx_data[3:] = up to 5 data bytes. A frame of more than 5
+         * bytes arrives as two fragments; the tool head's bootloader only
+         * accepts whole frames (8 bytes, or 4 for the readback request), so
+         * the fragments are put back together here and leave on FDCAN2 as
+         * ONE frame (see relay_send_reassembly.h, which also drops target
+         * IDs above 0x7FF). */
         if (rx_dlc < RELAY_FRAGMENT_HEADER_BYTES) return; /* malformed - too short to even carry a target ID */
         uint16_t target_id = ((uint16_t)rx_data[0] << 8) | rx_data[1];
+        uint8_t total_dlc = rx_data[2];
         uint8_t fragment_len = (uint8_t)(rx_dlc - RELAY_FRAGMENT_HEADER_BYTES);
-        SendClassicFrame(&hfdcan2_app, target_id, &rx_data[RELAY_FRAGMENT_HEADER_BYTES], fragment_len);
+        uint16_t out_id;
+        uint8_t out_data[8];
+        uint8_t out_dlc;
+        if (RelaySendReassembly_Feed(&relay_send_reassembly, HAL_GetTick(), target_id, total_dlc,
+                                     &rx_data[RELAY_FRAGMENT_HEADER_BYTES], fragment_len,
+                                     &out_id, out_data, &out_dlc)) {
+            SendClassicFrame(&hfdcan2_app, out_id, out_data, out_dlc);
+        }
         return;
     }
 

@@ -63,22 +63,24 @@ int main(void) {
     // watchdog is already ticking and will still recover the board
     // instead of leaving the chip wedged with no independent watchdog
     // running yet. Safe this early: IWDG1 runs off its own always-on LSI
-    // domain (no RCC/clock-tree dependency), and HAL_IWDG_Init()'s PVU/RVU
-    // register-update-flag wait polls hardware status bits directly, not
-    // HAL_GetTick() - so it doesn't need HAL_Init()'s SysTick config to
-    // have run first either. Same IWDG shape as every other bootloader in
+    // domain (no RCC/clock-tree dependency). HAL_IWDG_Init() waits for the
+    // PVU/RVU register-update flags and does time that wait with
+    // HAL_GetTick(); before HAL_Init() the tick does not advance, so that
+    // timeout cannot fire here - the wait ends when the hardware clears the
+    // flags (a few LSI cycles) and would spin on if it never did. Same IWDG shape as every other bootloader in
     // this project - see this file's own header comment on why the exact
     // prescaler/reload is still a placeholder.
     hiwdg.Instance = IWDG1; // CM7 owns IWDG1, CM4 owns IWDG2 - two independent watchdogs, matching this chip's own dual-core independence (docs/architecture.md section 2)
     hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
     hiwdg.Init.Reload = 4095; // generous placeholder - TODO tune against real 128KB sector-erase timing once measured on real hardware, see bootloader_flash.c's own header
+    hiwdg.Init.Window = IWDG_WINDOW_DISABLE; // full-range window: a zero window would reset the chip on the first refresh
     HAL_IWDG_Init(&hiwdg);
 
     HAL_Init();
 
     // What kind of reset brought the board here, read before anything clears it (see boot_decision.h): only a watchdog reset counts against the application.
-    const uint8_t reset_kind = (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDG1RST) || __HAL_RCC_GET_FLAG(RCC_FLAG_WWDG1RST)) ? BOOT_RESET_WATCHDOG : BOOT_RESET_CLEAN;
-    __HAL_RCC_CLEAR_RESET_FLAGS();
+    const uint8_t reset_kind = (__HAL_RCC_C1_GET_FLAG(RCC_FLAG_IWDG1RST) || __HAL_RCC_C1_GET_FLAG(RCC_FLAG_WWDG1RST)) ? BOOT_RESET_WATCHDOG : BOOT_RESET_CLEAN;
+    __HAL_RCC_C1_CLEAR_RESET_FLAGS(); // this core's own copy of the reset status: the other core still sees its own
     SystemClock_Config();
     __HAL_RCC_HSEM_CLK_ENABLE();
 
@@ -104,9 +106,12 @@ int main(void) {
             HAL_HSEM_Release(IPC_HSEM_CMD_ID, 0);
 
             if (ofs == OFS_START_UPDATE && dlc == 8) {
-                enter_update_mode = 1;
-                HandleStartUpdate(data);
-                break;
+                // Only an accepted request takes the core out of its normal
+                // start-up; a refused one leaves the listening window running.
+                if (HandleStartUpdate(data)) {
+                    enter_update_mode = 1;
+                    break;
+                }
             } else {
                 DispatchCommand(ofs, data, dlc);
             }

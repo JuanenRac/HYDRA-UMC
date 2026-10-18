@@ -59,18 +59,18 @@ extern IWDG_HandleTypeDef  hiwdg;
 // rule applies here verbatim.
 #define FIRMWARE_VERSION_MAJOR 0
 #define FIRMWARE_VERSION_MINOR 1
-#define FIRMWARE_VERSION_PATCH 5
+#define FIRMWARE_VERSION_PATCH 6
 
 #define BOOTLOADER_VERSION_MAJOR 0
 #define BOOTLOADER_VERSION_MINOR 1
-#define BOOTLOADER_VERSION_PATCH 6
+#define BOOTLOADER_VERSION_PATCH 7
 
 extern const uint8_t HMAC_KEY[32];
 
 // STACK A slot addressing (docs/architecture.md section 4) - this core
 // (not a Robot Controller Board itself) is the one that OWNS this
 // addressing scheme, computing target slot base IDs to relay to rather
-// than reading its own BOARD_ID the way firmware/mcu_stm32g474/boot/
+// than reading its own BOARD_ID the way src/mcu_stm32g474/boot/
 // bootloader_common.h's own copy of these constants does (that board reads
 // a local DIP switch; this core has none to read - the target slot comes
 // from the SPI1 frame's own target_slot field instead, see

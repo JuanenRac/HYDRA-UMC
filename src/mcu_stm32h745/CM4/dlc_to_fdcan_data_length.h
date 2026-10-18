@@ -28,4 +28,14 @@ static inline uint32_t DlcToFdcanDataLength(uint8_t dlc)
     return table[dlc > 8 ? 8 : dlc];
 }
 
+/* Inverse of the above, for a received frame: the HAL hands back
+ * FDCAN_RxHeaderTypeDef.DataLength as the raw 4-bit DLC field (0..15) -
+ * NOT shifted into bits [19:16]; HAL_FDCAN_GetRxMessage() already did the
+ * shift. This board only runs Classic CAN, so anything above 8 clamps to
+ * 8 (the size of the fixed data[] a frame has here). */
+static inline uint32_t FdcanDataLengthToDlc(uint32_t hal_data_length)
+{
+    return hal_data_length > 8U ? 8U : hal_data_length;
+}
+
 #endif /* HYDRA_UMC_DLC_TO_FDCAN_DATA_LENGTH_H */

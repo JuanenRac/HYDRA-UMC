@@ -14,4 +14,6 @@ __pycache__/
 *.py[cod]
 
 # Editor settings are per-machine (this one holds an absolute local path)
-.vscode/
+.vscode/*
+!.vscode/tasks.json
+!.vscode/extensions.json

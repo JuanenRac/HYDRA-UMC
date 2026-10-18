@@ -36,9 +36,9 @@ extern IWDG_HandleTypeDef  hiwdg;
 #define METADATA_ADDR        0x08008000UL
 #define METADATA_MAGIC_VALID 0x55415055UL // "UPAU" - distinct from URTC's own "APAU" so a metadata page from one project is never mistaken for the other's
 // FLASH_PAGE_SIZE (2048 bytes) is already defined by the HAL itself
-// (stm32g4xx_hal_flash.h) - not redefined here, same precedent URTC's own
-// bootloader_common.h documents for why (matches STM32G4 Cat.2/3 page size
-// in single-bank/DBANK=0 mode).
+// (stm32g4xx_hal_flash.h) - not redefined here. It is the page size of the
+// dual-bank layout (option bit DBANK = 1, the factory default): two banks of
+// 128 pages, numbered per bank - see flash_geometry.h.
 
 // -----------------------------------------------------------------------
 // Firmware identity - rejects an image built for different hardware or
@@ -60,7 +60,7 @@ extern IWDG_HandleTypeDef  hiwdg;
 // embedded in the output filename (HYDRA_RCB_APP_v0.0.0.bin).
 #define FIRMWARE_VERSION_MAJOR 0
 #define FIRMWARE_VERSION_MINOR 1
-#define FIRMWARE_VERSION_PATCH 8
+#define FIRMWARE_VERSION_PATCH 9
 #define FIRMWARE_VERSION_BUILD 0
 
 // BOOTLOADER_VERSION_* describes THIS bootloader binary itself. Versioning
@@ -71,7 +71,7 @@ extern IWDG_HandleTypeDef  hiwdg;
 // by build_firmware.sh (HYDRA_RCB_BOOTLOADER_v0.0.0.bin).
 #define BOOTLOADER_VERSION_MAJOR 0
 #define BOOTLOADER_VERSION_MINOR 1
-#define BOOTLOADER_VERSION_PATCH 7
+#define BOOTLOADER_VERSION_PATCH 8
 
 // -----------------------------------------------------------------------
 // HMAC-SHA256 signing key - PLACEHOLDER, same caveat as URTC's own key

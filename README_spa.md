@@ -424,6 +424,8 @@ de estado de la sección 6 y las limitaciones de seguridad conocidas y
 aceptadas de la sección 8) para exactamente qué es real frente a lo que
 sigue abierto.
 
+> **Estado de seguridad:** este repositorio todavía no contiene ninguna ruta de E-STOP, límites por software, enclavamientos de seguridad, el volcado a FRAM por pérdida de alimentación (PVD) ni ningún comando de movimiento. Allí donde las secciones anteriores (u otro proyecto del ecosistema) los describen, es el diseño previsto: nada debe depender de ello para la seguridad hasta que esté implementado y probado en una placa real. Lo que hacen hoy las aplicaciones: las del CM4 y del G474 ejecutan el sondeo/respuesta AXIS_STATUS de STACK A y el túnel de relé de Tier 2/3; la del CM7 sigue siendo una prueba de humo con GPIO-toggle.
+
 ## 🔢 Versionado
 
 Los 6 componentes de firmware (3 bootloaders + 3 aplicaciones - Robot

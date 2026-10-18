@@ -48,6 +48,9 @@
 import sys
 import re
 
+# From this version on a header with a _BUILD macro counts it as a fourth component.
+FOUR_PART_FROM = (0, 8, 0)
+
 
 def main():
     if len(sys.argv) != 3:
@@ -71,15 +74,31 @@ def main():
         return int(m.group(1))
 
     major, minor, patch = get("MAJOR"), get("MINOR"), get("PATCH")
+    # A header may carry a fourth component (<prefix>_BUILD). It stays at 0 while
+    # the version is three-part and only counts from FOUR_PART_FROM on, exactly
+    # like the shared version utility. This script looks only at the header it
+    # was given - never at the project manifest.
+    has_build = re.search(rf"#define\s+{prefix}_BUILD\s+\d+", text) is not None
+    build = get("BUILD") if has_build else None
+    four_part = has_build and (major, minor, patch) >= FOUR_PART_FROM
 
     # The odometer carry rule itself - see this file's own header comment.
-    patch += 1
+    if four_part:
+        build += 1
+        if build > 9:
+            build = 0
+            patch += 1
+    else:
+        patch += 1
     if patch > 9:
         patch = 0
         minor += 1
     if minor > 9:
         minor = 0
         major += 1
+    if has_build and not four_part and (major, minor, patch) >= FOUR_PART_FROM:
+        build = 0
+        four_part = True
 
     def set_macro(name, value):
         nonlocal text
@@ -101,41 +120,14 @@ def main():
     set_macro("MAJOR", major)
     set_macro("MINOR", minor)
     set_macro("PATCH", patch)
+    if four_part:
+        set_macro("BUILD", build)
 
     with open(path, "w") as f:
         f.write(text)
 
-    print(f"{major}.{minor}.{patch}")
+    print(f"{major}.{minor}.{patch}" + (f".{build}" if four_part else ""))
     return 0
-
-
-def _delegate_to_shared_utility():
-    """Hand the bump over to the shared utility once the version has four parts.
-
-    Returns its exit code, or None when this step is an ordinary three-part one.
-    """
-    import importlib.util
-    import json as _json
-    from pathlib import Path as _Path
-
-    here = _Path(__file__).resolve().parent
-    root = here if (here / "bump_manifest_version.py").is_file() else here.parent
-    utility, manifest = root / "bump_manifest_version.py", root / "hydra-umc.project.json"
-    if not utility.is_file() or not manifest.is_file():
-        return None
-    spec = importlib.util.spec_from_file_location("_shared_bump", utility)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    version = _json.loads(manifest.read_text(encoding="utf-8")).get("version", "")
-    if not hasattr(module, "FOUR_PART_FROM") or module.next_version(version).count(".") != 3:
-        return None
-    return module.main()
-
-
-if __name__ == "__main__":
-    _shared_exit = _delegate_to_shared_utility()
-    if _shared_exit is not None:
-        raise SystemExit(_shared_exit)
 
 
 if __name__ == "__main__":

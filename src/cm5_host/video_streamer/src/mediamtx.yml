@@ -11,17 +11,22 @@
 # udev output before trusting this device mapping.
 # =============================================================================
 
+# The control API is bound to loopback only: it has no authentication.
+# The RTSP and WebRTC listeners below have none either, so keep this host on
+# a trusted network (or add authInternalUsers) before exposing it further.
+# Each path is fed by the ffmpeg process runOnInit starts: "publisher" means
+# the stream comes from whoever publishes to the path.
 rtspAddress: :8554
 webrtcAddress: :8889
 api: yes
-apiAddress: :9997
+apiAddress: 127.0.0.1:9997
 
 paths:
-  cam1: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video0 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam1 }
-  cam2: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video1 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam2 }
-  cam3: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video2 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam3 }
-  cam4: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video3 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam4 }
-  cam5: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video4 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam5 }
-  cam6: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video5 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam6 }
-  cam7: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video6 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam7 }
-  cam8: { source: rtsp://127.0.0.1:0, runOnInit: ffmpeg -f v4l2 -i /dev/video7 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam8 }
+  cam1: { source: publisher, runOnInit: ffmpeg -f v4l2 -i /dev/video0 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam1 }
+  cam2: { source: publisher, runOnInit: ffmpeg -f v4l2 -i /dev/video1 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam2 }
+  cam3: { source: publisher, runOnInit: ffmpeg -f v4l2 -i /dev/video2 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam3 }
+  cam4: { source: publisher, runOnInit: ffmpeg -f v4l2 -i /dev/video3 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam4 }
+  cam5: { source: publisher, runOnInit: ffmpeg -f v4l2 -i /dev/video4 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam5 }
+  cam6: { source: publisher, runOnInit: ffmpeg -f v4l2 -i /dev/video5 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam6 }
+  cam7: { source: publisher, runOnInit: ffmpeg -f v4l2 -i /dev/video6 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam7 }
+  cam8: { source: publisher, runOnInit: ffmpeg -f v4l2 -i /dev/video7 -c:v libx264 -tune zerolatency -f rtsp rtsp://localhost:8554/cam8 }

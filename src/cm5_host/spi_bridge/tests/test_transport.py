@@ -5,7 +5,8 @@
 # =============================================================================
 import unittest
 
-from spi_bridge.transport import _parse_spidev_path, open_spi_transport
+from spi_bridge.protocol import SPI_FRAME_SIZE, SpiOtaFrame
+from spi_bridge.transport import RealSpiOtaTransport, _parse_spidev_path, open_spi_transport
 
 
 def _spidev_and_gpiod_installed() -> bool:
@@ -41,3 +42,31 @@ class OpenSpiTransportTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class _FixedReplySpi:
+    def __init__(self, reply):
+        self._reply = reply
+
+    def xfer2(self, _request):
+        return list(self._reply)
+
+    def close(self):
+        pass
+
+
+class _Line:
+    def event_wait(self, timeout):
+        return True
+
+    def release(self):
+        pass
+
+
+class CorruptReplyTests(unittest.TestCase):
+    def test_a_garbage_reply_is_an_oserror_like_any_failed_transfer(self):
+        # dlc byte 0xFF is not a frame: from_bytes() raises ValueError, which used
+        # to escape through query_version()/flash() (they only expect OSError).
+        transport = RealSpiOtaTransport(_FixedReplySpi(bytes([0xFF]) * SPI_FRAME_SIZE), _Line())
+        with self.assertRaises(OSError):
+            transport.transceive(SpiOtaFrame(0, 0, 0x08, 0))

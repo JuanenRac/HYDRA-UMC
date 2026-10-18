@@ -20,6 +20,7 @@
 #include "bootloader_protocol.h"
 #include "bootloader_crypto.h"
 #include "bootloader_flash.h"
+#include "dlc_to_fdcan_data_length.h"
 #include "ipc_mailbox.h"
 
 // -----------------------------------------------------------------------
@@ -105,7 +106,7 @@ void HandleErrorCounterQuery(void) {
 static uint8_t StackPointerInValidRAM(uint32_t sp) {
     // CM4's own D2-domain SRAM1+2+3: 288KB @ 0x30000000 (see ../STM32H745
     // ZITx_CM4_APP.ld).
-    return (sp >= D2_AXISRAM_BASE + 0x400UL && sp <= D2_AXISRAM_BASE + 0x48000UL);
+    return (sp >= D2_AHBSRAM_BASE + 0x400UL && sp <= D2_AHBSRAM_BASE + 0x48000UL); // 0x30000000, the RAM the app links against - not the 0x10000000 alias
 }
 
 uint8_t ApplicationIsValid(void) {
@@ -220,7 +221,10 @@ static uint8_t FlushPageBuffer(void) {
     return ok;
 }
 
-void HandleStartUpdate(uint8_t *data) {
+// Returns 1 when the update was accepted (size and hardware ID valid, backup
+// slot erased, ready to receive), 0 when the request was refused - a refused
+// request must not pull the board out of its normal start-up.
+uint8_t HandleStartUpdate(uint8_t *data) {
     update_total_size = ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16)
                        | ((uint32_t)data[2] << 8) | data[3];
     update_declared_hw_id = ((uint32_t)data[4] << 24) | ((uint32_t)data[5] << 16)
@@ -228,11 +232,11 @@ void HandleStartUpdate(uint8_t *data) {
 
     if (update_total_size == 0 || update_total_size > APP_MAX_SIZE) {
         CAN_SendStatus(STATUS_ERROR);
-        return;
+        return 0;
     }
     if (update_declared_hw_id != THIS_HARDWARE_ID) {
         CAN_SendVerifyFailReason(VERIFY_FAIL_REASON_HARDWARE_ID);
-        return;
+        return 0;
     }
 
     uint32_t pages_needed = (update_total_size + FLASH_PAGE_SIZE - 1) / FLASH_PAGE_SIZE;
@@ -241,7 +245,7 @@ void HandleStartUpdate(uint8_t *data) {
         CAN_SendStatus(STATUS_ERROR);
         update_failed = 1;
         update_in_progress = 0;
-        return;
+        return 0;
     }
 
     memset(page_buffer, 0xFF, sizeof(page_buffer));
@@ -255,6 +259,7 @@ void HandleStartUpdate(uint8_t *data) {
     update_downgrade_authorized = 0;
     update_last_activity_tick = HAL_GetTick();
     CAN_SendStatus(STATUS_RECEIVING);
+    return 1;
 }
 
 void HandleAuthorizeDowngrade(uint8_t *data) {
@@ -496,7 +501,7 @@ void Relay_ToStackA(uint8_t slot, const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
     txHeader.Identifier = target_id;
     txHeader.IdType = FDCAN_STANDARD_ID;
     txHeader.TxFrameType = FDCAN_DATA_FRAME;
-    txHeader.DataLength = ((uint32_t)in->dlc) << 16;
+    txHeader.DataLength = DlcToFdcanDataLength(in->dlc); // the HAL takes the plain DLC code and shifts it itself
     txHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
     txHeader.BitRateSwitch = FDCAN_BRS_OFF;
     txHeader.FDFormat = FDCAN_CLASSIC_CAN;
@@ -525,7 +530,7 @@ void Relay_ToStackA(uint8_t slot, const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
                 if (rxHeader.RxFrameType == FDCAN_DATA_FRAME && rxHeader.IdType == FDCAN_STANDARD_ID &&
                     rxHeader.Identifier >= slot_base && rxHeader.Identifier < slot_base + STACKA_SLOT_WINDOW) {
                     out->frame_type = (uint8_t)(rxHeader.Identifier - slot_base);
-                    out->dlc = (uint8_t)(rxHeader.DataLength >> 16);
+                    out->dlc = (uint8_t)FdcanDataLengthToDlc(rxHeader.DataLength); // the HAL already shifted the field down
                     memcpy(out->payload, rxData, 8);
                     return;
                 }

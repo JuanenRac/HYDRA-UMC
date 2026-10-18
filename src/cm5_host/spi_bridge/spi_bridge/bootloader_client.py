@@ -69,7 +69,7 @@ def query_version(transport: SpiOtaTransport, target_tier: int, target_slot: int
     request = SpiOtaFrame(target_tier, target_slot, OFS_QUERY_VERSION, 1, b"\x00")
     try:
         response = transport.transceive(request)
-    except OSError:
+    except (OSError, ValueError):
         return VersionInfo(online=False)
     if response.frame_type != OFS_VERSION_RESPONSE or response.dlc < 8:
         return VersionInfo(online=False)
@@ -88,7 +88,7 @@ def confirm_healthy(transport: SpiOtaTransport, target_tier: int, target_slot: i
     request = SpiOtaFrame(target_tier, target_slot, OFS_CONFIRM_HEALTHY, 1, b"\x00")
     try:
         transport.transceive(request)
-    except OSError:
+    except (OSError, ValueError):
         return False
     return True
 

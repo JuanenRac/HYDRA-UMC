@@ -15,7 +15,7 @@
 
 // PLACEHOLDER default - change before relying on this for anything real.
 // Distinct from URTC's own key AND from the G474 Robot Controller Board's
-// own key (firmware/mcu_stm32g474/boot/bootloader_crypto.c) - three
+// own key (src/mcu_stm32g474/boot/bootloader_crypto.c) - three
 // separate trust domains in this overall system, an image signed for one
 // must never verify against either of the other two.
 #ifdef HYDRA_FW_HMAC_KEY_BYTES

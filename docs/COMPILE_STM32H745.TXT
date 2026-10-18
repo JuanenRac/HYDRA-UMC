@@ -17,10 +17,10 @@ Kinematic Brain (STM32H745ZIT6, LQFP-144, 2 MB flash / 1 MB RAM total,
 Cortex-M7 @ up to 480 MHz + Cortex-M4 @ up to 240 MHz - see
 HYDRA-UMC/docs/architecture.md section 1 and README.md section 5 for this
 board's role):
-    - CM7 bootloader:   firmware/mcu_stm32h745/CM7/boot/ -> HYDRA_KB_CM7_BOOTLOADER.bin/.hex/.elf  (bare-metal)
-    - CM7 application:  firmware/mcu_stm32h745/CM7/      -> HYDRA_KB_CM7_APP.bin/.hex/.elf         (FreeRTOS)
-    - CM4 bootloader:   firmware/mcu_stm32h745/CM4/boot/ -> HYDRA_KB_CM4_BOOTLOADER.bin/.hex/.elf  (bare-metal)
-    - CM4 application:  firmware/mcu_stm32h745/CM4/      -> HYDRA_KB_CM4_APP.bin/.hex/.elf         (FreeRTOS)
+    - CM7 bootloader:   src/mcu_stm32h745/CM7/boot/ -> HYDRA_KB_CM7_BOOTLOADER.bin/.hex/.elf  (bare-metal)
+    - CM7 application:  src/mcu_stm32h745/CM7/      -> HYDRA_KB_CM7_APP.bin/.hex/.elf         (FreeRTOS)
+    - CM4 bootloader:   src/mcu_stm32h745/CM4/boot/ -> HYDRA_KB_CM4_BOOTLOADER.bin/.hex/.elf  (bare-metal)
+    - CM4 application:  src/mcu_stm32h745/CM4/      -> HYDRA_KB_CM4_APP.bin/.hex/.elf         (FreeRTOS)
 
 Both applications run FreeRTOS (CONFIRMED design decision, docs/
 architecture.md section 2) - as TWO INDEPENDENT instances, one per core
@@ -31,8 +31,9 @@ see section 3a below for what the applications need beyond the bootloaders.
 Each core gets its OWN flash bank (1 MB each of the chip's 2 MB total) and
 its OWN bootloader+app+backup split within that bank - see each *.ld
 script's own header comment for the exact byte ranges. All 4 outputs land
-in firmware_out/ (gitignored - FreeRTOS/bare-metal smoke-test binaries, not
-real firmware yet).
+in firmware/ (committed on purpose and indexed by firmware_manifest.json;
+the CM7 application is a FreeRTOS GPIO-toggle smoke test, not real motion
+firmware yet).
 
 -----------------------------------------------------------------------------
 2. Tools - same as STM32G474 (docs/COMPILE_STM32G474.TXT section 2)
@@ -143,9 +144,8 @@ CORE_CM7 set) produces a binary that compiles and links without error but
 targets the wrong core's peripheral/memory map - not something the
 toolchain catches for you, a real mistake worth double-checking.
 
-Only 11 HAL modules compiled today per core, for the GPIO-toggle smoke test
-(HAL core, Cortex, GPIO, RCC + RCC_EX, PWR + PWR_EX, FLASH + FLASH_EX, EXTI,
-MDMA) - same "only what's used" reasoning as G474's own document. The 2
+Only 15 HAL modules compiled today per core (HAL core, Cortex, GPIO, RCC +
+RCC_EX, PWR + PWR_EX, FLASH + FLASH_EX, EXTI, MDMA, FDCAN, IWDG, SPI, HSEM) - same "only what's used" reasoning as G474's own document. The 2
 cores' HAL object sets are kept in SEPARATE directories
 (build/h745/hal_obj_cm7/, build/h745/hal_obj_cm4/) even though several
 modules compile to functionally similar code for both - never link a CM7
@@ -163,7 +163,7 @@ CM7 (Flash Bank 1, 0x08000000-0x080FFFFF):
     0x080FF000  Reserved           4 KB
 
 CM4 (Flash Bank 2, 0x08100000-0x081FFFFF): identical split, offset by
-+0x100000 (see firmware/mcu_stm32h745/CM4/STM32H745ZITx_CM4_APP.ld's own
++0x100000 (see src/mcu_stm32h745/CM4/STM32H745ZITx_CM4_APP.ld's own
 header for the exact addresses).
 
 RAM: CM7 uses D1-domain AXI SRAM (512 KB @ 0x24000000); CM4 uses D2-domain

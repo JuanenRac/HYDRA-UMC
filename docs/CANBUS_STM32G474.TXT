@@ -4,19 +4,22 @@ PROJECT: HYDRA-UMC
 AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
 LICENSE: This document is licensed under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
          Firmware source is GPL-3.0; hardware design files are CERN-OHL-S v2 - see the repo README.
-MCU: STM32G474RET6 (512KB flash: 128KB bootloader / 128KB metadata / 384KB
-     main application slot / 384KB backup-staging slot - see hardware/PCB/
-     robot_controller_board_stm32g474/README.md). Slot addressing covers up
+MCU: STM32G474RET6 (512KB flash in two 256KB banks: 32KB bootloader / 4KB
+     metadata / 236KB main application slot / 236KB
+     backup-staging slot, the backup slot entirely in bank 2 - see
+     src/mcu_stm32g474/README.md and boot/bootloader_common.h, which hold the
+     exact addresses; the option byte DBANK must be 1, the factory default). Slot addressing covers up
      to 8 boards (BOARD_ID 0-7, see section 0 below).
 =============================================================================
 
 STATUS: the BOOTLOADER portion of this map (section 2) is REAL, implemented,
-compiling firmware - firmware/mcu_stm32g474/boot/. The APPLICATION portion
-(section 1, this board's own runtime protocol - motion commands, endstop
-telemetry, the Tier 2/3 relay tunnel) is PROPOSED at the ID-allocation level
-only (matches docs/architecture.md section 4's own table) - no application
-firmware implements any of it yet (firmware/mcu_stm32g474/STM32G474RE_main.c
-is still a FreeRTOS GPIO-toggle smoke test). Modeled directly on URTC's own
+compiling firmware - src/mcu_stm32g474/boot/. In the APPLICATION portion
+(section 1, this board's own runtime protocol) AXIS_STATUS (+0x10) and the
+Tier 2/3 relay tunnel (RELAY_SEND +0x12 / RELAY_RECV +0x13) are implemented in
+src/mcu_stm32g474/RobotControllerRelay.c; motion commands and axis step
+telemetry are PROPOSED at the ID-allocation level only (matches
+docs/architecture.md section 4's own table) - nothing implements them yet.
+None of it has run on a real board. Modeled directly on URTC's own
 CANBUS.TXT (sibling repo) - same big-endian multi-byte convention, same
 bootloader command semantics, re-based onto a slot-addressed bus URTC's own
 single-board protocol never needed.
@@ -42,7 +45,7 @@ LOCAL 3-position DIP switch on this board's own PCB (docs/PINOUT_
 STM32G474_ROBOT_CONTROLLER.TXT section 1c, hardware/PCB/robot_controller_
 board_stm32g474/BOM.TXT item 10), manually set by whoever installs the
 board. Every board runs the identical firmware image; only the DIP switch
-differs board to board. `ReadSlotBaseId()` (firmware/mcu_stm32g474/boot/
+differs board to board. `ReadSlotBaseId()` (src/mcu_stm32g474/boot/
 bootloader_main.c) computes the formula above once at boot.
 
 Every ID in sections 1-2 below is written as "+0xNN" - the actual wire ID
@@ -82,19 +85,20 @@ Data:
                  (FDCAN2, downlink to the URTC head - docs/PINOUT_STM32G474_
                  ROBOT_CONTROLLER.TXT section 1b), big-endian, 11-bit
                  standard ID in the low bits.
-  - rxData[2]: DLC of the frame to actually send on FDCAN2 (0-5, since only
-               5 data bytes remain in this 8-byte RELAY_SEND frame after
-               the 2-byte ID + 1-byte DLC header)
-  - rxData[3:7]: up to 5 data bytes to relay onward on FDCAN2, addressed
-                 exactly as read from rxData[0:1]
-  Effect: queues a frame on this board's own FDCAN2, addressed and sized
-          exactly as specified - this board never interprets the target ID
-          or payload, it's opaque cargo (docs/architecture.md section 5).
-          A logical operation needing more than 5 data bytes (e.g. URTC's
-          own HMAC_CHUNK, which is 8 bytes) is split across 2 consecutive
-          RELAY_SEND frames - same "multiple relay frames per logical
-          operation" pattern URTC's own CANBUS.TXT already establishes for
-          its expansion-board bridge (0x180/0x1EF).
+  - rxData[2]: TOTAL DLC (0-8) of the frame to send on FDCAN2, repeated in
+               both fragments of a frame longer than 5 bytes
+  - rxData[3:7]: the first 5 data bytes (first fragment) or the remaining
+                 1-3 bytes (second fragment) of that frame
+  Effect: the fragments are put back together on this board and ONE frame
+          leaves on its FDCAN2, addressed and sized exactly as specified -
+          the tool head's bootloader only accepts whole 8-byte (or 4-byte)
+          frames. A frame of 5 bytes or less is a single fragment; a
+          second fragment that does not arrive within 20 ms of the first is
+          dropped, and so is a target ID above 0x7FF. This board never
+          interprets the target ID or payload otherwise, it's opaque cargo
+          (docs/architecture.md section 5). A logical operation needing
+          more than 5 data bytes (e.g. URTC's own HMAC_CHUNK, which is 8
+          bytes) therefore takes 2 consecutive RELAY_SEND frames.
 
 ID: +0x13 [Kinematic Brain -> Robot Controller Board, or answered
            unprompted]
@@ -120,7 +124,7 @@ ID: +0x14 - +0x1F Reserved for future Robot Controller Board features -
 
 -----------------------------------------------------------------------------
 2. BOOTLOADER PROTOCOL (+0x00 - +0x0F, +0x14) - REAL, implemented,
-   firmware/mcu_stm32g474/boot/
+   src/mcu_stm32g474/boot/
 -----------------------------------------------------------------------------
 Same command set as URTC's own bootloader (README's "Building & Flashing"
 section, that repo's docs/CANBUS.TXT bottom section) - 0x7F0-0x7FF re-based
@@ -322,7 +326,7 @@ Note: added during implementation - not in docs/architecture.md's
 - URTC/docs/CANBUS.TXT (sibling repo)  - the original protocol this
   document's section 2 is re-based from, byte-for-byte compatible in
   everything except the base ID itself.
-- firmware/mcu_stm32g474/boot/         - the real, compiling implementation
+- src/mcu_stm32g474/boot/         - the real, compiling implementation
   of section 2 (bootloader_common.h has the exact OFS_* offsets as C
   #defines, guaranteed to match this document since both were written
   from the same source of truth).

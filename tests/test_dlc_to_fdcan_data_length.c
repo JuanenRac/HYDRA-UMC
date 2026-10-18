@@ -40,6 +40,26 @@ int main(void)
     TEST_ASSERT(DlcToFdcanDataLength(15) == 8, "DLC 15 clamps to 8 bytes");
     TEST_ASSERT(DlcToFdcanDataLength(255) == 8, "DLC 255 (garbage) clamps to 8 bytes");
 
+    /* Receive side: the HAL hands back the plain 0..15 DLC code, so 0-8
+     * pass through and anything above clamps to the 8-byte classic frame. */
+    for (uint32_t code = 0; code <= 8; code++) {
+        TEST_ASSERT(FdcanDataLengthToDlc(code) == code, "RX code 0-8 maps to itself");
+    }
+    TEST_ASSERT(FdcanDataLengthToDlc(9) == 8, "RX code 9 clamps to 8");
+    TEST_ASSERT(FdcanDataLengthToDlc(15) == 8, "RX code 15 clamps to 8");
+
+    /* Mini-HAL round trip with the real semantics (HAL_FDCAN_AddMessageToTxFifoQ
+     * writes DataLength << 16 into the message RAM word and
+     * HAL_FDCAN_GetRxMessage reads it back with >> 16): what one side sends
+     * the other side must read back unchanged. A TX that pre-shifted its
+     * value (the old bootloader macro) would land in the wrong bits and an
+     * RX that shifted again would always read 0. */
+    for (uint8_t dlc = 0; dlc <= 8; dlc++) {
+        uint32_t message_ram_word = DlcToFdcanDataLength(dlc) << 16;
+        uint32_t rx_data_length = message_ram_word >> 16;
+        TEST_ASSERT(FdcanDataLengthToDlc(rx_data_length) == dlc, "TX -> message RAM -> RX round trip keeps the DLC");
+    }
+
     if (failures == 0) {
         printf("  OK   all dlc_to_fdcan_data_length host tests passed\n");
         return 0;

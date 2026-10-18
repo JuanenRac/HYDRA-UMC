@@ -425,6 +425,8 @@ tableau d'état de la section 6 et les limitations de sécurité connues et
 acceptées de la section 8) pour ce qui est exactement réel par rapport à ce
 qui reste ouvert.
 
+> **État de la sécurité :** ce dépôt ne contient pas encore de chemin d'E-STOP, de limites logicielles, de verrouillages de sécurité, de sauvegarde en FRAM sur perte d'alimentation (PVD) ni de commande de mouvement. Là où les sections ci-dessus (ou un autre projet de l'écosystème) les décrivent, il s'agit de la conception prévue : rien ne doit s'y fier pour la sécurité tant qu'elle n'est pas implémentée et testée sur une vraie carte. Ce que font aujourd'hui les applications : celles du CM4 et du G474 exécutent l'interrogation/réponse AXIS_STATUS de STACK A et le tunnel de relais Tier 2/3 ; celle du CM7 reste un test de fumée GPIO-toggle.
+
 ## 🔢 Versionnage
 
 Les 6 composants du firmware (3 bootloaders + 3 applications - Robot

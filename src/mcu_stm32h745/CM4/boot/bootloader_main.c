@@ -189,8 +189,7 @@ static uint8_t DispatchFrame(SpiOtaFrame_t *in, uint8_t tx_wire[SPI_FRAME_SIZE])
         FrameToWire(&out, tx_wire);
     } else { // SPI_TARGET_SELF
         if (in->frame_type == OFS_START_UPDATE && in->dlc == 8) {
-            HandleStartUpdate(in->payload);
-            return 1;
+            return HandleStartUpdate(in->payload); // 1 only when the request was accepted
         } else if (in->frame_type == OFS_HMAC_CHUNK && in->dlc == 8) {
             HandleHmacChunk(in->payload);
         } else if (in->frame_type == OFS_DATA) {
@@ -220,20 +219,22 @@ int main(void) {
     // watchdog is already ticking and will still recover the board
     // instead of leaving the chip wedged with no independent watchdog
     // running yet. Safe this early: IWDG2 runs off its own always-on LSI
-    // domain (no RCC/clock-tree dependency), and HAL_IWDG_Init()'s PVU/RVU
-    // register-update-flag wait polls hardware status bits directly, not
-    // HAL_GetTick() - so it doesn't need HAL_Init()'s SysTick config to
-    // have run first either.
+    // domain (no RCC/clock-tree dependency). HAL_IWDG_Init() waits for the
+    // PVU/RVU register-update flags and does time that wait with
+    // HAL_GetTick(); before HAL_Init() the tick does not advance, so that
+    // timeout cannot fire here - the wait ends when the hardware clears the
+    // flags (a few LSI cycles) and would spin on if it never did.
     hiwdg.Instance = IWDG2; // CM4 owns IWDG2 (CM7 owns IWDG1) - independent per-core watchdogs, docs/architecture.md section 2
     hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
     hiwdg.Init.Reload = 4095; // generous placeholder, same TODO as CM7's own bootloader_main.c
+    hiwdg.Init.Window = IWDG_WINDOW_DISABLE; // full-range window: a zero window would reset the chip on the first refresh
     HAL_IWDG_Init(&hiwdg);
 
     HAL_Init();
 
     // What kind of reset brought the board here, read before anything clears it (see boot_decision.h): only a watchdog reset counts against the application.
-    const uint8_t reset_kind = (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDG2RST) || __HAL_RCC_GET_FLAG(RCC_FLAG_WWDG2RST)) ? BOOT_RESET_WATCHDOG : BOOT_RESET_CLEAN;
-    __HAL_RCC_CLEAR_RESET_FLAGS();
+    const uint8_t reset_kind = (__HAL_RCC_C2_GET_FLAG(RCC_FLAG_IWDG2RST) || __HAL_RCC_C2_GET_FLAG(RCC_FLAG_WWDG2RST)) ? BOOT_RESET_WATCHDOG : BOOT_RESET_CLEAN;
+    __HAL_RCC_C2_CLEAR_RESET_FLAGS(); // this core's own copy of the reset status: the other core still sees its own
     SystemClock_Config();
     __HAL_RCC_HSEM_CLK_ENABLE();
 

@@ -428,6 +428,8 @@ reale Bewegungs-/Vision-/Relais-Firmware. Siehe `docs/architecture.md`
 akzeptierten Sicherheitseinschränkungen von Abschnitt 8) für das, was genau
 real ist gegenüber dem, was noch offen ist.
 
+> **Sicherheitsstatus:** Dieses Repository enthält noch keinen E-STOP-Pfad, keine Software-Grenzen, keine Sicherheitsverriegelungen, keinen Stromausfall-Dump (PVD) ins FRAM und keinen Bewegungsbefehl. Wo die obigen Abschnitte (oder ein anderes Projekt des Ökosystems) sie beschreiben, ist das der geplante Entwurf: Nichts darf sich für die Sicherheit darauf verlassen, bis er implementiert und auf einer echten Platine getestet ist. Was die Anwendungen heute tun: Die von CM4 und G474 führen die AXIS_STATUS-Abfrage/-Antwort von STACK A und den Tier-2/3-Relay-Tunnel aus; die des CM7 ist weiterhin ein GPIO-Toggle-Smoke-Test.
+
 ## 🔢 Versionierung
 
 Alle 6 Firmware-Komponenten (3 Bootloader + 3 Anwendungen - Robot

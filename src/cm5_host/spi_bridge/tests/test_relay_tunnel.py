@@ -8,6 +8,10 @@ import unittest
 
 from spi_bridge.bootloader_client import SpiOtaFlasher, query_version
 from spi_bridge.protocol import (
+    OFS_BACKUP_READ_PAGE_ACK,
+    OFS_BACKUP_READ_REQUEST,
+    OFS_BACKUP_READ_RESPONSE,
+    OFS_CONFIRM_HEALTHY,
     OFS_DATA,
     OFS_PAGE_ACK,
     OFS_RELAY_RECV,
@@ -23,8 +27,33 @@ from spi_bridge.relay_tunnel import (
     RelayedTransport,
     RelayFrame,
     build_relay_send_fragments,
+    ofs_to_urtc_can_id,
     parse_relay_fragment,
+    urtc_can_id_to_ofs,
 )
+
+
+class CanIdTranslationTests(unittest.TestCase):
+    def test_the_commands_below_the_readback_translate_by_addition(self):
+        for ofs in range(0x00, 0x0E):
+            self.assertEqual(ofs_to_urtc_can_id(ofs), 0x7F0 + ofs)
+            self.assertEqual(urtc_can_id_to_ofs(0x7F0 + ofs), ofs)
+
+    def test_the_readback_uses_the_two_ids_urtc_has_for_it(self):
+        self.assertEqual(ofs_to_urtc_can_id(OFS_BACKUP_READ_REQUEST), 0x7FE)
+        self.assertEqual(ofs_to_urtc_can_id(OFS_BACKUP_READ_RESPONSE), 0x7FE)
+        self.assertEqual(ofs_to_urtc_can_id(OFS_BACKUP_READ_PAGE_ACK), 0x7FF)
+        self.assertEqual(urtc_can_id_to_ofs(0x7FE), OFS_BACKUP_READ_RESPONSE)
+        self.assertEqual(urtc_can_id_to_ofs(0x7FF), OFS_BACKUP_READ_PAGE_ACK)
+
+    def test_frames_urtc_has_no_id_for_are_refused_not_sent_past_0x7ff(self):
+        for ofs in (OFS_CONFIRM_HEALTHY, OFS_RELAY_SEND, OFS_RELAY_RECV, 0x40):
+            with self.assertRaises(ValueError):
+                ofs_to_urtc_can_id(ofs)
+
+    def test_a_can_id_outside_the_bootloader_space_is_not_a_frame_type(self):
+        self.assertIsNone(urtc_can_id_to_ofs(0x123))
+        self.assertIsNone(urtc_can_id_to_ofs(0x7EF))
 
 
 class FragmentationTests(unittest.TestCase):

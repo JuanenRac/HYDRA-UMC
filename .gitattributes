@@ -1,2 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Firmware images are byte-exact artifacts: their sizes and CRC32 are recorded in
+# firmware/firmware_manifest.json, so no line-ending conversion may touch them.
+*.hex -text
+*.bin binary
+*.elf binary

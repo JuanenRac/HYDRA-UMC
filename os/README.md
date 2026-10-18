@@ -35,10 +35,12 @@ script, and test in HYDRA-UMC-OS actually targets right now.
 
 ## What this means for this folder
 
-`systemd/hydra-hmi.service` and `systemd/hydra-umc-studio.service` here
-are still exactly what they always were — non-functional placeholders
-referencing binaries/paths that don't exist yet — and now genuinely
-duplicate ground HYDRA-UMC-OS's own `systemd/hydra-umc-agent.service`
+`systemd/hydra-hmi.service` here is still what it always was — a
+non-functional placeholder referencing a binary path that doesn't exist
+yet (it now waits for HYDRA-UMC-SERVER's real `hydra-umc-server.service`,
+which serves the dashboard on port 3000; the old dashboard unit is gone,
+since the dashboard is a static front-end that the server serves, not a
+process of its own) — and now genuinely duplicate ground HYDRA-UMC-OS's own `systemd/hydra-umc-agent.service`
 and `provisioning/` already cover for real. Likewise `first_boot/` here
 is still just a placeholder note, while HYDRA-UMC-OS's own
 `provisioning/first_boot.sh` is real and tested. This folder has not

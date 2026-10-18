@@ -78,6 +78,14 @@ PROPOSED — modeled directly on URTC's own proven bootloader/app/backup
 split (see the sibling `URTC` repo), scaled up for this chip's larger flash.
 Not yet verified against real hardware.
 
+The 512 KB are two 256 KB banks of 128 pages of 2 KB, numbered per bank, so
+the backup slot (from `0x08044000`) lies entirely in bank 2 while the main
+slot crosses the bank boundary at `0x08040000`. The bootloader splits every
+address into (bank, page) before it erases (`boot/flash_geometry.h`, covered
+by a host test) and refuses to erase anything unless the option bit `DBANK`
+is set, which is the factory default - in single-bank mode the pages are 4 KB
+and this layout does not apply.
+
 ## Building
 
 ```bash
@@ -93,12 +101,14 @@ command this script runs, and why).
 |---|---|
 | `STM32G474RE_main.c` | Application entry point — `vBlinkTask` (smoke test) + `vRelayTask` (real, see below) |
 | `RobotControllerRelay.c/h` | Real AXIS_STATUS responder + Tier 2/3 RELAY_SEND/RELAY_RECV tunnel to the URTC head (FDCAN1 uplink + FDCAN2 downlink) |
+| `relay_rx_queue.h`, `relay_send_reassembly.h`, `dlc_to_fdcan_data_length.h` | HAL-free logic of the relay (capture ring, RELAY_SEND fragment reassembly, DLC encoding), host-tested by `../../tests/` |
 | `STM32G474RETx_APP.ld` | Application linker script (main flash slot) |
 | `FreeRTOSConfig.h` | FreeRTOS kernel config for this board's application (bootloader never includes this) |
 | `boot/bootloader_main.c` | Bootloader entry point (bare-metal) — clock config, FDCAN1 + BOARD_ID init, real CAN-OTA main loop |
 | `boot/bootloader_common.h` | Shared types/defines: flash layout, FDCAN1 offset table, HMAC key, status codes |
 | `boot/bootloader_crypto.c/h` | SHA-256 / HMAC-SHA256 (ported verbatim from URTC's own, chip-independent) |
 | `boot/bootloader_flash.c/h` | CRC32, flash program/erase (double-word), metadata persistence |
+| `boot/flash_geometry.h` | Splits a flash address into (bank, page) for the erase command |
 | `boot/bootloader_protocol.c/h` | FDCAN protocol handlers, app validation, jump-to-application |
 | `boot/STM32G474RETx_BOOTLOADER.ld` | Bootloader linker script |
 

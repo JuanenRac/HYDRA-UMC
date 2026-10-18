@@ -120,6 +120,30 @@ if errorlevel 1 (
     set /a PASS+=1
 )
 
+REM The key the bootloaders verify update images with. A real build gets it from
+REM HYDRA_FW_HMAC_KEY_HEX (64 hex digits, kept outside the repository, the same key the
+REM signing tools hold); without it the bootloaders carry the DEVELOPMENT key that is
+REM published in this repository, which authenticates nothing, and HYDRA_UMC_RELEASE=1
+REM refuses that. Same behaviour as build_firmware.sh.
+set "HMAC_DEFS="
+if defined HYDRA_FW_HMAC_KEY_HEX (
+    python -c "import os,re,sys; sys.exit(0 if re.fullmatch('[0-9A-Fa-f]{64}', os.environ['HYDRA_FW_HMAC_KEY_HEX']) else 1)"
+    if errorlevel 1 (
+        echo   FAIL HYDRA_FW_HMAC_KEY_HEX must be exactly 64 hexadecimal digits
+        set /a FAIL+=1
+        goto :summary
+    )
+    for /f "usebackq delims=" %%K in (`python -c "import os; k=os.environ['HYDRA_FW_HMAC_KEY_HEX']; print(','.join('0x'+k[i:i+2] for i in range(0,64,2)))"`) do set "HMAC_DEFS=-DHYDRA_FW_HMAC_KEY_BYTES=%%K"
+    echo   OK   bootloaders are built with the release key from HYDRA_FW_HMAC_KEY_HEX
+    set /a PASS+=1
+) else if "%HYDRA_UMC_RELEASE%"=="1" (
+    echo   FAIL HYDRA_UMC_RELEASE=1 needs HYDRA_FW_HMAC_KEY_HEX: the development key is published in the repository
+    set /a FAIL+=1
+    goto :summary
+) else (
+    echo   WARN bootloaders are built with the DEVELOPMENT key, which is public: do not put these images on a board that anybody else can reach
+)
+
 if not exist "%FIRMWARE_OUT%" mkdir "%FIRMWARE_OUT%"
 
 REM A firmware directory represents one build set. Remove only generated
@@ -211,7 +235,7 @@ REM -----------------------------------------------------------------------
 echo.
 echo === 4. Robot Controller Board - common compiler flags and shared HAL objects ===
 REM -----------------------------------------------------------------------
-set "CFLAGS_G4=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32G474xx -DUSE_HAL_DRIVER -I!G4!\common\CMSIS_Include -I!G4!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections"
+set "CFLAGS_G4=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32G474xx -DUSE_HAL_DRIVER -I!G4!\common\CMSIS_Include -I!G4!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections %HMAC_DEFS%"
 set "LDCOMMON_G4=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
 set "CFLAGS_G4_APP=%CFLAGS_G4% -I%ROOT%\src\mcu_stm32g474 -I%FREERTOS_SRC%\include -I%FREERTOS_SRC%\portable\GCC\ARM_CM4F"
 
@@ -275,7 +299,7 @@ set "OUT=!G4!\boot_obj"
 del /q "!OUT!\*.o" 2>nul
 set "SECTION_FAIL=0"
 for %%f in ("!SRC!\*.c") do (
-    arm-none-eabi-gcc %CFLAGS_G4% -I"!SRC!" -x c -c "%%f" -o "!OUT!\%%~nf.o"
+    arm-none-eabi-gcc %CFLAGS_G4% -I"!SRC!" -I"%ROOT%\src\mcu_stm32g474" -x c -c "%%f" -o "!OUT!\%%~nf.o"
     if errorlevel 1 (
         echo   FAIL %%~nf.c failed to compile
         set "SECTION_FAIL=1"
@@ -332,6 +356,12 @@ del /q "!OUT!\*.o" 2>nul
 arm-none-eabi-gcc %CFLAGS_G4_APP% -I"!SRC!" -x c -c "!SRC!\STM32G474RE_main.c" -o "!OUT!\STM32G474RE_main.o"
 if errorlevel 1 (
     echo   FAIL STM32G474RE_main.c failed to compile
+    set /a FAIL+=1
+    goto :summary
+)
+arm-none-eabi-gcc %CFLAGS_G4_APP% -I"!SRC!" -I"!SRC!\boot" -x c -c "!SRC!\RobotControllerRelay.c" -o "!OUT!\RobotControllerRelay.o"
+if errorlevel 1 (
+    echo   FAIL RobotControllerRelay.c failed to compile
     set /a FAIL+=1
     goto :summary
 )
@@ -423,8 +453,8 @@ REM module list) - unused object files for one core cost nothing, and
 REM keeping one list avoids the two cores' object sets silently drifting apart.
 set "HAL_MODULES_H7=stm32h7xx_hal stm32h7xx_hal_cortex stm32h7xx_hal_gpio stm32h7xx_hal_rcc stm32h7xx_hal_rcc_ex stm32h7xx_hal_pwr stm32h7xx_hal_pwr_ex stm32h7xx_hal_flash stm32h7xx_hal_flash_ex stm32h7xx_hal_exti stm32h7xx_hal_mdma stm32h7xx_hal_fdcan stm32h7xx_hal_iwdg stm32h7xx_hal_spi stm32h7xx_hal_hsem"
 
-set "CFLAGS_CM7=-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I!H7!\common\CMSIS_Include -I!H7!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections"
-set "CFLAGS_CM4=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I!H7!\common\CMSIS_Include -I!H7!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections"
+set "CFLAGS_CM7=-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I!H7!\common\CMSIS_Include -I!H7!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections %HMAC_DEFS%"
+set "CFLAGS_CM4=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I!H7!\common\CMSIS_Include -I!H7!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections %HMAC_DEFS%"
 set "LDCOMMON_CM7=-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
 set "LDCOMMON_CM4=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
 set "CFLAGS_CM7_APP=%CFLAGS_CM7% -I%ROOT%\src\mcu_stm32h745\CM7 -I%FREERTOS_SRC%\include -I%FREERTOS_SRC%\portable\GCC\ARM_CM7\r0p1"
@@ -591,7 +621,7 @@ set "OUT=!H7!\cm4_boot_obj"
 del /q "!OUT!\*.o" 2>nul
 set "SECTION_FAIL=0"
 for %%f in ("!SRC!\boot\*.c") do (
-    arm-none-eabi-gcc %CFLAGS_CM4% -I"!SRC!\boot" %COMMON_INC% -x c -c "%%f" -o "!OUT!\%%~nf.o"
+    arm-none-eabi-gcc %CFLAGS_CM4% -I"!SRC!\boot" -I"!SRC!" %COMMON_INC% -x c -c "%%f" -o "!OUT!\%%~nf.o"
     if errorlevel 1 (echo   FAIL %%~nf.c failed to compile & set "SECTION_FAIL=1")
 )
 if "!SECTION_FAIL!"=="1" (

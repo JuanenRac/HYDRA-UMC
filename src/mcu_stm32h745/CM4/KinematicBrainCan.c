@@ -136,15 +136,14 @@ static uint8_t SendClassicFrame(uint32_t can_id, const uint8_t *data, uint8_t dl
  * on. */
 static uint8_t WaitForResponse(uint32_t expected_can_id, uint8_t *out_data, uint8_t *out_dlc, uint32_t timeout_ms)
 {
-    uint32_t deadline = HAL_GetTick() + timeout_ms;
-    while (HAL_GetTick() < deadline) {
+    uint32_t start = HAL_GetTick();
+    while ((HAL_GetTick() - start) < timeout_ms) { /* elapsed-time form: still right when the 32-bit tick wraps */
         if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1_app, FDCAN_RX_FIFO0) > 0) {
             FDCAN_RxHeaderTypeDef rx;
             uint8_t rx_data[8];
             if (HAL_FDCAN_GetRxMessage(&hfdcan1_app, FDCAN_RX_FIFO0, &rx, rx_data) == HAL_OK) {
                 if (rx.Identifier == expected_can_id) {
-                    uint8_t dlc = (uint8_t)(rx.DataLength >> 16); /* FDCAN_DLC_BYTES_n encodes the byte count in bits [19:16] - real HAL convention, matches DlcToFdcanDataLength()'s own table shape */
-                    if (dlc > 8) dlc = 8;
+                    uint8_t dlc = (uint8_t)FdcanDataLengthToDlc(rx.DataLength); /* the HAL already shifted the DLC field down: DataLength is the plain 0..15 code */
                     memcpy(out_data, rx_data, dlc);
                     *out_dlc = dlc;
                     return 1;
@@ -196,13 +195,13 @@ static void SendRelayFragments(uint8_t slot, uint16_t real_can_id, const uint8_t
 static uint8_t DrainRelayRecv(uint8_t slot, uint8_t *out_data, uint8_t *out_dlc, uint32_t timeout_ms)
 {
     uint32_t relay_recv_id = StackASlotBaseId(slot) + OFS_RELAY_RECV;
-    uint32_t deadline = HAL_GetTick() + timeout_ms;
+    uint32_t start = HAL_GetTick();
     uint8_t have_id = 0;
     uint8_t accumulated_dlc = 0;
     uint8_t accumulated_len = 0;
     uint8_t accumulated[8] = {0};
 
-    while (HAL_GetTick() < deadline) {
+    while ((HAL_GetTick() - start) < timeout_ms) { /* elapsed-time form: still right when the 32-bit tick wraps */
         uint8_t response[8];
         uint8_t response_dlc = 0;
         /* RELAY_RECV is operator-polled (architecture.md section 5) - this
@@ -210,7 +209,10 @@ static uint8_t DrainRelayRecv(uint8_t slot, uint8_t *out_data, uint8_t *out_dlc,
          * poll to drain the Robot Controller Board's own FIFO one entry
          * at a time; a real Classic CAN request/response round trip, same
          * as AXIS_STATUS above. */
-        if (!SendClassicFrame(relay_recv_id, NULL, 0)) continue;
+        if (!SendClassicFrame(relay_recv_id, NULL, 0)) {
+            HAL_Delay(1); /* TX FIFO full: give the bus a moment instead of spinning on it */
+            continue;
+        }
         if (!WaitForResponse(relay_recv_id, response, &response_dlc, 50)) continue;
         if (response_dlc < RELAY_FRAGMENT_HEADER_BYTES) continue; /* nothing new queued this poll */
 
@@ -226,10 +228,12 @@ static uint8_t DrainRelayRecv(uint8_t slot, uint8_t *out_data, uint8_t *out_dlc,
         }
         accumulated[0] = response[0];
         accumulated[1] = response[1];
-        if (accumulated_len + fragment_len <= 8) {
-            memcpy(out_data + accumulated_len, &response[RELAY_FRAGMENT_HEADER_BYTES], fragment_len);
-            accumulated_len += fragment_len;
+        if (accumulated_len + fragment_len > 8) {
+            have_id = 0; /* malformed: more bytes than a frame holds - drop what was gathered and start over */
+            continue;
         }
+        memcpy(out_data + accumulated_len, &response[RELAY_FRAGMENT_HEADER_BYTES], fragment_len);
+        accumulated_len += fragment_len;
         if (accumulated_len >= accumulated_dlc) {
             *out_dlc = accumulated_dlc;
             return 1;

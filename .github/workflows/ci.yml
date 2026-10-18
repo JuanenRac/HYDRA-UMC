@@ -112,7 +112,15 @@ jobs:
         if: ${{ hashFiles('build_firmware.sh') != '' }}
         run: |
           sudo apt-get update
-          sudo apt-get install --yes gcc-arm-none-eabi binutils-arm-none-eabi
+          sudo apt-get install --yes gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+      - name: Run the CM5 SPI bridge and firmware source-guard tests
+        if: ${{ hashFiles('src/cm5_host/spi_bridge/tests/test_protocol.py') != '' }}
+        run: |
+          PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests python -m unittest discover -s src/cm5_host/spi_bridge/tests -v
+          python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Check the committed firmware inventory against its manifest
+        if: ${{ hashFiles('tools/verify_firmware_inventory.py') != '' }}
+        run: python tools/verify_firmware_inventory.py
       - name: Compile firmware without a version bump
         if: ${{ hashFiles('build_firmware.sh') != '' }}
         env:

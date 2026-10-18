@@ -26,7 +26,13 @@ framing to this project's real SPI framing.
 - `spi_bridge/http_service.py` — a small, stdlib-only local HTTP service
   (`GET /version`, `POST /flash`) that `HYDRA-UMC-SERVER` (Node.js) relays
   to, the same "small local upstream service reached over loopback HTTP"
-  pattern SERVER already uses for Voice UI/Datalake.
+  pattern SERVER already uses for Voice UI/Datalake. The SPI link carries
+  one operation at a time: a request that arrives while another one
+  (a flash, above all) is running is answered `409`. `tier` must be 0-2 and
+  `slot` 0-7, and `POST /flash` requires `version_major` and `version_minor`
+  (the board compares them against the installed image, so a missing value
+  would only show up as a refused rollback after the whole transfer). A
+  corrupt reply from the board ends a flash with a final `error` line.
 - `spi_bridge/relay_tunnel.py` — reaches Tier 2 (the URTC Tool Head,
   through its own Robot Controller Board's RELAY_SEND/RELAY_RECV tunnel,
   `architecture.md` section 5) with a real, explicit 5-byte fragmentation
@@ -38,7 +44,7 @@ framing to this project's real SPI framing.
   hop (URTC's own I2C bridge, CAN IDs 0x210-0x221,
   `docs/EXPANSION.TXT` in the sibling URTC repo) - not implemented yet,
   same real pattern would apply.
-- `tests/` — 31 deterministic tests against in-memory fake transports
+- `tests/` — 45 deterministic tests against in-memory fake transports
   (including a faithful fake Tier 1-relaying-to-Tier-2 stand-in) and real
   local HTTP servers (only the SPI transport underneath is faked) — see
   `../../tools/build_test.py`'s own `firmware-c` branch for how this is

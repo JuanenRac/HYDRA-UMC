@@ -24,17 +24,17 @@
  * the way .data/.bss in their own private RAM is owned.
  *
  * Flash Bank 2 layout (1 MB = 0x100000 total, 8 sectors x 128 KB each -
- * CORRECTED during CAN-OTA bootloader implementation, same sector-alignment
- * fix as ../../CM7/STM32H745ZITx_CM7_APP.ld - see that file's own header):
- *   0x08100000  Sector 0: Bootloader + Metadata  128 KB - see boot/STM32H745ZITx_CM4_BOOTLOADER.ld
- *   0x08120000  Sectors 1-3: App main slot       384 KB - THIS script targets this slot
- *   0x08180000  Sectors 4-6: App backup slot     384 KB
- *   0x081E0000  Sector 7: Reserved               128 KB
+ * same sector-alignment as ../CM7/STM32H745ZITx_CM7_APP.ld, and it must
+ * match MAIN_APP_ADDR / METADATA_ADDR in boot/bootloader_common.h):
+ *   0x08100000  Sector 0: Bootloader             128 KB - see boot/STM32H745ZITx_CM4_BOOTLOADER.ld
+ *   0x08120000  Sector 1: Metadata               128 KB - own dedicated sector, never linked into
+ *   0x08140000  Sectors 2-4: App main slot       384 KB - THIS script targets this slot
+ *   0x081A0000  Sectors 5-7: App backup slot     384 KB
  */
 
 MEMORY
 {
-  FLASH_APP (rx) : ORIGIN = 0x08120000, LENGTH = 384K
+  FLASH_APP (rx) : ORIGIN = 0x08140000, LENGTH = 384K
   RAM (rwx)       : ORIGIN = 0x30000000, LENGTH = 288K
 }
 

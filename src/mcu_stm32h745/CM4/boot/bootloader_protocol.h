@@ -34,7 +34,7 @@ void HandleConfirmHealthy(void); // - see boot_decision.h
 uint8_t ApplicationIsValid(void);
 void JumpToApplication(void);
 
-void HandleStartUpdate(uint8_t *data);
+uint8_t HandleStartUpdate(uint8_t *data);
 void HandleHmacChunk(uint8_t *data);
 void HandleData(uint8_t *data, uint32_t dlc);
 void HandleEndUpdate(uint8_t *data);

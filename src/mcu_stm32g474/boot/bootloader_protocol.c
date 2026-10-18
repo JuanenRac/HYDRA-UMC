@@ -22,14 +22,14 @@
 #include "bootloader_protocol.h"
 #include "bootloader_crypto.h"
 #include "bootloader_flash.h"
+#include "dlc_to_fdcan_data_length.h"
 
-// Classic-frame DLC (0-8) <-> FDCAN HAL's DataLength encoding: for classic
-// CAN frames the two are a simple bit-16 shift (FDCAN_DLC_BYTES_n == n<<16
-// for n=0..8) - true for every DLC this protocol ever uses (nothing here
-// sends more than 8 data bytes), so no lookup table is needed the way FD's
-// non-linear 9-15 DLC range would require.
-#define DLC_TO_HAL(dlc)   ((uint32_t)(dlc) << 16)
-#define HAL_TO_DLC(hdlc)  ((uint32_t)(hdlc) >> 16)
+// Classic-frame DLC (0-8) <-> FDCAN HAL's DataLength encoding: the HAL's
+// FDCAN_DLC_BYTES_n constants are the plain DLC code (n for n = 0..8), and
+// the HAL itself shifts the field into the message RAM word when it sends
+// and shifts it back down when it receives. Nothing here may shift it again.
+#define DLC_TO_HAL(dlc)   DlcToFdcanDataLength((uint8_t)(dlc))
+#define HAL_TO_DLC(hdlc)  FdcanDataLengthToDlc((uint32_t)(hdlc))
 
 static uint32_t g_slot_base = 0;
 
@@ -39,7 +39,7 @@ void Protocol_Init(uint32_t slot_base_id) {
 
 static uint8_t CAN_WaitForFreeMailbox(void) {
     // Same 50ms budget as URTC's own bootloader (50 attempts x 1ms), well
-    // inside the ~800ms IWDG window.
+    // inside the 1s IWDG window (reload 999, prescaler 32, LSI 32 kHz).
     for (uint8_t attempt = 0; attempt < 50; attempt++) {
         if (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) > 0) return 1;
         HAL_IWDG_Refresh(&hiwdg);
@@ -130,13 +130,11 @@ void HandleErrorCounterQuery(void) {
 // -----------------------------------------------------------------------
 // Stack-pointer plausibility check before trusting a "no metadata yet"
 // vector table (first-boot adoption) or before actually jumping.
-// STM32G474RE: 96KB contiguous SRAM at 0x20000000 (32KB SRAM1 + 16KB SRAM2
-// mapped contiguously per this chip's own memory map, RM0440 - the extra
-// 32KB CCM-equivalent region other G4 parts add doesn't apply to the RE
-// variant's total the same way) plus this project's own linker scripts
-// treat it as one flat 96KB RAM region (see ../STM32G474RETx_APP.ld) - so
-// unlike URTC's F303 (two disjoint regions, SRAM + separate CCM), this
-// chip only needs one range checked.
+// STM32G474RE: 96KB of contiguous SRAM at 0x20000000 (80KB SRAM1 + 16KB
+// SRAM2, RM0440); the further 32KB of CCM SRAM sits elsewhere in the map and
+// is not used. This project's own linker scripts treat the 96KB as one flat
+// RAM region (see ../STM32G474RETx_APP.ld) - so unlike URTC's F303 (two
+// disjoint regions, SRAM + separate CCM), only one range needs checking.
 // -----------------------------------------------------------------------
 static uint8_t StackPointerInValidRAM(uint32_t sp) {
     return (sp >= SRAM_BASE + 0x100UL && sp <= SRAM_BASE + 0x18000UL);
@@ -261,7 +259,10 @@ static uint8_t FlushPageBuffer(void) {
     return ok;
 }
 
-void HandleStartUpdate(uint8_t *data) {
+// Returns 1 when the update was accepted (size and hardware ID valid, backup
+// slot erased, ready to receive), 0 when the request was refused - a refused
+// request must not pull the board out of its normal start-up.
+uint8_t HandleStartUpdate(uint8_t *data) {
     update_total_size = ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16)
                        | ((uint32_t)data[2] << 8) | data[3];
     update_declared_hw_id = ((uint32_t)data[4] << 24) | ((uint32_t)data[5] << 16)
@@ -269,11 +270,11 @@ void HandleStartUpdate(uint8_t *data) {
 
     if (update_total_size == 0 || update_total_size > APP_MAX_SIZE) {
         CAN_SendStatus(STATUS_ERROR);
-        return;
+        return 0;
     }
     if (update_declared_hw_id != THIS_HARDWARE_ID) {
         CAN_SendVerifyFailReason(VERIFY_FAIL_REASON_HARDWARE_ID);
-        return;
+        return 0;
     }
 
     uint32_t pages_needed = (update_total_size + FLASH_PAGE_SIZE - 1) / FLASH_PAGE_SIZE;
@@ -282,7 +283,7 @@ void HandleStartUpdate(uint8_t *data) {
         CAN_SendStatus(STATUS_ERROR);
         update_failed = 1;
         update_in_progress = 0;
-        return;
+        return 0;
     }
 
     memset(page_buffer, 0xFF, sizeof(page_buffer));
@@ -296,6 +297,7 @@ void HandleStartUpdate(uint8_t *data) {
     update_downgrade_authorized = 0;
     update_last_activity_tick = HAL_GetTick();
     CAN_SendStatus(STATUS_RECEIVING);
+    return 1;
 }
 
 void HandleAuthorizeDowngrade(uint8_t *data) {

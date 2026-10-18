@@ -39,7 +39,10 @@ fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD="$ROOT/build"
-FIRMWARE_OUT="$ROOT/firmware"
+FIRMWARE_FINAL="$ROOT/firmware"
+# Everything is built into a staging folder and only moved into firmware/ once the
+# whole build has passed, so a failed compile never leaves firmware/ empty.
+FIRMWARE_OUT="$ROOT/build/firmware_staging"
 if [ -t 0 ]; then
     trap 'echo ""; read -r -p "Press Enter to close this window..." _' EXIT
 fi
@@ -187,27 +190,59 @@ else
             echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
         fi
     done
+
+    # flash_geometry.h splits a G474 flash address into (bank, page).
+    FLASH_GEOMETRY_HOST_BIN="$ROOT/build/host_tests_flash_geometry"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32g474/boot"         -o "$FLASH_GEOMETRY_HOST_BIN" "$ROOT/tests/test_flash_geometry.c" && "$FLASH_GEOMETRY_HOST_BIN"; then
+        pass "flash_geometry host logic tests passed"
+    else
+        fail "flash_geometry host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
+    # relay_send_reassembly.h puts the RELAY_SEND fragments back into one frame.
+    REASSEMBLY_HOST_BIN="$ROOT/build/host_tests_relay_send_reassembly"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32g474" -o "$REASSEMBLY_HOST_BIN" "$ROOT/tests/test_relay_send_reassembly.c" && "$REASSEMBLY_HOST_BIN"; then
+        pass "relay_send_reassembly host logic tests passed"
+    else
+        fail "relay_send_reassembly host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
+    # Static source guards (watchdog window, hand-shifted FDCAN DLC) and the
+    # version-bump helper, plain python3 unittest.
+    if command -v python3 >/dev/null 2>&1; then
+        if python3 -m unittest discover -s "$ROOT/tests" -p 'test_*.py' >/dev/null 2>&1; then
+            pass "python source-guard and version-bump tests passed"
+        else
+            python3 -m unittest discover -s "$ROOT/tests" -p 'test_*.py' || true
+            fail "python source-guard and version-bump tests FAILED"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+    fi
 fi
 
-mkdir -p "$FIRMWARE_OUT"
+mkdir -p "$FIRMWARE_OUT" "$FIRMWARE_FINAL"
+rm -f -- "$FIRMWARE_OUT"/HYDRA_*.bin "$FIRMWARE_OUT"/HYDRA_*.elf "$FIRMWARE_OUT"/HYDRA_*.hex
 
 # A firmware directory represents one build set, never an accumulation of
-# differently-versioned binaries.  Keep non-generated material intact, but
-# remove every artifact this script can publish before compiling the next set.
-shopt -s nullglob
-firmware_artifacts=(
-    "$FIRMWARE_OUT"/HYDRA_*.bin
-    "$FIRMWARE_OUT"/HYDRA_*.elf
-    "$FIRMWARE_OUT"/HYDRA_*.hex
-    "$FIRMWARE_OUT"/firmware_manifest.json
-)
-if ((${#firmware_artifacts[@]})); then
-    echo ""
-    echo "=== Firmware output cleanup ==="
-    rm -f -- "${firmware_artifacts[@]}"
-    pass "removed ${#firmware_artifacts[@]} generated firmware artifact(s) from firmware/"
-fi
-shopt -u nullglob
+# differently-versioned binaries: when the build has passed, the staged files
+# replace the older versions of the same components in firmware/ (see the
+# promotion step before the manifest). Non-generated material stays intact.
+promote_staged_firmware() {
+    local staged prefix old
+    shopt -s nullglob
+    for staged in "$FIRMWARE_OUT"/HYDRA_*.bin "$FIRMWARE_OUT"/HYDRA_*.elf "$FIRMWARE_OUT"/HYDRA_*.hex; do
+        prefix="$(basename "$staged" | sed -E 's/_v[0-9].*$//')"
+        for old in "$FIRMWARE_FINAL/${prefix}"_v*.bin "$FIRMWARE_FINAL/${prefix}"_v*.elf "$FIRMWARE_FINAL/${prefix}"_v*.hex; do
+            rm -f -- "$old"
+        done
+    done
+    for staged in "$FIRMWARE_OUT"/HYDRA_*.bin "$FIRMWARE_OUT"/HYDRA_*.elf "$FIRMWARE_OUT"/HYDRA_*.hex; do
+        cp -- "$staged" "$FIRMWARE_FINAL/"
+    done
+    shopt -u nullglob
+}
 
 build_bin_hex() {
     local elf="$1"
@@ -376,7 +411,7 @@ if [ -n "${HYDRA_FW_HMAC_KEY_HEX:-}" ]; then
     if ! printf '%s' "$HYDRA_FW_HMAC_KEY_HEX" | grep -Eq '^[0-9A-Fa-f]{64}$'; then
         fail "HYDRA_FW_HMAC_KEY_HEX must be exactly 64 hexadecimal digits"; exit 1
     fi
-    KEY_BYTES="$(printf '%s' "$HYDRA_FW_HMAC_KEY_HEX" | sed -E 's/(..)/0x,/g; s/,$//')"
+    KEY_BYTES="$(printf '%s' "$HYDRA_FW_HMAC_KEY_HEX" | sed -E 's/(..)/0x\1,/g; s/,$//')"
     HMAC_DEFS="-DHYDRA_FW_HMAC_KEY_BYTES=$KEY_BYTES"
     pass "bootloaders are built with the release key from HYDRA_FW_HMAC_KEY_HEX"
 elif [ "${HYDRA_UMC_RELEASE:-0}" = "1" ]; then
@@ -430,7 +465,7 @@ step "5. Robot Controller Board bootloader (src/mcu_stm32g474/boot/) - bare-meta
 SRC="$ROOT/src/mcu_stm32g474/boot"
 bump_version "$SRC/bootloader_common.h" BOOTLOADER_VERSION "Robot Controller Board bootloader"
 rm -f "$G4/boot_obj"/*.o
-if compile_dir "$SRC" "$G4/boot_obj" "$CFLAGS_G4" ""; then
+if compile_dir "$SRC" "$G4/boot_obj" "$CFLAGS_G4" "-I$ROOT/src/mcu_stm32g474"; then
     pass "bootloader_*.c compiled ($(ls "$SRC"/*.c | wc -l) files)"
 else
     fail "Robot Controller Board bootloader failed to compile - see errors above"
@@ -578,9 +613,9 @@ for CORE in CM7 CM4; do
     pass "$CORE: startup + system files compiled"
 done
 
-CFLAGS_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections"
+CFLAGS_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $HMAC_DEFS"
 LDCOMMON_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
-CFLAGS_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections"
+CFLAGS_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $HMAC_DEFS"
 LDCOMMON_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
 # App CFLAGS additionally need each core's own FreeRTOSConfig.h directory
 # plus FreeRTOS's own headers/port headers - each core's bootloader
@@ -644,7 +679,7 @@ step "10. Kinematic Brain CM4 bootloader (bare-metal CAN-OTA gateway: SPI1+FDCAN
 # -----------------------------------------------------------------------
 SRC="$ROOT/src/mcu_stm32h745/CM4"
 bump_version "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM4 bootloader"
-if compile_dir "$SRC/boot" "$H7/cm4_boot_obj" "$CFLAGS_CM4" "$COMMON_INC"; then
+if compile_dir "$SRC/boot" "$H7/cm4_boot_obj" "$CFLAGS_CM4" "$COMMON_INC -I$SRC"; then
     pass "CM4 bootloader_*.c compiled ($(ls "$SRC/boot"/*.c | wc -l) files)"
 else
     fail "CM4 bootloader failed to compile - see errors above"
@@ -687,6 +722,12 @@ fi
 # -----------------------------------------------------------------------
 step "11. Firmware manifest (firmware/firmware_manifest.json)"
 # -----------------------------------------------------------------------
+if [ "$FAIL" -eq 0 ]; then
+    promote_staged_firmware
+    pass "built firmware moved into firmware/"
+else
+    warn "build had failures: firmware/ was left as it was"
+fi
 # Only meaningful once every component exists - a partial build (g474-only
 # or h745-only) would make generate_manifest.py fail looking for the other
 # chip's own binaries, so this only runs for a full 'all' build (the
@@ -707,7 +748,7 @@ step "Summary"
 # -----------------------------------------------------------------------
 echo "$PASS passed, $WARN warnings, $FAIL failed"
 echo ""
-echo "Output binaries are in: $FIRMWARE_OUT/"
+echo "Output binaries are in: $FIRMWARE_FINAL/"
 echo ""
 echo "Reminder: the CM4 and G474 _APP binaries now carry real FDCAN Tier"
 echo "0/1 traffic (STACK A master + AXIS_STATUS responder) and the real"

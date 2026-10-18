@@ -418,6 +418,8 @@ compilazione, non ancora il vero firmware di movimento/visione/relè. Vedi
 le limitazioni di sicurezza note e accettate della sezione 8) per cosa è
 esattamente reale rispetto a ciò che resta aperto.
 
+> **Stato della sicurezza:** questo repository non contiene ancora alcun percorso di E-STOP, limiti software, interblocchi di sicurezza, scarico su FRAM per perdita di alimentazione (PVD) né comandi di movimento. Dove le sezioni precedenti (o un altro progetto dell'ecosistema) li descrivono, si tratta del progetto previsto: nulla deve farvi affidamento per la sicurezza finché non è implementato e provato su una scheda reale. Cosa fanno oggi le applicazioni: quelle del CM4 e del G474 eseguono il polling/risposta AXIS_STATUS di STACK A e il tunnel di relay Tier 2/3; quella del CM7 è ancora uno smoke test GPIO-toggle.
+
 ## 🔢 Versionamento
 
 Tutti i 6 componenti firmware (3 bootloader + 3 applicazioni - Robot

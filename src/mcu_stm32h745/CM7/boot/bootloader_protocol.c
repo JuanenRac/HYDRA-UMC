@@ -221,7 +221,10 @@ static uint8_t FlushPageBuffer(void) {
     return ok;
 }
 
-void HandleStartUpdate(uint8_t *data) {
+// Returns 1 when the update was accepted (size and hardware ID valid, backup
+// slot erased, ready to receive), 0 when the request was refused - a refused
+// request must not pull the board out of its normal start-up.
+uint8_t HandleStartUpdate(uint8_t *data) {
     update_total_size = ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16)
                        | ((uint32_t)data[2] << 8) | data[3];
     update_declared_hw_id = ((uint32_t)data[4] << 24) | ((uint32_t)data[5] << 16)
@@ -229,11 +232,11 @@ void HandleStartUpdate(uint8_t *data) {
 
     if (update_total_size == 0 || update_total_size > APP_MAX_SIZE) {
         CAN_SendStatus(STATUS_ERROR);
-        return;
+        return 0;
     }
     if (update_declared_hw_id != THIS_HARDWARE_ID) {
         CAN_SendVerifyFailReason(VERIFY_FAIL_REASON_HARDWARE_ID);
-        return;
+        return 0;
     }
 
     // Sector-aligned erase, one sector at a time (see bootloader_flash.c's
@@ -246,7 +249,7 @@ void HandleStartUpdate(uint8_t *data) {
         CAN_SendStatus(STATUS_ERROR);
         update_failed = 1;
         update_in_progress = 0;
-        return;
+        return 0;
     }
 
     memset(page_buffer, 0xFF, sizeof(page_buffer));
@@ -260,6 +263,7 @@ void HandleStartUpdate(uint8_t *data) {
     update_downgrade_authorized = 0;
     update_last_activity_tick = HAL_GetTick();
     CAN_SendStatus(STATUS_RECEIVING);
+    return 1;
 }
 
 void HandleAuthorizeDowngrade(uint8_t *data) {

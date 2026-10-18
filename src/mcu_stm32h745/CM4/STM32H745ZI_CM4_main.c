@@ -187,6 +187,7 @@ int main(void)
   hiwdg.Instance = IWDG2;
   hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
   hiwdg.Init.Reload = 4095;
+  hiwdg.Init.Window = IWDG_WINDOW_DISABLE; /* full-range window: a zero window would reset the chip on the first refresh */
   HAL_IWDG_Init(&hiwdg);
 
   HAL_Init();

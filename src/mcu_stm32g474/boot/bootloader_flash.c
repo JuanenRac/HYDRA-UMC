@@ -10,20 +10,20 @@
 //     not 16-bit half-words - every write address here must be 8-byte
 //     aligned, which FLASH_PAGE_SIZE (2048) and every call site's own
 //     page-granular addressing already guarantee.
-//   - STM32G4's FLASH_EraseInitTypeDef erases by PAGE NUMBER (0-255 for this
-//     512KB part in single-bank/DBANK=0 mode - see the option-bytes note
-//     below), not by page ADDRESS the way F3's HAL takes it - AddrToPage()
-//     below does that conversion once, in one place.
-//   - Assumes DBANK=0 (single 512KB bank, one flat page-number space
-//     0-255) in the option bytes - this is the option-byte configuration
-//     this file's own page-number math depends on; if a future revision
-//     changes that, this file's AddrToPage()/Banks field both need
-//     revisiting together, not just one.
+//   - STM32G4's FLASH_EraseInitTypeDef erases by BANK and PAGE NUMBER, not
+//     by page ADDRESS the way F3's HAL takes it. This 512KB part is two
+//     banks of 128 pages of 2KB (option bit DBANK = 1, the factory default),
+//     numbered per bank - flash_geometry.h splits an address into
+//     (bank, page) once, in one place.
+//   - Requires DBANK = 1: in single-bank mode the pages are 4KB and the
+//     numbering is different, so every erase here refuses to run (and the
+//     update ends in an error) rather than erase the wrong pages.
 // =============================================================================
 #include "stm32g4xx_hal.h"
 #include <string.h>
 #include "bootloader_common.h"
 #include "bootloader_flash.h"
+#include "flash_geometry.h"
 
 static uint32_t crc32_table[256];
 static uint8_t crc32_table_built = 0;
@@ -62,9 +62,27 @@ uint32_t CRC32_Finalize(uint32_t crc) {
 // Flash routines
 // -----------------------------------------------------------------------
 
-// FLASH_BASE is CMSIS-provided; this part's flash starts at 0x08000000.
-static uint32_t AddrToPage(uint32_t addr) {
-    return (addr - FLASH_BASE) / FLASH_PAGE_SIZE;
+// Erases the one 2KB page that starts at addr. Refuses (returns 0) outside
+// the flash, or when the option bytes are not in dual-bank mode, where this
+// file's geometry does not apply.
+static uint8_t ErasePageAt(uint32_t addr) {
+    uint8_t bank2;
+    uint32_t page;
+    if ((FLASH->OPTR & FLASH_OPTR_DBANK) == 0U) return 0;
+    if (!FlashGeometry_AddrToBankPage(addr, &bank2, &page)) return 0;
+
+    FLASH_EraseInitTypeDef eraseInit;
+    uint32_t pageError;
+    eraseInit.TypeErase = FLASH_TYPEERASE_PAGES;
+    eraseInit.Banks = bank2 ? FLASH_BANK_2 : FLASH_BANK_1;
+    eraseInit.Page = page;
+    eraseInit.NbPages = 1;
+
+    HAL_FLASH_Unlock();
+    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
+    HAL_StatusTypeDef res = HAL_FLASHEx_Erase(&eraseInit, &pageError);
+    HAL_FLASH_Lock();
+    return res == HAL_OK && pageError == 0xFFFFFFFF;
 }
 
 uint8_t Flash_ErasePages(uint32_t start_addr, uint32_t num_pages) {
@@ -74,18 +92,7 @@ uint8_t Flash_ErasePages(uint32_t start_addr, uint32_t num_pages) {
     // watchdog until it fully returns, and 236KB (118 pages) could plausibly
     // run long enough on its own to trip it.
     for (uint32_t i = 0; i < num_pages; i++) {
-        FLASH_EraseInitTypeDef eraseInit;
-        uint32_t pageError;
-        eraseInit.TypeErase = FLASH_TYPEERASE_PAGES;
-        eraseInit.Banks = FLASH_BANK_1;
-        eraseInit.Page = AddrToPage(start_addr) + i;
-        eraseInit.NbPages = 1;
-
-        HAL_FLASH_Unlock();
-        __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
-        HAL_StatusTypeDef res = HAL_FLASHEx_Erase(&eraseInit, &pageError);
-        HAL_FLASH_Lock();
-        if (res != HAL_OK || pageError != 0xFFFFFFFF) return 0;
+        if (!ErasePageAt(start_addr + i * FLASH_PAGE_SIZE)) return 0;
         HAL_IWDG_Refresh(&hiwdg);
     }
     return 1;
@@ -139,17 +146,7 @@ uint8_t Flash_CopyRegion(uint32_t dest_addr, uint32_t src_addr, uint32_t total_l
             this_page_len = total_len - (p * FLASH_PAGE_SIZE);
         }
 
-        FLASH_EraseInitTypeDef eraseInit;
-        uint32_t pageError;
-        eraseInit.TypeErase = FLASH_TYPEERASE_PAGES;
-        eraseInit.Banks = FLASH_BANK_1;
-        eraseInit.Page = AddrToPage(page_dest);
-        eraseInit.NbPages = 1;
-        HAL_FLASH_Unlock();
-        __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
-        HAL_StatusTypeDef res = HAL_FLASHEx_Erase(&eraseInit, &pageError);
-        HAL_FLASH_Lock();
-        if (res != HAL_OK || pageError != 0xFFFFFFFF) return 0;
+        if (!ErasePageAt(page_dest)) return 0;
 
         if (!Flash_WriteVerified(page_dest, (const uint8_t*)page_src, this_page_len)) return 0;
         HAL_IWDG_Refresh(&hiwdg);
@@ -177,16 +174,6 @@ uint8_t Metadata_EraseAndWrite(const FirmwareMetadata_t *meta) {
     if (Metadata_Read(&current) && memcmp(&current, meta, sizeof(FirmwareMetadata_t)) == 0) {
         return 1; // already holds exactly this content - skip the erase/write cycle
     }
-    FLASH_EraseInitTypeDef eraseInit;
-    uint32_t pageError;
-    eraseInit.TypeErase = FLASH_TYPEERASE_PAGES;
-    eraseInit.Banks = FLASH_BANK_1;
-    eraseInit.Page = AddrToPage(METADATA_ADDR);
-    eraseInit.NbPages = 1;
-    HAL_FLASH_Unlock();
-    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
-    HAL_StatusTypeDef res = HAL_FLASHEx_Erase(&eraseInit, &pageError);
-    HAL_FLASH_Lock();
-    if (res != HAL_OK || pageError != 0xFFFFFFFF) return 0;
+    if (!ErasePageAt(METADATA_ADDR)) return 0;
     return Metadata_Write(meta);
 }

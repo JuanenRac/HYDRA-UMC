@@ -49,6 +49,9 @@ import time
 from dataclasses import dataclass
 
 from .protocol import (
+    OFS_BACKUP_READ_PAGE_ACK,
+    OFS_BACKUP_READ_REQUEST,
+    OFS_BACKUP_READ_RESPONSE,
     OFS_PAGE_ACK,
     OFS_QUERY_VERSION,
     OFS_RELAY_RECV,
@@ -70,11 +73,41 @@ from .transport import SpiOtaTransport
 _QUERY_FRAME_TYPES = frozenset((OFS_QUERY_VERSION, OFS_PAGE_ACK, OFS_STATUS))
 
 # URTC's own real, proven CAN bootloader protocol space (docs/CANBUS.TXT in
-# the sibling URTC repo) - this project's own OFS_* offset table (+0x00..
-# +0x14) is deliberately numerically identical to URTC's real ID offsets
-# from this base, so translating between them is exactly an addition/
-# subtraction, not a lookup table.
+# the sibling URTC repo): 0x7F0-0x7FD carry the same commands as this
+# project's own OFS_* offsets +0x00..+0x0D, so those translate by plain
+# addition. The flash readback does not: URTC uses ONE id for the request
+# and the data (0x7FE, told apart by DLC) and one for the page ack (0x7FF),
+# so those three offsets are translated explicitly, and the offsets URTC has
+# no equivalent for (RELAY_*, CONFIRM_HEALTHY) are refused rather than turned
+# into an id outside the 11-bit CAN id space.
 URTC_BOOTLOADER_CAN_BASE = 0x7F0
+URTC_CAN_ID_READBACK = 0x7FE
+URTC_CAN_ID_READBACK_PAGE_ACK = 0x7FF
+_URTC_DIRECT_OFFSET_MAX = 0x0D
+
+
+def ofs_to_urtc_can_id(frame_type: int) -> int:
+    """The real URTC CAN id for one of this project's OFS_* frame types."""
+
+    if 0 <= frame_type <= _URTC_DIRECT_OFFSET_MAX:
+        return URTC_BOOTLOADER_CAN_BASE + frame_type
+    if frame_type in (OFS_BACKUP_READ_REQUEST, OFS_BACKUP_READ_RESPONSE):
+        return URTC_CAN_ID_READBACK
+    if frame_type == OFS_BACKUP_READ_PAGE_ACK:
+        return URTC_CAN_ID_READBACK_PAGE_ACK
+    raise ValueError(f"frame type 0x{frame_type:02X} has no URTC bootloader CAN id")
+
+
+def urtc_can_id_to_ofs(can_id: int) -> int | None:
+    """The OFS_* frame type for a CAN id seen on the URTC bus, or None when it is not a bootloader id."""
+
+    if URTC_BOOTLOADER_CAN_BASE <= can_id <= URTC_BOOTLOADER_CAN_BASE + _URTC_DIRECT_OFFSET_MAX:
+        return can_id - URTC_BOOTLOADER_CAN_BASE
+    if can_id == URTC_CAN_ID_READBACK:
+        return OFS_BACKUP_READ_RESPONSE
+    if can_id == URTC_CAN_ID_READBACK_PAGE_ACK:
+        return OFS_BACKUP_READ_PAGE_ACK
+    return None
 
 _FRAGMENT_DATA_BYTES = 5
 
@@ -128,10 +161,7 @@ class RelayedTransport:
         self._tier1_target_slot = tier1_target_slot
 
     def transceive(self, frame: SpiOtaFrame) -> SpiOtaFrame:
-        # HYDRA-UMC's own OFS_* offsets are deliberately numerically
-        # identical to URTC's real CAN ID offsets from URTC_BOOTLOADER_CAN_BASE
-        # (see this module's own header comment) - no lookup table needed.
-        real_can_id = URTC_BOOTLOADER_CAN_BASE + frame.frame_type
+        real_can_id = ofs_to_urtc_can_id(frame.frame_type)
         outbound = RelayFrame(real_can_id, frame.dlc, frame.payload[: frame.dlc])
         for fragment in build_relay_send_fragments(outbound):
             self._underlying.transceive(
@@ -145,7 +175,8 @@ class RelayedTransport:
             return SpiOtaFrame(frame.target_tier, frame.target_slot, 0xFF, 0)
 
         response_can_id, response_dlc, response_data = self._drain_relay_recv(timeout_seconds=2.0)
-        response_frame_type = max(0, min(255, response_can_id - URTC_BOOTLOADER_CAN_BASE))
+        mapped = urtc_can_id_to_ofs(response_can_id)
+        response_frame_type = 0xFF if mapped is None else mapped  # 0xFF = nothing recognisable came back
         return SpiOtaFrame(frame.target_tier, frame.target_slot, response_frame_type, response_dlc, response_data)
 
     def _drain_relay_recv(self, timeout_seconds: float) -> tuple[int, int, bytes]:

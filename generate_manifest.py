@@ -86,8 +86,71 @@ def file_info(bin_path, ext):
     return {"filename": os.path.basename(path), "size_bytes": os.path.getsize(path)}
 
 
-def component(fw_out, prefix, display_name, chip, hw_id, ver, flash_address, flash_region_max_bytes):
+def hex_lowest_address(path):
+    """Lowest absolute address a ".hex" image programs (Intel HEX records
+    00 data / 02 segment / 04 extended linear address)."""
+    base = 0
+    lowest = None
+    with open(path, "r", encoding="ascii") as f:
+        for line in f:
+            line = line.strip()
+            if not line.startswith(":"):
+                continue
+            raw = bytes.fromhex(line[1:])
+            count, offset, rtype = raw[0], (raw[1] << 8) | raw[2], raw[3]
+            if rtype == 0 and count > 0:
+                address = base + offset
+                if lowest is None or address < lowest:
+                    lowest = address
+            elif rtype == 2:
+                base = ((raw[4] << 8) | raw[5]) << 4
+            elif rtype == 4:
+                base = ((raw[4] << 8) | raw[5]) << 16
+    return lowest
+
+
+def check_link_address(bin_path, flash_address, flash_region_max_bytes, ram_range):
+    """Refuse an image that was linked somewhere other than where its
+    bootloader will place and start it: the .hex must begin at
+    flash_address, and the first two vector-table words (initial stack
+    pointer, reset vector) must point into this core's RAM and into the
+    image's own flash slot."""
+    base = int(flash_address, 16)
+    hex_path = os.path.splitext(bin_path)[0] + ".hex"
+    if os.path.exists(hex_path):
+        lowest = hex_lowest_address(hex_path)
+        if lowest != base:
+            raise SystemExit(
+                f"generate_manifest.py: {os.path.basename(hex_path)} is linked at "
+                f"{'none' if lowest is None else hex(lowest)} but the manifest slot is "
+                f"{flash_address} - fix the linker script's FLASH origin, manifest NOT written."
+            )
+    with open(bin_path, "rb") as f:
+        head = f.read(8)
+    if len(head) == 8:
+        sp = int.from_bytes(head[0:4], "little")
+        reset = int.from_bytes(head[4:8], "little")
+        ram_lo, ram_hi = ram_range
+        if not (ram_lo < sp <= ram_hi):
+            raise SystemExit(
+                f"generate_manifest.py: {os.path.basename(bin_path)} starts with stack pointer "
+                f"{hex(sp)}, outside this core's RAM {hex(ram_lo)}-{hex(ram_hi)} - manifest NOT written."
+            )
+        if not (base <= (reset & ~1) < base + flash_region_max_bytes) or not (reset & 1):
+            raise SystemExit(
+                f"generate_manifest.py: {os.path.basename(bin_path)} has reset vector {hex(reset)}, "
+                f"not a Thumb address inside its slot {flash_address}+{flash_region_max_bytes} - manifest NOT written."
+            )
+
+
+G4_RAM = (0x20000000, 0x20020000)
+CM7_RAM = (0x24000000, 0x24080000)
+CM4_RAM = (0x30000000, 0x30048000)
+
+
+def component(fw_out, prefix, display_name, chip, hw_id, ver, flash_address, flash_region_max_bytes, ram_range):
     bin_path = find_versioned_bin(fw_out, prefix)
+    check_link_address(bin_path, flash_address, flash_region_max_bytes, ram_range)
     return {
         "display_name": display_name,
         "chip": chip,
@@ -178,27 +241,27 @@ def main():
         "components": {
             "g474_bootloader": component(
                 fw_out, "HYDRA_RCB_BOOTLOADER", "Robot Controller Board Bootloader",
-                "STM32G474RET6", g4_hwid, g4_boot_ver, "0x08000000", 32 * 1024,
+                "STM32G474RET6", g4_hwid, g4_boot_ver, "0x08000000", 32 * 1024, G4_RAM,
             ),
             "g474_application": component(
                 fw_out, "HYDRA_RCB_APP", "Robot Controller Board Application",
-                "STM32G474RET6", g4_hwid, g4_app_ver, "0x08009000", 236 * 1024,
+                "STM32G474RET6", g4_hwid, g4_app_ver, "0x08009000", 236 * 1024, G4_RAM,
             ),
             "h745_cm7_bootloader": component(
                 fw_out, "HYDRA_KB_CM7_BOOTLOADER", "Kinematic Brain Bootloader (CM7)",
-                "STM32H745ZIT6 (CM7)", cm7_hwid, cm7_boot_ver, "0x08000000", 128 * 1024,
+                "STM32H745ZIT6 (CM7)", cm7_hwid, cm7_boot_ver, "0x08000000", 128 * 1024, CM7_RAM,
             ),
             "h745_cm7_application": component(
                 fw_out, "HYDRA_KB_CM7_APP", "Kinematic Brain Application (CM7)",
-                "STM32H745ZIT6 (CM7)", cm7_hwid, cm7_app_ver, "0x08040000", 384 * 1024,
+                "STM32H745ZIT6 (CM7)", cm7_hwid, cm7_app_ver, "0x08040000", 384 * 1024, CM7_RAM,
             ),
             "h745_cm4_bootloader": component(
                 fw_out, "HYDRA_KB_CM4_BOOTLOADER", "Kinematic Brain Bootloader (CM4)",
-                "STM32H745ZIT6 (CM4)", cm4_hwid, cm4_boot_ver, "0x08100000", 128 * 1024,
+                "STM32H745ZIT6 (CM4)", cm4_hwid, cm4_boot_ver, "0x08100000", 128 * 1024, CM4_RAM,
             ),
             "h745_cm4_application": component(
                 fw_out, "HYDRA_KB_CM4_APP", "Kinematic Brain Application (CM4)",
-                "STM32H745ZIT6 (CM4)", cm4_hwid, cm4_app_ver, "0x08140000", 384 * 1024,
+                "STM32H745ZIT6 (CM4)", cm4_hwid, cm4_app_ver, "0x08140000", 384 * 1024, CM4_RAM,
             ),
         },
     }
