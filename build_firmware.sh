@@ -209,6 +209,29 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # The bootloaders' own HMAC-SHA256, CRC32 and flash erase/program/copy/metadata
+    # routines, compiled as they are against a stand-in HAL header (tests/stubs):
+    # the G474 one by bank and page, the two H745 ones by 128 KB sector. They map
+    # the flash address range, so they run on Linux x86-64 and say so elsewhere.
+    BOOTLOADER_G474_HOST_BIN="$ROOT/build/host_tests_bootloader_g474"
+    if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -I"$ROOT/tests/stubs" -I"$ROOT/src/mcu_stm32g474/boot" -o "$BOOTLOADER_G474_HOST_BIN" "$ROOT/tests/test_bootloader_g474_host.c" && "$BOOTLOADER_G474_HOST_BIN" >/dev/null; then
+        pass "G474 bootloader HMAC, CRC32 and flash host logic tests passed"
+    else
+        "$BOOTLOADER_G474_HOST_BIN" || true
+        fail "G474 bootloader HMAC, CRC32 and flash host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+    for H745_CORE in CM4 CM7; do
+        BOOTLOADER_H745_HOST_BIN="$ROOT/build/host_tests_bootloader_h745_$H745_CORE"
+        if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -DHYDRA_TEST_$H745_CORE -I"$ROOT/tests/stubs" -I"$ROOT/src/mcu_stm32h745/$H745_CORE/boot" -o "$BOOTLOADER_H745_HOST_BIN" "$ROOT/tests/test_bootloader_h745_host.c" && "$BOOTLOADER_H745_HOST_BIN" >/dev/null; then
+            pass "H745 $H745_CORE bootloader sector erase, CRC32 and HMAC host logic tests passed"
+        else
+            "$BOOTLOADER_H745_HOST_BIN" || true
+            fail "H745 $H745_CORE bootloader sector erase, CRC32 and HMAC host logic tests FAILED"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+    done
+
     # Static source guards (watchdog window, hand-shifted FDCAN DLC) and the
     # version-bump helper, plain python3 unittest.
     if command -v python3 >/dev/null 2>&1; then
