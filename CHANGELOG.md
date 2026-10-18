@@ -2,6 +2,11 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
+## [0.2.2]
+
+- Maturity is scaffolding: the applications are still skeletons and nothing here has been verified on real hardware yet.
+- The READMEs say, in the eight languages, what is planned and what has only been tested against fakes, emulators or fixtures, and carry a short safety and security status note.
+
 ## [0.2.1] - HYDRA-UMC-DOCS in the related projects
 
 - The Related Projects section of the README, in the eight languages, lists HYDRA-UMC-DOCS: the documentation and tooling hub of the ecosystem (architecture, interfaces, security baseline, capability matrix and a project catalogue generated from every manifest).

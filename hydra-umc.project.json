@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "ecosystem": "HYDRA-UMC",
   "name": "HYDRA-UMC",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "role": "firmware",
   "stack": "firmware-c",
   "technologies": [
@@ -10,12 +10,12 @@
     "STM32G474",
     "FreeRTOS (AMP)",
     "CMSIS-DSP",
-    "FDCAN",
+    "FDCAN (classic CAN mode)",
     "SWD/JTAG",
     "Python (CM5 host: spi_bridge)"
   ],
   "deployment_target": "user-pc",
-  "maturity": "functional",
+  "maturity": "scaffolding",
   "family": "Core Hardware",
   "parent": null,
   "build": "6 independently-versioned components (G474 + H745 CM7 + H745 CM4, app + bootloader each). This registry tracks the G474 application as representative. Real install/build: bash build_firmware.sh.",

@@ -22,27 +22,31 @@
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="CERN OHL-S">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="C">
   <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="STM32">
-  <img src="https://img.shields.io/badge/Bus-FDCAN-yellow.svg" alt="FDCAN">
+  <img src="https://img.shields.io/badge/Bus-Classic%20CAN%20(FDCAN%20peripheral)-yellow.svg" alt="Classic CAN bus on an FDCAN peripheral">
 </p>
 
 
 ---
 
+> **安全性とセキュリティの現状:** このエコシステムは認証された安全システムではありません。ハードウェアの E-STOP 経路、ファームウェアが強制する制限やインターロック、検証済みの動作コマンドはまだありません。ファームウェアイメージは CRC32 と共有鍵の HMAC-SHA256 で検査しており、非対称署名ではありません。TLS と相互 TLS は任意で、既定では無効です。独自基板はまだ実装も試験もされていません。ここに書かれた内容を人の安全のために頼る前に、[セキュリティベースライン](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)と[脅威モデル](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)をお読みください。
+
 ## 📋 ひと目で
 
 | | |
 |---|---|
-| バージョン | `0.2.1` |
-| 成熟度 | 機能する |
-| 技術 | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN |
+| バージョン | `0.2.2` |
+| 成熟度 | 足場段階 |
+| 技術 | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | 対象 | マイコン基板（ファームウェア）。ビルドは PC で行います |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
 
 ## 1. 🛠️ プロジェクト概要とマイクロファクトリーエコシステム
 
-**HYDRA-UMC**（Universal Machines Controller）は、多軸セル型ロボティクス、マイクロファクトリー、自動化製造、複雑なツールヘッドの統合制御を目的とした、産業グレードの分散制御プラットフォームであり、高性能な HMI アーキテクチャです。
+**HYDRA-UMC**（Universal Machines Controller）は、多軸セル型ロボティクス、マイクロファクトリー、自動化製造、複雑なツールヘッドの統合制御を目的とした、分散制御プラットフォームであり、HMI アーキテクチャです(ファームウェアはまだ初期段階にあります)。
 
-**ヘテロジニアスなホスト + リアルタイムコプロセッサアーキテクチャ** の上に構築された HYDRA-UMC は、高水準のユーザーインターフェース描画・コンピュータビジョン・AI 推論・クラウド接続を、リアルタイムなステップパルス生成・フィールドバス管理・パワーエレクトロニクス駆動から完全に分離しています。
+**ヘテロジニアスなホスト + リアルタイムコプロセッサアーキテクチャ** として設計された HYDRA-UMC は、高水準のユーザーインターフェース描画・コンピュータビジョン・AI 推論・クラウド接続を、リアルタイムなステップパルス生成・フィールドバス管理・パワーエレクトロニクス駆動から分離することを目指しています(計画中:ステップパルス生成と駆動はまだ書かれていません)。
+
+> **設計の状況:** 以下の各節は、ボードとそのファームウェアの意図した設計を述べています。現時点で存在するのは、ブートローダー、CM4 と G474 の通信アプリケーション、CM5 側の SPI ブリッジだけです(終盤の「安全に関する現状」の囲みと `docs/architecture.md` の状況表を参照)。以下の文が動作生成、S カーブプロファイル、PID ループ、安全インターロック、E-STOP、停電時の処理、物体検出、あるいは完成後のボードのその他の挙動を現在形で述べている場合は、計画中のものとして読んでください。そのいずれも、実装済みの基板上では動作していません。
 
 ```mermaid
 flowchart TB
@@ -69,9 +73,9 @@ flowchart TB
     MCU -- "FDCAN1 — STACK A バス" --> ROBOTS["ロボットコントローラーボード A1...A8<br/>（最大 8 台のスレーブモジュール）"]
 ```
 
-### 🤖 マイクロファクトリーとしての機能：
-* 📡 **分散型マルチロボットネットワーク：** 単一の物理 FDCAN バス上で、最大 8 台の分散スレーブロボットモジュール（現時点で 3・4・5・6 自由度に対応、将来のリリースでは 7・8・9 自由度およびデュアルロボット構成へ拡張予定）を協調動作させます。
-* 🧠 **デュアル組み込みニューラルコプロセッシング：** 板載の PCIe Gen3 スイッチが、CM5 の単一 PCIe レーンを 2 基の M.2 AI アクセラレータへファンアウトします。Hailo-8（26 TOPS）は 8 台のカメラすべてに対し、マルチストリームの YOLOv8/YOLO11 物体検出・欠陥検査・リアルタイム PnP フィデューシャルアライメントを駆動し、Hailo-10（40 TOPS）はクラウドへの往復通信なしに、ローカル・オンデバイスで認知推論と生成 AI（量子化された LLM/VLA モデル）を実行します。
+### 🤖 マイクロファクトリーとしての機能（設計上の目標）：
+* 📡 **分散型マルチロボットネットワーク：** 計画中：単一の物理 CAN バス上で、最大 8 台の分散スレーブロボットモジュール（まず 3・4・5・6 自由度、将来のリリースでは 7・8・9 自由度およびデュアルロボット構成へ拡張予定）を協調動作させる。
+* 🧠 **デュアル組み込みニューラルコプロセッシング：** 板載の PCIe Gen3 スイッチが、CM5 の単一 PCIe レーンを 2 基の M.2 AI アクセラレータへファンアウトします。Hailo-8（26 TOPS）は 8 台のカメラすべてに対し、マルチストリームの YOLOv8/YOLO11 (計画中。まだ動作していません) 物体検出・欠陥検査・リアルタイム PnP フィデューシャルアライメントを駆動し、Hailo-10（40 TOPS）はクラウドへの往復通信なしに、ローカル・オンデバイスで認知推論と生成 AI（量子化された LLM/VLA モデル）を実行します。
 * 📐 **ローカル 6 軸ステージ：** 6 つのローカル軸（X、Y1、Y2、Z、E0、E1）に対する直接的な step/dir/enable パルス生成。副ロボット、ATC（自動工具交換装置）タレット、コンベアベルト同期、XYZ テーブルガントリーといった補助用途に対応します。
 * 🎯 **JuanenPNP・JuanenCNC 統合：** Pick-and-Place システム（LumenPNP ハードウェア構成）や、PCB プロトタイピング・SMD 実装向けの 10W 光学レーザーモジュールを搭載した CNC ユニットと直接互換性があります。
 * 👁️ **8 系統カメラビジョン・検査マトリクス：** デュアル USB 3.0 コントローラーを統合し、8 個の専用 USB カメラポートを駆動。リアルタイム OpenCV による Pick-and-Place 光学アライメント、熱画像検査、リモートストリーム監視を実現します。
@@ -101,7 +105,7 @@ flowchart TB
 
 * 🔀 **PCIe ファンアウト：** CM5 コネクタが公開する PCIe Gen 2.0/3.0 レーンは **1 系統のみ**（CM5 データシートの Table 5、`docs/PINOUT_CM5_CARRIER.TXT` にて確認済み）— 2 基の M.2 AI アクセラレータを直接接続するには不足しています。板載の PCIe Gen3 パケットスイッチ（候補：ASMedia ASM2806 系列または同等品、型番未定 — Hailo-10 のリンク速度がネイティブ速度を下回らないよう、Gen3 対応であることが必須）が、CM5 側の単一レーンを、下記の各 M.2 ソケットに接続する 2 系統の独立した下流 PCIe x1 レーンへファンアウトします。
 * 🔌 **物理インターフェース：** 板載の M.2 Key M ソケット ×2（2242／2280 フォームファクタ）。それぞれ CM5 に直接ではなく、上記 PCIe スイッチ自身の個別の下流ポートに接続されています。
-* 🚀 **NPU エンジン 1 — Hailo-8（高速知覚処理）：** 消費電力 5W 未満で **26 TOPS**（Tera Operations Per Second）を発揮する Hailo-8 産業用 AI プロセッサ。8 台全カメラ（第 4 節）にわたるマルチストリームの YOLOv8/YOLO11 物体検出、欠陥検査、リアルタイム PnP フィデューシャルアライメントを担います — 既存のアクセラレータであり、その役割に変更はありません。
+* 🚀 **NPU エンジン 1 — Hailo-8（高速知覚処理）：** 消費電力 5W 未満で **26 TOPS**（Tera Operations Per Second）を発揮する Hailo-8 産業用 AI プロセッサ。8 台全カメラ（第 4 節）にわたるマルチストリームの YOLOv8/YOLO11 (計画中。まだ動作していません) 物体検出、欠陥検査、リアルタイム PnP フィデューシャルアライメントを担います — 既存のアクセラレータであり、その役割に変更はありません。
 * 🧠 **NPU エンジン 2 — Hailo-10（認知推論・ローカル生成 AI）：** Hailo-8 の置き換えではなく、それに加えて搭載されます。**40 TOPS** を発揮し、量子化された LLM および Vision-Language-Action（VLA）モデルをローカルかつプライベートに実行します。オペレーターの自然言語／音声指示を運動学的軌道へと変換し、ロボットがタスクに失敗した際には外部クラウドサービスへの往復通信なしに、意味理解に基づくエラー復旧を行います。これは、HYDRA-UMC エコシステムの他の部分（同族プロジェクトである HYDRA-UMC-COGNITIVE-NODE）ですでに確立されている Hailo-10 の認知的役割と同一のものです。
 * ⚡ **ソフトウェア統合：** 両アクセラレータ向けの公式 Hailo RT ソフトウェアスイートが Raspberry Pi OS に統合されており、Hailo-8 のゼロ CPU オーバーヘッドなビジョン推論のために GStreamer/TAPPAS パイプラインと OpenCV を実行します。Hailo-10 自身の LLM/VLA ランタイム統合は、まだ設計段階です（`src/cm5_host/ai_inference/README.md` 参照）。
 * ⚠️ **未確定事項：** PCIe スイッチの正確な型番、および Hailo-10 自身の実際の消費電力は、いずれも未確定です — `hardware/PCB/kinematic_brain_stm32h745/BOM.TXT` の項目 05・09 を参照してください。
@@ -127,13 +131,13 @@ flowchart TB
 
 ---
 
-## 5. ⚡ リアルタイムコプロセッシングサブシステム
+## 5. ⚡ リアルタイムコプロセッシングサブシステム（設計）
 
 * 🎛️ **マイクロコントローラー：** STMicroelectronics **STM32H745ZIT6**（コスト最適化デュアルコア MCU）
 * 📦 **パッケージ：** LQFP-144（0.5 mm ピンピッチ）
 * 🧠 **アーキテクチャ：** デュアルコア非対称マルチプロセッシング（AMP）
-  * 🚀 **コア 1（Cortex-M7 @ 480 MHz）：** リアルタイムモーションエンジン、ハードウェアパルス生成、S カーブ運動学速度プロファイル、PID 制御ループ。
-  * 📡 **コア 2（Cortex-M4 @ 240 MHz）：** FDCAN プロトコル管理、アナログセンサーフィルタリング、安全インターロック、コア間 IPC 処理。
+  * 🚀 **コア 1（Cortex-M7 @ 480 MHz）：** 計画中：リアルタイムモーションエンジン、ハードウェアパルス生成、S カーブ速度プロファイル、PID 制御ループ。現時点のアプリケーションは GPIO をトグルするだけのスモークテストです。
+  * 📡 **コア 2（Cortex-M4 @ 240 MHz）：** クラシック CAN モードでの FDCAN1 プロトコル管理とコア間メールボックスは存在します（基板上では未実行）。計画中で未実装のもの：アナログセンサーフィルタリングと安全インターロック。
 * 💾 **内蔵メモリアーキテクチャ：**
   * 💾 **2 MB** デュアルバンク内蔵フラッシュ
   * 🧠 **1 MB** 内蔵 SRAM 総容量（512 KB AXI SRAM + 128 KB ITCM／128 KB DTCM + SRAM1/SRAM2/SRAM3）
@@ -141,7 +145,7 @@ flowchart TB
 
 ---
 
-## 6. 📡 分散フィールドバス通信（単一 FDCAN）
+## 6. 📡 分散フィールドバス通信（単一 CAN バス、FDCAN ペリフェラルをクラシックモードで使用）
 
 マザーボードは、単一の物理 CAN バス上に分散した最大 8 台の個別スレーブロボットモジュールに対するマスターコントローラーとして機能します。
 
@@ -161,12 +165,12 @@ flowchart LR
 
 ## 7. 💾 超高速不揮発性メモリ（SPI FRAM）
 
-緊急停電時のデータ損失ゼロと即時状態復旧を保証するために：
+設計目標(まだ実装されていません)：緊急停電時のデータ損失ゼロと即時状態復旧：
 
 * 🧪 **メモリ IC：** Cypress/Infineon `FM25V05-G`／Fujitsu `MB85RS64`（64 KB SPI FRAM）
 * ⚡ **バスインターフェース：** 専用 SPI2 バス、最大 40 MHz。
 * ♾️ **耐久性：** 無制限の書き込み耐久性（10^14 サイクル）、ナノ秒オーダーの書き込みレイテンシ。
-* 🛡️ **停電保護シーケンス（PVD）：** 内蔵の電圧監視回路（PVD）が 3.3V レールを常時監視。電圧低下を検知すると、電源遮断前の **5 マイクロ秒以内** に、ノンマスカブル割り込み（NMI）によりエンコーダのベクトル値、アクティブなステートマシン、座標情報を FRAM へダンプします。
+* 🛡️ **停電保護シーケンス（PVD）、計画中：** 内蔵の電圧監視回路（PVD）が 3.3V レールを常時監視。電圧低下を検知すると、電源遮断前の **5 マイクロ秒以内** に、ノンマスカブル割り込み（NMI）によりエンコーダのベクトル値、アクティブなステートマシン、座標情報を FRAM へダンプします。
 
 ---
 
@@ -347,18 +351,18 @@ build_firmware.bat --clean  :: ベンダリング済み HAL/CMSIS キャッシ�
 - **[URTC](https://github.com/JuanenRac/URTC)** — 物理的な Universal Robot Tool Controller 基板向けファームウェア、CAN バス経由の 25 以上のツールプロファイル。本基板が駆動する各ロボットアームが搭載するツールヘッドのファームウェアで、自身の CAN ダウンリンクをさらに 1 ホップ先に持つ。
 - **[HYDRA-UMC-OS](https://github.com/JuanenRac/HYDRA-UMC-OS)** — CM5 向けの再現可能な Raspberry Pi OS プロダクト層——読み取り専用エージェント、検証済み設定/プロファイル、WiFi 初回接続プロビジョニング。本基板自身の CM5 ホストが実行する OS。
 - **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — すべての制御クライアントが実際に通信する、本物のヘッドレスバックエンド(REST/WebSocket)。その `spi_bridge` サービスが実際の CM5↔STM32H745 SPI-OTA 接続を介して本ファームウェアと通信する。
-- **[HYDRA-UMC-VISION-NODE](https://github.com/JuanenRac/HYDRA-UMC-VISION-NODE)** — Hailo-8 ビジョンパイプラインの統合ハブ、段階ごとの実際のハードウェア準備状況チェック付き。SPI/CAN 経由で本ファームウェアとの知覚/E-STOP ループを閉じる。
-- **[HYDRA-UMC-SAFETY-ZONES](https://github.com/JuanenRac/HYDRA-UMC-SAFETY-ZONES)** — キャリブレーションの鮮度を強制する、実際のゾーン侵入チェックと E-STOP 要求。侵入を検知した瞬間に本ファームウェアの E-STOP をトリガーする。
-- **[HYDRA-UMC-VISUAL-SERVOING-API](https://github.com/JuanenRac/HYDRA-UMC-VISUAL-SERVOING-API)** — 上流のゾーン状態に応じて安全ゲート制御される、実際の Position-Based Visual Servoing 補正則。運動学的補正を本ファームウェアへ直接送信する。
+- **[HYDRA-UMC-VISION-NODE](https://github.com/JuanenRac/HYDRA-UMC-VISION-NODE)** — Hailo-8 ビジョンパイプラインの統合ハブ、段階ごとの実際のハードウェア準備状況チェック付き。本ファームウェアとの知覚/E-STOP ループはまだ存在しない。
+- **[HYDRA-UMC-SAFETY-ZONES](https://github.com/JuanenRac/HYDRA-UMC-SAFETY-ZONES)** — ファイルから物体位置を受け取る、ゾーン侵入・キャリブレーション鮮度・E-STOP 要求の v0 ロジック。検出器は接続されておらず、物理 E-STOP もまだ配線されていない。
+- **[HYDRA-UMC-VISUAL-SERVOING-API](https://github.com/JuanenRac/HYDRA-UMC-VISUAL-SERVOING-API)** — ゾーン状態を条件に承認する Position-Based Visual Servoing 補正則。カメラによる姿勢推定はまだない。
 - **[HYDRA-UMC-ORCHESTRATOR](https://github.com/JuanenRac/HYDRA-UMC-ORCHESTRATOR)** — 実際の gRPC/Protobuf ヘルスレポート契約とミッションステートマシンを持つ統合ハブ。複数の HYDRA-UMC ユニットをスウォームとして調整する。
-- **[HYDRA-UMC-TWIN](https://github.com/JuanenRac/HYDRA-UMC-TWIN)** — 実際のバージョン互換性同期契約を持つ、デジタルツインエンジンの統合ハブ。本ファームウェア自身の運動学を再現する。
+- **[HYDRA-UMC-TWIN](https://github.com/JuanenRac/HYDRA-UMC-TWIN)** — 実際のバージョン互換性同期契約を持つ、デジタルツインエンジンの統合ハブ。本ファームウェアの運動学が実装された時点で再現することを目指す。
 - **[URTC-SMART-RACK](https://github.com/JuanenRac/URTC-SMART-RACK)** — 実際の工具 ID デコードと Smart Idle 予熱ロジックを備えた、基板搭載ラック用ファームウェア。本ファームウェアと同じツール CAN バスを共有する。
 - **[URTC-VISION-TOOL](https://github.com/JuanenRac/URTC-VISION-TOOL)** — サーマル/RGB 検査ツールヘッド向けの、ファームウェアと実際の Python ビジョンコンパニオン。本ファームウェアと同じツール CAN バスを共有する。
 
 **エコシステムの他のプロジェクト**
 
 *コアハードウェア&プラットフォーム*
-- **[HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK)** — すべてのブリッジが自身のコマンドを検証する共有 JSON-Schema 契約と安全ゲートの境界。
+- **[HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK)** — すべてのブリッジが自身のコマンドを検証する共有 JSON-Schema 契約とソフトウェアのジョブゲート境界(認証済みの安全機能ではない)。
 - **[HYDRA-UMC-CONNECTOR-HUB](https://github.com/JuanenRac/HYDRA-UMC-CONNECTOR-HUB)** — 外部マシン用コネクタのための宣言的アダプターマニフェストのレジストリとバリデーター。SDK 自身の契約という発想を外部マシンにまで拡張し、産業用ゲートウェイ系のプロジェクトを置き換えることはありません。
 
 *コアバックエンド&クライアント*
@@ -369,14 +373,14 @@ build_firmware.bat --clean  :: ベンダリング済み HAL/CMSIS キャッシ�
 - **[HYDRA-UMC-DSI](https://github.com/JuanenRac/HYDRA-UMC-DSI)** — 本体搭載の 7 インチ DSI タッチスクリーン向けネイティブタッチ UI、CM5 自体に組み込み。
 - **[HYDRA-UMC-EDITOR-URDF](https://github.com/JuanenRac/HYDRA-UMC-EDITOR-URDF)** — 完成したモデルを STUDIO 自身のカタログへ送信するデスクトップ用グラフィカル URDF 作成/編集ツール。
 - **[HYDRA-UMC-EDITOR-STL](https://github.com/JuanenRac/HYDRA-UMC-EDITOR-STL)** — HYDRA-UMC-EDITOR-URDF も編集する同じモデルカタログ内で、実在するパーツを変換/置換/削除/追加するデスクトップ STL モデルエディタ。
-- **[HYDRA-UMC-BRIDGE-AMR](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-AMR)** — 実際の VDA 5050 MQTT パブリッシャーによる AGV/AMR フリートの調整境界。
-- **[HYDRA-UMC-BRIDGE-CNC](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-CNC)** — 実際の GRBL ステータス/制御バイトへのアクセスを持つ、CNC セルの高レベルコーディネーター。
-- **[HYDRA-UMC-BRIDGE-DROIDS](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-DROIDS)** — 実際の Boston Dynamics Spot コマンド送信機能を持つ、脚型/ヒューマノイドドロイドの調整境界。
-- **[HYDRA-UMC-BRIDGE-LASER](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-LASER)** — 実際のキー/筐体/インターロック GPIO セーフガード 3 系統を読み取る、レーザーセルの安全コーディネーター。
+- **[HYDRA-UMC-BRIDGE-AMR](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-AMR)** — VDA 5050 MQTT パブリッシャーによる AGV/AMR フリートの調整境界(エミュレートしたフリートに対してのみテスト済み)。
+- **[HYDRA-UMC-BRIDGE-CNC](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-CNC)** — GRBL ステータス/制御バイトへのアクセスを持つ、CNC セルの高レベルコーディネーター(エミュレーターに対してのみテスト済み)。
+- **[HYDRA-UMC-BRIDGE-DROIDS](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-DROIDS)** — Boston Dynamics Spot コマンド送信機能を持つ、脚型/ヒューマノイドドロイドの調整境界(エミュレーターに対してのみテスト済み)。
+- **[HYDRA-UMC-BRIDGE-LASER](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-LASER)** — キー/筐体/インターロックの GPIO 信号 3 系統を読み取るレーザーセルのコーディネーター(模擬チップに対してのみテスト済み。レーザーの武装や発射はできない)。
 - **[HYDRA-UMC-BRIDGE-OPENPNP](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-OPENPNP)** — OpenPnP ピックアンドプレースの基板フローを安全に統括する高レベルコーディネーター。
 - **[HYDRA-UMC-BRIDGE-PRINTER3D](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-PRINTER3D)** — 実際にゲート制御されたジョブコマンドを持つ、Moonraker/Klipper 3D プリンター向けの安全な調整境界。
-- **[HYDRA-UMC-BRIDGE-ROS2](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-ROS2)** — 実際の遅延インポート rclpy ROS 2 トランスポートを持つ安全コーディネーター。
-- **[HYDRA-UMC-BRIDGE-UAV](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-UAV)** — 実際の MAVLink コマンド送信機能を持つ、カメラ搭載 UAV の調整境界。
+- **[HYDRA-UMC-BRIDGE-ROS2](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-ROS2)** — 遅延インポートの rclpy ROS 2 トランスポートを持つコーディネーター(ROS 2 環境ではまだ実行していない)。
+- **[HYDRA-UMC-BRIDGE-UAV](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-UAV)** — MAVLink コマンド送信機能を持つ、カメラ搭載 UAV の調整境界(エミュレーターに対してのみテスト済み)。
 
 *URTC ツールプラットフォーム*
 - **[URTC-FLASHER](https://github.com/JuanenRac/URTC-FLASHER)** — URTC 基板用のデスクトップ GUI 書き込みツール、CAN-OTA およびフルチップ SWD/JTAG。
@@ -401,7 +405,7 @@ build_firmware.bat --clean  :: ベンダリング済み HAL/CMSIS キャッシ�
 - **[HYDRA-UMC-SWARM-SYNC](https://github.com/JuanenRac/HYDRA-UMC-SWARM-SYNC)** — 複数セルの収束についてプロパティテストされた、実際の CRDT LWW-Element-Map 状態同期。
 
 *デジタルツイン&シミュレーション*
-- **[HYDRA-UMC-HIL-BRIDGE](https://github.com/JuanenRac/HYDRA-UMC-HIL-BRIDGE)** — シミュレーションと実際のハードウェアの間でコマンドをルーティングする、実際のハードウェア・イン・ザ・ループ安全インターロック。
+- **[HYDRA-UMC-HIL-BRIDGE](https://github.com/JuanenRac/HYDRA-UMC-HIL-BRIDGE)** — シミュレーションと実機の間にソフトウェアの衝突インターロックを備えたハードウェア・イン・ザ・ループのルーター(実機なしでテスト済み)。
 - **[HYDRA-UMC-PHYSICS-REPLICA](https://github.com/JuanenRac/HYDRA-UMC-PHYSICS-REPLICA)** — 実際の URDF サブセットに対する、実際の順運動学と関節限界検証。
 - **[HYDRA-UMC-SYNTHETIC-DATA-GEN](https://github.com/JuanenRac/HYDRA-UMC-SYNTHETIC-DATA-GEN)** — YOLO/COCO アノテーションのエクスポート機能を持つ、実際のプロシージャル 2D シーンジェネレーター。
 
@@ -420,7 +424,7 @@ build_firmware.bat --clean  :: ベンダリング済み HAL/CMSIS キャッシ�
 *補完ツール&エコシステム運用*
 - **[HYDRA-UMC-DASHBOARD-AI](https://github.com/JuanenRac/HYDRA-UMC-DASHBOARD-AI)** — 誠実な統計フォールバックを備えた、DATALAKE/ANOMALY-DETECTOR 上のスマートサマリーと異常ハイライトパネル。
 - **[HYDRA-UMC-TOOL-CLI](https://github.com/JuanenRac/HYDRA-UMC-TOOL-CLI)** — 実際の安定した終了コード契約を持つフリート CLI、HYDRA-UMC-SERVER 自身の API の本物のライブクライアント。
-- **[HYDRA-UMC-WATCH](https://github.com/JuanenRac/HYDRA-UMC-WATCH)** — 実際の触覚アラートとペアリングされたスマートフォンへの音声リレーを備えた WearOS コンパニオンアプリ。
+- **[HYDRA-UMC-WATCH](https://github.com/JuanenRac/HYDRA-UMC-WATCH)** — 触覚アラートのパターンとペアリング済みスマートフォンへの音声リレーを備えた WearOS コンパニオンアプリ(物理的なウォッチではまだ実行していない)。
 - **[HYDRA-UMC-UPDATER](https://github.com/JuanenRac/HYDRA-UMC-UPDATER)** — このエコシステム内のすべてのリポジトリを検出・クローン・更新する、管理用デスクトップツール。
 - **[HYDRA-UMC-OS-REBUILDER](https://github.com/JuanenRac/HYDRA-UMC-OS-REBUILDER)** — エコシステムの最新バージョンをプリロードした、書き込み可能なCM5イメージを構築するWindows/Linuxデスクトップツール。Raspberry Pi Imager方式の初回起動Wi-Fi/ユーザー/SSH設定を備える。
 - **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — 保守インシデントコーディネーター: 低権限のエッジ役割がサニタイズされたインベントリ/ヘルスのスナップショットを収集し、コントロールプレーン役割がそれを読み取り専用でレンダリングして AI プロバイダーに診断の提案を依頼します - パッチを適用することも、何かをデプロイすることも決してありません。
