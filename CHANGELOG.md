@@ -2,6 +2,11 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
+## [0.2.1] - HYDRA-UMC-DOCS in the related projects
+
+- The Related Projects section of the README, in the eight languages, lists HYDRA-UMC-DOCS: the documentation and tooling hub of the ecosystem (architecture, interfaces, security baseline, capability matrix and a project catalogue generated from every manifest).
+- No firmware component was rebuilt for this version: the version of the representative application component is raised so that the manifest, the native version source and the changelog stay in step.
+
 ## [0.2.0]
 
 - Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
