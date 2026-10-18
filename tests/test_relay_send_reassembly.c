@@ -1,7 +1,7 @@
 /* =============================================================================
  * HYDRA-UMC Firmware - Host logic tests for the RELAY_SEND fragment reassembly
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
- * GPL-3.0 - see LICENSE
+ * GPL-3.0-or-later - see LICENSE
  * =============================================================================
  * A frame cut into a 5-byte and a 3-byte fragment must leave the relay as ONE
  * 8-byte frame; the old code forwarded each fragment as its own short frame.

@@ -2,7 +2,7 @@
 
 **Project:** HYDRA-UMC
 **Author:** JuanenRac (Electro Hobby 3D) — electrohobby3d@gmail.com
-**License:** GPL-3.0 — see repo root LICENSE
+**License:** GPL-3.0-or-later — see repo root LICENSE
 
 This is the firmware for the **Kinematic Brain** (Tier 0 of
 `docs/architecture.md`): the STM32H745ZIT6 co-processor wired directly to

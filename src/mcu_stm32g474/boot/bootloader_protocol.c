@@ -2,7 +2,7 @@
 // HYDRA-UMC Robot Controller Board Bootloader - FDCAN protocol handlers,
 // application validation, and jump
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 //
 // Ported from URTC's own proven bootloader_protocol.c. Two real differences
 // from that file, everything else is the same state machine:

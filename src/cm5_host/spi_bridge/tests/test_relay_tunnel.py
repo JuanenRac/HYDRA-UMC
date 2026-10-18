@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC - spi_bridge relay_tunnel tests
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see repo root LICENSE
+# GPL-3.0-or-later - see repo root LICENSE
 # =============================================================================
 import struct
 import unittest

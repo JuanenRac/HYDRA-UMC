@@ -2,7 +2,7 @@
 // HYDRA-UMC Kinematic Brain Bootloader (CM7) - Flash erase/write/verify and
 // metadata I/O declarations
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 // =============================================================================
 #ifndef BOOTLOADER_FLASH_H
 #define BOOTLOADER_FLASH_H

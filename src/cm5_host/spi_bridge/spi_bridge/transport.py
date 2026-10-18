@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC - Real CM5 <-> STM32H745 SPI transport
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see repo root LICENSE
+# GPL-3.0-or-later - see repo root LICENSE
 # =============================================================================
 """Real SPI + GPIO transport for the STM32H745 SPI-OTA link - the piece
 `src/cm5_host/ipc_driver/` (C) was left as a "STARTING POINT ONLY" skeleton

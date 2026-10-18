@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC Kinematic Brain Bootloader (CM7) - shared types/defines/externs
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 //
 // Ported from URTC's own proven bootloader (sibling repo) via HYDRA-UMC's
 // own G474 port (../../../mcu_stm32g474/boot/bootloader_common.h) - same

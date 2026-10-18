@@ -3,7 +3,7 @@
  * kiosk_view.cpp - real kiosk lockdown for the QWebEngineView shell
  * PROJECT: HYDRA-UMC
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
- * LICENSE: GPL-3.0 - see repo root LICENSE
+ * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  * See kiosk_view.h for the real Qt6 API/design reasoning.
  * =============================================================================
  */

@@ -2,7 +2,7 @@
 # CMakeLists.txt - hmi_qt6 kiosk shell
 # PROJECT: HYDRA-UMC
 # AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
-# LICENSE: GPL-3.0 - see repo root LICENSE
+# LICENSE: GPL-3.0-or-later - see repo root LICENSE
 #
 # Verified on 2 real targets, this file unmodified on both:
 #   - Windows/MSVC: `cmake -B build -G "Visual Studio 16 2019" -A x64

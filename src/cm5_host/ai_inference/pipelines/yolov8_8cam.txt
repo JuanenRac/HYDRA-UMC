@@ -3,7 +3,7 @@
 # inference on the Hailo-8, via TAPPAS's own hailonet/hailofilter elements.
 # PROJECT: HYDRA-UMC
 # AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
-# LICENSE: GPL-3.0 - see repo root LICENSE
+# LICENSE: GPL-3.0-or-later - see repo root LICENSE
 #
 # NOT YET RUNNABLE - references ../models/yolov8_hydra.hef, which doesn't
 # exist yet (see ../README.md for what's needed before it does). This is a

@@ -2,7 +2,7 @@
 // HYDRA-UMC Kinematic Brain Bootloader (CM4) - CRC32, flash program/erase,
 // and metadata persistence
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 //
 // Identical structure to ../../CM7/boot/bootloader_flash.c (see that
 // file's own header for the full reasoning on sector-vs-page erase

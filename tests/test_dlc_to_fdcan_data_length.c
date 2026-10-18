@@ -1,7 +1,7 @@
 /* =============================================================================
  * HYDRA-UMC Firmware - Host logic tests for DlcToFdcanDataLength
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
- * GPL-3.0 - see LICENSE
+ * GPL-3.0-or-later - see LICENSE
  * =============================================================================
  * A.11: locks in the DLC (0-8, Classic CAN) -> FDCAN data-length-code
  * mapping both RobotControllerRelay.c (src/mcu_stm32g474/) and

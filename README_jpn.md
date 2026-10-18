@@ -18,7 +18,7 @@
 ### 🤖 究極のデュアルコア・マイクロファクトリー＆マルチロボットコントローラープラットフォーム（V1.0 — デュアル PCIe Hailo-8 + Hailo-10 AI アクセラレータ & デュアル USB 3.0 ハブ）
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="CERN OHL-S">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="C">
   <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="STM32">
@@ -436,10 +436,10 @@ HYDRA-UMC の著作権は (c) 2026 JuanenRac（Electro Hobby 3D）に帰属し�
 
 本プロジェクトは複数の異なる種類のコンテンツで構成されているため、すべてを単一のライセンスで強制的にカバーするのではなく、各部分が実際にカバーする内容に適したライセンスを個別に採用しています。
 
-1. `./firmware` に配置された **ファームウェア**（アプリケーションおよび CAN ブートローダーの両方）は、**GNU General Public License v3.0（GPL-3.0）** の下で提供されます。全文は https://www.gnu.org/licenses/gpl-3.0.html を参照してください。
+1. `./firmware` に配置された **ファームウェア**（アプリケーションおよび CAN ブートローダーの両方）は、**GNU General Public License v3.0（GPL-3.0-or-later）** の下で提供されます。全文は https://www.gnu.org/licenses/gpl-3.0.html を参照してください。
 
 2. **ハードウェア設計**（Eagle 回路図／基板ファイル、Gerber データ、および `./hardware` と `./3D` 配下の 3D プリント可能パーツ）は、**CERN Open Hardware Licence v2 - Strongly Reciprocal（CERN-OHL-S v2）** の下で提供されます。全文は https://cern-ohl.web.cern.ch/ を参照してください。
 
 3. **ドキュメント**（本 README、サービスマニュアル、`./docs` 配下の参考資料）は、**クリエイティブ・コモンズ 表示-継承 4.0 国際（CC BY-SA 4.0）** の下で提供されます。全文は https://creativecommons.org/licenses/by-sa/4.0/ を参照してください。
 
-本プロジェクトを基に開発を行う際は、このライセンス区分を念頭に置いてください：ファームウェアや書き込みツールへのコード変更は GPL-3.0 を維持し、ハードウェアの改変は CERN-OHL-S を維持し、ドキュメントの派生物は CC BY-SA を維持してください —— いずれも本プロジェクトへの帰属表示を伴う必要があります。
+本プロジェクトを基に開発を行う際は、このライセンス区分を念頭に置いてください：ファームウェアや書き込みツールへのコード変更は GPL-3.0-or-later を維持し、ハードウェアの改変は CERN-OHL-S を維持し、ドキュメントの派生物は CC BY-SA を維持してください —— いずれも本プロジェクトへの帰属表示を伴う必要があります。

@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC Robot Controller Board Bootloader - SHA-256 / HMAC-SHA256
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 //
 // Ported verbatim from URTC's own proven bootloader_crypto.h - the SHA-256/
 // HMAC algorithm itself has no chip-specific content at all.

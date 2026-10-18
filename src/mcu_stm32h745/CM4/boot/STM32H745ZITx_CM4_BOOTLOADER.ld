@@ -3,7 +3,7 @@
  * STM32H745ZITx_CM4_BOOTLOADER.ld - Kinematic Brain, Cortex-M4 bootloader linker script
  * PROJECT: HYDRA-UMC (Kinematic Brain firmware, Tier 0 - STM32H745ZIT6)
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
- * LICENSE: GPL-3.0 - see repo root LICENSE
+ * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
  * See ../STM32H745ZITx_CM4_APP.ld's own header comment for the full Bank 2
  * flash partitioning this bootloader slot is one piece of, including the

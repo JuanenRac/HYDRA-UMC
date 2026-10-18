@@ -18,7 +18,7 @@
 ### 🤖 La Plateforme Ultime de Micro-Usine à Double Cœur et Contrôleur Multi-Robot (V1.0 - Double Accélérateur IA PCIe Hailo-8 + Hailo-10 et Double Hub USB 3.0)
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licence-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/Licence-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="CERN OHL-S">
   <img src="https://img.shields.io/badge/Langage-C11-00599C.svg" alt="C">
   <img src="https://img.shields.io/badge/Plateforme-STM32H745-003551.svg" alt="STM32">
@@ -550,10 +550,10 @@ HYDRA-UMC est (c) 2026 JuanenRac (Electro Hobby 3D). Cet avis doit être inclus 
 
 Étant donné que ce projet comprend plusieurs types de contenu différents, chaque partie individuelle est mise à disposition sous des licences différentes - chacune adaptée à ce qu'elle couvre réellement, plutôt que de forcer une seule licence à tout couvrir :
 
-1. Le **firmware** situé dans `./firmware` (application et bootloader CAN indifféremment) est disponible sous la **GNU General Public License v3.0 (GPL-3.0)**. Texte intégral sur https://www.gnu.org/licenses/gpl-3.0.html.
+1. Le **firmware** situé dans `./firmware` (application et bootloader CAN indifféremment) est disponible sous la **GNU General Public License v3.0 or later (GPL-3.0-or-later)**. Texte intégral sur https://www.gnu.org/licenses/gpl-3.0.html.
 
 2. Les **conceptions matérielles** (fichiers schématique/carte Eagle, gerbers, et les pièces imprimables en 3D sous `./hardware` et `./3D`) sont disponibles sous la **CERN Open Hardware Licence v2 - Strongly Reciprocal (CERN-OHL-S v2)**. Texte intégral sur https://cern-ohl.web.cern.ch/.
 
 3. La **documentation** (ce README, le manuel de service, et les fichiers de référence sous `./docs`) est disponible sous **Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)**. Texte intégral sur https://creativecommons.org/licenses/by-sa/4.0/.
 
-Si vous vous appuyez sur ce projet, gardez à l'esprit la séparation des licences : les modifications de code du firmware devraient rester GPL-3.0, les modifications matérielles devraient rester CERN-OHL-S, et les dérivés de documentation devraient rester CC BY-SA - chacun avec une attribution renvoyant à ce projet.
+Si vous vous appuyez sur ce projet, gardez à l'esprit la séparation des licences : les modifications de code du firmware devraient rester GPL-3.0-or-later, les modifications matérielles devraient rester CERN-OHL-S, et les dérivés de documentation devraient rester CC BY-SA - chacun avec une attribution renvoyant à ce projet.

@@ -1,7 +1,7 @@
 /* =============================================================================
  * HYDRA-UMC Robot Controller Board Bootloader - flash bank/page geometry
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
- * GPL-3.0 - see repo root LICENSE
+ * GPL-3.0-or-later - see repo root LICENSE
  * =============================================================================
  * The STM32G474RE has 512 KB of flash. With the DBANK option bit set (the
  * factory default) it is two banks of 128 pages of 2 KB each: pages are

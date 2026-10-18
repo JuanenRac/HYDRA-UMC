@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC - spi_bridge http_service tests
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see repo root LICENSE
+# GPL-3.0-or-later - see repo root LICENSE
 # =============================================================================
 """Real end-to-end HTTP tests against the real local service (a real
 socket, a real HTTP request/response) - only the SPI transport underneath

@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC Kinematic Brain - CM7<->CM4 shared-memory IPC mailbox
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 //
 // Both cores' bootloaders (and, later, applications) include this same
 // header - it describes ONE piece of shared state living in SRAM4 (D3

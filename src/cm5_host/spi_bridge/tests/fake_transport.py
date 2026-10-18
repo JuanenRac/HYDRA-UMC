@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC - Fake SpiOtaTransport for deterministic bootloader_client tests
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see repo root LICENSE
+# GPL-3.0-or-later - see repo root LICENSE
 # =============================================================================
 """A minimal, deterministic in-memory stand-in for a real STM32H745 talking
 SPI-OTA - responds correctly to every real frame_type the flash cycle

@@ -5,7 +5,7 @@
 #
 # PROJECT: HYDRA-UMC
 # AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
-# LICENSE: GPL-3.0 (same as the firmware this versions - see LICENSE at repo root)
+# LICENSE: GPL-3.0-or-later (same as the firmware this versions - see LICENSE at repo root)
 #
 # ECOSYSTEM-WIDE VERSIONING POLICY, as implemented for THIS repo: same
 # scheme as the sibling URTC repo (see URTC's own bump_version.py and

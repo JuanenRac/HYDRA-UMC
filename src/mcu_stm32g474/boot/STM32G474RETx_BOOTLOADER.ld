@@ -3,7 +3,7 @@
  * STM32G474RETx_BOOTLOADER.ld - Robot Controller Board bootloader linker script
  * PROJECT: HYDRA-UMC (Robot Controller Board firmware, Tier 1 - STM32G474RET6)
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
- * LICENSE: GPL-3.0 - see repo root LICENSE
+ * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
  * See ../STM32G474RETx_APP.ld's own header comment for the full flash
  * partitioning this bootloader slot is one piece of - PROPOSED, modeled on

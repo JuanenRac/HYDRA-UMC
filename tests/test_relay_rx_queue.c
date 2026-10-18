@@ -2,7 +2,7 @@
  * HYDRA-UMC Firmware - Host logic tests for the Robot Controller Board's
  * FDCAN2 capture ring buffer (src/mcu_stm32g474/relay_rx_queue.h)
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
- * GPL-3.0 - see LICENSE
+ * GPL-3.0-or-later - see LICENSE
  * =============================================================================
  * Locks in the ring's contract: FIFO order, wrap-around past the fixed depth,
  * and the "drop the OLDEST frame when full" policy (never the newest) that the

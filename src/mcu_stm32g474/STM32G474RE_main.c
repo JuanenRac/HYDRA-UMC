@@ -3,7 +3,7 @@
  * STM32G474RE_main.c - Robot Controller Board application entry point
  * PROJECT: HYDRA-UMC (Robot Controller Board firmware, Tier 1 - STM32G474RET6)
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
- * LICENSE: GPL-3.0 - see repo root LICENSE
+ * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
  * Real now: FDCAN1 (uplink, STACK A) responding to real AXIS_STATUS
  * queries with real endstop/fault GPIO state, and FDCAN2 (downlink) running

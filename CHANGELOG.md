@@ -2,6 +2,11 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
+## [0.2.0]
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
+- The licence is written as GPL-3.0-or-later in every header and in the package metadata.
+
 ## [0.1.9] - The firmware now agrees with the chips: watchdog window, CAN lengths, flash banks, CM4 link address
 
 None of this has run on a bench yet (no board exists): every firmware change below compiles clean with the ARM build and, where the logic does not need the chip, is covered by a host test.

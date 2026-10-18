@@ -3,7 +3,7 @@
  * FreeRTOSConfig.h - Kinematic Brain, Cortex-M4 (STM32H745ZIT6)
  * PROJECT: HYDRA-UMC
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
- * LICENSE: GPL-3.0 - see repo root LICENSE
+ * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
  * See ../CM7/FreeRTOSConfig.h's own header comment for the full reasoning
  * (two independent FreeRTOS instances, one per core - AMP, not SMP). Only

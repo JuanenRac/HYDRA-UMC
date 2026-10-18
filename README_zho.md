@@ -18,7 +18,7 @@
 ### 🤖 终极双核微工厂与多机器人控制器平台（V1.0 — 双 PCIe Hailo-8 + Hailo-10 AI 加速器 与 双 USB 3.0 集线器）
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="CERN OHL-S">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="C">
   <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="STM32">
@@ -436,10 +436,10 @@ HYDRA-UMC 版权所有 (c) 2026 JuanenRac（Electro Hobby 3D）。任何形式�
 
 由于本项目由多种不同类型的内容组成，各部分依据其自身性质，分别采用不同的许可协议 —— 而非强行用同一份协议覆盖一切：
 
-1. 位于 `./firmware` 的 **固件**（应用程序与 CAN 引导加载程序均包含在内）采用 **GNU 通用公共许可证 v3.0（GPL-3.0）**。完整文本见 https://www.gnu.org/licenses/gpl-3.0.html 。
+1. 位于 `./firmware` 的 **固件**（应用程序与 CAN 引导加载程序均包含在内）采用 **GNU 通用公共许可证 v3.0（GPL-3.0-or-later）**。完整文本见 https://www.gnu.org/licenses/gpl-3.0.html 。
 
 2. **硬件设计**（Eagle 原理图/板图文件、Gerber 文件，以及 `./hardware` 与 `./3D` 下的可 3D 打印零件）采用 **CERN 开放硬件许可证 v2 — 强互惠版（CERN-OHL-S v2）**。完整文本见 https://cern-ohl.web.cern.ch/ 。
 
 3. **文档**（本 README、维修手册，以及 `./docs` 下的参考文件）采用 **知识共享 署名-相同方式共享 4.0 国际版（CC BY-SA 4.0）**。完整文本见 https://creativecommons.org/licenses/by-sa/4.0/ 。
 
-若你基于本项目进行二次开发，请留意这一许可协议的划分：对固件或烧录工具的代码修改应保持 GPL-3.0，硬件修改应保持 CERN-OHL-S，文档衍生作品应保持 CC BY-SA —— 并均需注明源自本项目。
+若你基于本项目进行二次开发，请留意这一许可协议的划分：对固件或烧录工具的代码修改应保持 GPL-3.0-or-later，硬件修改应保持 CERN-OHL-S，文档衍生作品应保持 CC BY-SA —— 并均需注明源自本项目。

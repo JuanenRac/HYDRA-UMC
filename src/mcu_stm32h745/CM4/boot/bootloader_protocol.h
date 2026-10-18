@@ -2,7 +2,7 @@
 // HYDRA-UMC Kinematic Brain Bootloader (CM4) - self-update state machine,
 // application-jump, and 3-way relay declarations
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 // =============================================================================
 #ifndef BOOTLOADER_PROTOCOL_H
 #define BOOTLOADER_PROTOCOL_H

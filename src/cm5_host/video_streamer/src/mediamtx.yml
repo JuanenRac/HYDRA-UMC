@@ -3,7 +3,7 @@
 # HYDRA-UMC camera feeds.
 # PROJECT: HYDRA-UMC
 # AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
-# LICENSE: GPL-3.0 - see repo root LICENSE
+# LICENSE: GPL-3.0-or-later - see repo root LICENSE
 #
 # NOT YET VERIFIED against real hardware - see ../README.md. /dev/videoN
 # device paths assumed in enumeration order (0-7), which real hardware

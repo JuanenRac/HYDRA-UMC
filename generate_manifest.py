@@ -4,7 +4,7 @@
 #
 # PROJECT: HYDRA-UMC
 # AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
-# LICENSE: GPL-3.0 (same as the firmware this indexes - see LICENSE at repo root)
+# LICENSE: GPL-3.0-or-later (same as the firmware this indexes - see LICENSE at repo root)
 #
 # Mirrors the sibling URTC repo's own generate_manifest.py byte-for-byte in
 # approach (same schema shape, same "read real #defines, compute a real

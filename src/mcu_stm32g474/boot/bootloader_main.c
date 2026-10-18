@@ -2,7 +2,7 @@
 // HYDRA-UMC Robot Controller Board Bootloader - clock config, FDCAN init,
 // BOARD_ID read, main loop, and interrupt handlers
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 //
 // Ported from URTC's own proven bootloader_main.c (same repo, src/F303-
 // master/boot/) - same listening-window/update/heartbeat/timeout structure.

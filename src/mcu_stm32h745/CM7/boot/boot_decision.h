@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC Bootloader - pure, host-testable boot-attempt decision logic
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 //
 // the real update mechanism (backup-slot verify -> CRC32 +
 // HMAC -> copy to main slot, see bootloader_flash.c's own Flash_CopyRegion)

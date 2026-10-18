@@ -1,7 +1,7 @@
 /* =============================================================================
  * HYDRA-UMC Firmware - Host logic tests for BootDecision_ShouldJump
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
- * GPL-3.0 - see LICENSE
+ * GPL-3.0-or-later - see LICENSE
  * =============================================================================
  * locks in the pure boot-attempt decision every real
  * bootloader_main.c (src/mcu_stm32g474/, src/mcu_stm32h745/CM4/,

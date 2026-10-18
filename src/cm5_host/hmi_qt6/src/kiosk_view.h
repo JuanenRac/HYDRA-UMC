@@ -3,7 +3,7 @@
  * kiosk_view.h - real kiosk lockdown for the QWebEngineView shell
  * PROJECT: HYDRA-UMC
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
- * LICENSE: GPL-3.0 - see repo root LICENSE
+ * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
  * The real hardening README.md's own "What's still needed" listed as
  * TODO: no right-click context menu, no accidental close/escape out of

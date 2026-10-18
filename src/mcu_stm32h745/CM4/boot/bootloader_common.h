@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC Kinematic Brain Bootloader (CM4) - shared types/defines/externs
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 //
 // This core is the CAN-OTA "gateway" - the only externally-reachable point
 // of the whole 4-tier chain (docs/architecture.md section 1): it owns

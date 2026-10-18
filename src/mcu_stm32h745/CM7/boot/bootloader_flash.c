@@ -2,7 +2,7 @@
 // HYDRA-UMC Kinematic Brain Bootloader (CM7) - CRC32, flash program/erase,
 // and metadata persistence
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 //
 // NOT a simple port of the F3/G4 pattern (URTC's own bootloader_flash.c,
 // HYDRA-UMC's own G474 port) - STM32H7's flash controller is different

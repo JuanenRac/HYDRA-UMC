@@ -3,7 +3,7 @@
  * STM32G474RETx_APP.ld - Robot Controller Board application linker script
  * PROJECT: HYDRA-UMC (Robot Controller Board firmware, Tier 1 - STM32G474RET6)
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
- * LICENSE: GPL-3.0 - see repo root LICENSE
+ * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
  * PROPOSED memory partitioning - modeled directly on URTC's own proven
  * bootloader+app+backup-slot split (src/F303-master/STM32F303CCTx_APP.ld in

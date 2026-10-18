@@ -3,7 +3,7 @@
  * FreeRTOSConfig.h - Robot Controller Board (STM32G474RET6)
  * PROJECT: HYDRA-UMC
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
- * LICENSE: GPL-3.0 - see repo root LICENSE
+ * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
  * See docs/architecture.md for why this board runs FreeRTOS. Only the
  * application links this (bootloader stays bare-metal, no scheduler - see

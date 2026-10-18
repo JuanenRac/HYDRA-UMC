@@ -1,7 +1,7 @@
 /* =============================================================================
  * HYDRA-UMC Firmware - Host logic tests for the G474 flash bank/page split
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
- * GPL-3.0 - see LICENSE
+ * GPL-3.0-or-later - see LICENSE
  * =============================================================================
  * The erase command of this part takes a bank and a 7-bit page number; the
  * old code passed a flat 0-255 page number and so erased the wrong pages for

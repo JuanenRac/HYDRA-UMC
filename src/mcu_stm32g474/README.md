@@ -2,7 +2,7 @@
 
 **Project:** HYDRA-UMC
 **Author:** JuanenRac (Electro Hobby 3D) — electrohobby3d@gmail.com
-**License:** GPL-3.0 — see repo root LICENSE
+**License:** GPL-3.0-or-later — see repo root LICENSE
 
 This is the firmware for the **Robot Controller Board** (Tier 1 of
 `docs/architecture.md`): one per robot, up to 8 per HYDRA-UMC controller,

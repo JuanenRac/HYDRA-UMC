@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC Robot Controller Board Bootloader - shared types/defines/externs
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 //
 // Ported from URTC's own proven bootloader (sibling repo, src/F303-master/
 // boot/bootloader_common.h) - same struct layout, same CAN_ID_* command
@@ -59,8 +59,8 @@ extern IWDG_HandleTypeDef  hiwdg;
 // 0.1.10) - same rule BOOTLOADER_VERSION_* below already used. Also
 // embedded in the output filename (HYDRA_RCB_APP_v0.0.0.bin).
 #define FIRMWARE_VERSION_MAJOR 0
-#define FIRMWARE_VERSION_MINOR 1
-#define FIRMWARE_VERSION_PATCH 9
+#define FIRMWARE_VERSION_MINOR 2
+#define FIRMWARE_VERSION_PATCH 0
 #define FIRMWARE_VERSION_BUILD 0
 
 // BOOTLOADER_VERSION_* describes THIS bootloader binary itself. Versioning

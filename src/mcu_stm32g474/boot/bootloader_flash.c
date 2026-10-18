@@ -2,7 +2,7 @@
 // HYDRA-UMC Robot Controller Board Bootloader - CRC32, flash program/erase,
 // and metadata persistence
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 //
 // Ported from URTC's own proven bootloader_flash.c, re-targeted for this
 // chip's real flash controller differences from the F303's:

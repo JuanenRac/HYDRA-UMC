@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC - Real SPI-OTA bootloader client (CM5 side)
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see repo root LICENSE
+# GPL-3.0-or-later - see repo root LICENSE
 # =============================================================================
 """Real SPI-OTA state machine: version query, and the full flash cycle.
 

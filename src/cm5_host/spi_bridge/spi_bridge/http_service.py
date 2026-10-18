@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC - Local HTTP service exposing the real SPI-OTA bridge
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see repo root LICENSE
+# GPL-3.0-or-later - see repo root LICENSE
 # =============================================================================
 """A small, stdlib-only local HTTP service HYDRA-UMC-SERVER (Node.js)
 relays to - the same "small local upstream service, reached over loopback

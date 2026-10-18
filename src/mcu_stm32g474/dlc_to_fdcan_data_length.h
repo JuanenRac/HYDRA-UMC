@@ -1,7 +1,7 @@
 /* =============================================================================
  * HYDRA-UMC - src/mcu_stm32g474/dlc_to_fdcan_data_length.h
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
- * GPL-3.0 - see LICENSE
+ * GPL-3.0-or-later - see LICENSE
  * =============================================================================
  * A.11: the DLC (0-8, Classic CAN only - this board never sends CAN-FD)
  * to FDCAN peripheral data-length-code mapping, pulled out of

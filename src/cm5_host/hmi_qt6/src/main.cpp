@@ -3,7 +3,7 @@
  * main.cpp - hmi_qt6 kiosk shell entry point
  * PROJECT: HYDRA-UMC
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
- * LICENSE: GPL-3.0 - see repo root LICENSE
+ * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
  * See ../README.md for the full status (a kiosk wrapper around
  * HYDRA-UMC-STUDIO's own web dashboard, not a reimplementation of it).

@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC Kinematic Brain Bootloader (CM4) - SHA-256 / HMAC-SHA256
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 //
 // Ported verbatim from URTC's own proven bootloader_crypto.c (via HYDRA-
 // UMC's own G474/CM7 ports) - identical algorithm across every bootloader

@@ -3,7 +3,7 @@
  * STM32H745ZITx_CM7_APP.ld - Kinematic Brain, Cortex-M7 application linker script
  * PROJECT: HYDRA-UMC (Kinematic Brain firmware, Tier 0 - STM32H745ZIT6)
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
- * LICENSE: GPL-3.0 - see repo root LICENSE
+ * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
  * PROPOSED memory partitioning, modeled on the same bootloader+app+backup-
  * slot split URTC's own firmware proves out (see the sibling URTC repo) and

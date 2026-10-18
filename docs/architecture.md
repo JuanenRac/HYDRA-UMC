@@ -2,7 +2,7 @@
 
 **Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>**
 **License:** CC BY-SA 4.0 (documentation) - see this repo's own README.md for the
-full licensing split (firmware GPL-3.0, hardware CERN-OHL-S v2, docs CC BY-SA 4.0).
+full licensing split (firmware GPL-3.0-or-later, hardware CERN-OHL-S v2, docs CC BY-SA 4.0).
 
 This document is the missing piece between `README.md` (which stops at "the
 STM32H745 talks to up to 8 slave modules over FDCAN1") and the actual robot

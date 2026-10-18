@@ -3,7 +3,7 @@
  * RobotControllerRelay.c - Real FDCAN1 slot responder + Tier 2/3 relay tunnel
  * PROJECT: HYDRA-UMC (Robot Controller Board firmware, Tier 1 - STM32G474RET6)
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
- * LICENSE: GPL-3.0 - see repo root LICENSE
+ * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
  * See RobotControllerRelay.h's own header for the real scope/reasoning.
  * FDCAN1 pin/peripheral config below is a direct copy of the bootloader's

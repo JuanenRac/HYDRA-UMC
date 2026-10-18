@@ -2,7 +2,7 @@
 // HYDRA-UMC Kinematic Brain Bootloader (CM4) - self-update handlers,
 // application validation/jump, and the 3-way relay (self/CM7/STACK A)
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 //
 // The self-update state machine below (HandleStartUpdate..HandleEndUpdate,
 // ApplicationIsValid, JumpToApplication) is the same one every other

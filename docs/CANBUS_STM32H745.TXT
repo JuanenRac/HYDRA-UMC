@@ -3,7 +3,7 @@ CAN BUS / SPI-OTA COMMAND MAP - KINEMATIC BRAIN (STM32H745ZIT6, dual-core)
 PROJECT: HYDRA-UMC
 AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
 LICENSE: This document is licensed under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
-         Firmware source is GPL-3.0; hardware design files are CERN-OHL-S v2 - see the repo README.
+         Firmware source is GPL-3.0-or-later; hardware design files are CERN-OHL-S v2 - see the repo README.
 MCU: STM32H745ZIT6 (2MB flash: 1MB Bank 1/CM7 + 1MB Bank 2/CM4, each 128KB
      bootloader sector / 128KB metadata sector / 384KB main / 384KB backup -
      see src/mcu_stm32h745/README.md). CM4 owns SPI1 (to the CM5) and

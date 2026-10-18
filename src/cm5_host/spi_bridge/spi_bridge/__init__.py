@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC - spi_bridge public package interface
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see repo root LICENSE
+# GPL-3.0-or-later - see repo root LICENSE
 # =============================================================================
 """Real CM5 <-> STM32H745 SPI-OTA bridge - protocol, transport, state
 machine and a small local HTTP service SERVER (Node.js) relays to."""

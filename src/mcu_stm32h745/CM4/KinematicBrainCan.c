@@ -3,7 +3,7 @@
  * KinematicBrainCan.c - Real FDCAN1 "STACK A" master + Tier 2/3 relay tunnel
  * PROJECT: HYDRA-UMC (Kinematic Brain firmware, Tier 0 - STM32H745ZIT6)
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
- * LICENSE: GPL-3.0 - see repo root LICENSE
+ * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
  * See KinematicBrainCan.h's own header for the real scope/reasoning.
  * FDCAN1 pin/peripheral config below is a direct copy of the bootloader's

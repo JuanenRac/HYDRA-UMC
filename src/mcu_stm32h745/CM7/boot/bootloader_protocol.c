@@ -2,7 +2,7 @@
 // HYDRA-UMC Kinematic Brain Bootloader (CM7) - mailbox-relayed protocol
 // handlers, application validation, and jump
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 //
 // Ported from URTC's own proven bootloader_protocol.c via HYDRA-UMC's own
 // G474 port. The one real structural difference: every OTHER bootloader in

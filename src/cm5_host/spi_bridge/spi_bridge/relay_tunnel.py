@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC - Real Tier 2/3 relay tunnel (RELAY_SEND/RELAY_RECV, +0x12/+0x13)
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see repo root LICENSE
+# GPL-3.0-or-later - see repo root LICENSE
 # =============================================================================
 """Reach the URTC Tool Head (Tier 2) and, through it, its optional Advanced
 Expansion Board (Tier 3) - a real, ID-agnostic tunnel through the Robot

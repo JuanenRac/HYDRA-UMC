@@ -3,7 +3,7 @@
  * STM32H745ZI_CM7_main.c - Kinematic Brain, Cortex-M7 application entry point
  * PROJECT: HYDRA-UMC (Kinematic Brain firmware, Tier 0 - STM32H745ZIT6)
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
- * LICENSE: GPL-3.0 - see repo root LICENSE
+ * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
  * STARTING POINT ONLY - proves the toolchain/HAL/linker/FreeRTOS setup
  * documented in docs/COMPILE_STM32H745.TXT actually produces a working CM7

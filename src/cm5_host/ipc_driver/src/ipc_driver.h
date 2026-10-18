@@ -3,7 +3,7 @@
  * ipc_driver.h - CM5 <-> STM32H745 SPI link (userspace)
  * PROJECT: HYDRA-UMC
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
- * LICENSE: GPL-3.0 - see repo root LICENSE
+ * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
  * STARTING POINT ONLY - see README.md in this folder for the full status.
  * Linux-specific (spidev + libgpiod) - will not build on a non-Linux host.

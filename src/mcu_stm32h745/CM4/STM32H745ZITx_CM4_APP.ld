@@ -3,7 +3,7 @@
  * STM32H745ZITx_CM4_APP.ld - Kinematic Brain, Cortex-M4 application linker script
  * PROJECT: HYDRA-UMC (Kinematic Brain firmware, Tier 0 - STM32H745ZIT6)
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
- * LICENSE: GPL-3.0 - see repo root LICENSE
+ * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
  * See ../CM7/STM32H745ZITx_CM7_APP.ld's own header comment for the shared
  * partitioning philosophy - this is the SAME split applied to Flash Bank 2

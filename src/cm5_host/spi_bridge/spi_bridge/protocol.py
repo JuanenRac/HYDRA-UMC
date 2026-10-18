@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC - CM5 <-> STM32H745 SPI-OTA protocol (real frame format)
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see repo root LICENSE
+# GPL-3.0-or-later - see repo root LICENSE
 # =============================================================================
 """The real, exact 128-byte SpiOtaFrame_t wire format and OFS_*/STATUS_*
 constants - a byte-for-byte match of

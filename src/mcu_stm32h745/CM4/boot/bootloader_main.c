@@ -2,7 +2,7 @@
 // HYDRA-UMC Kinematic Brain Bootloader (CM4) - clock config, SPI1 + FDCAN1
 // init, main gateway loop, and interrupt handlers
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see repo root LICENSE
+// GPL-3.0-or-later - see repo root LICENSE
 //
 // This is the one bootloader in the whole project that ISN'T a simple
 // "listen on one bus, run the update state machine" loop - it's a gateway

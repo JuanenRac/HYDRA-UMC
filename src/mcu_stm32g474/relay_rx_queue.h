@@ -1,7 +1,7 @@
 /* =============================================================================
  * HYDRA-UMC - src/mcu_stm32g474/relay_rx_queue.h
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
- * GPL-3.0 - see LICENSE
+ * GPL-3.0-or-later - see LICENSE
  * =============================================================================
  * The Robot Controller Board's FDCAN2 (downlink) capture ring buffer, pulled
  * out of RobotControllerRelay.c into a HAL-free header so its behaviour - a
