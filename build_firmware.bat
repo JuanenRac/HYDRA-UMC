@@ -27,6 +27,10 @@ echo ***************************************************************************
 echo.
 REM HYDRA_UMC_SCRIPT_STANDARD_BANNER_END
 setlocal enabledelayedexpansion
+rem Keep the window open for people, never in automation (CI / HYDRA_UMC_CI).
+set "KEEP_OPEN=pause"
+if defined CI set "KEEP_OPEN=ver >nul"
+if "%HYDRA_UMC_CI%"=="1" set "KEEP_OPEN=ver >nul"
 REM HYDRA_UMC_SCRIPT_STANDARD_VERSION_STEP
 echo [1/3] Incrementing project version and synchronising its manifest...
 REM HYDRA_UMC_SCRIPT_STANDARD_VERSION_CAPTURE_BEFORE
@@ -339,7 +343,7 @@ REM -----------------------------------------------------------------------
 set "SRC=%ROOT%\src\mcu_stm32g474"
 call :BumpVersion "!SRC!\boot\bootloader_common.h" FIRMWARE_VERSION "Robot Controller Board application"
 python "%~dp0bump_manifest_version.py" --sync
-if errorlevel 1 ( echo VERSION SYNCHRONISATION FAILED. & pause & exit /b 1 )
+if errorlevel 1 ( echo VERSION SYNCHRONISATION FAILED. & %KEEP_OPEN% & exit /b 1 )
 REM HYDRA_UMC_SCRIPT_STANDARD_VERSION_CAPTURE_AFTER
 for /f "usebackq delims=" %%V in (`python -c "import json; print(json.load(open(r'%~dp0hydra-umc.project.json', encoding='utf-8'))['version'])"`) do set "HYDRA_UMC_VERSION_AFTER=%%V"
 if not defined HYDRA_UMC_VERSION_BEFORE set "HYDRA_UMC_VERSION_BEFORE=unknown"
@@ -732,7 +736,7 @@ REM them. `pause` itself already no-ops instead of hanging when stdin isn't
 REM a real console (e.g. redirected from NUL or a pipe - the same trick
 REM `build_firmware.bat < NUL` relies on for unattended/automated runs).
 echo.
-pause
+%KEEP_OPEN%
 
 endlocal & set "FAIL=%FAIL%"
 if %FAIL% GTR 0 exit /b 1
