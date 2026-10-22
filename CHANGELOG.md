@@ -2,6 +2,11 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
+## [Unreleased]
+
+- Added `tools/hydra_project_tool.py`: the same `validate`, `test`, `version`, `status` and `bump` commands in every repository. The checks run with `HYDRA_UMC_CI=1` and fail if the version changes; only `bump` changes it.
+- `README_por.md` carries the safety and security status note like the other languages, and the shared documentation and README parity checks now apply to this repository too.
+
 ## [0.2.2]
 
 - Maturity is scaffolding: the applications are still skeletons and nothing here has been verified on real hardware yet.

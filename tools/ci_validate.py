@@ -15,6 +15,9 @@ import subprocess
 from pathlib import Path
 
 
+from _doc_policy import check_public_private_boundary
+from _readme_parity import check_readme_section_parity
+
 ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_PATH = ROOT / "hydra-umc.project.json"
 REQUIRED_DOCUMENTS = (
@@ -255,45 +258,11 @@ def main() -> int:
 
     validate_local_markdown_links()
 
-    private_marker = "SON" + "NET"
-    private_references = subprocess.run(
-        ("git", "grep", "-n", "-I", "--", private_marker),
-        cwd=ROOT,
-        text=True, encoding="utf-8", errors="replace",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        check=False,
-    )
-    if private_references.returncode == 0:
-        fail("public files must not reference private documentation")
-    if private_references.returncode not in (0, 1):
-        fail("could not check public/private documentation boundary")
-
-    # Prose that names this ecosystem's private planning or audit material.
-    # Each phrase below is split across a "+" so this validator's own source
-    # never contains the literal string it is searching for.
-    private_phrases = (
-        "BIB" + "LIA HYDRA" + "-UMC",
-        "private development" + " plan",
-        "plan de desarrollo" + " privado",
-        "internal work" + " log",
-        "registro de trabajo" + " interno",
-    )
-    _phrase_cmd = ["git", "grep", "-n", "-I", "-i", "-F"]
-    for _phrase in private_phrases:
-        _phrase_cmd += ["-e", _phrase]
-    private_prose = subprocess.run(
-        tuple(_phrase_cmd),
-        cwd=ROOT,
-        text=True, encoding="utf-8", errors="replace",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        check=False,
-    )
-    if private_prose.returncode == 0:
-        fail("public files must not reference private planning or audit documents")
-    if private_prose.returncode not in (0, 1):
-        fail("could not check public/private documentation boundary")
+    doc_policy_error = check_public_private_boundary(ROOT)
+    if doc_policy_error:
+        fail(doc_policy_error)
+    for readme_problem in check_readme_section_parity(ROOT):
+        fail(readme_problem)
 
     print(f"CI_VALIDATION=PASS project={manifest['name']} version={manifest['version']}")
     return 0
