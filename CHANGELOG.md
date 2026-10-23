@@ -4,6 +4,7 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- The six per-component changelogs (the bootloader and the application of each microcontroller), frozen at 0.0.7 and only pointing at each other, are removed: this file is the only changelog of the repository.
 - `build_firmware.sh` and `build_firmware.bat` no longer raise any version: they report the version each of the six firmware components is at (read with the new `show_component_version.py`) and build with it. Raising versions is the explicit `python bump_firmware_versions.py` (all six components, or the ones named; `--list` shows them), which uses `bump_version.py` and then moves the project manifest with the G474 application. A test fails if a build script runs a bump again.
 - `LICENSE` is now the full GPL-3.0 text, so the repository's licence is recognised; the licence split (firmware and tools GPL-3.0-or-later, hardware CERN-OHL-S v2, documentation CC BY-SA 4.0) is in `LICENSE.md`.
 - The validator, the shared documentation policy and the project tool are the shared copies again; the validator now also checks that no build script bumps a version and that no script activates a virtual environment.
