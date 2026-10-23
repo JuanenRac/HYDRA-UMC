@@ -292,7 +292,9 @@ HYDRA-UMC/
 ├── build_firmware.bat           # O mesmo build, Windows (ver "Compilar o firmware" abaixo)
 ├── build-test.sh / build-test.bat # Verificação de compilação sem alterar versões
 ├── generate_manifest.py         # Regenera firmware/firmware_manifest.json (versões/CRC32) depois de um build completo
-├── bump_version.py              # Subida de versão ao estilo conta-quilómetros, executada por build_firmware.sh/.bat
+├── bump_version.py              # Subida de versão ao estilo conta-quilómetros de um componente
+├── bump_firmware_versions.py    # Sobe explicitamente as seis versões de componente
+├── show_component_version.py    # Mostra a versão que um componente já tem
 ├── bump_manifest_version.py     # Sincroniza a versão de hydra-umc.project.json com a nativa (--sync)
 ├── tools/
 │   ├── verify_firmware_inventory.py # Verificação só de leitura do inventário de seis componentes registado
@@ -341,7 +343,7 @@ A saída fica em `firmware/`, que é registada e enviada a este repositório (a 
 
 ## 🔢 Versionamento
 
-Os 6 componentes de firmware (3 bootloaders + 3 aplicações: o STM32G474 da placa controladora de robô, o CM7 do Cérebro Cinemático e o CM4 do Cérebro Cinemático, um par bootloader/aplicação por chip/núcleo) têm versões incrementais: `build_firmware.sh`/`.bat` sobe exatamente 1 ao PATCH desse componente imediatamente antes de o compilar, através de `bump_version.py`, de modo que cada build real que produz um binário novo para um componente leva incorporada a sua própria versão nova: nunca escrita à mão, nunca capaz de se desalinhar do que realmente foi compilado. Regra de transporte (um "conta-quilómetros"): o PATCH além de 9 volta a 0 e o MINOR sobe 1 (p. ex. `1.1.9` -> `1.2.0`, nunca `1.1.10`); o MINOR além de 9 passa para o MAJOR da mesma forma. Ver o `bootloader_common.h` de cada componente e o comentário de cabeçalho de `bump_version.py` para o mecanismo completo.
+Os 6 componentes de firmware (3 bootloaders + 3 aplicações: o STM32G474 da placa controladora de robô, o CM7 e o CM4 do Cérebro Cinemático, um par bootloader/aplicação por chip/núcleo) têm a sua própria versão, e compilar nunca a altera: `build_firmware.sh`/`.bat` só indicam a versão em que cada componente está, e esse valor é o que fica incorporado no binário e no respetivo nome de ficheiro. Subir versões é o comando explícito `python bump_firmware_versions.py` (os seis, ou os componentes indicados; `--list` mostra-os), que usa `bump_version.py` e depois alinha o manifesto do projeto com a aplicação do G474. Regra de transporte (um "conta-quilómetros"): o PATCH além de 9 volta a 0 e o MINOR sobe 1 (p. ex. `1.1.9` -> `1.2.0`, nunca `1.1.10`); o MINOR além de 9 passa para o MAJOR da mesma forma. Ver o `bootloader_common.h` de cada componente e o comentário de cabeçalho de `bump_version.py` para o mecanismo completo.
 
 ## 🔗 Projetos relacionados
 

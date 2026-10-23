@@ -12,10 +12,10 @@
 # CHANGELOG.md) - ALL components are incremental, never bumped by hand.
 # HYDRA-UMC has SIX of them - the 3 bootloaders AND the 3 applications
 # each bump their own PATCH by exactly 1 on every real build that
-# produces a new binary for that component, fully automatically. That's
-# what this script does, and why build_firmware.sh/.bat call it as the very
-# first step of compiling EACH of the 6 components, before that component's
-# own .c files (which #include this exact header) ever reach the compiler -
+# produces a new binary for that component. That's what this script does.
+# It is run explicitly (bump_firmware_versions.py), never by the build
+# scripts, and BEFORE that component's own .c files (which #include this
+# exact header) reach the compiler -
 # bootloader_protocol.c on all 3 chips reads these same macros at compile
 # time (see ApplicationIsValid()'s first-boot-adoption path), so bumping
 # AFTER compiling would ship a binary whose own reported version lags what

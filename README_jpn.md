@@ -292,7 +292,9 @@ HYDRA-UMC/
 ├── build_firmware.bat           # 同じビルド、Windows 版（下記「ファームウェアのビルド」参照）
 ├── build-test.sh / build-test.bat # バージョンを更新しないビルド/コンパイル確認
 ├── generate_manifest.py         # フルビルド後に firmware/firmware_manifest.json（バージョン／CRC32）を再生成
-├── bump_version.py              # オドメーター式バージョンインクリメント、build_firmware.sh/.bat が実行
+├── bump_version.py              # コンポーネント 1 つのオドメーター式バージョンインクリメント
+├── bump_firmware_versions.py    # 6 つのコンポーネントバージョンを明示的に上げる
+├── show_component_version.py    # コンポーネントの現在のバージョンを表示
 ├── bump_manifest_version.py     # hydra-umc.project.json のバージョンをネイティブ側と同期（--sync）
 ├── tools/
 │   ├── verify_firmware_inventory.py # コミット済み6コンポーネント在庫の読み取り専用検証
@@ -341,7 +343,7 @@ build_firmware.bat --clean  :: ベンダリング済み HAL/CMSIS キャッシ�
 
 ## 🔢 バージョン管理
 
-全 6 つのファームウェアコンポーネント（ブートローダー 3 つ + アプリケーション 3 つ — ロボットコントローラーボードの STM32G474、Kinematic Brain の CM7、Kinematic Brain の CM4、チップ／コアごとにブートローダーとアプリケーションのペア）は、いずれもバージョン逐次加算方式を採用しています：`build_firmware.sh`/`.bat` は、あるコンポーネントをコンパイルする直前に、`bump_version.py` を通じてそのコンポーネント自身の PATCH バージョンを正確に 1 だけ加算します。したがって、あるコンポーネントの新しいバイナリを実際に生成するすべてのビルドには、その新しいバージョン番号が焼き込まれます — 手入力されることは一切なく、実際にコンパイルされた内容とずれることもありません。繰り上がりルール（「オドメーター」方式）：PATCH が 9 を超えるとゼロに戻り、MINOR が 1 増加します（例：`1.1.9` -> `1.2.0`、`1.1.10` にはなりません）。MINOR が 9 を超えた場合も同様に MAJOR へ繰り上がります。完全な仕組みは各コンポーネント自身の `bootloader_common.h` と `bump_version.py` 自身のヘッダーコメントを参照してください。
+6 つのファームウェアコンポーネント(ブートローダー 3 つ + アプリケーション 3 つ ― ロボットコントローラーボードの STM32G474、Kinematic Brain の CM7 と CM4、チップ/コアごとにブートローダーとアプリケーションのペア)はそれぞれ独自のバージョンを持ち、ビルドがそれを変更することはありません。`build_firmware.sh`/`.bat` は各コンポーネントの現在のバージョンを表示するだけで、その値がバイナリとファイル名に埋め込まれます。バージョンを上げるには明示的なコマンド `python bump_firmware_versions.py` を使います(6 つすべて、または指定したコンポーネントのみ。`--list` で一覧表示)。内部で `bump_version.py` を使い、その後プロジェクトマニフェストを G474 アプリケーションに合わせます。繰り上がりルール(「オドメーター」方式):PATCH が 9 を超えると 0 に戻り、MINOR が 1 増えます(例:`1.1.9` -> `1.2.0`、`1.1.10` にはなりません)。MINOR が 9 を超えた場合も同様に MAJOR へ繰り上がります。完全な仕組みは各コンポーネントの `bootloader_common.h` と `bump_version.py` のヘッダーコメントを参照してください。
 
 ## 🔗 関連プロジェクト
 

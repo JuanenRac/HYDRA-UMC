@@ -292,7 +292,9 @@ HYDRA-UMC/
 ├── build_firmware.bat           # 相同构建，Windows 版（见下方“构建固件”）
 ├── build-test.sh / build-test.bat # 不递增版本号的构建/编译检查
 ├── generate_manifest.py         # 完整构建后重新生成 firmware/firmware_manifest.json（版本号/CRC32）
-├── bump_version.py              # 里程表式版本递增，由 build_firmware.sh/.bat 运行
+├── bump_version.py              # 单个组件的里程表式版本递增
+├── bump_firmware_versions.py    # 显式提升六个组件的版本
+├── show_component_version.py    # 显示组件已有的版本
 ├── bump_manifest_version.py     # 将 hydra-umc.project.json 的版本与原生版本同步（--sync）
 ├── tools/
 │   ├── verify_firmware_inventory.py # 对已提交六组件清单的只读验证
@@ -341,7 +343,7 @@ build_firmware.bat --clean  :: 先清空已缓存的 HAL/CMSIS
 
 ## 🔢 版本管理
 
-全部 6 个固件组件（3 个引导加载程序 + 3 个应用程序 —— 机器人控制板的 STM32G474、运动学大脑的 CM7、运动学大脑的 CM4，每颗芯片/核心各一对引导加载程序/应用程序）均采用版本递增机制：`build_firmware.sh`/`.bat` 会在编译某个组件之前，立即通过 `bump_version.py` 将该组件自身的 PATCH 版本号精确递增 1 —— 因此每一次真正产出新二进制文件的构建，都会将其自身的新版本号内建其中，绝不手动填写，也绝不可能与实际编译出的内容脱节。进位规则（“里程表”式）：PATCH 超过 9 时归零，MINOR 递增 1（例如 `1.1.9` -> `1.2.0`，而非 `1.1.10`）；MINOR 超过 9 时以同样方式进位至 MAJOR。完整机制详见各组件自身的 `bootloader_common.h` 与 `bump_version.py` 自身的头部注释。
+全部 6 个固件组件(3 个引导加载程序 + 3 个应用程序 —— 机器人控制板的 STM32G474、运动学大脑的 CM7 和 CM4,每颗芯片/核心各一对引导加载程序/应用程序)都有各自的版本,构建绝不会改动它:`build_firmware.sh`/`.bat` 只报告每个组件当前的版本,该值会被写入二进制文件及其文件名。提升版本要显式运行 `python bump_firmware_versions.py`(全部六个,或指定的组件;`--list` 可列出),它使用 `bump_version.py`,随后让项目清单跟随 G474 应用程序。进位规则("里程表"式):PATCH 超过 9 时归零,MINOR 加 1(例如 `1.1.9` -> `1.2.0`,而非 `1.1.10`);MINOR 超过 9 时以同样方式进位至 MAJOR。完整机制详见各组件自身的 `bootloader_common.h` 与 `bump_version.py` 的头部注释。
 
 ## 🔗 相关项目
 

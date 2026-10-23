@@ -4,6 +4,9 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- `build_firmware.sh` and `build_firmware.bat` no longer raise any version: they report the version each of the six firmware components is at (read with the new `show_component_version.py`) and build with it. Raising versions is the explicit `python bump_firmware_versions.py` (all six components, or the ones named; `--list` shows them), which uses `bump_version.py` and then moves the project manifest with the G474 application. A test fails if a build script runs a bump again.
+- `LICENSE` is now the full GPL-3.0 text, so the repository's licence is recognised; the licence split (firmware and tools GPL-3.0-or-later, hardware CERN-OHL-S v2, documentation CC BY-SA 4.0) is in `LICENSE.md`.
+- The validator, the shared documentation policy and the project tool are the shared copies again; the validator now also checks that no build script bumps a version and that no script activates a virtual environment.
 - The banner follows the animated style of the ecosystem banners, with the name, the kind and the technologies of the project.
 - Added `tools/hydra_project_tool.py`: the same `validate`, `test`, `version`, `status` and `bump` commands in every repository. The checks run with `HYDRA_UMC_CI=1` and fail if the version changes; only `bump` changes it.
 - `README_por.md` carries the safety and security status note like the other languages, and the shared documentation and README parity checks now apply to this repository too.

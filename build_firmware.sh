@@ -27,16 +27,7 @@ printf '%s\n' "*****************************************************************
 printf '\n'
 # HYDRA_UMC_SCRIPT_STANDARD_BANNER_END
 HYDRA_UMC_CI_MODE="${HYDRA_UMC_CI:-0}"
-if [ "$HYDRA_UMC_CI_MODE" = "1" ]; then
-    echo "HYDRA-UMC CI: version sources are read-only."
-else
-    # HYDRA_UMC_SCRIPT_STANDARD_VERSION_STEP
-    printf '%s\n' "[1/3] Incrementing project version and synchronising its manifest..."
-    # HYDRA_UMC_SCRIPT_STANDARD_VERSION_CAPTURE_BEFORE
-    HYDRA_UMC_VERSION_BEFORE="$(python3 -c 'import json, pathlib, sys; print(json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))["version"])' "$(dirname "$0")/hydra-umc.project.json")"
-    # The registry version is the G474 application version. Its component bump
-    # occurs later, then --sync records that one authoritative bump.
-fi
+echo "Building does not change any version. Raise one explicitly with: python3 bump_firmware_versions.py"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD="$ROOT/build"
@@ -113,7 +104,7 @@ fi
 if command -v python3 >/dev/null 2>&1; then
     pass "python3 found: $(python3 --version)"
 else
-    fail "python3 not found - required to run bump_version.py (all 6 components are incremental, see this script's own version-bump steps below) and generate_manifest.py."
+    fail "python3 not found - required to read the component versions and to run generate_manifest.py."
     echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
 fi
 
@@ -285,30 +276,15 @@ get_version_macro() {
     grep -oE "define[[:space:]]+${macro}[[:space:]]+[0-9]+" "$header" | grep -oE '[0-9]+$'
 }
 
-# Bumps ONE component's own version macro family (BOOTLOADER_VERSION or
-# FIRMWARE_VERSION) in its bootloader_common.h in place, via bump_version.py
-# (odometer carry rule: PATCH past 9 -> MINOR+1, PATCH resets to 0 - see
-# that script's own header comment for the full reasoning). Called BEFORE
-# each of the 6 components below gets compiled, so the just-bumped value is
-# what actually ends up baked into that binary (bootloader_protocol.c reads
-# these same macros at compile time) and in its output filename - never
-# bumped after the fact. Per this repo's own versioning policy, ALL 6
-# components (3 bootloaders + 3 applications) are incremental this way,
-# unlike sibling repo URTC where only the bootloaders are (and there, bumped
-# by hand, not automatically like here).
-bump_version() {
+# Reports ONE component's own version (BOOTLOADER_VERSION or FIRMWARE_VERSION in
+# its bootloader_common.h) without changing it: the value in the header is what
+# gets baked into the binary and into its output filename. Raising a version is
+# explicit (bump_firmware_versions.py).
+component_version() {
     local header="$1" prefix="$2" label="$3"
     local newver
-    if [ "$HYDRA_UMC_CI_MODE" = "1" ]; then
-        newver="$(get_version_macro "$header" "${prefix}_MAJOR").$(get_version_macro "$header" "${prefix}_MINOR").$(get_version_macro "$header" "${prefix}_PATCH")"
-        pass "$label version verified at v$newver (CI; source unchanged)"
-        return
-    fi
-    if ! newver="$(python3 "$ROOT/bump_version.py" "$header" "$prefix")"; then
-        fail "$label: version bump failed - see bump_version.py's own error above"
-        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
-    fi
-    pass "$label version bumped to v$newver ($header)"
+    newver="$(get_version_macro "$header" "${prefix}_MAJOR").$(get_version_macro "$header" "${prefix}_MINOR").$(get_version_macro "$header" "${prefix}_PATCH")"
+    pass "$label is at v$newver (source unchanged)"
 }
 
 # Compiles every .c file in a directory (non-recursive) - same helper URTC's
@@ -487,7 +463,7 @@ fi
 step "5. Robot Controller Board bootloader (src/mcu_stm32g474/boot/) - bare-metal CAN-OTA, no FreeRTOS"
 # -----------------------------------------------------------------------
 SRC="$ROOT/src/mcu_stm32g474/boot"
-bump_version "$SRC/bootloader_common.h" BOOTLOADER_VERSION "Robot Controller Board bootloader"
+component_version "$SRC/bootloader_common.h" BOOTLOADER_VERSION "Robot Controller Board bootloader"
 rm -f "$G4/boot_obj"/*.o
 if compile_dir "$SRC" "$G4/boot_obj" "$CFLAGS_G4" "-I$ROOT/src/mcu_stm32g474"; then
     pass "bootloader_*.c compiled ($(ls "$SRC"/*.c | wc -l) files)"
@@ -511,18 +487,7 @@ pass "$G4_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$G4/boot_obj/$G4_
 step "6. Robot Controller Board application (src/mcu_stm32g474/) - FreeRTOS"
 # -----------------------------------------------------------------------
 SRC="$ROOT/src/mcu_stm32g474"
-bump_version "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION "Robot Controller Board application"
-if [ "$HYDRA_UMC_CI_MODE" != "1" ]; then
-    python3 "$ROOT/bump_manifest_version.py" --sync || exit 1
-    # HYDRA_UMC_SCRIPT_STANDARD_VERSION_CAPTURE_AFTER
-    HYDRA_UMC_VERSION_AFTER="$(python3 -c 'import json, pathlib, sys; print(json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))["version"])' "$ROOT/hydra-umc.project.json")"
-    printf '\n*******************************************************************************\n'
-    printf '%s\n' '* VERSION INCREMENT COMPLETED'
-    printf '%s\n' "* v${HYDRA_UMC_VERSION_BEFORE:-unknown} -> v${HYDRA_UMC_VERSION_AFTER:-unknown}"
-    printf '%s\n' '* Project manifest synchronized with the G474 application version.'
-    printf '%s\n' '*******************************************************************************'
-    printf '\n'
-fi
+component_version "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION "Robot Controller Board application"
 rm -f "$G4/app_obj"/*.o
 arm-none-eabi-gcc $CFLAGS_G4_APP -I"$SRC" -x c -c "$SRC/STM32G474RE_main.c" -o "$G4/app_obj/STM32G474RE_main.o"
 # RobotControllerRelay.c: real AXIS_STATUS responder + Tier 2/3 relay tunnel
@@ -665,7 +630,7 @@ step "9. Kinematic Brain CM7 bootloader (bare-metal CAN-OTA, mailbox-relayed) + 
 # -----------------------------------------------------------------------
 SRC="$ROOT/src/mcu_stm32h745/CM7"
 COMMON_INC="-I$ROOT/src/mcu_stm32h745/Common"
-bump_version "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM7 bootloader"
+component_version "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM7 bootloader"
 if compile_dir "$SRC/boot" "$H7/cm7_boot_obj" "$CFLAGS_CM7" "$COMMON_INC"; then
     pass "CM7 bootloader_*.c compiled ($(ls "$SRC/boot"/*.c | wc -l) files)"
 else
@@ -684,7 +649,7 @@ build_bin_hex "$H7/cm7_boot_obj/$CM7_BOOT_NAME.elf"
 cp "$H7/cm7_boot_obj/$CM7_BOOT_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$CM7_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm7_boot_obj/$CM7_BOOT_NAME.elf" | tail -1 | awk '{print $1}') bytes text)"
 
-bump_version "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM7 application"
+component_version "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM7 application"
 arm-none-eabi-gcc $CFLAGS_CM7_APP -I"$SRC" -x c -c "$SRC/STM32H745ZI_CM7_main.c" -o "$H7/cm7_app_obj/STM32H745ZI_CM7_main.o"
 CM7_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_PATCH)"
 CM7_APP_NAME="HYDRA_KB_CM7_APP_${CM7_APP_VER}"
@@ -702,7 +667,7 @@ pass "$CM7_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm7_app_obj/$
 step "10. Kinematic Brain CM4 bootloader (bare-metal CAN-OTA gateway: SPI1+FDCAN1+mailbox) + application (FreeRTOS) - src/mcu_stm32h745/CM4/"
 # -----------------------------------------------------------------------
 SRC="$ROOT/src/mcu_stm32h745/CM4"
-bump_version "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM4 bootloader"
+component_version "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM4 bootloader"
 if compile_dir "$SRC/boot" "$H7/cm4_boot_obj" "$CFLAGS_CM4" "$COMMON_INC -I$SRC"; then
     pass "CM4 bootloader_*.c compiled ($(ls "$SRC/boot"/*.c | wc -l) files)"
 else
@@ -721,7 +686,7 @@ build_bin_hex "$H7/cm4_boot_obj/$CM4_BOOT_NAME.elf"
 cp "$H7/cm4_boot_obj/$CM4_BOOT_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$CM4_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_boot_obj/$CM4_BOOT_NAME.elf" | tail -1 | awk '{print $1}') bytes text)"
 
-bump_version "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM4 application"
+component_version "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM4 application"
 arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -x c -c "$SRC/STM32H745ZI_CM4_main.c" -o "$H7/cm4_app_obj/STM32H745ZI_CM4_main.o"
 # KinematicBrainCan.c: real FDCAN1 "STACK A" master + Tier 2/3 relay tunnel -
 # needs bootloader_common.h for the shared CAN_ID_STACKA_BASE/OFS_* constants

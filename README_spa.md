@@ -328,7 +328,9 @@ HYDRA-UMC/
 ├── build_firmware.bat           # La misma compilación, Windows (ver "Compilando el Firmware" abajo)
 ├── build-test.sh / build-test.bat # Comprobación de build/compilación sin subir versión
 ├── generate_manifest.py         # Regenera firmware/firmware_manifest.json (versiones/CRC32) tras una compilación completa
-├── bump_version.py              # Incremento de versión tipo cuentakilómetros, ejecutado por build_firmware.sh/.bat
+├── bump_version.py              # Incremento de versión tipo cuentakilómetros de un componente
+├── bump_firmware_versions.py    # Sube las seis versiones de componente, de forma explícita
+├── show_component_version.py    # Muestra la versión que ya tiene un componente
 ├── bump_manifest_version.py     # Sincroniza la versión de hydra-umc.project.json con la nativa (--sync)
 ├── tools/
 │   ├── verify_firmware_inventory.py # Verificación de solo lectura del inventario de seis componentes
@@ -442,19 +444,7 @@ sigue abierto.
 
 ## 🔢 Versionado
 
-Los 6 componentes de firmware (3 bootloaders + 3 aplicaciones - Robot
-Controller Board STM32G474, Kinematic Brain CM7, Kinematic Brain CM4, un
-par bootloader/aplicación por chip/núcleo) son incrementales en versión:
-`build_firmware.sh`/`.bat` incrementan el PATCH de ese componente en
-exactamente 1 justo antes de compilarlo, mediante `bump_version.py`, de
-modo que cada build real que produce un binario nuevo de un componente
-lleva su propia versión nueva ya incorporada - nunca escrita a mano, nunca
-puede desincronizarse de lo que realmente se compiló. Regla de acarreo
-("cuentakilómetros"): si el PATCH supera 9, se resetea a 0 y el MINOR sube
-en 1 (ej. `1.1.9` -> `1.2.0`, nunca `1.1.10`); si el MINOR supera 9, el
-acarreo sigue hacia el MAJOR de la misma forma. Ver el propio
-`bootloader_common.h` de cada componente y el comentario de cabecera de
-`bump_version.py` para el mecanismo completo.
+Los 6 componentes de firmware (3 bootloaders + 3 aplicaciones - STM32G474 de la Robot Controller Board, CM7 y CM4 del Kinematic Brain, un par bootloader/aplicación por chip/núcleo) tienen su propia versión, y compilar nunca la cambia: `build_firmware.sh`/`.bat` solo informan de la versión en que está cada componente, y ese valor es el que se incorpora al binario y a su nombre de archivo. Subir versiones es el comando explícito `python bump_firmware_versions.py` (los seis, o los componentes indicados; `--list` los muestra), que usa `bump_version.py` y después mueve el manifiesto del proyecto junto con la aplicación del G474. Regla de acarreo ("cuentakilómetros"): si el PATCH supera 9, se resetea a 0 y el MINOR sube en 1 (ej. `1.1.9` -> `1.2.0`, nunca `1.1.10`); si el MINOR supera 9, el acarreo sigue hacia el MAJOR de la misma forma. Ver el propio `bootloader_common.h` de cada componente y el comentario de cabecera de `bump_version.py` para el mecanismo completo.
 
 ## 🔗 Proyectos Relacionados
 

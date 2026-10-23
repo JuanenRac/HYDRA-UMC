@@ -31,12 +31,7 @@ rem Keep the window open for people, never in automation (CI / HYDRA_UMC_CI).
 set "KEEP_OPEN=pause"
 if defined CI set "KEEP_OPEN=ver >nul"
 if "%HYDRA_UMC_CI%"=="1" set "KEEP_OPEN=ver >nul"
-REM HYDRA_UMC_SCRIPT_STANDARD_VERSION_STEP
-echo [1/3] Incrementing project version and synchronising its manifest...
-REM HYDRA_UMC_SCRIPT_STANDARD_VERSION_CAPTURE_BEFORE
-for /f "usebackq delims=" %%V in (`python -c "import json; print(json.load(open(r'%~dp0hydra-umc.project.json', encoding='utf-8'))['version'])"`) do set "HYDRA_UMC_VERSION_BEFORE=%%V"
-REM The registry version is the G474 application version. Its component bump
-REM occurs later, then --sync records that one authoritative bump.
+echo Building does not change any version. Raise one explicitly with: python bump_firmware_versions.py
 echo.
 set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
@@ -115,7 +110,7 @@ if errorlevel 1 (
 
 where python >nul 2>&1
 if errorlevel 1 (
-    echo   FAIL python not found - required to run bump_version.py ^(all 6 components are incremental, see this script's own version-bump steps below^) and generate_manifest.py.
+    echo   FAIL python not found - required to read the component versions and to run generate_manifest.py.
     echo        Install from https://www.python.org/downloads/windows/ and re-run.
     set /a FAIL+=1
     goto :summary
@@ -298,7 +293,7 @@ echo.
 echo === 5. Robot Controller Board bootloader ^(src\mcu_stm32g474\boot\^) - bare-metal CAN-OTA, no FreeRTOS ===
 REM -----------------------------------------------------------------------
 set "SRC=%ROOT%\src\mcu_stm32g474\boot"
-call :BumpVersion "!SRC!\bootloader_common.h" BOOTLOADER_VERSION "Robot Controller Board bootloader"
+call :ComponentVersion "!SRC!\bootloader_common.h" BOOTLOADER_VERSION "Robot Controller Board bootloader"
 set "OUT=!G4!\boot_obj"
 del /q "!OUT!\*.o" 2>nul
 set "SECTION_FAIL=0"
@@ -341,20 +336,7 @@ echo.
 echo === 6. Robot Controller Board application ^(src\mcu_stm32g474\^) - FreeRTOS ===
 REM -----------------------------------------------------------------------
 set "SRC=%ROOT%\src\mcu_stm32g474"
-call :BumpVersion "!SRC!\boot\bootloader_common.h" FIRMWARE_VERSION "Robot Controller Board application"
-python "%~dp0bump_manifest_version.py" --sync
-if errorlevel 1 ( echo VERSION SYNCHRONISATION FAILED. & %KEEP_OPEN% & exit /b 1 )
-REM HYDRA_UMC_SCRIPT_STANDARD_VERSION_CAPTURE_AFTER
-for /f "usebackq delims=" %%V in (`python -c "import json; print(json.load(open(r'%~dp0hydra-umc.project.json', encoding='utf-8'))['version'])"`) do set "HYDRA_UMC_VERSION_AFTER=%%V"
-if not defined HYDRA_UMC_VERSION_BEFORE set "HYDRA_UMC_VERSION_BEFORE=unknown"
-if not defined HYDRA_UMC_VERSION_AFTER set "HYDRA_UMC_VERSION_AFTER=unknown"
-echo.
-echo *****************************************************************************
-echo * VERSION INCREMENT COMPLETED
-echo * v%HYDRA_UMC_VERSION_BEFORE% ^> v%HYDRA_UMC_VERSION_AFTER%
-echo * Project manifest synchronized with the G474 application version.
-echo *****************************************************************************
-echo.
+call :ComponentVersion "!SRC!\boot\bootloader_common.h" FIRMWARE_VERSION "Robot Controller Board application"
 set "OUT=!G4!\app_obj"
 del /q "!OUT!\*.o" 2>nul
 arm-none-eabi-gcc %CFLAGS_G4_APP% -I"!SRC!" -x c -c "!SRC!\STM32G474RE_main.c" -o "!OUT!\STM32G474RE_main.o"
@@ -552,7 +534,7 @@ echo.
 echo === 9. Kinematic Brain CM7 bootloader ^(bare-metal CAN-OTA, mailbox-relayed^) + application ^(FreeRTOS^) - src\mcu_stm32h745\CM7\ ===
 REM -----------------------------------------------------------------------
 set "SRC=%ROOT%\src\mcu_stm32h745\CM7"
-call :BumpVersion "!SRC!\boot\bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM7 bootloader"
+call :ComponentVersion "!SRC!\boot\bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM7 bootloader"
 set "OUT=!H7!\cm7_boot_obj"
 del /q "!OUT!\*.o" 2>nul
 set "SECTION_FAIL=0"
@@ -587,7 +569,7 @@ copy /y "!OUT!\!CM7_BOOT_NAME!.hex" "%FIRMWARE_OUT%\" >nul
 echo   OK   !CM7_BOOT_NAME!.bin/.hex/.elf built
 set /a PASS+=1
 
-call :BumpVersion "!SRC!\boot\bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM7 application"
+call :ComponentVersion "!SRC!\boot\bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM7 application"
 set "OUT=!H7!\cm7_app_obj"
 del /q "!OUT!\*.o" 2>nul
 arm-none-eabi-gcc %CFLAGS_CM7_APP% -I"!SRC!" -x c -c "!SRC!\STM32H745ZI_CM7_main.c" -o "!OUT!\STM32H745ZI_CM7_main.o"
@@ -620,7 +602,7 @@ echo.
 echo === 10. Kinematic Brain CM4 bootloader ^(bare-metal CAN-OTA gateway: SPI1+FDCAN1+mailbox^) + application ^(FreeRTOS^) - src\mcu_stm32h745\CM4\ ===
 REM -----------------------------------------------------------------------
 set "SRC=%ROOT%\src\mcu_stm32h745\CM4"
-call :BumpVersion "!SRC!\boot\bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM4 bootloader"
+call :ComponentVersion "!SRC!\boot\bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM4 bootloader"
 set "OUT=!H7!\cm4_boot_obj"
 del /q "!OUT!\*.o" 2>nul
 set "SECTION_FAIL=0"
@@ -655,7 +637,7 @@ copy /y "!OUT!\!CM4_BOOT_NAME!.hex" "%FIRMWARE_OUT%\" >nul
 echo   OK   !CM4_BOOT_NAME!.bin/.hex/.elf built
 set /a PASS+=1
 
-call :BumpVersion "!SRC!\boot\bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM4 application"
+call :ComponentVersion "!SRC!\boot\bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM4 application"
 set "OUT=!H7!\cm4_app_obj"
 del /q "!OUT!\*.o" 2>nul
 arm-none-eabi-gcc %CFLAGS_CM4_APP% -I"!SRC!" -x c -c "!SRC!\STM32H745ZI_CM4_main.c" -o "!OUT!\STM32H745ZI_CM4_main.o"
@@ -743,34 +725,26 @@ if %FAIL% GTR 0 exit /b 1
 exit /b 0
 
 REM =============================================================================
-REM :BumpVersion <header_path> <MACRO_PREFIX> <label>
+REM :ComponentVersion <header_path> <MACRO_PREFIX> <label>
 REM
-REM Bumps ONE component's own version macro family (BOOTLOADER_VERSION or
-REM FIRMWARE_VERSION) in its bootloader_common.h in place, via bump_version.py
-REM (odometer carry rule: PATCH past 9 -> MINOR+1, PATCH resets to 0 - see
-REM that script's own header comment). Called BEFORE each of the 6 components
-REM below gets compiled, so the just-bumped value is what actually ends up
-REM baked into that binary and in its output filename - never bumped after
-REM the fact. Per this repo's own versioning policy, ALL 6 components (3
-REM bootloaders + 3 applications) are incremental this way, unlike sibling
-REM repo URTC where only the bootloaders are (and there, bumped by hand, not
-REM automatically like here). Reached only via `call :BumpVersion ...` -
-REM never falls into from normal top-to-bottom flow (the `exit /b 0` above
+REM Reports ONE component's own version (BOOTLOADER_VERSION or FIRMWARE_VERSION in
+REM its bootloader_common.h) without changing it: the value in the header is what
+REM gets baked into the binary and into its output filename. Raising a version is
+REM explicit (bump_firmware_versions.py). Reached only via `call :ComponentVersion ...`
+REM - never falls into from normal top-to-bottom flow (the `exit /b 0` above
 REM guarantees that).
 REM =============================================================================
-:BumpVersion
-set "BUMP_HDR=%~1"
-set "BUMP_PREFIX=%~2"
-set "BUMP_LABEL=%~3"
-set "BUMP_TMP=%BUILD%\bump_ver.tmp"
-python "%ROOT%\bump_version.py" "%BUMP_HDR%" "%BUMP_PREFIX%" > "%BUMP_TMP%"
-if errorlevel 1 (
-    echo   FAIL %BUMP_LABEL%: version bump failed - see bump_version.py's own error above
+:ComponentVersion
+set "CV_HDR=%~1"
+set "CV_PREFIX=%~2"
+set "CV_LABEL=%~3"
+set "CV_VER="
+for /f "usebackq delims=" %%v in (`python "%ROOT%\show_component_version.py" "%CV_HDR%" "%CV_PREFIX%"`) do set "CV_VER=%%v"
+if not defined CV_VER (
+    echo   FAIL %CV_LABEL%: the version could not be read from %CV_HDR%
     set /a FAIL+=1
     goto :summary
 )
-set "BUMP_NEWVER="
-for /f "usebackq delims=" %%v in ("%BUMP_TMP%") do set "BUMP_NEWVER=%%v"
-echo   OK   %BUMP_LABEL% version bumped to v!BUMP_NEWVER! ^(%BUMP_HDR%^)
+echo   OK   %CV_LABEL% is at v!CV_VER! ^(source unchanged^)
 set /a PASS+=1
 goto :eof

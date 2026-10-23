@@ -321,7 +321,9 @@ HYDRA-UMC/
 ├── build_firmware.bat           # Same build, Windows (see "Building the Firmware" below)
 ├── build-test.sh / build-test.bat # Non-versioning build/compile check
 ├── generate_manifest.py         # Regenerates firmware/firmware_manifest.json (versions/CRC32) after a full build
-├── bump_version.py              # Odometer-style version bump, run by build_firmware.sh/.bat
+├── bump_version.py              # Odometer-style version bump of one component
+├── bump_firmware_versions.py    # Raises the six component versions, explicitly
+├── show_component_version.py    # Prints the version a component already has
 ├── bump_manifest_version.py     # Syncs hydra-umc.project.json's version to the native one (--sync)
 ├── tools/
 │   ├── verify_firmware_inventory.py # Read-only verification of the committed six-component inventory
@@ -425,18 +427,7 @@ limitations) for exactly what's real vs. still open.
 
 ## 🔢 Versioning
 
-All 6 firmware components (3 bootloaders + 3 applications - Robot
-Controller Board's STM32G474, Kinematic Brain's CM7, Kinematic Brain's
-CM4, one bootloader/application pair per chip/core) are version-
-incremental: `build_firmware.sh`/`.bat` bump that component's own PATCH by
-exactly 1 immediately before compiling it, via `bump_version.py`, so every
-real build that produces a new binary for a component carries its own new
-version baked in - never hand-typed, never able to drift out of sync with
-what actually got compiled. Carry rule (an "odometer"): PATCH past 9
-resets to 0 and MINOR increments by 1 (e.g. `1.1.9` -> `1.2.0`, never
-`1.1.10`); MINOR past 9 carries into MAJOR the same way. See each
-component's own `bootloader_common.h` and `bump_version.py`'s own header
-comment for the full mechanism.
+All 6 firmware components (3 bootloaders + 3 applications - Robot Controller Board's STM32G474, Kinematic Brain's CM7, Kinematic Brain's CM4, one bootloader/application pair per chip/core) have their own version, and building never changes it: `build_firmware.sh`/`.bat` only report the version each component is at, and that value is what gets baked into the binary and its file name. Raising versions is the explicit command `python bump_firmware_versions.py` (all six, or the named components; `--list` shows them), which uses `bump_version.py` and then moves the project manifest along with the G474 application. Carry rule (an "odometer"): PATCH past 9 resets to 0 and MINOR increments by 1 (e.g. `1.1.9` -> `1.2.0`, never `1.1.10`); MINOR past 9 carries into MAJOR the same way. See each component's own `bootloader_common.h` and `bump_version.py`'s own header comment for the full mechanism.
 
 ## 🔗 Related Projects
 
