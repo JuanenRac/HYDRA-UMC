@@ -60,11 +60,11 @@ extern IWDG_HandleTypeDef hiwdg;
 // rule applies here verbatim.
 #define FIRMWARE_VERSION_MAJOR 0
 #define FIRMWARE_VERSION_MINOR 1
-#define FIRMWARE_VERSION_PATCH 6
+#define FIRMWARE_VERSION_PATCH 7
 
 #define BOOTLOADER_VERSION_MAJOR 0
 #define BOOTLOADER_VERSION_MINOR 1
-#define BOOTLOADER_VERSION_PATCH 7
+#define BOOTLOADER_VERSION_PATCH 8
 
 // Local integrity only: the check at boot of the application that is installed, and the freshness value of an update session. It does
 // NOT decide whether an update is accepted any more (that is the signature, under UPDATE_PUBLIC_KEY).

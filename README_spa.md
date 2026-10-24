@@ -34,7 +34,7 @@
 
 | | |
 |---|---|
-| Versión | `0.2.2` |
+| Versión | `0.2.3` |
 | Madurez | Andamiaje |
 | Tecnología | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | Destino | Una placa con microcontrolador (el firmware); se compila en un PC |

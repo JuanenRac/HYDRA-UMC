@@ -34,7 +34,7 @@
 
 | | |
 |---|---|
-| 版本 | `0.2.2` |
+| 版本 | `0.2.3` |
 | 成熟度 | 雏形 |
 | 技术栈 | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | 目标 | 微控制器板（固件）；在电脑上构建 |

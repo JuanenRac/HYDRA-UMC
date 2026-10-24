@@ -34,7 +34,7 @@
 
 | | |
 |---|---|
-| バージョン | `0.2.2` |
+| バージョン | `0.2.3` |
 | 成熟度 | 足場段階 |
 | 技術 | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | 対象 | マイコン基板（ファームウェア）。ビルドは PC で行います |

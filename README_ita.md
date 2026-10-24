@@ -34,7 +34,7 @@
 
 | | |
 |---|---|
-| Versione | `0.2.2` |
+| Versione | `0.2.3` |
 | Maturità | Impalcatura |
 | Tecnologia | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | Destinazione | Una scheda con microcontrollore (il firmware); compilato su un PC |
