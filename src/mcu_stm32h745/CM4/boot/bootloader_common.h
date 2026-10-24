@@ -65,7 +65,11 @@ extern IWDG_HandleTypeDef  hiwdg;
 #define BOOTLOADER_VERSION_MINOR 1
 #define BOOTLOADER_VERSION_PATCH 7
 
+// Local integrity only: the check at boot of the application that is installed, and the freshness value of an update session. It does
+// NOT decide whether an update is accepted any more (that is the signature, under UPDATE_PUBLIC_KEY).
 extern const uint8_t HMAC_KEY[32];
+// The Ed25519 public key an update must be signed for (bootloader_crypto.c): the board holds nothing that signs.
+extern const uint8_t UPDATE_PUBLIC_KEY[32];
 
 // STACK A slot addressing (docs/architecture.md section 4) - this core
 // (not a Robot Controller Board itself) is the one that OWNS this
@@ -91,7 +95,7 @@ extern const uint8_t HMAC_KEY[32];
 #define OFS_END_UPDATE           0x04
 #define OFS_STATUS                 0x05
 #define OFS_HEARTBEAT                0x06
-#define OFS_HMAC_CHUNK                 0x07
+#define OFS_HMAC_CHUNK                 0x07 // the 64-byte Ed25519 signature of the image: DLC=8 x 8 frames in order, right after START_UPDATE (URTC bootloaders behind the relay still take an HMAC in 4)
 #define OFS_QUERY_VERSION                0x08
 #define OFS_VERSION_RESPONSE               0x09
 #define OFS_BOOTLOADER_VERSION               0x0A
@@ -117,7 +121,7 @@ extern const uint8_t HMAC_KEY[32];
 // the SPI-OTA frames are the same offsets); each has ONE emitter.
 #define OFS_IMAGE_HEADER                                      0x19 // host -> bootloader, DLC=8 x 8 frames in order, after START_UPDATE: the 64-byte header of the image
 #define OFS_DOWNGRADE_NONCE_REQUEST                           0x1A // host -> bootloader, DLC=1: which half (0 or 1) of the 16-byte nonce of this session it wants
-#define OFS_DOWNGRADE_TOKEN                                   0x1B // host -> bootloader, DLC=8 x 4 frames, optional: HMAC allowing exactly one downgrade
+#define OFS_DOWNGRADE_TOKEN                                   0x1B // host -> bootloader, DLC=8 x 8 frames, optional: the Ed25519 signature that allows exactly one downgrade
 #define OFS_DOWNGRADE_NONCE_RESPONSE                          0x1C // sent BY this bootloader, DLC=8: the half that was asked for
 
 #define STATUS_LISTENING     0x01
@@ -130,6 +134,7 @@ extern const uint8_t HMAC_KEY[32];
 #define VERIFY_FAIL_REASON_INCOMPLETE  0x01
 #define VERIFY_FAIL_REASON_CRC32       0x02
 #define VERIFY_FAIL_REASON_HMAC        0x03
+#define VERIFY_FAIL_REASON_SIGNATURE    VERIFY_FAIL_REASON_HMAC // the same reason code: the signature of the image did not verify
 #define VERIFY_FAIL_REASON_HARDWARE_ID 0x04
 #define VERIFY_FAIL_REASON_ROLLBACK    0x05
 #define VERIFY_FAIL_REASON_HEADER      0x06 // the signed header is missing, is not ours, or says something that is not true of what arrived

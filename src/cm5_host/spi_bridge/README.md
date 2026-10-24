@@ -16,8 +16,11 @@ framing to this project's real SPI framing.
   own C struct) and every `OFS_*`/`STATUS_*` constant.
 - `spi_bridge/bootloader_client.py` — real `query_version()` and the full
   `SpiOtaFlasher.flash()` cycle (ENTER_BOOTLOADER → START_UPDATE →
-  HMAC_CHUNK ×4 → DATA page-by-page → END_UPDATE → STATUS verify), a real
-  CRC32/HMAC-SHA256 over the actual firmware bytes, not a placeholder.
+  HMAC_CHUNK → DATA page-by-page → END_UPDATE → STATUS verify), a real
+  CRC32 over the actual firmware bytes, not a placeholder. The URTC bootloaders behind the relay take an HMAC-SHA256 in four
+  `HMAC_CHUNK` frames; the HYDRA-UMC bootloaders take a 64-byte Ed25519 signature in eight, made by the owner with
+  `tools/image_header.py sign` (this package holds no signing key: pass `signature=` to `flash()`, or the `signature` parameter of
+  `POST /flash`, or give the flasher a signer).
 - `spi_bridge/transport.py` — `RealSpiOtaTransport` (real `spidev` +
   `gpiod` v2, lazily imported so the rest of this package needs neither
   installed) plus the `SpiOtaTransport` protocol every other module here
@@ -48,7 +51,7 @@ framing to this project's real SPI framing.
   `--collector-url` and one `--counter-target tier:slot[:relay]` per board, reads the transmit and receive error counters of the CAN controller
   of those boards (`GET /counters` gives the same reading on demand) and sends one `can_error_counters` sample per board and round to the
   telemetry collector (`POST /ingest/ws`). The token comes from `--collector-token-file` or `HYDRA_UMC_SPI_BRIDGE_COLLECTOR_TOKEN`, the HMAC key
-  of the images from `--hmac-key-file`; neither is ever a command-line value. A board that does not answer produces no sample.
+  of the images for the URTC bootloaders from `--hmac-key-file`; neither is ever a command-line value. A board that does not answer produces no sample.
 - `tests/` — 79 deterministic tests against in-memory fake transports
   (including a faithful fake Tier 1-relaying-to-Tier-2 stand-in) and real
   local HTTP servers (only the SPI transport underneath is faked) — see
@@ -94,6 +97,6 @@ from spi_bridge import open_spi_transport
 from spi_bridge.http_service import serve
 
 transport = open_spi_transport("/dev/spidev0.0", "/dev/gpiochip0", data_ready_line_offset=3)
-server = serve(transport, hmac_key=b"...")  # real HMAC_KEY, matches the firmware's own
+server = serve(transport, hmac_key=b"...")  # the key of the URTC bootloaders behind the relay (an HMAC); HYDRA-UMC images arrive already signed
 server.serve_forever()
 ```

@@ -3,7 +3,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-"""The signed image header and the anti-rollback rule (host reference; nothing here runs on a board)."""
+"""The signed image header, its Ed25519 signature and the anti-rollback rule (host reference; nothing here runs on a board)."""
 import struct
 import sys
 import unittest
@@ -12,9 +12,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
+import ed25519_ref  # noqa: E402
 import image_header as ih  # noqa: E402
 
-KEY = b"k" * 32
+KEY = b"k" * 32  # the private seed of these tests
+PUBLIC = ed25519_ref.public_key(KEY)
 LINK = 0x08020000
 IMAGE = struct.pack("<II", 0x20008000, LINK + 0x101) + bytes(range(256)) * 4  # 1032 bytes, with the vector table in front
 HW = 0x47343031
@@ -36,7 +38,7 @@ def _blob(version=(0, 1, 8), key=KEY, **over):
 def _verify(blob, installed=(0, 1, 7), **over):
     args = dict(hw_id=HW, link_address=LINK, installed_version=installed, ram_range=(0x20000000, 0x20008000))
     args.update(over)
-    return ih.verify_image(blob, KEY, **args)
+    return ih.verify_image(blob, PUBLIC, **args)
 
 
 class LayoutTests(unittest.TestCase):
@@ -80,17 +82,30 @@ class SigningTests(unittest.TestCase):
         with self.assertRaises(ih.ImageError):
             ih.build_signed_image(_header(image_crc32=0), IMAGE, KEY)
 
-    def test_every_byte_of_header_image_and_tag_is_covered(self):
+    def test_every_byte_of_header_image_and_signature_is_covered(self):
         blob = _blob()
-        for index in (0, 8, 12, 14, 16, 20, 24, 28, 32, 36, 64, 500, len(blob) - 33, len(blob) - 1):
+        for index in (0, 8, 12, 14, 16, 20, 24, 28, 32, 36, 64, 500, len(blob) - 65, len(blob) - 33, len(blob) - 1):
             broken = bytearray(blob)
             broken[index] ^= 0x01
             with self.assertRaises(ih.ImageError, msg=f"byte {index}"):
                 _verify(bytes(broken), installed=(0, 0, 1))
 
     def test_another_key_does_not_verify(self):
-        with self.assertRaisesRegex(ih.ImageError, "tag"):
-            ih.verify_image(_blob(key=b"x" * 32), KEY, hw_id=HW, link_address=LINK, installed_version=(0, 0, 1))
+        with self.assertRaisesRegex(ih.ImageError, "signature"):
+            ih.verify_image(_blob(key=b"x" * 32), PUBLIC, hw_id=HW, link_address=LINK, installed_version=(0, 0, 1))
+
+    def test_the_signature_is_over_a_domain_and_the_digest_not_over_the_raw_image(self):
+        blob = _blob()
+        header_bytes, image, signature = blob[:64], blob[64:-64], blob[-64:]
+        digest = ih.image_digest(header_bytes, image)
+        self.assertEqual(len(ih.image_message(digest)), 20 + 32)
+        self.assertTrue(ed25519_ref.verify(PUBLIC, ih.IMAGE_DOMAIN + digest, signature))
+        self.assertFalse(ed25519_ref.verify(PUBLIC, header_bytes + image, signature))
+        self.assertFalse(ed25519_ref.verify(PUBLIC, ih.DOWNGRADE_DOMAIN + digest, signature))
+
+    def test_the_development_seeds_are_32_bytes_and_distinct(self):
+        publics = {ed25519_ref.public_key(seed) for seed in ih.DEV_SEEDS.values()}
+        self.assertEqual(len(publics), len(ih.DEV_SEEDS))
 
     def test_truncated_or_extended_data_is_refused(self):
         blob = _blob()
@@ -104,7 +119,7 @@ class ReplayTests(unittest.TestCase):
         """The old flaw: the version travelled outside what the tag covers. Now changing it breaks the tag."""
         old = bytearray(_blob(version=(0, 1, 2)))
         struct.pack_into("<HHH", old, 12, 0, 1, 9)  # claim 0.1.9
-        with self.assertRaisesRegex(ih.ImageError, "tag"):
+        with self.assertRaisesRegex(ih.ImageError, "signature"):
             _verify(bytes(old), installed=(0, 1, 8))
 
 
@@ -130,14 +145,14 @@ class RollbackTests(unittest.TestCase):
     def test_a_downgrade_needs_a_token_made_for_this_session_and_this_pair(self):
         nonce = b"n" * 16
         blob = _blob((0, 1, 2))
-        tag = blob[-ih.TAG_SIZE:]
-        token = ih.downgrade_token(KEY, nonce, (0, 1, 8), (0, 1, 2), tag)
+        digest = ih.image_digest(blob[:64], blob[64:-64])
+        token = ih.downgrade_token(KEY, nonce, (0, 1, 8), (0, 1, 2), digest)
         self.assertEqual(_verify(blob, installed=(0, 1, 8), nonce=nonce, token=token).version, (0, 1, 2))
-        # not for another image of the same version (another tag): the token authorizes exactly the image it was made for
+        # not for another image of the same version (another digest): the token authorizes exactly the image it was made for
         image2 = IMAGE[:-1] + b"\x00"
         header2 = _header((0, 1, 2), image_size=len(image2), image_crc32=zlib.crc32(image2) & 0xFFFFFFFF)
         blob2 = ih.build_signed_image(header2, image2, KEY)
-        self.assertNotEqual(blob2[-ih.TAG_SIZE:], tag)
+        self.assertNotEqual(ih.image_digest(blob2[:64], blob2[64:-64]), digest)
         with self.assertRaisesRegex(ih.ImageError, "anti-rollback"):
             _verify(blob2, installed=(0, 1, 8), nonce=nonce, token=token)
         # not with another nonce (another session), another pair, a wrong token, or none
@@ -146,14 +161,14 @@ class RollbackTests(unittest.TestCase):
         with self.assertRaises(ih.ImageError):
             _verify(blob, installed=(0, 1, 9), nonce=nonce, token=token)
         with self.assertRaises(ih.ImageError):
-            _verify(blob, installed=(0, 1, 8), nonce=nonce, token=b"\x00" * 32)
+            _verify(blob, installed=(0, 1, 8), nonce=nonce, token=b"\x00" * 64)
         with self.assertRaises(ih.ImageError):
             _verify(blob, installed=(0, 1, 8))
 
     def test_a_token_never_allows_the_same_version(self):
         nonce = b"n" * 16
         blob = _blob((0, 1, 8))
-        token = ih.downgrade_token(KEY, nonce, (0, 1, 8), (0, 1, 8), blob[-ih.TAG_SIZE:])
+        token = ih.downgrade_token(KEY, nonce, (0, 1, 8), (0, 1, 8), ih.image_digest(blob[:64], blob[64:-64]))
         with self.assertRaises(ih.ImageError):
             _verify(blob, installed=(0, 1, 8), nonce=nonce, token=token)
 

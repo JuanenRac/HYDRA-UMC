@@ -1,6 +1,6 @@
 /* =============================================================================
- * HYDRA-UMC Firmware - Host logic tests for the G474 bootloader's HMAC, CRC32
- * and flash erase/program/copy/metadata routines
+ * HYDRA-UMC Firmware - Host logic tests for the G474 bootloader's SHA-256, HMAC,
+ * Ed25519 check, CRC32 and flash erase/program/copy/metadata routines
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
  * GPL-3.0-or-later - see LICENSE
  * =============================================================================
@@ -11,6 +11,9 @@
  *
  *  - HMAC-SHA256 against the RFC 4231 vectors and every padding boundary of the
  *    SHA-256 block, and the constant-time comparison.
+ *  - SHA-256 of header || image against the host reference, and the Ed25519 check
+ *    (update_signature.c, linked with the vendored TweetNaCl) against the RFC 8032
+ *    vectors and the signatures tools/image_header.py made.
  *  - CRC32 against the zlib value.
  *  - Flash_ErasePages: bank/page of each address, the dual-bank refusal, a
  *    failure in the middle, one watchdog refresh per page.
@@ -27,6 +30,8 @@
 #include <string.h>
 
 #include "image_header_vectors.h"
+#include "update_signature.h"
+#include "image_header.h"
 
 #if defined(__linux__) && defined(__x86_64__)
 #include <sys/mman.h>
@@ -233,34 +238,63 @@ static void test_hmac_padding_boundaries(void)
     }
 }
 
-/* The tag of a signed image is the HMAC of its 64-byte header (a RAM buffer) followed by the image (flash) as ONE message. The bytes come
- * from tools/image_header.py through tests/image_header_vectors.h, so this checks the C routine against the reference, not itself. */
-static void test_hmac_of_a_header_and_an_image_matches_the_reference(void)
+/* The digest of a signed image is the SHA-256 of its 64-byte header (a RAM buffer) followed by the image (flash) as ONE message. The bytes
+ * come from tools/image_header.py through tests/image_header_vectors.h, so this checks the C routine against the reference, not itself. */
+static void test_the_digest_of_a_header_and_an_image_matches_the_reference(void)
 {
-    printf("  HMAC-SHA256 of header || image, against the host reference\n");
+    printf("  SHA-256 of header || image, against the host reference\n");
     reset_flash_model();
     memcpy(flash_mem + (BACKUP_APP_ADDR - FLASH_BASE_ADDR), VEC_IMAGE, VEC_IMAGE_SIZE);
     uint8_t out[32];
-    hmac_sha256_prefixed_flash_region(VEC_KEY, 32, VEC_HEADER, sizeof(VEC_HEADER), BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
-    CHECK(hmac_constant_time_compare(out, VEC_TAG, 32) == 1, "the tag the reference made for the image verifies");
+    sha256_prefixed_flash_region(VEC_HEADER, sizeof(VEC_HEADER), BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
+    CHECK(hmac_constant_time_compare(out, VEC_DIGEST, 32) == 1, "the digest the reference made for the image matches");
 
-    /* one changed bit anywhere in the header or the image is another tag */
+    /* one changed bit anywhere in the header or the image is another digest */
     uint8_t header[sizeof(VEC_HEADER)];
     for (size_t i = 0; i < sizeof(header); i += 9) {
         memcpy(header, VEC_HEADER, sizeof(header));
         header[i] ^= 0x01;
-        hmac_sha256_prefixed_flash_region(VEC_KEY, 32, header, sizeof(header), BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
-        CHECK(hmac_constant_time_compare(out, VEC_TAG, 32) == 0, "a changed header byte changes the tag");
+        sha256_prefixed_flash_region(header, sizeof(header), BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
+        CHECK(hmac_constant_time_compare(out, VEC_DIGEST, 32) == 0, "a changed header byte changes the digest");
     }
     for (uint32_t i = 0; i < VEC_IMAGE_SIZE; i += 61) {
         flash_mem[BACKUP_APP_ADDR - FLASH_BASE_ADDR + i] ^= 0x01;
-        hmac_sha256_prefixed_flash_region(VEC_KEY, 32, VEC_HEADER, sizeof(VEC_HEADER), BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
-        CHECK(hmac_constant_time_compare(out, VEC_TAG, 32) == 0, "a changed image byte changes the tag");
+        sha256_prefixed_flash_region(VEC_HEADER, sizeof(VEC_HEADER), BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
+        CHECK(hmac_constant_time_compare(out, VEC_DIGEST, 32) == 0, "a changed image byte changes the digest");
         flash_mem[BACKUP_APP_ADDR - FLASH_BASE_ADDR + i] ^= 0x01;
     }
-    /* the header alone, as the old flow signed only the image, is not the tag */
-    hmac_sha256_flash_region(VEC_KEY, 32, BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
-    CHECK(hmac_constant_time_compare(out, VEC_TAG, 32) == 0, "the HMAC of the image alone is not the tag of the signed image");
+    /* the image alone, as the old flow covered, is not the digest of the signed image */
+    sha256_prefixed_flash_region(NULL, 0, BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
+    CHECK(hmac_constant_time_compare(out, VEC_DIGEST, 32) == 0, "the SHA-256 of the image alone is not the digest of the signed image");
+}
+
+static void test_sha256_buffer_and_the_split_between_prefix_and_region(void)
+{
+    printf("  SHA-256: FIPS 180 vectors and the split between the prefix and the region\n");
+    reset_flash_model();
+    uint8_t out[32];
+    sha256_buffer((const uint8_t *)"abc", 3, out);
+    CHECK(hex_equals(out, "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"), "SHA-256 of abc");
+    sha256_buffer(NULL, 0, out);
+    CHECK(hex_equals(out, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"), "SHA-256 of nothing");
+    const char *two_blocks = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
+    sha256_buffer((const uint8_t *)two_blocks, (uint32_t)strlen(two_blocks), out);
+    CHECK(hex_equals(out, "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1"), "SHA-256 of the two-block message");
+
+    uint8_t data[200], whole[32], parts[32];
+    for (int i = 0; i < 200; i++) data[i] = (uint8_t)(i * 5 + 7);
+    sha256_buffer(data, 200, whole);
+    static const uint32_t splits[] = {0, 1, 55, 56, 63, 64, 65, 127, 128, 199, 200};
+    for (size_t k = 0; k < sizeof(splits) / sizeof(splits[0]); k++) {
+        uint32_t split = splits[k];
+        uint8_t *low = low_buffer(200 - split + 1);
+        memcpy(low, data + split, 200 - split);
+        sha256_prefixed_flash_region(data, split, (uint32_t)(uintptr_t)low, 200 - split, parts);
+        char what[48];
+        snprintf(what, sizeof(what), "prefix of %u bytes", split);
+        CHECK(hmac_constant_time_compare(whole, parts, 32) == 1, what);
+        munmap(low, 200 - split + 1);
+    }
 }
 
 static void test_hmac_prefix_and_region_are_one_message_whatever_the_split(void)
@@ -292,17 +326,94 @@ static void test_hmac_prefix_and_region_are_one_message_whatever_the_split(void)
     CHECK(hmac_constant_time_compare(empty, parts, 32) == 1, "an empty message");
 }
 
-static void test_the_downgrade_token_matches_the_reference(void)
+static void sig_from_hex(const char *hex, uint8_t *out, size_t length)
 {
-    printf("  downgrade token, against the host reference\n");
-    uint8_t out[32];
-    hmac_sha256_buffer(VEC_KEY, 32, VEC_DOWNGRADE_MESSAGE, sizeof(VEC_DOWNGRADE_MESSAGE), out);
-    CHECK(hmac_constant_time_compare(out, VEC_DOWNGRADE_TOKEN, 32) == 1, "the token the reference made verifies");
+    for (size_t i = 0; i < length; i++) {
+        unsigned value = 0;
+        sscanf(hex + 2 * i, "%2x", &value);
+        out[i] = (uint8_t)value;
+    }
+}
+
+/* The Ed25519 check of the bootloader against the vectors of RFC 8032 section 7.1 (a key, a message and the signature made by someone else's
+ * implementation), then against the signatures tools/image_header.py made for the image and the downgrade. */
+static void test_the_signature_check_matches_rfc_8032_and_the_reference(void)
+{
+    printf("  Ed25519 check, RFC 8032 vectors and the host reference\n");
+    uint8_t public_key[32], signature[64];
+    sig_from_hex("d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a", public_key, 32);
+    sig_from_hex("e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b", signature, 64);
+    CHECK(UpdateSignature_Verify((const uint8_t *)"", 0, signature, public_key) == 1, "RFC 8032 test 1 (empty message)");
+    signature[10] ^= 1;
+    CHECK(UpdateSignature_Verify((const uint8_t *)"", 0, signature, public_key) == 0, "RFC 8032 test 1 with a bit of R changed");
+    sig_from_hex("3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c", public_key, 32);
+    sig_from_hex("92a009a9f0d4cab8720e820b5f642540a2b27b5416503f8fb3762223ebdb69da085ac1e43e15996e458f3613d0f11d8c387b2eaeb4302aeeb00d291612bb0c00", signature, 64);
+    const uint8_t one_byte = 0x72;
+    CHECK(UpdateSignature_Verify(&one_byte, 1, signature, public_key) == 1, "RFC 8032 test 2 (one byte)");
+    const uint8_t other_byte = 0x73;
+    CHECK(UpdateSignature_Verify(&other_byte, 1, signature, public_key) == 0, "RFC 8032 test 2 with another message");
+
+    CHECK(UpdateSignature_Verify(VEC_IMAGE_MESSAGE, sizeof(VEC_IMAGE_MESSAGE), VEC_SIGNATURE, VEC_PUBLIC_KEY) == 1, "the signature of image A");
+    CHECK(UpdateSignature_Verify(VEC_B_IMAGE_MESSAGE, sizeof(VEC_B_IMAGE_MESSAGE), VEC_B_SIGNATURE, VEC_PUBLIC_KEY) == 1, "the signature of image B");
+    CHECK(UpdateSignature_Verify(VEC_DOWNGRADE_MESSAGE, sizeof(VEC_DOWNGRADE_MESSAGE), VEC_DOWNGRADE_TOKEN, VEC_PUBLIC_KEY) == 1, "the downgrade token the reference made");
+    /* a signature made for one thing is not valid for the other, nor for another image */
+    CHECK(UpdateSignature_Verify(VEC_IMAGE_MESSAGE, sizeof(VEC_IMAGE_MESSAGE), VEC_B_SIGNATURE, VEC_PUBLIC_KEY) == 0, "the signature of B does not open A");
+    CHECK(UpdateSignature_Verify(VEC_DOWNGRADE_MESSAGE, sizeof(VEC_DOWNGRADE_MESSAGE), VEC_SIGNATURE, VEC_PUBLIC_KEY) == 0, "an image signature is not a downgrade token");
+
     uint8_t message[sizeof(VEC_DOWNGRADE_MESSAGE)];
     memcpy(message, VEC_DOWNGRADE_MESSAGE, sizeof(message));
-    message[sizeof(message) - 1] ^= 1; /* another target patch */
-    hmac_sha256_buffer(VEC_KEY, 32, message, sizeof(message), out);
-    CHECK(hmac_constant_time_compare(out, VEC_DOWNGRADE_TOKEN, 32) == 0, "another pair of versions is another token");
+    message[sizeof(message) - 1] ^= 1; /* the digest of another image */
+    CHECK(UpdateSignature_Verify(message, sizeof(message), VEC_DOWNGRADE_TOKEN, VEC_PUBLIC_KEY) == 0, "a token for another image is refused");
+    memcpy(message, VEC_DOWNGRADE_MESSAGE, sizeof(message));
+    message[DOWNGRADE_TAG_LEN] ^= 1; /* another session */
+    CHECK(UpdateSignature_Verify(message, sizeof(message), VEC_DOWNGRADE_TOKEN, VEC_PUBLIC_KEY) == 0, "a token for another session is refused");
+
+    /* every byte of the signature matters, and so does the key */
+    for (size_t i = 0; i < 64; i += 7) {
+        memcpy(signature, VEC_SIGNATURE, 64);
+        signature[i] ^= 0x01;
+        CHECK(UpdateSignature_Verify(VEC_IMAGE_MESSAGE, sizeof(VEC_IMAGE_MESSAGE), signature, VEC_PUBLIC_KEY) == 0, "a changed signature byte is refused");
+    }
+    memcpy(public_key, VEC_PUBLIC_KEY, 32);
+    public_key[5] ^= 1;
+    CHECK(UpdateSignature_Verify(VEC_IMAGE_MESSAGE, sizeof(VEC_IMAGE_MESSAGE), VEC_SIGNATURE, public_key) == 0, "another key is refused");
+    /* S not reduced modulo the order of the base point is refused even when the equation still holds (S + L) */
+    memcpy(signature, VEC_SIGNATURE, 64);
+    {
+        static const uint8_t order[32] = {0xED, 0xD3, 0xF5, 0x5C, 0x1A, 0x63, 0x12, 0x58, 0xD6, 0x9C, 0xF7, 0xA2, 0xDE, 0xF9, 0xDE, 0x14,
+                                          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
+        unsigned carry = 0;
+        for (int i = 0; i < 32; i++) {
+            unsigned sum = (unsigned)signature[32 + i] + order[i] + carry;
+            signature[32 + i] = (uint8_t)sum;
+            carry = sum >> 8;
+        }
+        CHECK(carry == 0, "S + L fits in 32 bytes for the vector");
+    }
+    CHECK(UpdateSignature_Verify(VEC_IMAGE_MESSAGE, sizeof(VEC_IMAGE_MESSAGE), signature, VEC_PUBLIC_KEY) == 0, "S + L is refused");
+    /* a message longer than the check takes, and null pointers, are refused instead of read */
+    uint8_t long_message[UPDATE_SIGNATURE_MAX_MESSAGE + 1] = {0};
+    CHECK(UpdateSignature_Verify(long_message, sizeof(long_message), VEC_SIGNATURE, VEC_PUBLIC_KEY) == 0, "a message that is too long");
+    CHECK(UpdateSignature_Verify(NULL, 0, VEC_SIGNATURE, VEC_PUBLIC_KEY) == 0, "no message");
+}
+
+static void test_the_signature_check_keeps_the_watchdog_fed(void)
+{
+    printf("  Ed25519 check keeps the watchdog fed\n");
+    iwdg_refreshes = 0;
+    CHECK(UpdateSignature_Verify(VEC_IMAGE_MESSAGE, sizeof(VEC_IMAGE_MESSAGE), VEC_SIGNATURE, VEC_PUBLIC_KEY) == 1, "the signature verifies");
+    CHECK(iwdg_refreshes >= 256, "at least one refresh per bit of a scalar");
+}
+
+static void test_the_development_public_key_is_in_the_bootloader(void)
+{
+    printf("  development public key of the bootloader\n");
+    int all_zero = 1;
+    for (int i = 0; i < 32; i++) {
+        if (UPDATE_PUBLIC_KEY[i] != 0) all_zero = 0;
+    }
+    CHECK(all_zero == 0, "the key of the bootloader is not empty");
+    CHECK(memcmp(UPDATE_PUBLIC_KEY, VEC_PUBLIC_KEY, 32) != 0, "and it is not the key of the test vectors");
 }
 
 static void test_hmac_feeds_the_watchdog_and_reads_the_region_once(void)
@@ -592,9 +703,12 @@ int main(void)
 
     test_hmac_rfc4231();
     test_hmac_padding_boundaries();
-    test_hmac_of_a_header_and_an_image_matches_the_reference();
+    test_the_digest_of_a_header_and_an_image_matches_the_reference();
+    test_sha256_buffer_and_the_split_between_prefix_and_region();
     test_hmac_prefix_and_region_are_one_message_whatever_the_split();
-    test_the_downgrade_token_matches_the_reference();
+    test_the_signature_check_matches_rfc_8032_and_the_reference();
+    test_the_signature_check_keeps_the_watchdog_fed();
+    test_the_development_public_key_is_in_the_bootloader();
     test_hmac_feeds_the_watchdog_and_reads_the_region_once();
     test_constant_time_compare();
     test_crc32();

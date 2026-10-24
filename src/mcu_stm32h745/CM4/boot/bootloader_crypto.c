@@ -32,6 +32,23 @@ const uint8_t HMAC_KEY[32] = {
 };
 #endif
 
+// The key that decides whether an update is accepted: the Ed25519 PUBLIC key of whoever signs the images (tools/image_header.py). The
+// board holds nothing that signs, so reading its flash gives nobody the power to make an update. A real build gets it from
+// HYDRA_FW_UPDATE_PUBKEY_HEX (64 hex digits, made by `python tools/image_header.py pubkey SEEDFILE`; the private seed never leaves the owner).
+#ifdef HYDRA_FW_UPDATE_PUBKEY_BYTES
+const uint8_t UPDATE_PUBLIC_KEY[32] = { HYDRA_FW_UPDATE_PUBKEY_BYTES };
+#else
+// DEVELOPMENT PUBLIC KEY, whose private seed is PUBLISHED IN THIS REPOSITORY (tools/image_header.py, DEV_SEEDS): anybody can sign an image
+// that a board built like this accepts. It exists only so that a bench build works with no setup; build_firmware.sh says so out loud and
+// refuses it altogether when HYDRA_UMC_RELEASE=1. tests/test_update_signature_keys.py keeps it equal to the key of that seed.
+const uint8_t UPDATE_PUBLIC_KEY[32] = {
+    0x64, 0xF0, 0x1A, 0xBD, 0x18, 0xA5, 0x1B, 0x96,
+    0xA9, 0x72, 0x3E, 0xB2, 0xF0, 0x42, 0xEA, 0xFF,
+    0x81, 0x24, 0xBB, 0xF2, 0x88, 0x3F, 0xA2, 0x73,
+    0xA4, 0x65, 0xFF, 0x3B, 0xAD, 0xF2, 0x25, 0x4E
+};
+#endif
+
 typedef struct {
     uint32_t state[8];
     uint64_t bitlen;
@@ -182,4 +199,23 @@ uint8_t hmac_constant_time_compare(const uint8_t *a, const uint8_t *b, uint32_t 
     uint8_t diff = 0;
     for (uint32_t i = 0; i < len; i++) diff |= a[i] ^ b[i];
     return diff == 0;
+}
+
+// Plain SHA-256 over `prefix` (a buffer in RAM, may be empty) followed by a flash region (may be empty), as one message: the digest of an
+// image is over its 64-byte header and then the image, which is in flash. The signature is checked over this digest.
+void sha256_prefixed_flash_region(const uint8_t *prefix, uint32_t prefix_len,
+                                  uint32_t flash_addr, uint32_t len,
+                                  uint8_t out[32]) {
+    SHA256_CTX ctx;
+    sha256_init(&ctx);
+    if (prefix_len > 0) sha256_update(&ctx, prefix, prefix_len);
+    if (len > 0) sha256_update(&ctx, (const uint8_t*)flash_addr, len);
+    sha256_final(&ctx, out);
+}
+
+void sha256_buffer(const uint8_t *msg, uint32_t msg_len, uint8_t out[32]) {
+    SHA256_CTX ctx;
+    sha256_init(&ctx);
+    if (msg_len > 0) sha256_update(&ctx, msg, msg_len);
+    sha256_final(&ctx, out);
 }

@@ -23,7 +23,8 @@ SAME_FUNCTIONS = (
     "HandleDowngradeTokenChunk",
     "MakeSessionNonce",
     "Boot_SessionEntropy",
-    "UpdateHmacUnderTheKey",
+    "UpdateSignatureUnderTheKey",
+    "HandleHmacChunk",
     "VerifyFailReasonOf",
     "HandleAuthorizeDowngrade",
 )

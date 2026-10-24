@@ -17,18 +17,18 @@ import gen_image_header_vectors as gen  # noqa: E402
 import image_header as ih  # noqa: E402
 
 BOOT_DIRECTORIES = ("src/mcu_stm32g474/boot", "src/mcu_stm32h745/CM4/boot", "src/mcu_stm32h745/CM7/boot")
-SHARED_HEADERS = ("image_header.h", "update_verify.h")
+SHARED_HEADERS = ("image_header.h", "update_verify.h", "update_signature.h", "update_signature.c", "tweetnacl.c", "tweetnacl.h")
 
 
 def _blob(version, seed):
-    header, image, tag = gen.signed(version, seed)
-    return header.pack() + image + tag, tag
+    header, image, signature, digest = gen.signed(version, seed)
+    return header.pack() + image + signature, digest
 
 
 def _verify(blob, installed, **over):
     args = dict(hw_id=gen.HW_ID, link_address=gen.LINK, installed_version=installed, ram_range=(gen.RAM_LO, gen.RAM_HI))
     args.update(over)
-    return ih.verify_image(blob, gen.KEY, **args)
+    return ih.verify_image(blob, gen.PUBLIC, **args)
 
 
 class VectorTests(unittest.TestCase):
@@ -43,13 +43,13 @@ class VectorTests(unittest.TestCase):
             _verify(blob, gen.VERSION_A)
 
     def test_image_b_is_older_and_needs_the_token(self):
-        blob, tag = _blob(gen.VERSION_B, 11)
+        blob, digest = _blob(gen.VERSION_B, 11)
         with self.assertRaisesRegex(ih.ImageError, "anti-rollback"):
             _verify(blob, gen.INSTALLED)
-        token = ih.downgrade_token(gen.KEY, gen.NONCE, gen.INSTALLED, gen.VERSION_B, tag)
+        token = ih.downgrade_token(gen.SEED, gen.NONCE, gen.INSTALLED, gen.VERSION_B, digest)
         self.assertEqual(_verify(blob, gen.INSTALLED, nonce=gen.NONCE, token=token).version, gen.VERSION_B)
-        # the token is for this image: the tag of image A does not make one that opens B
-        other = ih.downgrade_token(gen.KEY, gen.NONCE, gen.INSTALLED, gen.VERSION_B, _blob(gen.VERSION_A, 7)[1])
+        # the token is for this image: the digest of image A does not make one that opens B
+        other = ih.downgrade_token(gen.SEED, gen.NONCE, gen.INSTALLED, gen.VERSION_B, _blob(gen.VERSION_A, 7)[1])
         with self.assertRaises(ih.ImageError):
             _verify(blob, gen.INSTALLED, nonce=gen.NONCE, token=other)
 
@@ -58,6 +58,18 @@ class VectorTests(unittest.TestCase):
             reference = (ROOT / BOOT_DIRECTORIES[0] / name).read_bytes().replace(b"\r\n", b"\n")
             for directory in BOOT_DIRECTORIES[1:]:
                 self.assertEqual((ROOT / directory / name).read_bytes().replace(b"\r\n", b"\n"), reference, f"{directory}/{name} differs from {BOOT_DIRECTORIES[0]}/{name}")
+
+
+class DevelopmentKeyTests(unittest.TestCase):
+    def test_the_development_public_keys_in_the_bootloaders_are_those_of_the_published_seeds(self):
+        import ed25519_ref
+
+        for name, directory in (("G401", BOOT_DIRECTORIES[0]), ("H7C4", BOOT_DIRECTORIES[1]), ("H7C7", BOOT_DIRECTORIES[2])):
+            text = (ROOT / directory / "bootloader_crypto.c").read_text(encoding="utf-8")
+            start = text.index("const uint8_t UPDATE_PUBLIC_KEY[32] = {\n") + len("const uint8_t UPDATE_PUBLIC_KEY[32] = {\n")
+            body = text[start:text.index("};", start)]
+            key = bytes(int(token, 16) for token in body.replace("\n", " ").replace(",", " ").split())
+            self.assertEqual(key, ed25519_ref.public_key(ih.DEV_SEEDS[name]), f"{directory}: the development key is not the one of the {name} seed")
 
 
 if __name__ == "__main__":

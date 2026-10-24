@@ -44,6 +44,9 @@ class ConfirmHealthyTests(unittest.TestCase):
         self.assertFalse(confirm_healthy(transport, SPI_TARGET_STACKA, 0))
 
 
+SIGNATURE = bytes(range(64))  # any 64 bytes: the fake transport does not check it (test_signed_flash.py checks real ones against the reference)
+
+
 class SpiOtaFlasherTests(unittest.TestCase):
     def test_a_full_flash_cycle_ends_in_done(self):
         transport = FakeBootloaderTransport()
@@ -51,14 +54,14 @@ class SpiOtaFlasherTests(unittest.TestCase):
         firmware = bytes(range(256)) * 8  # 2048 bytes - exactly one page
         phases = [
             progress.phase
-            for progress in flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, firmware, version_major=0, version_minor=2)
+            for progress in flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, firmware, version_major=0, version_minor=2, signature=SIGNATURE)
         ]
         self.assertEqual(phases, ["entering_bootloader", "transferring", "verifying", "done"])
 
     def test_the_real_enter_bootloader_magic_payload_is_sent_first(self):
         transport = FakeBootloaderTransport()
         flasher = SpiOtaFlasher(transport, hmac_key=b"\x00" * 32)
-        list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, b"\x00" * 2048, 0, 1))
+        list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, b"\x00" * 2048, 0, 1, signature=SIGNATURE))
         first_frame = transport.sent_frames[0]
         self.assertEqual(first_frame.frame_type, 0x00)  # OFS_ENTER_BOOTLOADER
         self.assertEqual(first_frame.payload, bytes((0xB0, 0x07, 0x1D, 0x5A)))
@@ -69,7 +72,7 @@ class SpiOtaFlasherTests(unittest.TestCase):
         transport = FakeBootloaderTransport()
         flasher = SpiOtaFlasher(transport, hmac_key=b"\x00" * 32)
         firmware = b"\xAB" * 2048
-        list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, firmware, 1, 2))
+        list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, firmware, 1, 2, signature=SIGNATURE))
         end_update_frames = [f for f in transport.sent_frames if f.frame_type == 0x04]  # OFS_END_UPDATE
         self.assertEqual(len(end_update_frames), 1)
         import struct
@@ -94,21 +97,27 @@ class SpiOtaFlasherTests(unittest.TestCase):
         expected = hmac_module.new(key, firmware, hashlib.sha256).digest()
         self.assertEqual(reassembled, expected)
 
-    def test_a_hydra_board_gets_a_tag_over_its_header_and_the_image(self):
-        import hashlib
-        import hmac as hmac_module
+    def test_a_hydra_board_gets_the_header_and_the_signature_it_was_given_in_eight_frames(self):
         import struct
 
-        key = b"\x11" * 32
         transport = FakeBootloaderTransport()
-        flasher = SpiOtaFlasher(transport, hmac_key=key)
+        flasher = SpiOtaFlasher(transport, hmac_key=b"\x11" * 32)
         firmware = b"\xCD" * 2048
-        list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, firmware, 0, 1, version_patch=4))
-        tag = b"".join(f.payload for f in transport.sent_frames if f.frame_type == 0x07)
+        list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, firmware, 0, 1, version_patch=4, signature=SIGNATURE))
+        signature_frames = [f for f in transport.sent_frames if f.frame_type == 0x07]
         header = b"".join(f.payload for f in transport.sent_frames if f.frame_type == 0x19)  # OFS_IMAGE_HEADER
         self.assertEqual(len(header), 64)
-        self.assertEqual(tag, hmac_module.new(key, header + firmware, hashlib.sha256).digest())
+        self.assertEqual(len(signature_frames), 8)
+        self.assertEqual(b"".join(f.payload for f in signature_frames), SIGNATURE)
         self.assertEqual(struct.unpack_from("<HHH", header, 12), (0, 1, 4))
+
+    def test_the_hmac_key_never_signs_an_image_for_a_hydra_board(self):
+        transport = FakeBootloaderTransport()
+        flasher = SpiOtaFlasher(transport, hmac_key=b"\x11" * 32)
+        progress = list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, b"\xCD" * 2048, 0, 1))
+        self.assertEqual(progress[-1].phase, "error")
+        self.assertIn("signature", progress[-1].error)
+        self.assertFalse(transport.sent_frames, "nothing was sent: the key of the URTC bootloaders is not a signing key")
 
     def test_a_page_ack_that_never_arrives_reports_error_not_an_infinite_hang(self):
         transport = FakeBootloaderTransport()

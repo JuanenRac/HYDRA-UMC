@@ -11,8 +11,11 @@ HTTP" pattern SERVER already uses for Voice UI/Datalake
 Real routes:
   GET  /version?tier=&slot=&relay=   -> query_version()
   GET  /counters?tier=&slot=&relay=  -> query_error_counters(): the transmit and receive error counters of the CAN controller of a board
-  POST /flash?tier=&slot=&hardware_id=&relay=&version_major=&version_minor=[&version_patch=][&downgrade_from=x.y.z] -> SpiOtaFlasher.flash(),
-                                        streamed as newline-delimited JSON
+  POST /flash?tier=&slot=&hardware_id=&relay=&version_major=&version_minor=[&version_patch=][&downgrade_from=x.y.z][&signature=HEX] -> SpiOtaFlasher.flash(),
+                                        streamed as newline-delimited JSON. The HYDRA-UMC bootloaders verify an Ed25519 signature of the image
+                                        (128 hexadecimal digits in `signature`, made with tools/image_header.py sign on the machine that holds the
+                                        private seed): this service holds no signing key. A downgrade needs a signer of the token of the session,
+                                        which only a deployment that provides one (serve(downgrade_signer=...)) has.
 
 `tier`/`slot` always identify the directly-reachable Tier 0/1 target (the
 one `transport` was already opened against). `relay=1` additionally tunnels
@@ -40,6 +43,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from .bootloader_client import SpiOtaFlasher, query_error_counters, query_version
+from .image_header import DowngradeSigner, ImageSigner, SIGNATURE_SIZE, is_signed_header_target
 from .relay_tunnel import RelayedTransport
 from .transport import SpiOtaTransport
 
@@ -57,7 +61,14 @@ VALID_TIERS = (0, 1, 2)
 VALID_SLOTS = range(0, 8)
 
 
-def make_handler(transport: SpiOtaTransport, hmac_key: bytes, bus_lock: threading.Lock | None = None) -> type[BaseHTTPRequestHandler]:
+def make_handler(
+    transport: SpiOtaTransport,
+    hmac_key: bytes,
+    bus_lock: threading.Lock | None = None,
+    *,
+    image_signer: ImageSigner | None = None,
+    downgrade_signer: DowngradeSigner | None = None,
+) -> type[BaseHTTPRequestHandler]:
     """Builds a request handler bound to one already-open transport - kept
     as a factory (not a module-level handler) so tests can inject a fake
     transport without a real SPI/GPIO link."""
@@ -131,17 +142,29 @@ def make_handler(transport: SpiOtaTransport, hmac_key: bytes, bus_lock: threadin
                 downgrade_from = tuple(int(part) for part in installed.split(".")) if installed else None
                 if downgrade_from is not None and len(downgrade_from) != 3:
                     raise ValueError("downgrade_from must be major.minor.patch")
+                signature_hex = params.get("signature", [""])[0]
+                signature = bytes.fromhex(signature_hex) if signature_hex else None
+                if signature is not None and len(signature) != SIGNATURE_SIZE:
+                    raise ValueError("signature must be 128 hexadecimal digits")
             except KeyError:
                 # Without the version of the image the board would compare it as 0.0 and
                 # refuse it as a rollback only AFTER the whole transfer.
                 self._send_json(400, {"error": "version_major and version_minor are required"})
                 return
             except ValueError:
-                self._send_json(400, {"error": "tier/slot/hardware_id/version_major/version_minor/version_patch must be integers and downgrade_from major.minor.patch"})
+                self._send_json(400, {"error": "tier/slot/hardware_id/version_major/version_minor/version_patch must be integers, downgrade_from major.minor.patch and signature 128 hexadecimal digits"})
                 return
             if tier not in VALID_TIERS or slot not in VALID_SLOTS:
                 self._send_json(400, {"error": "tier must be 0, 1 or 2 and slot 0-7"})
                 return
+            if is_signed_header_target(hardware_id):
+                # Said before the body is read and before the bootloader is touched: nothing the board would refuse after the whole transfer.
+                if signature is None and image_signer is None:
+                    self._send_json(400, {"error": "a HYDRA-UMC board needs the Ed25519 signature of the image (signature=...): this service holds no signing key"})
+                    return
+                if downgrade_from is not None and downgrade_signer is None:
+                    self._send_json(400, {"error": "a downgrade of a HYDRA-UMC board needs a signer for the token of the session, which this service does not have"})
+                    return
 
             try:
                 content_length = int(self.headers.get("Content-Length", "0"))
@@ -164,11 +187,12 @@ def make_handler(transport: SpiOtaTransport, hmac_key: bytes, bus_lock: threadin
                 self.send_header("Content-Type", "application/x-ndjson")
                 self.end_headers()
                 effective_transport = RelayedTransport(transport, tier, slot) if params.get("relay", ["0"])[0] == "1" else transport
-                flasher = SpiOtaFlasher(effective_transport, hmac_key)
+                flasher = SpiOtaFlasher(effective_transport, hmac_key, image_signer=image_signer, downgrade_signer=downgrade_signer)
                 try:
                     for progress in flasher.flash(
                         tier, slot, hardware_id, firmware, version_major, version_minor,
                         version_patch=version_patch, allow_downgrade=downgrade_from is not None, downgrade_from=downgrade_from,
+                        signature=signature,
                     ):
                         self._write_progress(progress.phase, progress.pages_sent, progress.pages_total, progress.percent, progress.error)
                 except (OSError, ValueError) as error:
@@ -210,10 +234,14 @@ def serve(
     host: str = "127.0.0.1",
     port: int = 8765,
     bus_lock: threading.Lock | None = None,
+    *,
+    image_signer: ImageSigner | None = None,
+    downgrade_signer: DowngradeSigner | None = None,
 ) -> ThreadingHTTPServer:
     """Starts the real local HTTP service. Caller owns the returned server's
     lifecycle (serve_forever()/shutdown()). Pass the same `bus_lock` to
-    anything else that talks to the link (the counter publisher)."""
+    anything else that talks to the link (the counter publisher). The signers are for a deployment that keeps the
+    private seed behind some other process; without them every HYDRA-UMC update must arrive already signed."""
 
-    handler = make_handler(transport, hmac_key, bus_lock)
+    handler = make_handler(transport, hmac_key, bus_lock, image_signer=image_signer, downgrade_signer=downgrade_signer)
     return ThreadingHTTPServer((host, port), handler)

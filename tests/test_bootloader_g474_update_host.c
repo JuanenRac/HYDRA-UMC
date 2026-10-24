@@ -10,7 +10,8 @@
  *  - the signed header and the anti-rollback rule, end to end: an update over the installed version, the old flaws (a replayed image that
  *    claims a higher version, 0.1.8 -> 0.1.2 that only compared major.minor) and the downgrade that needs a token;
  *  - the downgrade token: bound to this session's nonce, to the pair of versions and to the image; the old constant-magic frame does nothing;
- *  - the tag over header || image, with the key of the bootloader, against bytes the host reference (tools/image_header.py) made;
+ *  - the Ed25519 signature over the digest of header || image, under the public key of the bootloader, against bytes the host reference
+ *    (tools/image_header.py) made, and signatures this test makes itself with the vendored TweetNaCl and the (published) seed of the vectors;
  *  - everything that must leave the main slot and the installed metadata untouched when an update is refused.
  *
  * Needs Linux on x86-64 (a fixed mapping at the flash address); anywhere else it reports that and passes.
@@ -25,12 +26,14 @@
 
 #include "image_header_vectors.h"
 
-/* The key of these tests is the one of the vectors, so the reference's tag verifies under the bootloader's own key. */
-#define HYDRA_FW_HMAC_KEY_BYTES \
-    0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F, \
-    0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F
+/* The update public key of these tests is the one of the vectors (the public half of the made-up, published seed), so the signatures the
+ * reference made verify under the bootloader's own key. test_the_key_of_the_bootloader_is_the_one_of_the_vectors checks it. */
+#define HYDRA_FW_UPDATE_PUBKEY_BYTES \
+    0x25, 0x43, 0xB9, 0x2F, 0xF1, 0x09, 0x55, 0x11, 0x47, 0x6A, 0xDC, 0x83, 0x69, 0xDB, 0x6D, 0xDC, \
+    0x93, 0x36, 0x65, 0xA1, 0x19, 0x78, 0xDD, 0xA1, 0x40, 0x4E, 0xE1, 0x06, 0x6C, 0xA9, 0x55, 0x9D
 
 #include "stm32g4xx_hal.h"
+#include "tweetnacl.h"
 
 #ifndef MAP_FIXED_NOREPLACE
 #define MAP_FIXED_NOREPLACE 0x100000
@@ -150,11 +153,12 @@ typedef struct {
     uint8_t  header[IMAGE_HEADER_SIZE];
     uint8_t *image;
     uint32_t size;
-    uint8_t  tag[IMAGE_TAG_SIZE];
-    uint8_t  token[IMAGE_TAG_SIZE];
-    int      token_chunks;      /* how many of the four to send */
+    uint8_t  digest[IMAGE_DIGEST_SIZE];
+    uint8_t  signature[IMAGE_SIGNATURE_SIZE];
+    uint8_t  token[IMAGE_SIGNATURE_SIZE];
+    int      token_chunks;      /* how many of the eight to send */
     int      header_chunks;     /* how many of the eight to send */
-    int      tag_chunks;        /* how many of the four to send */
+    int      signature_chunks;  /* how many of the eight to send */
     uint32_t declared_crc;
     uint16_t declared_major, declared_minor;
 } Update;
@@ -179,11 +183,26 @@ static void build_header(uint8_t header[IMAGE_HEADER_SIZE], uint32_t hw_id, Imag
     put_le32(header + 36, crc);
 }
 
-/* The tag of header || image under the key of the bootloader, with the routine under test. */
+/* Signs with the seed of the vectors (the private half of the key the bootloader of this test carries). Only a test can: the board cannot. */
+static void sign_message(const uint8_t *message, size_t length, uint8_t signature[IMAGE_SIGNATURE_SIZE])
+{
+    uint8_t secret[64];
+    uint8_t signed_message[IMAGE_SIGNATURE_SIZE + UPDATE_SIGNATURE_MAX_MESSAGE];
+    unsigned long long signed_length = 0;
+    memcpy(secret, VEC_SEED, 32);
+    memcpy(secret + 32, VEC_PUBLIC_KEY, 32);
+    crypto_sign(signed_message, &signed_length, message, length, secret);
+    memcpy(signature, signed_message, IMAGE_SIGNATURE_SIZE);
+}
+
+/* The digest of header || image with the routine under test, and the signature over the image message made from it. */
 static void sign(Update *u)
 {
     memcpy(flash_mem + (SCRATCH_ADDR - FLASH_BASE_ADDR), u->image, u->size);
-    hmac_sha256_prefixed_flash_region(HMAC_KEY, 32, u->header, IMAGE_HEADER_SIZE, SCRATCH_ADDR, u->size, u->tag);
+    sha256_prefixed_flash_region(u->header, IMAGE_HEADER_SIZE, SCRATCH_ADDR, u->size, u->digest);
+    uint8_t message[IMAGE_MESSAGE_LEN];
+    ImageHeader_SignatureMessage(u->digest, message);
+    sign_message(message, sizeof(message), u->signature);
 }
 
 /* A consistent update: an image whose first two words are the vectors the header declares, signed. */
@@ -202,7 +221,7 @@ static Update make_update(ImageVersion_t version, uint32_t seed, uint32_t size)
     sign(&u);
     u.token_chunks = 0;
     u.header_chunks = 8;
-    u.tag_chunks = 4;
+    u.signature_chunks = 8;
     u.declared_major = version.major;
     u.declared_minor = version.minor;
     return u;
@@ -303,7 +322,7 @@ static void start(const Update *u)
 /* Everything between START_UPDATE and END_UPDATE; `after_start` lets a test compute a token for the nonce it was told. */
 static void send_body(Update *u)
 {
-    for (int i = 0; i < u->tag_chunks; i++) HandleHmacChunk(u->tag + 8 * i);
+    for (int i = 0; i < u->signature_chunks; i++) HandleHmacChunk(u->signature + 8 * i);
     for (int i = 0; i < u->header_chunks; i++) HandleImageHeaderChunk(u->header + 8 * i);
     for (int i = 0; i < u->token_chunks; i++) HandleDowngradeTokenChunk(u->token + 8 * i);
     for (uint32_t at = 0; at < u->size; at += 8) {
@@ -329,9 +348,9 @@ static int run_update(Update *u, ImageVersion_t token_installed, ImageVersion_t 
         uint8_t nonce[IMAGE_NONCE_SIZE];
         if (!announced_nonce(nonce)) return -2;
         uint8_t message[DOWNGRADE_MESSAGE_LEN];
-        ImageHeader_DowngradeMessage(nonce, &token_installed, &token_target, u->tag, message);
-        hmac_sha256_buffer(HMAC_KEY, 32, message, sizeof(message), u->token);
-        u->token_chunks = 4;
+        ImageHeader_DowngradeMessage(nonce, &token_installed, &token_target, u->digest, message);
+        sign_message(message, sizeof(message), u->token);
+        u->token_chunks = 8;
     }
     send_body(u);
     finish(u);
@@ -351,18 +370,18 @@ static void test_the_reference_image_installs_over_the_installed_version(void)
     install(0, 2, 2);
     Update u;
     memset(&u, 0, sizeof(u));
-    /* the exact bytes the host reference made: header, image and tag of vectors image A */
+    /* the exact bytes the host reference made: header, image and signature of vectors image A */
     u.size = VEC_IMAGE_SIZE;
     u.image = (uint8_t *)VEC_IMAGE;
     memcpy(u.header, VEC_HEADER, sizeof(u.header));
-    memcpy(u.tag, VEC_TAG, sizeof(u.tag));
+    memcpy(u.signature, VEC_SIGNATURE, sizeof(u.signature));
     u.declared_crc = VEC_IMAGE_CRC32;
     u.declared_major = VEC_VERSION_MAJOR;
     u.declared_minor = VEC_VERSION_MINOR;
     u.header_chunks = 8;
-    u.tag_chunks = 4;
+    u.signature_chunks = 8;
     ImageVersion_t none = {0, 0, 0};
-    CHECK(run_update(&u, none, none, 0) == 0, "the tag the reference made is accepted by the bootloader");
+    CHECK(run_update(&u, none, none, 0) == 0, "the signature the reference made is accepted by the bootloader");
     CHECK(resets == 1, "the board resets into the new application");
     CHECK(main_slot_holds(&u), "the image is in the main slot");
     FirmwareMetadata_t m = metadata();
@@ -407,13 +426,13 @@ static void test_a_replayed_old_image_cannot_claim_a_higher_version(void)
     reset_world();
     install(0, 2, 2);
     Update u = make_update((ImageVersion_t){0, 1, 8}, 9, 512); /* a genuinely signed 0.1.8 */
-    /* the host changes the version inside the header and in END_UPDATE: the tag no longer matches the header */
+    /* the host changes the version inside the header and in END_UPDATE: the signature no longer matches the header */
     put_le16(u.header + 12, 0);
     put_le16(u.header + 14, 9);
     put_le16(u.header + 16, 9);
     u.declared_minor = 9;
     ImageVersion_t none = {0, 0, 0};
-    CHECK(run_update(&u, none, none, 0) == VERIFY_FAIL_REASON_HMAC, "the tag covers the version: changing it breaks the tag");
+    CHECK(run_update(&u, none, none, 0) == VERIFY_FAIL_REASON_HMAC, "the signature covers the version: changing it breaks the signature");
     CHECK(resets == 0 && main_slot_untouched(), "nothing was installed");
     CHECK(metadata().version_minor == 2 && metadata().version_patch == 2, "and the installed version is the one it was");
     free_update(&u);
@@ -499,22 +518,22 @@ static void test_a_downgrade_needs_the_token_and_only_the_right_one(void)
     uint8_t old_nonce[IMAGE_NONCE_SIZE];
     announced_nonce(old_nonce);
     uint8_t message[DOWNGRADE_MESSAGE_LEN];
-    ImageHeader_DowngradeMessage(old_nonce, &installed, &target, u.tag, message);
-    uint8_t recorded[32];
-    hmac_sha256_buffer(HMAC_KEY, 32, message, sizeof(message), recorded);
+    ImageHeader_DowngradeMessage(old_nonce, &installed, &target, u.digest, message);
+    uint8_t recorded[IMAGE_SIGNATURE_SIZE];
+    sign_message(message, sizeof(message), recorded);
     HandleEndUpdate((uint8_t[8]){0});   /* the first session ends without installing anything */
     reset_world();
     install(0, 2, 2);
     sent_count = 0;
     start(&u);                          /* a new session: a new nonce */
-    memcpy(u.token, recorded, 32);
-    u.token_chunks = 4;
+    memcpy(u.token, recorded, sizeof(recorded));
+    u.token_chunks = 8;
     send_body(&u);
     finish(&u);
     CHECK(last_verdict() == VERIFY_FAIL_REASON_ROLLBACK, "the token of an earlier session does not work in another");
     free_update(&u);
 
-    /* a token is for one image: made for the tag of image u, offered with another image of the same version in a session of its own */
+    /* a token is for one image: made for the digest of image u, offered with another image of the same version in a session of its own */
     reset_world();
     install(0, 2, 2);
     Update fresh = make_update(target, 11, 400);
@@ -522,9 +541,9 @@ static void test_a_downgrade_needs_the_token_and_only_the_right_one(void)
     uint8_t nonce[IMAGE_NONCE_SIZE];
     announced_nonce(nonce);
     u = make_update(target, 5, 400);
-    ImageHeader_DowngradeMessage(nonce, &installed, &target, u.tag, message);
-    hmac_sha256_buffer(HMAC_KEY, 32, message, sizeof(message), fresh.token);
-    fresh.token_chunks = 4;
+    ImageHeader_DowngradeMessage(nonce, &installed, &target, u.digest, message);
+    sign_message(message, sizeof(message), fresh.token);
+    fresh.token_chunks = 8;
     send_body(&fresh);
     finish(&fresh);
     CHECK(last_verdict() == VERIFY_FAIL_REASON_ROLLBACK, "a token made for another image of the same version does not open this one");
@@ -563,8 +582,8 @@ static void test_an_update_that_did_not_arrive_whole_is_refused(void)
     reset_world();
     install(0, 2, 2);
     u = make_update((ImageVersion_t){0, 2, 3}, 5, 512);
-    u.tag_chunks = 3;
-    CHECK(run_update(&u, none, none, 0) == VERIFY_FAIL_REASON_INCOMPLETE, "three of four tag chunks");
+    u.signature_chunks = 7;
+    CHECK(run_update(&u, none, none, 0) == VERIFY_FAIL_REASON_INCOMPLETE, "seven of eight signature chunks");
     free_update(&u);
 
     reset_world();
@@ -627,17 +646,42 @@ static void test_what_the_header_says_must_be_true_of_what_arrived(void)
     CHECK(run_update(&u, none, none, 0) == VERIFY_FAIL_REASON_CRC32, "a wrong CRC");
     free_update(&u);
 
-    /* a tag made with another key */
+    /* a signature that is not the key's */
     reset_world(); install(0, 2, 2);
     u = make_update(v, 5, 512);
-    u.tag[0] ^= 1;
-    CHECK(run_update(&u, none, none, 0) == VERIFY_FAIL_REASON_HMAC, "a tag that is not the key's");
+    u.signature[0] ^= 1;
+    CHECK(run_update(&u, none, none, 0) == VERIFY_FAIL_REASON_SIGNATURE, "a signature that is not the key's");
+    free_update(&u);
+
+    /* the four chunks an HMAC took are not a signature: the old format is not accepted */
+    reset_world(); install(0, 2, 2);
+    u = make_update(v, 5, 512);
+    u.signature_chunks = 4;
+    CHECK(run_update(&u, none, none, 0) == VERIFY_FAIL_REASON_INCOMPLETE, "an HMAC of four chunks");
+    free_update(&u);
+
+    /* a perfectly signed image that someone else's key signed */
+    reset_world(); install(0, 2, 2);
+    u = make_update(v, 5, 512);
+    {
+        /* the seed 0x90..0xAF and its public key, made by the host reference */
+        static const uint8_t other_public[32] = {0xD2, 0xEB, 0x99, 0x3B, 0x63, 0x14, 0x35, 0x28, 0xE7, 0x0D, 0xCD, 0xC7, 0xEB, 0x9C, 0xA2, 0x10,
+                                                 0x10, 0xDD, 0x76, 0x9B, 0xE9, 0x52, 0x50, 0xC2, 0xC5, 0xBA, 0xBF, 0xAD, 0x15, 0xD4, 0x58, 0xE2};
+        uint8_t other_secret[64], signed_message[IMAGE_SIGNATURE_SIZE + IMAGE_MESSAGE_LEN], message[IMAGE_MESSAGE_LEN];
+        unsigned long long length = 0;
+        for (int i = 0; i < 32; i++) other_secret[i] = (uint8_t)(0x90 + i);
+        memcpy(other_secret + 32, other_public, 32);
+        ImageHeader_SignatureMessage(u.digest, message);
+        crypto_sign(signed_message, &length, message, sizeof(message), other_secret);
+        memcpy(u.signature, signed_message, IMAGE_SIGNATURE_SIZE);
+    }
+    CHECK(run_update(&u, none, none, 0) == VERIFY_FAIL_REASON_SIGNATURE, "a well formed signature of somebody else's key");
     free_update(&u);
 }
 
-static void test_a_flash_that_changed_after_the_transfer_breaks_the_tag(void)
+static void test_a_flash_that_changed_after_the_transfer_breaks_the_signature(void)
 {
-    printf("  the image is read back from flash for the tag\n");
+    printf("  the image is read back from flash for the digest\n");
     ImageVersion_t none = {0, 0, 0};
     reset_world();
     install(0, 2, 2);
@@ -646,10 +690,16 @@ static void test_a_flash_that_changed_after_the_transfer_breaks_the_tag(void)
     send_body(&u);
     flash_mem[BACKUP_APP_ADDR - FLASH_BASE_ADDR + 300] ^= 0x04;   /* a bit that flipped in the backup slot */
     finish(&u);
-    CHECK(last_verdict() == VERIFY_FAIL_REASON_HMAC, "the tag is computed over what is in flash, not over what was sent");
+    CHECK(last_verdict() == VERIFY_FAIL_REASON_SIGNATURE, "the digest is computed over what is in flash, not over what was sent");
     CHECK(main_slot_untouched() && resets == 0, "and nothing is installed");
     (void)none;
     free_update(&u);
+}
+
+static void test_the_key_of_the_bootloader_is_the_one_of_the_vectors(void)
+{
+    printf("  the update public key of this build\n");
+    CHECK(memcmp(UPDATE_PUBLIC_KEY, VEC_PUBLIC_KEY, 32) == 0, "the test build carries the public key of the published test seed");
 }
 
 static void test_an_update_over_nothing_installed(void)
@@ -681,7 +731,8 @@ int main(void)
     test_the_old_constant_frame_no_longer_allows_a_downgrade();
     test_an_update_that_did_not_arrive_whole_is_refused();
     test_what_the_header_says_must_be_true_of_what_arrived();
-    test_a_flash_that_changed_after_the_transfer_breaks_the_tag();
+    test_the_key_of_the_bootloader_is_the_one_of_the_vectors();
+    test_a_flash_that_changed_after_the_transfer_breaks_the_signature();
     test_an_update_over_nothing_installed();
 
     if (failures) {

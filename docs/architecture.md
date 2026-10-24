@@ -158,7 +158,7 @@ section 5 below:
 | +0x04  | END_UPDATE (CRC32 + version)          | 0x7F4 |
 | +0x05  | STATUS (incl. verify-fail reason)     | 0x7F5 |
 | +0x06  | HEARTBEAT (status + % progress)       | 0x7F6 |
-| +0x07  | HMAC_CHUNK (x4, 32 bytes total)       | 0x7F7 |
+| +0x07  | HMAC_CHUNK (x4 HMAC for URTC boards; x8 = 64-byte Ed25519 signature for HYDRA-UMC) | 0x7F7 |
 | +0x08  | VERSION_QUERY                         | 0x7F8 |
 | +0x09  | VERSION_RESPONSE (app/bootloader)     | 0x7F9 |
 | +0x0A  | BOOTLOADER_VERSION (bootloader-only)  | 0x7FA |
@@ -182,12 +182,17 @@ section 5 below:
 | +0x1C  | DOWNGRADE_NONCE_RESPONSE (bootloader, DLC 8: the half that was asked for) | *(new)* |
 | +0x1D..+0x1F | Reserved for future Robot Controller Board features | |
 
-**Signed update (HYDRA-UMC bootloaders).** START_UPDATE, the four HMAC_CHUNK frames, the eight IMAGE_HEADER frames, the optional
-DOWNGRADE_TOKEN frames, DATA and END_UPDATE. The tag is the HMAC-SHA256 of the 64-byte header followed by the image; the version of
+**Signed update (HYDRA-UMC bootloaders).** START_UPDATE, the eight HMAC_CHUNK frames (the frame kept its name; they carry the 64-byte
+Ed25519 signature), the eight IMAGE_HEADER frames, the optional eight DOWNGRADE_TOKEN frames, DATA and END_UPDATE. The signature is made
+over "hydra-umc-image-sig\0" + SHA-256(the 64-byte header followed by the image) with the private key of the owner; the board holds only
+the public key (`UPDATE_PUBLIC_KEY`, `bootloader_crypto.c`) and hashes the image out of its flash while it arrives. The version of
 END_UPDATE must be the header's. The bootloader checks, in this order and stopping at the first failure: everything arrived, the CRC, the
-tag, the header against what it knows of itself (hardware id, link address, size, CRC, vector words, RAM) and the rule that the image is
-strictly newer than the installed one by major.minor.patch. An older image needs a token: HMAC-SHA256 of "hydra-umc-downgrade\0" + the nonce
-of the session + the installed and the new version (three little-endian 16-bit numbers each) + the tag of the image. The reasons the host
+signature, the header against what it knows of itself (hardware id, link address, size, CRC, vector words, RAM) and the rule that the image
+is strictly newer than the installed one by major.minor.patch. An older image needs a token, a second Ed25519 signature, over
+"hydra-umc-downgrade\0" + the nonce of the session + the installed and the new version (three little-endian 16-bit numbers each) + the
+SHA-256 digest of the image. The Ed25519 arithmetic is the vendored TweetNaCl (public domain); a verification takes a few hundred
+milliseconds at the clock of the bootloaders and refreshes the watchdog while it runs. The CM5 holds no signing key: a flash arrives with
+the signature already made (`python tools/image_header.py sign`), or with a signer the deployment provides. The reasons the host
 is told are the VERIFY_FAIL_REASON_* codes, with 0x06 for a header that is missing, not ours or untrue. The byte layout is in
 tools/image_header.py and src/*/boot/image_header.h; the same SPI-OTA frame types reach the two H745 cores.
 
@@ -317,8 +322,10 @@ stay visible before this project reaches real hardware.
 - **No Read-Out Protection (RDP) on any of the 3 chips.** Without it,
   physical SWD access to any ONE board exposes `HMAC_KEY`
   (`bootloader_crypto.h`), which is shared across every board of that
-  same type - compromising one Robot Controller Board's key compromises
-  the signing trust for all 8. Writing RDP option bytes wrong is a
+  same type. That key is only the local integrity check of the installed
+  application: what decides whether an update is accepted is an Ed25519
+  signature checked with a PUBLIC key, so reading a board no longer
+  gives anybody the power to sign an update. Writing RDP option bytes wrong is a
   real, irreversible bricking risk on hardware that doesn't exist to test
   against yet (the same reasoning URTC's own bootloader has already
   applied to defer this - see that project's own notes on RDP2 being a
@@ -332,13 +339,11 @@ stay visible before this project reaches real hardware.
   since the protocol has to be documented for the Flasher/Tester tooling
   to implement it). Any node on the relevant bus can authorize a
   downgrade to an older-but-still-validly-signed image - this doesn't
-  let an attacker install unsigned firmware (HMAC verification still
-  gates that), but it does mean the anti-rollback protection itself has
-  no real access control. A per-device value derived from `HMAC_KEY`
-  would close this, but that requires updating the host-side (Flasher/
-  HYDRA-UMC-STUDIO) protocol implementation in lockstep with all 3
-  bootloaders - a coordinated change deliberately deferred rather than
-  done partially.
+  let an attacker install unsigned firmware (the Ed25519 signature
+  still gates that), but it does mean the anti-rollback protection itself
+  has no real access control. (Superseded: this frame is now ignored and a
+  downgrade needs the signed token of `OFS_DOWNGRADE_TOKEN`, bound to the
+  session, the two versions and the image.)
 - **`HandleReadbackStart` (readback of the currently-installed firmware)
   has no authentication on any of the 3 bootloaders.** Any bus node can
   read back the full installed application - this is a confidentiality
@@ -347,15 +352,18 @@ stay visible before this project reaches real hardware.
   coordinated host+firmware change" reasoning as the anti-rollback bypass
   above applies to fixing this properly.
 
-- **The signing key a bootloader carries is chosen by the build.** A real
-  build passes `HYDRA_FW_HMAC_KEY_HEX` (64 hexadecimal digits, kept outside
-  the repository and held by the tools that sign update images) to
-  `build_firmware.sh`, which hands it to the three bootloaders at compile time.
-  Without it a bench build carries a **development key that is published in
-  this repository**: any image signed with it is accepted by such a board, so
-  it authenticates nothing; the script says so and refuses it altogether when
-  `HYDRA_UMC_RELEASE=1`. The single key per board type and the missing RDP
-  above still apply.
+- **The public key a bootloader carries is chosen by the build.** A real
+  build passes `HYDRA_FW_UPDATE_PUBKEY_HEX` (64 hexadecimal digits: the
+  Ed25519 public key made by `python tools/image_header.py pubkey`; the
+  private seed stays with the owner, never on a board and never on a shared
+  machine) to `build_firmware.sh`, which hands it to the three bootloaders at
+  compile time. Without it a bench build carries a **development public key
+  whose seed is published in this repository**: anybody can sign an image
+  such a board accepts, so it authenticates nothing; the script says so and
+  refuses it altogether when `HYDRA_UMC_RELEASE=1` (which also needs
+  `HYDRA_FW_HMAC_KEY_HEX`, the local integrity key). One public key is
+  carried by the three bootloaders of a build; rotating it means a new
+  bootloader image.
 - **A board that is not confirmed healthy is not parked by power cycles.**
   The bootloader counts the starts of an application that ended in a
   *watchdog* reset (a hang, a fault handler that spins) and stops jumping to it
@@ -374,6 +382,5 @@ None of these 3 items are memory-safety bugs (those - unbounded reads in
 between CM4 and CM7, a semaphore leak in the CM7 readback pacing loop,
 and a missing bounds check in `Relay_ToStackA` - were real bugs, already
 fixed). These 3 are access-control gaps in the protocol's own design,
-left as explicitly accepted risk until real hardware and a coordinated
-host-side update make the proper fix (per-device secrets derived from
-`HMAC_KEY`, ideally with real RDP) practical to implement and verify.
+left as explicitly accepted risk until real hardware makes the proper fix
+(real RDP, a per-device identity) practical to implement and verify.

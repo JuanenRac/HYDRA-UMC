@@ -210,16 +210,23 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
-    # The bootloaders' own HMAC-SHA256, CRC32 and flash erase/program/copy/metadata
+    # The bootloaders' own SHA-256, HMAC-SHA256, Ed25519 check, CRC32 and flash erase/program/copy/metadata
     # routines, compiled as they are against a stand-in HAL header (tests/stubs):
     # the G474 one by bank and page, the two H745 ones by 128 KB sector. They map
     # the flash address range, so they run on Linux x86-64 and say so elsewhere.
+    # The vendored TweetNaCl (the curve arithmetic of the Ed25519 check) is compiled on its own with its warnings off: it is third-party text
+    # that is not edited for style. update_signature.c is the bootloader's own wrapper and is compiled with the test.
+    TWEETNACL_HOST_OBJ="$ROOT/build/host_tests_tweetnacl.o"
+    if ! "$HOST_CC" -std=gnu11 -w -c "$ROOT/src/mcu_stm32g474/boot/tweetnacl.c" -o "$TWEETNACL_HOST_OBJ"; then
+        fail "the vendored TweetNaCl does not compile on the host"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
     BOOTLOADER_G474_HOST_BIN="$ROOT/build/host_tests_bootloader_g474"
-    if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -I"$ROOT/tests/stubs" -I"$ROOT/src/mcu_stm32g474/boot" -I"$ROOT/tests" -o "$BOOTLOADER_G474_HOST_BIN" "$ROOT/tests/test_bootloader_g474_host.c" && "$BOOTLOADER_G474_HOST_BIN" >/dev/null; then
-        pass "G474 bootloader HMAC, CRC32 and flash host logic tests passed"
+    if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -I"$ROOT/tests/stubs" -I"$ROOT/src/mcu_stm32g474/boot" -I"$ROOT/tests" -o "$BOOTLOADER_G474_HOST_BIN" "$ROOT/tests/test_bootloader_g474_host.c" "$TWEETNACL_HOST_OBJ" "$ROOT/src/mcu_stm32g474/boot/update_signature.c" && "$BOOTLOADER_G474_HOST_BIN" >/dev/null; then
+        pass "G474 bootloader SHA-256, HMAC, Ed25519, CRC32 and flash host logic tests passed"
     else
         "$BOOTLOADER_G474_HOST_BIN" || true
-        fail "G474 bootloader HMAC, CRC32 and flash host logic tests FAILED"
+        fail "G474 bootloader SHA-256, HMAC, Ed25519, CRC32 and flash host logic tests FAILED"
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
     for H745_CORE in CM4 CM7; do
@@ -253,7 +260,7 @@ else
     # The two H745 cores carry the same glue (tests/test_update_glue_parity.py keeps the three copies identical); their protocol sources are
     # only syntax-checked here, against tests/stubs/h7protocol.
     BOOTLOADER_G474_UPDATE_BIN="$ROOT/build/host_tests_bootloader_g474_update"
-    if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -I"$ROOT/tests/stubs/protocol" -I"$ROOT/src/mcu_stm32g474" -I"$ROOT/src/mcu_stm32g474/boot" -I"$ROOT/tests" -o "$BOOTLOADER_G474_UPDATE_BIN" "$ROOT/tests/test_bootloader_g474_update_host.c" && "$BOOTLOADER_G474_UPDATE_BIN" >/dev/null; then
+    if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -I"$ROOT/tests/stubs/protocol" -I"$ROOT/src/mcu_stm32g474" -I"$ROOT/src/mcu_stm32g474/boot" -I"$ROOT/tests" -o "$BOOTLOADER_G474_UPDATE_BIN" "$ROOT/tests/test_bootloader_g474_update_host.c" "$TWEETNACL_HOST_OBJ" "$ROOT/src/mcu_stm32g474/boot/update_signature.c" && "$BOOTLOADER_G474_UPDATE_BIN" >/dev/null; then
         pass "G474 bootloader whole-update host tests passed"
     else
         "$BOOTLOADER_G474_UPDATE_BIN" || true
@@ -449,15 +456,29 @@ fi
 # -----------------------------------------------------------------------
 step "4. Robot Controller Board - common compiler flags and shared HAL objects"
 # -----------------------------------------------------------------------
-# The key the bootloaders verify update images with. A real build gets it from HYDRA_FW_HMAC_KEY_HEX (64 hex digits, kept outside the repository, the same key the signing
-# tools hold); without it the bootloaders carry the DEVELOPMENT key that is published in this repository, which authenticates nothing, and HYDRA_UMC_RELEASE=1 refuses that.
+# The keys of the bootloaders. HYDRA_FW_UPDATE_PUBKEY_HEX (64 hex digits) is the Ed25519 PUBLIC key an update must be signed for: the board holds nothing that signs, and the
+# private seed stays with the owner (python tools/image_header.py keygen / pubkey). Without it the bootloaders carry a DEVELOPMENT public key whose private seed is
+# published in this repository, so anybody can sign an update for them, and HYDRA_UMC_RELEASE=1 refuses that. HYDRA_FW_HMAC_KEY_HEX (64 hex digits, kept outside the
+# repository) is the key of the local integrity check of the installed application; without it the published development key is used, which a release also refuses.
 HMAC_DEFS=""
+if [ -n "${HYDRA_FW_UPDATE_PUBKEY_HEX:-}" ]; then
+    if ! printf '%s' "$HYDRA_FW_UPDATE_PUBKEY_HEX" | grep -Eq '^[0-9A-Fa-f]{64}$'; then
+        fail "HYDRA_FW_UPDATE_PUBKEY_HEX must be exactly 64 hexadecimal digits"; exit 1
+    fi
+    PUBKEY_BYTES="$(printf '%s' "$HYDRA_FW_UPDATE_PUBKEY_HEX" | sed -E 's/(..)/0x\1,/g; s/,$//')"
+    HMAC_DEFS="-DHYDRA_FW_UPDATE_PUBKEY_BYTES=$PUBKEY_BYTES"
+    pass "bootloaders accept updates signed for the public key from HYDRA_FW_UPDATE_PUBKEY_HEX"
+elif [ "${HYDRA_UMC_RELEASE:-0}" = "1" ]; then
+    fail "HYDRA_UMC_RELEASE=1 needs HYDRA_FW_UPDATE_PUBKEY_HEX: the development signing seed is published in the repository"; exit 1
+else
+    warn "bootloaders accept updates signed with the DEVELOPMENT seed, which is public: do not put these images on a board that anybody else can reach"
+fi
 if [ -n "${HYDRA_FW_HMAC_KEY_HEX:-}" ]; then
     if ! printf '%s' "$HYDRA_FW_HMAC_KEY_HEX" | grep -Eq '^[0-9A-Fa-f]{64}$'; then
         fail "HYDRA_FW_HMAC_KEY_HEX must be exactly 64 hexadecimal digits"; exit 1
     fi
     KEY_BYTES="$(printf '%s' "$HYDRA_FW_HMAC_KEY_HEX" | sed -E 's/(..)/0x\1,/g; s/,$//')"
-    HMAC_DEFS="-DHYDRA_FW_HMAC_KEY_BYTES=$KEY_BYTES"
+    HMAC_DEFS="$HMAC_DEFS -DHYDRA_FW_HMAC_KEY_BYTES=$KEY_BYTES"
     pass "bootloaders are built with the release key from HYDRA_FW_HMAC_KEY_HEX"
 elif [ "${HYDRA_UMC_RELEASE:-0}" = "1" ]; then
     fail "HYDRA_UMC_RELEASE=1 needs HYDRA_FW_HMAC_KEY_HEX: the development key is published in the repository"; exit 1

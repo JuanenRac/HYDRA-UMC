@@ -23,6 +23,7 @@
 #include "bootloader_crypto.h"
 #include "bootloader_flash.h"
 #include "dlc_to_fdcan_data_length.h"
+#include "update_signature.h"
 #include "update_verify.h"
 
 // Classic-frame DLC (0-8) <-> FDCAN HAL's DataLength encoding: the HAL's
@@ -228,7 +229,7 @@ void JumpToApplication(void) {
 // -----------------------------------------------------------------------
 // Update flow - all writes during an update go to the BACKUP slot only.
 // The main slot is never touched until backup has fully passed size, CRC32,
-// HMAC-SHA256, and HardwareID verification. Identical state machine to
+// Ed25519 signature, and HardwareID verification. Identical state machine to
 // URTC's own - see that repo's bootloader_protocol.c for the original,
 // more heavily-commented version this was ported from.
 // -----------------------------------------------------------------------
@@ -236,12 +237,12 @@ uint32_t update_total_size = 0;
 static uint32_t update_declared_hw_id = 0;
 uint32_t update_bytes_received = 0;
 static uint32_t update_running_crc = 0xFFFFFFFFUL;
-static uint8_t  update_expected_hmac[32];
-static uint8_t  update_hmac_chunks_received = 0;
+static uint8_t  update_signature[IMAGE_SIGNATURE_SIZE];     // the Ed25519 signature of the image (eight OFS_HMAC_CHUNK frames)
+static uint8_t  update_signature_chunks_received = 0;
 static uint8_t  update_header[IMAGE_HEADER_SIZE];          // the signed header (eight OFS_IMAGE_HEADER frames)
 static uint8_t  update_header_chunks_received = 0;
 static uint8_t  update_nonce[IMAGE_NONCE_SIZE];            // announced to the host in this session; a downgrade token is bound to it
-static uint8_t  update_token[IMAGE_TAG_SIZE];              // the optional downgrade token (four OFS_DOWNGRADE_TOKEN frames)
+static uint8_t  update_token[IMAGE_SIGNATURE_SIZE];        // the optional downgrade token, a signature too (eight OFS_DOWNGRADE_TOKEN frames)
 static uint8_t  update_token_chunks_received = 0;
 static uint32_t update_session_counter = 0;
 static uint8_t  page_buffer[FLASH_PAGE_SIZE];
@@ -297,7 +298,7 @@ static void MakeSessionNonce(uint8_t nonce[IMAGE_NONCE_SIZE]) {
     Boot_SessionEntropy(material);
     update_session_counter++;
     memcpy(material + 16, &update_session_counter, 4);
-    hmac_sha256_buffer(HMAC_KEY, 32, material, sizeof(material), digest);
+    sha256_buffer(material, sizeof(material), digest);
     memcpy(nonce, digest, IMAGE_NONCE_SIZE);
 }
 
@@ -331,10 +332,11 @@ uint8_t HandleStartUpdate(uint8_t *data) {
     memset(page_buffer, 0xFF, sizeof(page_buffer));
     update_bytes_received = 0;
     update_running_crc = 0xFFFFFFFFUL;
-    update_hmac_chunks_received = 0;
+    update_signature_chunks_received = 0;
     update_header_chunks_received = 0;
     update_token_chunks_received = 0;
     memset(update_header, 0, sizeof(update_header));
+    memset(update_signature, 0, sizeof(update_signature));
     memset(update_token, 0, sizeof(update_token));
     page_buffer_fill = 0;
     current_page_index = 0;
@@ -347,8 +349,8 @@ uint8_t HandleStartUpdate(uint8_t *data) {
 }
 
 // The old flow let anybody on the bus switch the anti-rollback off with four constant bytes. That frame is now ignored: a downgrade
-// needs the token of OFS_DOWNGRADE_TOKEN, an HMAC under the update key of this session's nonce, the installed and the new version and
-// the tag of the image (update_verify.h). Kept as a function so the dispatch of the main loop stays as it was.
+// needs the token of OFS_DOWNGRADE_TOKEN, an Ed25519 signature, under the update key, of this session's nonce, the installed and the new version and
+// the digest of the image (update_verify.h). Kept as a function so the dispatch of the main loop stays as it was.
 void HandleAuthorizeDowngrade(uint8_t *data) {
     (void)data;
 }
@@ -434,15 +436,16 @@ void HandleReadbackStart(void) {
     }
 }
 
+// Eight frames of eight bytes, in order, right after START_UPDATE: the Ed25519 signature of the image (the frame kept its old name, OFS_HMAC_CHUNK).
 void HandleHmacChunk(uint8_t *data) {
     if (!update_in_progress || update_failed) return;
-    if (update_hmac_chunks_received >= 4) return;
-    memcpy(&update_expected_hmac[update_hmac_chunks_received * 8], data, 8);
-    update_hmac_chunks_received++;
+    if (update_signature_chunks_received >= UPDATE_SIGNATURE_CHUNKS) return;
+    memcpy(&update_signature[update_signature_chunks_received * 8], data, 8);
+    update_signature_chunks_received++;
     update_last_activity_tick = HAL_GetTick();
 }
 
-// Eight frames of eight bytes, in order, right after START_UPDATE: the 64-byte header the tag was made over (image_header.h).
+// Eight frames of eight bytes, in order, right after START_UPDATE: the 64-byte header the signature was made over (image_header.h).
 void HandleImageHeaderChunk(uint8_t *data) {
     if (!update_in_progress || update_failed) return;
     if (update_header_chunks_received >= UPDATE_HEADER_CHUNKS) return;
@@ -458,7 +461,7 @@ void HandleDowngradeNonceRequest(uint8_t *data, uint32_t dlc) {
     SendNonceHalf(update_nonce + 8 * data[0]);
 }
 
-// Four frames of eight bytes, optional: the token that allows one downgrade. Nothing is believed until END_UPDATE checks it.
+// Eight frames of eight bytes, optional: the signature that allows one downgrade. Nothing is believed until END_UPDATE checks it.
 void HandleDowngradeTokenChunk(uint8_t *data) {
     if (!update_in_progress || update_failed) return;
     if (update_token_chunks_received >= UPDATE_TOKEN_CHUNKS) return;
@@ -493,9 +496,9 @@ void HandleData(uint8_t *data, uint32_t dlc) {
     update_running_crc = CRC32_Update(update_running_crc, data, i);
 }
 
-static void UpdateHmacUnderTheKey(const uint8_t *msg, uint32_t len, uint8_t out[32], void *context) {
+static int UpdateSignatureUnderTheKey(const uint8_t *msg, uint32_t len, const uint8_t signature[IMAGE_SIGNATURE_SIZE], void *context) {
     (void)context;
-    hmac_sha256_buffer(HMAC_KEY, 32, msg, len, out);
+    return UpdateSignature_Verify(msg, len, signature, UPDATE_PUBLIC_KEY);
 }
 
 // What the host is told when the decision of update_verify.h is not OK.
@@ -503,7 +506,7 @@ static uint8_t VerifyFailReasonOf(UpdateVerdict_t verdict) {
     switch (verdict) {
         case UPDATE_VERDICT_INCOMPLETE:   return VERIFY_FAIL_REASON_INCOMPLETE;
         case UPDATE_VERDICT_CRC32:        return VERIFY_FAIL_REASON_CRC32;
-        case UPDATE_VERDICT_HMAC:         return VERIFY_FAIL_REASON_HMAC;
+        case UPDATE_VERDICT_SIGNATURE:    return VERIFY_FAIL_REASON_SIGNATURE;
         case UPDATE_VERDICT_HARDWARE_ID:  return VERIFY_FAIL_REASON_HARDWARE_ID;
         case UPDATE_VERDICT_ROLLBACK:     return VERIFY_FAIL_REASON_ROLLBACK;
         default:                          return VERIFY_FAIL_REASON_HEADER;
@@ -531,20 +534,21 @@ void HandleEndUpdate(uint8_t *data) {
 
     CAN_SendStatus(STATUS_VERIFYING);
 
-    // The tag covers the 64-byte header and then the image, so the version, the hardware id, the size and the vectors cannot be changed
-    // without breaking it. It is only worth a pass over the image when everything arrived (otherwise the verdict is "incomplete").
-    uint8_t actual_tag[IMAGE_TAG_SIZE];
-    memset(actual_tag, 0, sizeof(actual_tag));
-    if (update_bytes_received == update_total_size && update_hmac_chunks_received == UPDATE_HMAC_CHUNKS &&
+    // The signature covers the digest of the 64-byte header and then the image, so the version, the hardware id, the size and the vectors
+    // cannot be changed without breaking it. It is only worth a pass over the image when everything arrived (otherwise the verdict is
+    // "incomplete").
+    uint8_t actual_digest[IMAGE_DIGEST_SIZE];
+    memset(actual_digest, 0, sizeof(actual_digest));
+    if (update_bytes_received == update_total_size && update_signature_chunks_received == UPDATE_SIGNATURE_CHUNKS &&
         update_header_chunks_received == UPDATE_HEADER_CHUNKS) {
-        hmac_sha256_prefixed_flash_region(HMAC_KEY, 32, update_header, IMAGE_HEADER_SIZE, BACKUP_APP_ADDR, update_total_size, actual_tag);
+        sha256_prefixed_flash_region(update_header, IMAGE_HEADER_SIZE, BACKUP_APP_ADDR, update_total_size, actual_digest);
     }
 
     UpdateVerifyInput_t input;
     memset(&input, 0, sizeof(input));
     input.bytes_received = update_bytes_received;
     input.total_size = update_total_size;
-    input.hmac_chunks = update_hmac_chunks_received;
+    input.signature_chunks = update_signature_chunks_received;
     input.header_chunks = update_header_chunks_received;
     input.token_chunks = update_token_chunks_received;
     input.declared_crc = expected_crc;
@@ -552,8 +556,8 @@ void HandleEndUpdate(uint8_t *data) {
     input.declared_major = version_major;
     input.declared_minor = version_minor;
     input.header = update_header;
-    input.expected_tag = update_expected_hmac;
-    input.actual_tag = actual_tag;
+    input.signature = update_signature;
+    input.actual_digest = actual_digest;
     input.token = update_token;
     input.nonce = update_nonce;
     input.expect.hw_id = THIS_HARDWARE_ID;
@@ -562,7 +566,7 @@ void HandleEndUpdate(uint8_t *data) {
     input.expect.second_word = *(volatile const uint32_t*)(BACKUP_APP_ADDR + 4UL);
     input.expect.ram_lo = SRAM_BASE + 0x100UL;       // the same range StackPointerInValidRAM() accepts
     input.expect.ram_hi = SRAM_BASE + 0x18000UL;
-    input.hmac = UpdateHmacUnderTheKey;
+    input.verify = UpdateSignatureUnderTheKey;
 
     FirmwareMetadata_t current_meta;
     if (Metadata_Read(&current_meta) && current_meta.state == META_STATE_APP_VALID) {
@@ -581,8 +585,8 @@ void HandleEndUpdate(uint8_t *data) {
         return;
     }
 
-    // What the boot-time check of ApplicationIsValid() compares with is the HMAC of the image as it sits in the main slot, without the
-    // header (the header is never stored), so that is what the metadata keeps.
+    // What the boot-time check of ApplicationIsValid() compares with is the local-integrity HMAC of the image as it sits in the main
+    // slot, without the header (the header is never stored), so that is what the metadata keeps.
     uint8_t image_hmac[32];
     hmac_sha256_flash_region(HMAC_KEY, 32, BACKUP_APP_ADDR, update_total_size, image_hmac);
 

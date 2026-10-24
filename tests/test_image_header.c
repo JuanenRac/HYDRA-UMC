@@ -49,7 +49,12 @@ static void test_the_reference_header_parses(void)
     CHECK(h.vector_sp == VEC_VECTOR_SP && h.vector_reset == VEC_VECTOR_RESET, "vectors");
     CHECK(h.image_crc32 == VEC_IMAGE_CRC32, "image_crc32");
     CHECK(sizeof(VEC_HEADER) == IMAGE_HEADER_SIZE, "the vector header is 64 bytes");
-    CHECK(sizeof(VEC_TAG) == IMAGE_TAG_SIZE, "the tag is 32 bytes");
+    CHECK(sizeof(VEC_SIGNATURE) == IMAGE_SIGNATURE_SIZE, "the signature is 64 bytes");
+    CHECK(sizeof(VEC_DIGEST) == IMAGE_DIGEST_SIZE, "the digest is 32 bytes");
+    uint8_t image_message[IMAGE_MESSAGE_LEN];
+    ImageHeader_SignatureMessage(VEC_DIGEST, image_message);
+    CHECK(sizeof(VEC_IMAGE_MESSAGE) == IMAGE_MESSAGE_LEN, "the image message has the length the reference uses");
+    CHECK(memcmp(image_message, VEC_IMAGE_MESSAGE, IMAGE_MESSAGE_LEN) == 0, "the image message equals the reference's byte for byte");
 }
 
 static void test_a_header_that_is_not_ours_or_has_reserved_bytes_set_is_refused(void)
@@ -162,24 +167,24 @@ static void test_the_downgrade_message_is_what_the_reference_signs(void)
     ImageVersion_t installed = {VEC_INSTALLED_MAJOR, VEC_INSTALLED_MINOR, VEC_INSTALLED_PATCH};
     ImageVersion_t target = {VEC_B_VERSION_MAJOR, VEC_B_VERSION_MINOR, VEC_B_VERSION_PATCH};
     uint8_t message[DOWNGRADE_MESSAGE_LEN];
-    ImageHeader_DowngradeMessage(VEC_NONCE, &installed, &target, VEC_B_TAG, message);
+    ImageHeader_DowngradeMessage(VEC_NONCE, &installed, &target, VEC_B_DIGEST, message);
     CHECK(sizeof(VEC_DOWNGRADE_MESSAGE) == DOWNGRADE_MESSAGE_LEN, "the message has the length the reference uses");
     CHECK(memcmp(message, VEC_DOWNGRADE_MESSAGE, DOWNGRADE_MESSAGE_LEN) == 0, "the downgrade message equals the reference's byte for byte");
 
     /* another pair, another nonce: another message */
     ImageVersion_t other = {VEC_B_VERSION_MAJOR, VEC_B_VERSION_MINOR, VEC_B_VERSION_PATCH + 1u};
     uint8_t second[DOWNGRADE_MESSAGE_LEN];
-    ImageHeader_DowngradeMessage(VEC_NONCE, &installed, &other, VEC_B_TAG, second);
+    ImageHeader_DowngradeMessage(VEC_NONCE, &installed, &other, VEC_B_DIGEST, second);
     CHECK(memcmp(message, second, DOWNGRADE_MESSAGE_LEN) != 0, "a different target is a different message");
     uint8_t nonce[IMAGE_NONCE_SIZE];
     memcpy(nonce, VEC_NONCE, sizeof(nonce));
     nonce[15] ^= 1u;
-    ImageHeader_DowngradeMessage(nonce, &installed, &target, VEC_B_TAG, second);
+    ImageHeader_DowngradeMessage(nonce, &installed, &target, VEC_B_DIGEST, second);
     CHECK(memcmp(message, second, DOWNGRADE_MESSAGE_LEN) != 0, "a different session is a different message");
-    uint8_t other_tag[IMAGE_TAG_SIZE];
-    memcpy(other_tag, VEC_B_TAG, sizeof(other_tag));
-    other_tag[0] ^= 1u;
-    ImageHeader_DowngradeMessage(VEC_NONCE, &installed, &target, other_tag, second);
+    uint8_t other_digest[IMAGE_DIGEST_SIZE];
+    memcpy(other_digest, VEC_B_DIGEST, sizeof(other_digest));
+    other_digest[0] ^= 1u;
+    ImageHeader_DowngradeMessage(VEC_NONCE, &installed, &target, other_digest, second);
     CHECK(memcmp(message, second, DOWNGRADE_MESSAGE_LEN) != 0, "another image is another message");
 }
 

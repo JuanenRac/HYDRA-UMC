@@ -27,7 +27,16 @@ void hmac_sha256_prefixed_flash_region(const uint8_t *key, uint32_t key_len,
                                        uint32_t flash_addr, uint32_t len,
                                        uint8_t out[32]);
 
-// HMAC-SHA256 over a buffer in RAM (the downgrade token is the HMAC of a short message).
+// Plain SHA-256 over `prefix` (a buffer in RAM) followed by a flash region, as ONE message: the digest of a signed image covers its
+// 64-byte header and then the image. With prefix_len == 0 it is the SHA-256 of the flash region.
+void sha256_prefixed_flash_region(const uint8_t *prefix, uint32_t prefix_len,
+                                  uint32_t flash_addr, uint32_t len,
+                                  uint8_t out[32]);
+
+// SHA-256 over a buffer in RAM (the nonce of an update session is made with it).
+void sha256_buffer(const uint8_t *msg, uint32_t msg_len, uint8_t out[32]);
+
+// HMAC-SHA256 over a buffer in RAM.
 void hmac_sha256_buffer(const uint8_t *key, uint32_t key_len,
                         const uint8_t *msg, uint32_t msg_len,
                         uint8_t out[32]);

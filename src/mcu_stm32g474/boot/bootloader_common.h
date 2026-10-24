@@ -81,7 +81,11 @@ extern IWDG_HandleTypeDef  hiwdg;
 // - these are two separate trust domains, a URTC-signed image must never
 // verify against a HYDRA-UMC board and vice versa.
 // -----------------------------------------------------------------------
+// Local integrity only: the check at boot of the application that is installed, and the freshness value of an update session. It does
+// NOT decide whether an update is accepted any more (that is the signature, under UPDATE_PUBLIC_KEY).
 extern const uint8_t HMAC_KEY[32];
+// The Ed25519 public key an update must be signed for (bootloader_crypto.c): the board holds nothing that signs.
+extern const uint8_t UPDATE_PUBLIC_KEY[32];
 
 // -----------------------------------------------------------------------
 // Slot addressing (docs/architecture.md section 4) - this board's own
@@ -124,14 +128,14 @@ uint32_t ReadSlotBaseId(void);
 #define OFS_END_UPDATE         0x04 // DLC=8: big-endian CRC32 (4) + version major/minor (2+2)
 #define OFS_STATUS              0x05 // sent BY this bootloader: DLC=1 (or 2 with a verify-fail reason)
 #define OFS_HEARTBEAT           0x06 // sent BY this bootloader every ~1s: DLC=2, status + progress%
-#define OFS_HMAC_CHUNK           0x07 // DLC=8 x4, right after START_UPDATE, before the first DATA frame
+#define OFS_HMAC_CHUNK           0x07 // the 64-byte Ed25519 signature of the image: DLC=8 x 8 frames in order, right after START_UPDATE (URTC bootloaders behind the relay still take an HMAC in 4)
 #define OFS_QUERY_VERSION        0x08 // sent to either app or bootloader, whichever is running
 #define OFS_VERSION_RESPONSE      0x09 // DLC=8: byte0(0=app,1=boot)+HardwareID(4)+verMajor(2)+verMinor(1)
 #define OFS_BOOTLOADER_VERSION     0x0A // sent ONLY by the bootloader, alongside +0x09
 #define OFS_QUERY_ERROR_COUNTERS   0x0B // sent to either app or bootloader
 #define OFS_ERROR_COUNTERS_RESPONSE 0x0C // DLC=2: TEC + REC, read from the FDCAN peripheral's own PSR register
 #define OFS_AUTHORIZE_DOWNGRADE     0x0D // DLC=4. The old constant-magic bypass: no longer accepted (anybody on the bus could send it).
-                                             // A downgrade now needs OFS_DOWNGRADE_TOKEN, made for one image, one pair of versions and one session.
+                                             // A downgrade now needs OFS_DOWNGRADE_TOKEN (a signature), made for one image, one pair of versions and one session.
 #define OFS_BACKUP_READ_REQUEST      0x0E // any DLC starts a main-slot readback
 #define OFS_BACKUP_READ_RESPONSE      0x0F // first reply DLC=4 (total size), then DLC=8 raw bytes
 #define OFS_AXIS_STATUS                0x10 // application-only, not this bootloader
@@ -160,7 +164,7 @@ uint32_t ReadSlotBaseId(void);
 // 0x16-0x18 are the relay protocol, so these four take the free ones after them; each has ONE emitter.
 #define OFS_IMAGE_HEADER                   0x19 // host -> bootloader, DLC=8 x 8 frames in order, after START_UPDATE: the 64-byte header of the image
 #define OFS_DOWNGRADE_NONCE_REQUEST        0x1A // host -> bootloader, DLC=1: which half (0 or 1) of the 16-byte nonce of this session it wants
-#define OFS_DOWNGRADE_TOKEN                0x1B // host -> bootloader, DLC=8 x 4 frames, optional: HMAC allowing exactly one downgrade (see update_verify.h)
+#define OFS_DOWNGRADE_TOKEN                0x1B // host -> bootloader, DLC=8 x 8 frames, optional: the Ed25519 signature that allows exactly one downgrade (see update_verify.h)
 #define OFS_DOWNGRADE_NONCE_RESPONSE       0x1C // sent BY this bootloader, DLC=8: the half that was asked for
 
 // Status/verify-fail codes - identical values to URTC's own, so a shared
@@ -176,6 +180,7 @@ uint32_t ReadSlotBaseId(void);
 #define VERIFY_FAIL_REASON_INCOMPLETE  0x01
 #define VERIFY_FAIL_REASON_CRC32       0x02
 #define VERIFY_FAIL_REASON_HMAC        0x03
+#define VERIFY_FAIL_REASON_SIGNATURE    VERIFY_FAIL_REASON_HMAC // the same reason code: the signature of the image did not verify
 #define VERIFY_FAIL_REASON_HARDWARE_ID 0x04
 #define VERIFY_FAIL_REASON_ROLLBACK    0x05
 #define VERIFY_FAIL_REASON_HEADER      0x06 // the signed header is missing, is not ours, or says something that is not true of what arrived

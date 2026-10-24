@@ -19,6 +19,10 @@ from test_relay_tunnel import FakeRelayingTier1Transport
 
 from spi_bridge.http_service import serve
 
+# The Hydra bootloaders verify an Ed25519 signature; the service holds no key, so a flash arrives with the 64 bytes already made. The
+# fake transport under these tests does not check it (tests/test_signed_flash.py does, against the reference).
+SIG_Q = "&signature=" + "ab" * 64
+
 
 class HttpServiceTests(unittest.TestCase):
     def setUp(self):
@@ -50,7 +54,7 @@ class HttpServiceTests(unittest.TestCase):
     def test_post_flash_streams_real_progress_lines_ending_in_done(self):
         firmware = b"\x00" * 2048
         request = Request(
-            f"{self.base_url}/flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1",
+            f"{self.base_url}/flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1{SIG_Q}",
             data=firmware,
             method="POST",
         )
@@ -70,7 +74,7 @@ class HttpServiceTests(unittest.TestCase):
         sock = socket.create_connection(("127.0.0.1", self.server.server_port), timeout=5)
         try:
             sock.sendall(
-                b"POST /flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1 HTTP/1.1\r\n"
+                b"POST /flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1" + SIG_Q.encode("ascii") + b" HTTP/1.1\r\n"
                 b"Host: 127.0.0.1\r\n"
                 b"Content-Length: not-a-number\r\n"
                 b"Connection: close\r\n"
@@ -96,7 +100,7 @@ class HttpServiceTests(unittest.TestCase):
         sock = socket.create_connection(("127.0.0.1", self.server.server_port), timeout=5)
         try:
             sock.sendall(
-                b"POST /flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1 HTTP/1.1\r\n"
+                b"POST /flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1" + SIG_Q.encode("ascii") + b" HTTP/1.1\r\n"
                 b"Host: 127.0.0.1\r\n"
                 b"Content-Length: " + str(MAX_FIRMWARE_BODY_BYTES + 1).encode("ascii") + b"\r\n"
                 b"Connection: close\r\n"
@@ -153,11 +157,39 @@ class HttpServiceGuardTests(unittest.TestCase):
         for extra in ("&version_patch=x", "&downgrade_from=0.2", "&downgrade_from=a.b.c"):
             self.assertEqual(self._status(f"{base}/flash?{query}{extra}", data=b"\x00" * 16, method="POST")[0], 400, extra)
 
+    def test_a_hydra_board_is_not_flashed_without_the_signature_and_nothing_touches_the_bus(self):
+        transport = FakeBootloaderTransport()
+        base = self._serve(transport)
+        query = "tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1"
+        status, body = self._status(f"{base}/flash?{query}", data=bytes(2048), method="POST")
+        self.assertEqual(status, 400)
+        self.assertIn("signature", json.loads(body)["error"])
+        self.assertFalse(transport.sent_frames, "the board was not even entered")
+        for broken in ("&signature=zz", "&signature=" + "ab" * 63, "&signature=" + "ab" * 65):
+            self.assertEqual(self._status(f"{base}/flash?{query}{broken}", data=bytes(2048), method="POST")[0], 400, broken)
+        self.assertFalse(transport.sent_frames)
+
+    def test_a_downgrade_of_a_hydra_board_needs_a_signer_this_service_does_not_have(self):
+        transport = FakeBootloaderTransport()
+        base = self._serve(transport)
+        status, body = self._status(
+            f"{base}/flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1&downgrade_from=0.2.0{SIG_Q}", data=bytes(2048), method="POST"
+        )
+        self.assertEqual(status, 400)
+        self.assertIn("downgrade", json.loads(body)["error"])
+        self.assertFalse(transport.sent_frames)
+
+    def test_a_board_behind_the_relay_does_not_need_a_signature(self):
+        transport = FakeBootloaderTransport(hardware_id=0x0303CC01)
+        base = self._serve(transport)
+        status, _ = self._status(f"{base}/flash?tier=2&slot=0&hardware_id=0x0303CC01&version_major=0&version_minor=1", data=bytes(2048), method="POST")
+        self.assertEqual(status, 200)
+
     def test_the_patch_reaches_the_header_the_board_receives(self):
         transport = FakeBootloaderTransport()
         base = self._serve(transport)
         status, body = self._status(
-            f"{base}/flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1&version_patch=6", data=bytes(2048), method="POST"
+            f"{base}/flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1&version_patch=6{SIG_Q}", data=bytes(2048), method="POST"
         )
         self.assertEqual(status, 200)
         header = b"".join(f.payload for f in transport.sent_frames if f.frame_type == 0x19)
@@ -187,7 +219,7 @@ class HttpServiceGuardTests(unittest.TestCase):
         base = self._serve(BlockingTransport())
         flash = threading.Thread(
             target=self._status,
-            args=(f"{base}/flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1",),
+            args=(f"{base}/flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1{SIG_Q}",),
             kwargs={"data": b"\x00" * 2048, "method": "POST"},
             daemon=True,
         )
@@ -211,7 +243,7 @@ class HttpServiceGuardTests(unittest.TestCase):
         transport.raise_on_transceive = ValueError("dlc must be 0-8")
         base = self._serve(transport)
         status, body = self._status(
-            f"{base}/flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1", data=bytes(2048), method="POST"
+            f"{base}/flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1{SIG_Q}", data=bytes(2048), method="POST"
         )
         self.assertEqual(status, 200)
         last = json.loads(body.decode("utf-8").splitlines()[-1])

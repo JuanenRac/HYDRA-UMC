@@ -3,12 +3,12 @@
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
  * GPL-3.0-or-later - see LICENSE
  * =============================================================================
- * update_verify.h (the decision at the end of an update: complete, CRC, tag, header, version, anti-rollback with a downgrade token)
+ * update_verify.h (the decision at the end of an update: complete, CRC, signature, header, version, anti-rollback with a downgrade token)
  * exists as a real per-target copy in all THREE bootloaders; the exact same test source is compiled and run once per target's own
  * include path (build_firmware.sh). The bytes come from tests/image_header_vectors.h, made by the host reference
- * tools/image_header.py. The HMAC is a test double that answers with the token the reference signed only when it is handed the exact
- * message the reference signed: so the test proves the C code builds that message byte for byte, without an HMAC of its own (the real
- * HMAC against the reference is tested in test_bootloader_g474_host.c).
+ * tools/image_header.py. The signature check is a test double that says yes only to a (message, signature) pair the reference made: so
+ * the test proves the C code builds those messages byte for byte, without an Ed25519 of its own (the real Ed25519 against the reference
+ * is tested in test_bootloader_g474_host.c).
  */
 #include <stdio.h>
 #include <string.h>
@@ -26,23 +26,28 @@ static int failures;
         } \
     } while (0)
 
-static int hmac_calls;
+static int verify_calls;
+static int downgrade_checks;
 
-static void reference_hmac(const uint8_t *msg, uint32_t len, uint8_t out[32], void *context)
+static int is_pair(const uint8_t *msg, uint32_t len, const uint8_t *signature, const uint8_t *signed_message, uint32_t signed_len, const uint8_t *good_signature)
+{
+    return len == signed_len && memcmp(msg, signed_message, len) == 0 && memcmp(signature, good_signature, IMAGE_SIGNATURE_SIZE) == 0;
+}
+
+static int reference_verify(const uint8_t *msg, uint32_t len, const uint8_t signature[IMAGE_SIGNATURE_SIZE], void *context)
 {
     (void)context;
-    hmac_calls++;
-    if (len == sizeof(VEC_DOWNGRADE_MESSAGE) && memcmp(msg, VEC_DOWNGRADE_MESSAGE, len) == 0) {
-        memcpy(out, VEC_DOWNGRADE_TOKEN, 32);
-        return;
-    }
-    for (int i = 0; i < 32; i++) out[i] = (uint8_t)(0xA5 ^ (len + (uint32_t)i)); /* anything that is not the signed token */
+    verify_calls++;
+    if (len == DOWNGRADE_MESSAGE_LEN) downgrade_checks++;
+    return is_pair(msg, len, signature, VEC_IMAGE_MESSAGE, sizeof(VEC_IMAGE_MESSAGE), VEC_SIGNATURE) ||
+           is_pair(msg, len, signature, VEC_B_IMAGE_MESSAGE, sizeof(VEC_B_IMAGE_MESSAGE), VEC_B_SIGNATURE) ||
+           is_pair(msg, len, signature, VEC_DOWNGRADE_MESSAGE, sizeof(VEC_DOWNGRADE_MESSAGE), VEC_DOWNGRADE_TOKEN);
 }
 
 static uint8_t header_buffer[IMAGE_HEADER_SIZE];
-static uint8_t tag_expected[IMAGE_TAG_SIZE];
-static uint8_t tag_actual[IMAGE_TAG_SIZE];
-static uint8_t token[IMAGE_TAG_SIZE];
+static uint8_t signature[IMAGE_SIGNATURE_SIZE];
+static uint8_t digest[IMAGE_DIGEST_SIZE];
+static uint8_t token[IMAGE_SIGNATURE_SIZE];
 static uint8_t nonce[IMAGE_NONCE_SIZE];
 
 /* Image A (0.2.3) over an installed 0.2.2: everything as it should arrive. */
@@ -51,13 +56,13 @@ static UpdateVerifyInput_t good_a(void)
     UpdateVerifyInput_t in;
     memset(&in, 0, sizeof(in));
     memcpy(header_buffer, VEC_HEADER, sizeof(header_buffer));
-    memcpy(tag_expected, VEC_TAG, sizeof(tag_expected));
-    memcpy(tag_actual, VEC_TAG, sizeof(tag_actual));
+    memcpy(signature, VEC_SIGNATURE, sizeof(signature));
+    memcpy(digest, VEC_DIGEST, sizeof(digest));
     memset(token, 0, sizeof(token));
     memcpy(nonce, VEC_NONCE, sizeof(nonce));
     in.bytes_received = VEC_IMAGE_SIZE;
     in.total_size = VEC_IMAGE_SIZE;
-    in.hmac_chunks = UPDATE_HMAC_CHUNKS;
+    in.signature_chunks = UPDATE_SIGNATURE_CHUNKS;
     in.header_chunks = UPDATE_HEADER_CHUNKS;
     in.token_chunks = 0;
     in.declared_crc = VEC_IMAGE_CRC32;
@@ -65,8 +70,8 @@ static UpdateVerifyInput_t good_a(void)
     in.declared_major = VEC_VERSION_MAJOR;
     in.declared_minor = VEC_VERSION_MINOR;
     in.header = header_buffer;
-    in.expected_tag = tag_expected;
-    in.actual_tag = tag_actual;
+    in.signature = signature;
+    in.actual_digest = digest;
     in.token = token;
     in.nonce = nonce;
     in.expect.hw_id = VEC_HW_ID;
@@ -79,7 +84,7 @@ static UpdateVerifyInput_t good_a(void)
     in.installed.major = VEC_INSTALLED_MAJOR;
     in.installed.minor = VEC_INSTALLED_MINOR;
     in.installed.patch = VEC_INSTALLED_PATCH;
-    in.hmac = reference_hmac;
+    in.verify = reference_verify;
     return in;
 }
 
@@ -88,8 +93,8 @@ static UpdateVerifyInput_t good_b(int with_token)
 {
     UpdateVerifyInput_t in = good_a();
     memcpy(header_buffer, VEC_B_HEADER, sizeof(header_buffer));
-    memcpy(tag_expected, VEC_B_TAG, sizeof(tag_expected));
-    memcpy(tag_actual, VEC_B_TAG, sizeof(tag_actual));
+    memcpy(signature, VEC_B_SIGNATURE, sizeof(signature));
+    memcpy(digest, VEC_B_DIGEST, sizeof(digest));
     in.declared_crc = VEC_B_IMAGE_CRC32;
     in.actual_crc = VEC_B_IMAGE_CRC32;
     in.declared_major = VEC_B_VERSION_MAJOR;
@@ -112,7 +117,7 @@ static void test_a_good_update_is_accepted_and_says_what_it_installs(void)
     CHECK(h.version.major == VEC_VERSION_MAJOR && h.version.minor == VEC_VERSION_MINOR && h.version.patch == VEC_VERSION_PATCH, "the version comes from the header");
     in.have_installed = 0;
     CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_OK, "with nothing installed (and no output wanted)");
-    CHECK(hmac_calls == 0, "no downgrade token was computed for a plain update");
+    CHECK(downgrade_checks == 0, "no downgrade token was checked for a plain update");
 }
 
 static void test_an_update_that_did_not_arrive_whole_is_incomplete(void)
@@ -120,10 +125,12 @@ static void test_an_update_that_did_not_arrive_whole_is_incomplete(void)
     UpdateVerifyInput_t in = good_a();
     in.bytes_received--;
     CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_INCOMPLETE, "a byte missing");
-    in = good_a(); in.hmac_chunks = 3;
-    CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_INCOMPLETE, "three tag chunks");
-    in = good_a(); in.hmac_chunks = 5;
-    CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_INCOMPLETE, "five tag chunks");
+    for (uint8_t chunks = 0; chunks <= 9; chunks++) {
+        in = good_a(); in.signature_chunks = chunks;
+        CHECK((UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_OK) == (chunks == UPDATE_SIGNATURE_CHUNKS), "only eight signature chunks are a signature");
+    }
+    in = good_a(); in.signature_chunks = 4;
+    CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_INCOMPLETE, "the four chunks of an HMAC are not a signature");
     for (uint8_t chunks = 0; chunks <= 9; chunks++) {
         in = good_a(); in.header_chunks = chunks;
         CHECK((UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_OK) == (chunks == UPDATE_HEADER_CHUNKS), "only eight header chunks are a header");
@@ -136,16 +143,18 @@ static void test_the_order_of_the_checks(void)
     in.actual_crc ^= 1u;
     CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_CRC32, "CRC");
 
-    in = good_a(); tag_actual[31] ^= 1u;
-    CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_HMAC, "a tag that does not match");
-    in = good_a(); tag_expected[0] ^= 0x80u;
-    CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_HMAC, "an expected tag that was changed");
+    in = good_a(); digest[31] ^= 1u;
+    CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_SIGNATURE, "a digest that is not the one that was signed");
+    in = good_a(); signature[0] ^= 0x80u;
+    CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_SIGNATURE, "a signature that was changed");
+    in = good_a(); in.verify = NULL;
+    CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_SIGNATURE, "without a check nothing is accepted");
 
-    /* nothing in the header is believed before the tag holds: a header that is not a header AND a wrong tag is a tag failure */
-    in = good_a(); header_buffer[0] = 0; tag_actual[5] ^= 1u;
-    CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_HMAC, "the tag is judged before the header");
+    /* nothing in the header is believed before the signature holds: a header that is not a header AND a wrong signature is a signature failure */
+    in = good_a(); header_buffer[0] = 0; digest[5] ^= 1u;
+    CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_SIGNATURE, "the signature is judged before the header");
     in = good_a(); header_buffer[0] = 0;
-    CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_HEADER, "with the tag right, a bad magic is a header failure");
+    CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_HEADER, "with the signature right, a bad magic is a header failure");
 }
 
 static void test_the_header_must_describe_what_arrived(void)
@@ -188,23 +197,21 @@ static void test_a_downgrade_needs_the_token_made_for_this_image_this_pair_and_t
     UpdateVerifyInput_t in = good_b(0);
     CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_ROLLBACK, "image B is older and has no token");
 
-    hmac_calls = 0;
+    downgrade_checks = 0;
     in = good_b(1);
     CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_OK, "image B with the token the reference signed for 0.2.2 -> 0.1.8");
-    CHECK(hmac_calls == 1, "the token was computed once");
+    CHECK(downgrade_checks == 1, "the token was checked once");
 
     in = good_b(1); token[7] ^= 1u;
     CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_ROLLBACK, "a token with one bit changed");
     in = good_b(1); in.token_chunks = UPDATE_TOKEN_CHUNKS - 1u;
-    CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_ROLLBACK, "three of four token chunks");
+    CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_ROLLBACK, "seven of eight token chunks");
     in = good_b(1); nonce[0] ^= 1u;
     CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_ROLLBACK, "another session (another nonce)");
     in = good_b(1); in.installed.patch++;
     CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_ROLLBACK, "another installed version");
-    in = good_b(1); in.hmac = NULL;
-    CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_ROLLBACK, "without an HMAC there is no downgrade");
 
-    /* the token of image B does not authorize image A's tag, nor does any token allow the same version */
+    /* the token of image B does not authorize image A's digest, nor does any token allow the same version */
     in = good_a(); memcpy(token, VEC_DOWNGRADE_TOKEN, sizeof(token)); in.token_chunks = UPDATE_TOKEN_CHUNKS;
     in.installed.patch = VEC_VERSION_PATCH;
     CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_ROLLBACK, "a token never lets the same version in");
@@ -215,11 +222,11 @@ static void test_a_downgrade_needs_the_token_made_for_this_image_this_pair_and_t
 
 static void test_a_token_is_not_computed_when_there_is_nothing_to_downgrade_from(void)
 {
-    hmac_calls = 0;
+    downgrade_checks = 0;
     UpdateVerifyInput_t in = good_b(1);
     in.have_installed = 0;
     CHECK(UpdateVerify_Decide(&in, NULL) == UPDATE_VERDICT_OK, "with nothing installed any valid image is accepted");
-    CHECK(hmac_calls == 0, "and no token is looked at");
+    CHECK(downgrade_checks == 0, "and no token is looked at");
 }
 
 int main(void)

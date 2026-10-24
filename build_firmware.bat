@@ -124,7 +124,28 @@ REM HYDRA_FW_HMAC_KEY_HEX (64 hex digits, kept outside the repository, the same 
 REM signing tools hold); without it the bootloaders carry the DEVELOPMENT key that is
 REM published in this repository, which authenticates nothing, and HYDRA_UMC_RELEASE=1
 REM refuses that. Same behaviour as build_firmware.sh.
+REM HYDRA_FW_UPDATE_PUBKEY_HEX (64 hex digits) is the Ed25519 PUBLIC key an update must be
+REM signed for (python tools\image_header.py keygen / pubkey); the board holds nothing that
+REM signs. Without it the bootloaders accept updates signed with the DEVELOPMENT seed, which is
+REM published in this repository, and HYDRA_UMC_RELEASE=1 refuses that.
 set "HMAC_DEFS="
+if defined HYDRA_FW_UPDATE_PUBKEY_HEX (
+    python -c "import os,re,sys; sys.exit(0 if re.fullmatch('[0-9A-Fa-f]{64}', os.environ['HYDRA_FW_UPDATE_PUBKEY_HEX']) else 1)"
+    if errorlevel 1 (
+        echo   FAIL HYDRA_FW_UPDATE_PUBKEY_HEX must be exactly 64 hexadecimal digits
+        set /a FAIL+=1
+        goto :summary
+    )
+    for /f "usebackq delims=" %%K in (`python -c "import os; k=os.environ['HYDRA_FW_UPDATE_PUBKEY_HEX']; print(','.join('0x'+k[i:i+2] for i in range(0,64,2)))"`) do set "HMAC_DEFS=-DHYDRA_FW_UPDATE_PUBKEY_BYTES=%%K"
+    echo   OK   bootloaders accept updates signed for the public key from HYDRA_FW_UPDATE_PUBKEY_HEX
+    set /a PASS+=1
+) else if "%HYDRA_UMC_RELEASE%"=="1" (
+    echo   FAIL HYDRA_UMC_RELEASE=1 needs HYDRA_FW_UPDATE_PUBKEY_HEX: the development signing seed is published in the repository
+    set /a FAIL+=1
+    goto :summary
+) else (
+    echo   WARN bootloaders accept updates signed with the DEVELOPMENT seed, which is public: do not put these images on a board that anybody else can reach
+)
 if defined HYDRA_FW_HMAC_KEY_HEX (
     python -c "import os,re,sys; sys.exit(0 if re.fullmatch('[0-9A-Fa-f]{64}', os.environ['HYDRA_FW_HMAC_KEY_HEX']) else 1)"
     if errorlevel 1 (
@@ -132,7 +153,7 @@ if defined HYDRA_FW_HMAC_KEY_HEX (
         set /a FAIL+=1
         goto :summary
     )
-    for /f "usebackq delims=" %%K in (`python -c "import os; k=os.environ['HYDRA_FW_HMAC_KEY_HEX']; print(','.join('0x'+k[i:i+2] for i in range(0,64,2)))"`) do set "HMAC_DEFS=-DHYDRA_FW_HMAC_KEY_BYTES=%%K"
+    for /f "usebackq delims=" %%K in (`python -c "import os; k=os.environ['HYDRA_FW_HMAC_KEY_HEX']; print(','.join('0x'+k[i:i+2] for i in range(0,64,2)))"`) do set "HMAC_DEFS=!HMAC_DEFS! -DHYDRA_FW_HMAC_KEY_BYTES=%%K"
     echo   OK   bootloaders are built with the release key from HYDRA_FW_HMAC_KEY_HEX
     set /a PASS+=1
 ) else if "%HYDRA_UMC_RELEASE%"=="1" (

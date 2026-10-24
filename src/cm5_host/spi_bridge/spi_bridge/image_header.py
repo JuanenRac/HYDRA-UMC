@@ -4,11 +4,14 @@
 # GPL-3.0-or-later - see repo root LICENSE
 # =============================================================================
 """What the CM5 sends so that a HYDRA-UMC bootloader accepts an update: the 64-byte header (the version with its patch, the hardware id,
-the size, the link address, the vectors and the CRC of the image), the tag (HMAC-SHA256 over header || image) and, for a downgrade, the token.
+the size, the link address, the vectors and the CRC of the image), the Ed25519 signature of the digest of header || image and, for a
+downgrade, a second signature (the token).
 
-The byte layout and the rules are those of tools/image_header.py (the host reference of the repository, whose test vectors the C code of the
-three bootloaders is checked against) and of src/*/boot/image_header.h and update_verify.h. tests/test_signed_flash.py compares what this
-module builds with that reference and runs it against a bootloader model that applies the reference's own verification.
+The CM5 never holds a signing key: the signature is made by the owner on a machine of their own (tools/image_header.py sign) and handed
+to the flasher, or made on demand by a callable the caller supplies. All this module does is build the header and the two messages that
+are signed, byte for byte as tools/image_header.py (the host reference of the repository, whose test vectors the C code of the three
+bootloaders is checked against) and src/*/boot/image_header.h and update_verify.h do. tests/test_signed_flash.py compares what this module
+builds with that reference and runs it against a bootloader model that applies the reference's own verification.
 
 Only the HYDRA-UMC bootloaders (the Robot Controller Board and the two cores of the Kinematic Brain) take this format. The tool heads and
 expansion boards behind the relay run the bootloaders of URTC, which still take the image without a header: see is_signed_header_target.
@@ -17,18 +20,26 @@ expansion boards behind the relay run the bootloaders of URTC, which still take 
 from __future__ import annotations
 
 import hashlib
-import hmac
 import struct
 import zlib
+from collections.abc import Callable
 
 MAGIC = 0x52445948  # "HYDR"
 FORMAT = 1
 HEADER_SIZE = 64
-TAG_SIZE = 32
+DIGEST_SIZE = 32
+SIGNATURE_SIZE = 64
 NONCE_SIZE = 16
 HEADER_CHUNKS = 8
-TAG_CHUNKS = 4
-TOKEN_CHUNKS = 4
+SIGNATURE_CHUNKS = 8
+TOKEN_CHUNKS = 8
+# The two things that are signed start with a different text, so a signature made for one can never pass for the other.
+IMAGE_DOMAIN = b"hydra-umc-image-sig\x00"
+DOWNGRADE_DOMAIN = b"hydra-umc-downgrade\x00"
+
+# Signs the digest message of an image (header, firmware, digest -> 64 bytes) / the message of a downgrade (nonce, installed, target, digest -> 64 bytes).
+ImageSigner = Callable[[bytes, bytes, bytes], bytes]
+DowngradeSigner = Callable[[bytes, tuple[int, int, int], tuple[int, int, int], bytes], bytes]
 
 _LAYOUT = struct.Struct("<IHHIHHHHIIIII24s")
 assert _LAYOUT.size == HEADER_SIZE
@@ -66,17 +77,24 @@ def build_header(hardware_id: int, version: tuple[int, int, int], firmware: byte
     )
 
 
-def tag_of(key: bytes, header: bytes, firmware: bytes) -> bytes:
-    """HMAC-SHA256 over header || image: what the bootloader recomputes from its flash."""
-    return hmac.new(key, header + firmware, hashlib.sha256).digest()
+def image_digest(header: bytes, firmware: bytes) -> bytes:
+    """SHA-256 over header || image: what the bootloader hashes out of its flash while the image arrives."""
+    return hashlib.sha256(header + firmware).digest()
 
 
-def downgrade_token(key: bytes, nonce: bytes, installed: tuple[int, int, int], target: tuple[int, int, int], image_tag: bytes) -> bytes:
-    """The token that allows going from `installed` to the older `target` with the image whose tag is `image_tag`, in the session `nonce`
-    belongs to. The bootloader computes the same value and compares; it holds no constant that allows a downgrade."""
+def image_message(digest: bytes) -> bytes:
+    """The message the signature of an image is made over: the domain text, then the digest."""
+    if len(digest) != DIGEST_SIZE:
+        raise ImageHeaderError(f"the digest of an image is {DIGEST_SIZE} bytes, got {len(digest)}")
+    return IMAGE_DOMAIN + digest
+
+
+def downgrade_message(nonce: bytes, installed: tuple[int, int, int], target: tuple[int, int, int], digest: bytes) -> bytes:
+    """The message whose signature allows going from `installed` to the older `target` with the image whose digest is `digest`, in the
+    session `nonce` belongs to. The bootloader builds the same message and verifies the signature; it holds no constant that allows a
+    downgrade and no key that makes one."""
     if len(nonce) != NONCE_SIZE:
         raise ImageHeaderError(f"the nonce of the session is {NONCE_SIZE} bytes, got {len(nonce)}")
-    if len(image_tag) != TAG_SIZE:
-        raise ImageHeaderError(f"the tag of the image is {TAG_SIZE} bytes, got {len(image_tag)}")
-    message = b"hydra-umc-downgrade\x00" + nonce + struct.pack("<3H3H", *installed, *target) + image_tag
-    return hmac.new(key, message, hashlib.sha256).digest()
+    if len(digest) != DIGEST_SIZE:
+        raise ImageHeaderError(f"the digest of the image is {DIGEST_SIZE} bytes, got {len(digest)}")
+    return DOWNGRADE_DOMAIN + nonce + struct.pack("<3H3H", *installed, *target) + digest

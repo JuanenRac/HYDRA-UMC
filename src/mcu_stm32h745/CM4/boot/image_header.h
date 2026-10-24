@@ -11,10 +11,11 @@
 // Why it exists: an update used to carry the version of the new image in END_UPDATE, outside the data the HMAC covers, and compared
 // only major.minor with a constant magic frame to allow a downgrade. So an old signed image could be replayed declaring a higher
 // version, and 0.1.8 -> 0.1.2 was not noticed. Here the version (major, minor, patch), the hardware id, the link address, the size, the
-// vector words and the CRC are inside a fixed 64-byte header, and the HMAC tag covers header || image together: none of them can be
-// changed without breaking the tag. "A new image must be strictly newer than the installed one" compares the three numbers.
+// vector words and the CRC are inside a fixed 64-byte header, and an Ed25519 signature covers header || image together (through the
+// SHA-256 digest of both): none of them can be changed without breaking the signature. "A new image must be strictly newer than the
+// installed one" compares the three numbers.
 //
-// Header layout, little endian, 64 bytes, then the image, then the 32-byte tag:
+// Header layout, little endian, 64 bytes, then the image, then the 64-byte signature:
 //
 //   offset size field
 //      0    4   magic          0x52445948 ("HYDR": bytes 48 59 44 52)
@@ -32,7 +33,8 @@
 //     36    4   image_crc32    CRC-32 of the image bytes
 //     40   24   reserved       zeros
 //
-// The tag (HMAC-SHA256 over header || image) is checked by the caller, FIRST: nothing in the header is believed before it verifies.
+// The signature is over IMAGE_DOMAIN || SHA-256(header || image) (ImageHeader_SignatureMessage). The caller hashes the image out of the
+// flash and checks the signature FIRST: nothing in the header is believed before it verifies.
 // The functions below decide everything else, in the order the host reference does.
 #ifndef IMAGE_HEADER_H
 #define IMAGE_HEADER_H
@@ -43,13 +45,18 @@
 #define IMAGE_HEADER_SIZE   64u
 #define IMAGE_HEADER_MAGIC  0x52445948UL
 #define IMAGE_HEADER_FORMAT 1u
-#define IMAGE_TAG_SIZE      32u
-#define IMAGE_NONCE_SIZE    16u
-// "hydra-umc-downgrade" and its terminating zero: the start of the message a downgrade token is the HMAC of
-#define DOWNGRADE_TAG_LEN   20u
+#define IMAGE_DIGEST_SIZE    32u   // SHA-256 over header || image
+#define IMAGE_SIGNATURE_SIZE 64u   // Ed25519
+#define IMAGE_NONCE_SIZE     16u
+// "hydra-umc-image-sig" and its terminating zero: the start of the message an image signature is made over
+#define IMAGE_DOMAIN_LEN     20u
+// the message: domain (20) || the 32-byte digest
+#define IMAGE_MESSAGE_LEN    (IMAGE_DOMAIN_LEN + IMAGE_DIGEST_SIZE)
+// "hydra-umc-downgrade" and its terminating zero: the start of the message a downgrade token is the signature of
+#define DOWNGRADE_TAG_LEN    20u
 // the message: tag (20) || nonce (16) || installed major, minor, patch (3 x u16 LE) || target major, minor, patch (3 x u16 LE) ||
-// the 32-byte tag of the image to be installed
-#define DOWNGRADE_MESSAGE_LEN (DOWNGRADE_TAG_LEN + IMAGE_NONCE_SIZE + 12u + IMAGE_TAG_SIZE)
+// the 32-byte digest of the image to be installed
+#define DOWNGRADE_MESSAGE_LEN (DOWNGRADE_TAG_LEN + IMAGE_NONCE_SIZE + 12u + IMAGE_DIGEST_SIZE)
 
 typedef struct {
     uint16_t major;
@@ -158,7 +165,7 @@ static inline int ImageHeader_VersionCompare(const ImageVersion_t *a, const Imag
 }
 
 // The anti-rollback rule: the new image must be strictly newer than the installed one. `installed` is NULL when nothing valid is
-// installed. An older image passes only with `downgrade_authorized`, which the caller sets after checking a token made for exactly
+// installed. An older image passes only with `downgrade_authorized`, which the caller sets after checking a signature made for exactly
 // this pair of versions in this session (ImageHeader_DowngradeMessage); the same version never passes, token or not.
 static inline ImageHeaderStatus_t ImageHeader_CheckRollback(const ImageHeader_t *h, const ImageVersion_t *installed, int downgrade_authorized)
 {
@@ -169,12 +176,13 @@ static inline ImageHeaderStatus_t ImageHeader_CheckRollback(const ImageHeader_t 
     return IMAGE_HEADER_NOT_NEWER;
 }
 
-// The message whose HMAC-SHA256 under the update key is the downgrade token for going from `installed` to the older `target` with
-// the image whose tag is `image_tag`, in the session the bootloader chose `nonce` for. It is useless in any other session, for any other
-// pair of versions, for any other image, on any other board with another key; the bootloader computes the same thing and compares, so
-// the firmware holds no constant that allows a downgrade (the old flow had one: four magic bytes anybody on the bus could send).
+// The message whose Ed25519 signature under the update key is the downgrade token for going from `installed` to the older `target`
+// with the image whose digest is `image_digest`, in the session the bootloader chose `nonce` for. It is useless in any other session, for
+// any other pair of versions, for any other image, on any other board with another key; the bootloader builds the same message and
+// verifies the signature of it, so the firmware holds no constant that allows a downgrade (the old flow had one: four magic bytes
+// anybody on the bus could send) and no secret that makes one.
 static inline void ImageHeader_DowngradeMessage(const uint8_t nonce[IMAGE_NONCE_SIZE], const ImageVersion_t *installed,
-                                                const ImageVersion_t *target, const uint8_t image_tag[IMAGE_TAG_SIZE],
+                                                const ImageVersion_t *target, const uint8_t image_digest[IMAGE_DIGEST_SIZE],
                                                 uint8_t out[DOWNGRADE_MESSAGE_LEN])
 {
     static const char tag[DOWNGRADE_TAG_LEN] = {'h', 'y', 'd', 'r', 'a', '-', 'u', 'm', 'c', '-', 'd', 'o', 'w', 'n', 'g', 'r', 'a', 'd', 'e', '\0'};
@@ -187,7 +195,15 @@ static inline void ImageHeader_DowngradeMessage(const uint8_t nonce[IMAGE_NONCE_
     ImageHeader_PutLe16(p + 6, target->major);
     ImageHeader_PutLe16(p + 8, target->minor);
     ImageHeader_PutLe16(p + 10, target->patch);
-    for (size_t i = 0; i < IMAGE_TAG_SIZE; i++) p[12 + i] = image_tag[i];
+    for (size_t i = 0; i < IMAGE_DIGEST_SIZE; i++) p[12 + i] = image_digest[i];
+}
+
+// The message the signature of an image is made over: the domain text, then the SHA-256 digest of header || image.
+static inline void ImageHeader_SignatureMessage(const uint8_t digest[IMAGE_DIGEST_SIZE], uint8_t out[IMAGE_MESSAGE_LEN])
+{
+    static const char domain[IMAGE_DOMAIN_LEN] = {'h', 'y', 'd', 'r', 'a', '-', 'u', 'm', 'c', '-', 'i', 'm', 'a', 'g', 'e', '-', 's', 'i', 'g', '\0'};
+    for (size_t i = 0; i < IMAGE_DOMAIN_LEN; i++) out[i] = (uint8_t)domain[i];
+    for (size_t i = 0; i < IMAGE_DIGEST_SIZE; i++) out[IMAGE_DOMAIN_LEN + i] = digest[i];
 }
 
 #endif // IMAGE_HEADER_H
