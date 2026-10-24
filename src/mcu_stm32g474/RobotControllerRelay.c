@@ -21,6 +21,7 @@
  */
 #include "RobotControllerRelay.h"
 #include "relay_rx_queue.h"
+#include "relay_ids.h"
 #include "relay_send_reassembly.h"
 #include "dlc_to_fdcan_data_length.h"
 #include "stm32g4xx_hal.h"
@@ -35,9 +36,6 @@ static uint32_t slot_base;
  * range, mirrors KinematicBrainCan.c's identical #defines on the Tier 0
  * side (the query/response pair this module answers). */
 #define OFS_AXIS_STATUS 0x10
-
-#define RELAY_FRAGMENT_HEADER_BYTES 3
-#define RELAY_FRAGMENT_DATA_BYTES   5
 
 /* -----------------------------------------------------------------------
  * BOARD_ID[2:0] - real, intentional duplicate of boot/bootloader_main.c's
@@ -343,7 +341,7 @@ static void ServiceUplinkMessage(uint32_t rx_id, const uint8_t rx_data[8], uint8
     if (offset == OFS_AXIS_STATUS) {
         uint8_t out[8];
         uint8_t dlc = ReadAxisStatusFrame(out);
-        SendClassicFrame(&hfdcan1_app, slot_base + OFS_AXIS_STATUS, out, dlc);
+        SendClassicFrame(&hfdcan1_app, slot_base + RelayAnswerOffset(OFS_AXIS_STATUS), out, dlc); /* its own identifier: the request is the brain's */
         return;
     }
 
@@ -384,19 +382,10 @@ static void ServiceUplinkMessage(uint32_t rx_id, const uint8_t rx_data[8], uint8
         RelayCapturedFrame_t frame;
         if (!RelayRxQueue_Pop(&relay_rx_queue, &frame)) return; /* nothing queued - real, expected idle state, not an error */
 
-        uint8_t first_len = frame.dlc <= RELAY_FRAGMENT_DATA_BYTES ? frame.dlc : RELAY_FRAGMENT_DATA_BYTES;
-        uint8_t fragment[8];
-        fragment[0] = (uint8_t)(frame.can_id >> 8);
-        fragment[1] = (uint8_t)(frame.can_id & 0xFF);
-        fragment[2] = frame.dlc;
-        memcpy(&fragment[3], frame.data, first_len);
-        SendClassicFrame(&hfdcan1_app, slot_base + OFS_RELAY_RECV, fragment, (uint8_t)(RELAY_FRAGMENT_HEADER_BYTES + first_len));
-
-        if (frame.dlc > RELAY_FRAGMENT_DATA_BYTES) {
-            uint8_t second_len = frame.dlc - RELAY_FRAGMENT_DATA_BYTES;
-            fragment[2] = frame.dlc;
-            memcpy(&fragment[3], frame.data + RELAY_FRAGMENT_DATA_BYTES, second_len);
-            SendClassicFrame(&hfdcan1_app, slot_base + OFS_RELAY_RECV, fragment, (uint8_t)(RELAY_FRAGMENT_HEADER_BYTES + second_len));
+        RelayAnswerFragments_t answer;
+        RelayBuildAnswerFragments(&frame, &answer);
+        for (uint8_t i = 0; i < answer.count; i++) {
+            SendClassicFrame(&hfdcan1_app, slot_base + RelayAnswerOffset(OFS_RELAY_RECV), answer.data[i], answer.dlc[i]);
         }
         return;
     }

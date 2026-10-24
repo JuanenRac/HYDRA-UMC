@@ -116,7 +116,7 @@ class SpiOtaFlasherTests(unittest.TestCase):
 
         class NeverAcksTransport(FakeBootloaderTransport):
             def transceive(self, frame):
-                if frame.frame_type == 0x03:  # OFS_PAGE_ACK
+                if frame.frame_type == 0x17 and frame.payload[:1] == b"":  # OFS_POLL_STATUS waiting for OFS_PAGE_ACK
                     return type(self)._wrong_ack(frame)
                 return super().transceive(frame)
 

@@ -52,6 +52,7 @@ from .protocol import (
     STATUS_VERIFY_FAIL,
     STATUS_VERIFY_OK,
     SpiOtaFrame,
+    poll_frame,
 )
 from .transport import SpiOtaTransport
 
@@ -223,7 +224,7 @@ class SpiOtaFlasher:
             self._send(target_tier, target_slot, OFS_DATA, chunk)
         deadline = time.monotonic() + timeout_seconds
         while time.monotonic() < deadline:
-            response = self._transport.transceive(SpiOtaFrame(target_tier, target_slot, OFS_PAGE_ACK, 0))
+            response = self._transport.transceive(poll_frame(target_tier, target_slot, OFS_PAGE_ACK))
             if response.frame_type == OFS_PAGE_ACK and response.dlc >= 4:
                 acked_index = struct.unpack(">I", response.payload[:4])[0]
                 if acked_index == page_index:
@@ -233,7 +234,7 @@ class SpiOtaFlasher:
     def _wait_for_status(self, target_tier: int, target_slot: int, timeout_seconds: float) -> int:
         deadline = time.monotonic() + timeout_seconds
         while time.monotonic() < deadline:
-            response = self._transport.transceive(SpiOtaFrame(target_tier, target_slot, OFS_STATUS, 0))
+            response = self._transport.transceive(poll_frame(target_tier, target_slot, OFS_STATUS))
             if response.frame_type in (OFS_STATUS, OFS_HEARTBEAT) and response.dlc >= 1:
                 status = response.payload[0]
                 if status in (STATUS_VERIFY_OK, STATUS_VERIFY_FAIL, STATUS_ERROR):

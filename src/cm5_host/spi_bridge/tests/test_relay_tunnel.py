@@ -13,8 +13,10 @@ from spi_bridge.protocol import (
     OFS_BACKUP_READ_RESPONSE,
     OFS_CONFIRM_HEALTHY,
     OFS_DATA,
+    OFS_END_UPDATE,
     OFS_PAGE_ACK,
     OFS_RELAY_RECV,
+    OFS_RELAY_RECV_RESPONSE,
     OFS_RELAY_SEND,
     OFS_STATUS,
     OFS_VERSION_RESPONSE,
@@ -116,9 +118,9 @@ class FakeRelayingTier1Transport:
 
         if frame.frame_type == OFS_RELAY_RECV:
             if not self._pending_recv_fragments:
-                return SpiOtaFrame(frame.target_tier, frame.target_slot, OFS_RELAY_RECV, 0)
+                return SpiOtaFrame(frame.target_tier, frame.target_slot, OFS_RELAY_RECV_RESPONSE, 0)
             fragment = self._pending_recv_fragments.pop(0)
-            return SpiOtaFrame(frame.target_tier, frame.target_slot, OFS_RELAY_RECV, len(fragment), fragment)
+            return SpiOtaFrame(frame.target_tier, frame.target_slot, OFS_RELAY_RECV_RESPONSE, len(fragment), fragment)
 
         raise AssertionError(f"unexpected direct frame_type in relay test: {frame.frame_type}")
 
@@ -132,13 +134,11 @@ class FakeRelayingTier1Transport:
             if len(self._page_buffer) >= 2048 or dlc < 5:
                 self._page_buffer.clear()
                 self.pages_received += 1
-            # no response queued for a bare DATA frame - matches the real protocol
-        elif offset == OFS_PAGE_ACK:
-            acked_index = max(0, self.pages_received - 1)
-            self._queue_response(URTC_BOOTLOADER_CAN_BASE + OFS_PAGE_ACK, struct.pack(">I", acked_index))
-        elif offset == OFS_STATUS:
+                # the bootloader transmits its page acknowledge by itself; the host only listens
+                self._queue_response(URTC_BOOTLOADER_CAN_BASE + OFS_PAGE_ACK, struct.pack(">I", self.pages_received - 1))
+        elif offset == OFS_END_UPDATE:
             self._queue_response(URTC_BOOTLOADER_CAN_BASE + OFS_STATUS, bytes([STATUS_VERIFY_OK]))
-        # ENTER_BOOTLOADER/START_UPDATE/HMAC_CHUNK/END_UPDATE - accepted silently, no response needed
+        # ENTER_BOOTLOADER/START_UPDATE/HMAC_CHUNK - accepted silently, no response needed
 
     def _queue_response(self, can_id: int, data: bytes) -> None:
         response = RelayFrame(can_id, len(data), data)
@@ -182,12 +182,45 @@ class RelayedTransportTests(unittest.TestCase):
         class NeverRespondingTier1(FakeRelayingTier1Transport):
             def transceive(self, frame):
                 if frame.frame_type == OFS_RELAY_RECV:
-                    return SpiOtaFrame(frame.target_tier, frame.target_slot, OFS_RELAY_RECV, 0)
+                    return SpiOtaFrame(frame.target_tier, frame.target_slot, OFS_RELAY_RECV_RESPONSE, 0)
                 return super().transceive(frame)
 
         relayed = RelayedTransport(NeverRespondingTier1(), SPI_TARGET_STACKA, 2)
         info = query_version(relayed, SPI_TARGET_STACKA, 2)
         self.assertFalse(info.online)
+
+
+class PollingTests(unittest.TestCase):
+    def test_a_poll_puts_nothing_on_the_urtc_bus(self):
+        from spi_bridge.protocol import poll_frame
+
+        tier1 = FakeRelayingTier1Transport()
+        sent: list[int] = []
+        original = tier1.transceive
+
+        def spy(frame):
+            sent.append(frame.frame_type)
+            return original(frame)
+
+        tier1.transceive = spy  # type: ignore[method-assign]
+        relayed = RelayedTransport(tier1, SPI_TARGET_STACKA, 2)
+        relayed.transceive(poll_frame(SPI_TARGET_STACKA, 2, OFS_PAGE_ACK))
+        self.assertNotIn(OFS_RELAY_SEND, sent)
+        self.assertIn(OFS_RELAY_RECV, sent)
+
+    def test_the_poll_frame_names_the_frame_type_it_waits_for(self):
+        from spi_bridge.protocol import OFS_POLL_STATUS, poll_frame, polled_frame_type
+
+        frame = poll_frame(1, 2, OFS_STATUS)
+        self.assertEqual(frame.frame_type, OFS_POLL_STATUS)
+        self.assertEqual(polled_frame_type(frame), OFS_STATUS)
+        self.assertIsNone(polled_frame_type(SpiOtaFrame(1, 2, OFS_STATUS, 0)))
+
+    def test_the_new_identifiers_have_one_emitter_each(self):
+        from spi_bridge.protocol import OFS_AXIS_STATUS, OFS_AXIS_STATUS_RESPONSE, OFS_POLL_STATUS
+
+        self.assertEqual((OFS_AXIS_STATUS, OFS_AXIS_STATUS_RESPONSE, OFS_POLL_STATUS, OFS_RELAY_RECV_RESPONSE), (0x10, 0x16, 0x17, 0x18))
+        self.assertEqual(OFS_RELAY_RECV, 0x13)
 
 
 if __name__ == "__main__":

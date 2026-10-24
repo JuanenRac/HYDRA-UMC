@@ -56,6 +56,51 @@ class CanIdTableTests(unittest.TestCase):
                 value = int(re.search(rf"^#define {define}\s+(0x[0-9A-Fa-f]+)", text, re.M).group(1), 16)
                 self.assertEqual(value, message.offset, f"{header.parent.parent.name}: {define}")
 
+    def test_the_relay_answers_use_their_own_identifiers_in_the_firmware_and_the_host(self):
+        import re
+
+        root = Path(__file__).resolve().parents[1]
+        expected = {
+            "RELAY_RESPONSE": ("OFS_AXIS_STATUS_RESPONSE", can_ids.CONTROLLER_BOARD),
+            "POLL_STATUS": ("OFS_POLL_STATUS", can_ids.HOST),
+            "RELAY_RESPONSE_EXTRA": ("OFS_RELAY_RECV_RESPONSE", can_ids.CONTROLLER_BOARD),
+        }
+        headers = [root / "src/mcu_stm32g474/boot/bootloader_common.h", root / "src/mcu_stm32h745/CM4/boot/bootloader_common.h"]
+        protocol = (root / "src/cm5_host/spi_bridge/spi_bridge/protocol.py").read_text(encoding="utf-8")
+        for table_name, (define, emitter) in expected.items():
+            message = can_ids.by_name(table_name)
+            self.assertEqual(message.emitter, emitter, table_name)
+            for header in headers:
+                value = int(re.search(rf"^#define {define}\s+(0x[0-9A-Fa-f]+)", header.read_text(encoding="utf-8"), re.M).group(1), 16)
+                self.assertEqual(value, message.offset, f"{header.parent.parent.name}: {define}")
+            python_value = int(re.search(rf"^{define} = (0x[0-9A-Fa-f]+)", protocol, re.M).group(1), 16)
+            self.assertEqual(python_value, message.offset, f"spi_bridge: {define}")
+        for request, answer in (("RELAY_REQUEST", "RELAY_RESPONSE"), ("RELAY_REQUEST_EXTRA", "RELAY_RESPONSE_EXTRA")):
+            self.assertEqual(can_ids.by_name(request).offset, int(re.search(rf"#define RELAY_REQUEST_{'AXIS_STATUS' if request == 'RELAY_REQUEST' else 'RECV'}\s+(0x[0-9A-Fa-f]+)u", (root / "src/mcu_stm32g474/relay_ids.h").read_text(encoding="utf-8")).group(1), 16))
+            self.assertNotEqual(can_ids.by_name(request).offset, can_ids.by_name(answer).offset)
+
+    def test_the_controller_board_never_transmits_on_the_identifier_of_a_request(self):
+        import re
+
+        root = Path(__file__).resolve().parents[1]
+        text = (root / "src/mcu_stm32g474/RobotControllerRelay.c").read_text(encoding="utf-8")
+        for sent in re.findall(r"SendClassicFrame\(&hfdcan1_app, ([^,]+),", text):
+            self.assertIn("RelayAnswerOffset", sent, sent)
+        brain = (root / "src/mcu_stm32h745/CM4/KinematicBrainCan.c").read_text(encoding="utf-8")
+        self.assertNotIn("WaitForResponse(base + OFS_AXIS_STATUS,", brain)
+        self.assertNotIn("WaitForResponse(relay_recv_id,", brain)
+        self.assertIn("OFS_AXIS_STATUS_RESPONSE", brain)
+        self.assertIn("OFS_RELAY_RECV_RESPONSE", brain)
+
+    def test_the_gateway_does_not_transmit_what_a_board_transmits(self):
+        root = Path(__file__).resolve().parents[1]
+        text = (root / "src/mcu_stm32h745/CM4/boot/bootloader_protocol.c").read_text(encoding="utf-8")
+        start = text.index("void Relay_ToStackA")
+        body = text[start : text.index("Relay_ToCM7", start)]
+        self.assertIn("listen_only", body)
+        for name in ("OFS_AXIS_STATUS_RESPONSE", "OFS_RELAY_RECV_RESPONSE", "OFS_PAGE_ACK", "OFS_STATUS", "OFS_HEARTBEAT"):
+            self.assertIn(name, body, name)
+
     def test_identifier_adds_the_slot_base_and_checks_it(self):
         self.assertEqual(can_ids.identifier(0x100, can_ids.by_name("RELAY_RESPONSE")), 0x116)
         with self.assertRaises(ValueError):

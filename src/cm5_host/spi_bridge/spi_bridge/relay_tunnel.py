@@ -52,12 +52,12 @@ from .protocol import (
     OFS_BACKUP_READ_PAGE_ACK,
     OFS_BACKUP_READ_REQUEST,
     OFS_BACKUP_READ_RESPONSE,
-    OFS_PAGE_ACK,
     OFS_QUERY_VERSION,
     OFS_RELAY_RECV,
+    OFS_RELAY_RECV_RESPONSE,
     OFS_RELAY_SEND,
-    OFS_STATUS,
     SpiOtaFrame,
+    polled_frame_type,
 )
 from .transport import SpiOtaTransport
 
@@ -70,7 +70,7 @@ from .transport import SpiOtaTransport
 # Waiting on RELAY_RECV for those too would be real, needless latency -
 # hundreds of full RELAY_RECV timeouts across a real flash cycle's HMAC/
 # DATA fragments, for a response nothing ever reads.
-_QUERY_FRAME_TYPES = frozenset((OFS_QUERY_VERSION, OFS_PAGE_ACK, OFS_STATUS))
+_QUERY_FRAME_TYPES = frozenset((OFS_QUERY_VERSION,))
 
 # URTC's own real, proven CAN bootloader protocol space (docs/CANBUS.TXT in
 # the sibling URTC repo): 0x7F0-0x7FD carry the same commands as this
@@ -161,6 +161,13 @@ class RelayedTransport:
         self._tier1_target_slot = tier1_target_slot
 
     def transceive(self, frame: SpiOtaFrame) -> SpiOtaFrame:
+        wanted = polled_frame_type(frame)
+        if wanted is not None:
+            # A poll for a PAGE_ACK or a STATUS puts nothing on the URTC bus (its own bootloader transmits those identifiers): it only drains what the tool head already sent.
+            response_can_id, response_dlc, response_data = self._drain_relay_recv(timeout_seconds=2.0)
+            mapped = urtc_can_id_to_ofs(response_can_id)
+            return SpiOtaFrame(frame.target_tier, frame.target_slot, 0xFF if mapped is None else mapped, response_dlc, response_data)
+
         real_can_id = ofs_to_urtc_can_id(frame.frame_type)
         outbound = RelayFrame(real_can_id, frame.dlc, frame.payload[: frame.dlc])
         for fragment in build_relay_send_fragments(outbound):
@@ -191,8 +198,8 @@ class RelayedTransport:
             response = self._underlying.transceive(
                 SpiOtaFrame(self._tier1_target_tier, self._tier1_target_slot, OFS_RELAY_RECV, 0)
             )
-            if response.dlc < 3:
-                continue  # nothing new queued this poll
+            if response.frame_type != OFS_RELAY_RECV_RESPONSE or response.dlc < 3:
+                continue  # nothing new queued this poll, or not the answer to this request
             can_id, total_dlc, fragment_data = parse_relay_fragment(response.payload[: response.dlc])
             if accumulated_id is None:
                 accumulated_id, accumulated_dlc = can_id, total_dlc

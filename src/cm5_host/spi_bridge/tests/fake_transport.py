@@ -17,6 +17,7 @@ from spi_bridge.protocol import (
     OFS_VERSION_RESPONSE,
     STATUS_VERIFY_OK,
     SpiOtaFrame,
+    polled_frame_type,
 )
 
 
@@ -33,6 +34,9 @@ class FakeBootloaderTransport:
         if self.raise_on_transceive:
             raise self.raise_on_transceive
         self.sent_frames.append(frame)
+        wanted = polled_frame_type(frame)
+        if wanted is not None:
+            frame = SpiOtaFrame(frame.target_tier, frame.target_slot, wanted, 0)  # a poll waits for the next frame of that type
 
         if not self.online:
             raise OSError("no response (offline)")

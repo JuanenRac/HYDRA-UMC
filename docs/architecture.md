@@ -173,7 +173,9 @@ section 5 below:
 | +0x13  | RELAY_RECV (tunnel from Tier 2 - §5)  | *(new - no URTC equivalent)* |
 | +0x14  | BACKUP_READ_PAGE_ACK                  | 0x7FF |
 | +0x15  | CONFIRM_HEALTHY                       | *(new - no URTC equivalent)* |
-| +0x16..+0x18 | Relay protocol (see tools/can_ids.py) | |
+| +0x16  | AXIS_STATUS_RESPONSE (controller board, answer to +0x10) | *(new)* |
+| +0x17  | POLL_STATUS (SPI frame type from the CM5, never put on CAN) | *(new)* |
+| +0x18  | RELAY_RECV_RESPONSE (controller board, answer to +0x13) | *(new)* |
 | +0x19  | IMAGE_HEADER (host, x8: the 64-byte signed header, after START_UPDATE) | *(new)* |
 | +0x1A  | DOWNGRADE_NONCE_REQUEST (host, DLC 1: which half, 0 or 1, of the 16-byte nonce of the session) | *(new)* |
 | +0x1B  | DOWNGRADE_TOKEN (host, x4, optional: the 32-byte token that allows one downgrade) | *(new)* |

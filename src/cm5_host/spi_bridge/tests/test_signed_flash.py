@@ -32,6 +32,7 @@ from spi_bridge.protocol import (
     OFS_HMAC_CHUNK,
     OFS_IMAGE_HEADER,
     OFS_PAGE_ACK,
+    OFS_POLL_STATUS,
     OFS_START_UPDATE,
     OFS_STATUS,
     SPI_TARGET_STACKA,
@@ -77,6 +78,8 @@ class BootloaderModel:
         self.sent.append(frame)
         kind = frame.frame_type
         payload = bytes(frame.payload[: frame.dlc])
+        if kind == OFS_POLL_STATUS:
+            kind, payload = payload[0], b""  # a poll waits for the next frame of that type
         if kind == OFS_START_UPDATE:
             self.reset()
             self.size = struct.unpack(">I", payload[:4])[0]

@@ -201,6 +201,15 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # relay_ids.h: which identifier the controller board answers on (one emitter per identifier) and how an answer is cut into fragments.
+    RELAY_IDS_HOST_BIN="$ROOT/build/host_tests_relay_ids"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32g474" -o "$RELAY_IDS_HOST_BIN" "$ROOT/tests/test_relay_ids.c" && "$RELAY_IDS_HOST_BIN"; then
+        pass "relay_ids host logic tests passed"
+    else
+        fail "relay_ids host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # The bootloaders' own HMAC-SHA256, CRC32 and flash erase/program/copy/metadata
     # routines, compiled as they are against a stand-in HAL header (tests/stubs):
     # the G474 one by bank and page, the two H745 ones by 128 KB sector. They map

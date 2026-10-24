@@ -12,8 +12,10 @@ kinematic brain and the answer of the controller board, and the host client poll
 This table gives every message its own identifier inside the window of a slot (`base + offset`), with the emitter that may send it.
 The firmware and the clients are to be written against this table; the test in tests/test_can_ids.py keeps it consistent.
 
-Nothing here has run on a board. The bootloaders already use the four identifiers of the signed header and the downgrade token (0x19-0x1C);
-the relay of the kinematic brain and the controller board still use the old identifiers until they are ported.
+Nothing here has run on a board. The controller board answers on +0x16 and +0x18 (src/mcu_stm32g474/relay_ids.h), the kinematic brain
+waits for those, and the CM5 asks for the next PAGE_ACK or STATUS of a board with POLL_STATUS (+0x17), a frame of the SPI link that the
+gateway never puts on the CAN bus. The tests in tests/test_can_ids.py compare the three bootloader_common.h, the firmware sources and
+the SPI bridge with this table.
 """
 from __future__ import annotations
 

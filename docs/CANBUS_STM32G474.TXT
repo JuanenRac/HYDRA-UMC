@@ -57,7 +57,12 @@ wire ID 0x661.
 1. APPLICATION COMMANDS (+0x10 - +0x1F within a slot's 32-ID window) -
    PROPOSED, no firmware implements any of this yet
 -----------------------------------------------------------------------------
-ID: +0x10 [Robot Controller Board -> Kinematic Brain]
+ONE EMITTER PER IDENTIFIER: the request of the Kinematic Brain and the answer of this board never share an identifier. The Kinematic Brain
+asks with +0x10 (axis status, no data) and +0x13 (relay receive); this board answers on +0x16 and +0x18. The CM5 asks a gateway for the
+next page acknowledge or status of a board with the SPI frame type +0x17 (POLL_STATUS), which is never put on the CAN bus. Table:
+tools/can_ids.py.
+
+ID: +0x10 request [Kinematic Brain -> Robot Controller Board], answered on +0x16 [Robot Controller Board -> Kinematic Brain]
 Axis status
 DLC: 2 bytes (PROPOSED layout, not yet implemented)
 Data:
@@ -100,8 +105,7 @@ Data:
           more than 5 data bytes (e.g. URTC's own HMAC_CHUNK, which is 8
           bytes) therefore takes 2 consecutive RELAY_SEND frames.
 
-ID: +0x13 [Kinematic Brain -> Robot Controller Board, or answered
-           unprompted]
+ID: +0x13 request [Kinematic Brain -> Robot Controller Board], answered on +0x18 [Robot Controller Board -> Kinematic Brain]
 RELAY_RECV - drains this board's own FDCAN2 receive FIFO back to the
 Kinematic Brain
 DLC: any (request), 8 bytes (each response frame)

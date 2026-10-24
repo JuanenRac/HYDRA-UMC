@@ -138,6 +138,10 @@ uint32_t ReadSlotBaseId(void);
 #define OFS_AXIS_STEP_TELEMETRY         0x11 // application-only, not this bootloader
 #define OFS_RELAY_SEND                   0x12 // application-only (Tier 2/3 tunnel), not this bootloader
 #define OFS_RELAY_RECV                    0x13 // application-only (Tier 2/3 tunnel), not this bootloader
+// One emitter per identifier (tools/can_ids.py): the controller board answers on its own identifiers, not on the one the request came in on.
+#define OFS_AXIS_STATUS_RESPONSE          0x16 // sent BY the application (controller board), DLC=2: answer to OFS_AXIS_STATUS
+#define OFS_POLL_STATUS                   0x17 // host <-> CM4 gateway only (SPI frame type): never put on the CAN bus; DLC=1, the frame type to wait for
+#define OFS_RELAY_RECV_RESPONSE           0x18 // sent BY the application (controller board): fragments answering OFS_RELAY_RECV
 // Found missing during implementation (not in the original docs/
 // architecture.md section 4 table - added there alongside this file): the
 // readback direction needs its OWN page-ack offset, distinct from +0x03's

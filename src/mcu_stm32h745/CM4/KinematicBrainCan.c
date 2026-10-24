@@ -159,7 +159,8 @@ uint8_t KinematicBrainCan_QueryAxisStatus(uint8_t slot, uint8_t out_status[8], u
 {
     uint32_t base = StackASlotBaseId(slot);
     if (!SendClassicFrame(base + OFS_AXIS_STATUS, NULL, 0)) return 0;
-    return WaitForResponse(base + OFS_AXIS_STATUS, out_status, out_dlc, timeout_ms);
+    /* The controller board answers on its own identifier, not on the one of the request (one emitter per identifier, tools/can_ids.py). */
+    return WaitForResponse(base + OFS_AXIS_STATUS_RESPONSE, out_status, out_dlc, timeout_ms);
 }
 
 /* Real RELAY_SEND fragmentation - matches spi_bridge/relay_tunnel.py's own
@@ -213,7 +214,7 @@ static uint8_t DrainRelayRecv(uint8_t slot, uint8_t *out_data, uint8_t *out_dlc,
             HAL_Delay(1); /* TX FIFO full: give the bus a moment instead of spinning on it */
             continue;
         }
-        if (!WaitForResponse(relay_recv_id, response, &response_dlc, 50)) continue;
+        if (!WaitForResponse(StackASlotBaseId(slot) + OFS_RELAY_RECV_RESPONSE, response, &response_dlc, 50)) continue; /* answered on the board's own identifier */
         if (response_dlc < RELAY_FRAGMENT_HEADER_BYTES) continue; /* nothing new queued this poll */
 
         uint16_t fragment_id = ((uint16_t)response[0] << 8) | response[1];

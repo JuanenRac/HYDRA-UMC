@@ -605,6 +605,23 @@ void Relay_ToStackA(uint8_t slot, const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
     }
     uint32_t slot_base = CAN_ID_STACKA_BASE + (uint32_t)slot * STACKA_SLOT_WINDOW;
     uint32_t target_id = slot_base + in->frame_type;
+    // One emitter per identifier (tools/can_ids.py): the identifiers the controller board answers on, and the ones the bootloader itself transmits, are never
+    // transmitted from here, whatever the CM5 asked for. A POLL_STATUS frame is the CM5 asking to be handed the next frame of the board: it puts nothing on the bus.
+    uint8_t listen_only = (in->frame_type == OFS_POLL_STATUS);
+    uint8_t transmitted_by_the_board = (in->frame_type == OFS_AXIS_STATUS_RESPONSE || in->frame_type == OFS_RELAY_RECV_RESPONSE ||
+                                        in->frame_type == OFS_PAGE_ACK || in->frame_type == OFS_STATUS || in->frame_type == OFS_HEARTBEAT ||
+                                        in->frame_type == OFS_VERSION_RESPONSE || in->frame_type == OFS_BOOTLOADER_VERSION ||
+                                        in->frame_type == OFS_ERROR_COUNTERS_RESPONSE || in->frame_type == OFS_BACKUP_READ_RESPONSE ||
+                                        in->frame_type == OFS_DOWNGRADE_NONCE_RESPONSE);
+    if (transmitted_by_the_board) {
+        memset(out, 0, sizeof(*out));
+        out->target_tier = SPI_TARGET_STACKA;
+        out->target_slot = slot;
+        out->frame_type = OFS_STATUS;
+        out->dlc = 1;
+        out->payload[0] = STATUS_ERROR;
+        return;
+    }
 
     FDCAN_TxHeaderTypeDef txHeader;
     txHeader.Identifier = target_id;
@@ -618,7 +635,7 @@ void Relay_ToStackA(uint8_t slot, const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
     txHeader.MessageMarker = 0;
     uint8_t txData[8] = {0};
     memcpy(txData, (const void*)in->payload, in->dlc > 8 ? 8 : in->dlc);
-    if (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) > 0) {
+    if (!listen_only && HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) > 0) {
         HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &txHeader, txData);
     }
 

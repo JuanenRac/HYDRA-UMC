@@ -60,6 +60,12 @@ OFS_DOWNGRADE_TOKEN = 0x1B
 OFS_DOWNGRADE_NONCE_RESPONSE = 0x1C
 OFS_RELAY_SEND = 0x12
 OFS_RELAY_RECV = 0x13
+# One emitter per identifier (tools/can_ids.py): the request of the kinematic brain and the answer of the controller board no longer share an
+# identifier, and the host no longer polls with the identifiers the bootloader transmits (PAGE_ACK 0x03, STATUS 0x05).
+OFS_AXIS_STATUS = 0x10
+OFS_AXIS_STATUS_RESPONSE = 0x16
+OFS_POLL_STATUS = 0x17  # host -> gateway, DLC 1: the frame type (PAGE_ACK or STATUS) to wait for; nothing is put on the CAN bus
+OFS_RELAY_RECV_RESPONSE = 0x18
 
 STATUS_LISTENING = 0x01
 STATUS_ERASING = 0x02
@@ -126,3 +132,17 @@ class SpiOtaFrame:
             raise ValueError(f"SPI frame must be exactly {SPI_FRAME_SIZE} bytes, got {len(raw)}")
         target_tier, target_slot, frame_type, dlc, payload, _reserved = struct.unpack(_STRUCT_FORMAT, raw)
         return cls(target_tier, target_slot, frame_type, dlc, payload[: min(dlc, 8)])
+
+
+def poll_frame(target_tier: int, target_slot: int, wanted_frame_type: int) -> SpiOtaFrame:
+    """The frame that asks the gateway for the next PAGE_ACK or STATUS of a board without putting anything on the CAN bus."""
+
+    return SpiOtaFrame(target_tier, target_slot, OFS_POLL_STATUS, 1, bytes((wanted_frame_type,)))
+
+
+def polled_frame_type(frame: SpiOtaFrame) -> int | None:
+    """The frame type a POLL_STATUS frame waits for, or None when the frame is not a poll."""
+
+    if frame.frame_type != OFS_POLL_STATUS or frame.dlc < 1:
+        return None
+    return frame.payload[0]
