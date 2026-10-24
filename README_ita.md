@@ -265,7 +265,7 @@ flowchart LR
   relay (`RobotControllerRelay.c` - downlink FDCAN2 verso l'URTC Tool
   Head, un responder `AXIS_STATUS` e il tunnel `RELAY_SEND`/`RELAY_RECV`)
   insieme al task di lampeggio con refresh del watchdog.
-* 📡 **Aggiornamenti firmware CAN-OTA, 4 livelli di profondità:** lo stesso
+* 📡 **Aggiornamenti firmware CAN-OTA, 4 livelli di profondità:** lo stesso **Intestazione di immagine firmata e anti-rollback (bootloader, testati sull'host):** l'aggiornamento porta un'intestazione di 64 byte (versione completa maggiore.minore.patch, id hardware, dimensione, indirizzo di link, parole dei vettori, CRC) e il tag è l'HMAC di intestazione e immagine insieme, così un'immagine firmata vecchia non può dichiarare una versione più alta; i tre numeri della versione vengono confrontati e un'immagine più vecchia si installa solo con un token legato al nonce di quella sessione, alle due versioni e a quell'immagine (il vecchio frame magico di quattro byte non permette più nulla). La decisione (`image_header.h`, `update_verify.h`) è un solo file nei tre bootloader, testato con byte prodotti da `tools/image_header.py` e, per la G474, da capo a fondo da START_UPDATE alla nuova applicazione. La chiave HMAC resta simmetrica e nulla di tutto ciò è stato eseguito su una scheda.
   STM32H745 (tramite il suo collegamento SPI esistente verso il CM5),
   questa scheda, la sua Testina Utensile URTC (STM32F303CCT6), e - solo
   quando installata - la propria Scheda di Espansione Avanzata di quella

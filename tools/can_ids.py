@@ -12,7 +12,8 @@ kinematic brain and the answer of the controller board, and the host client poll
 This table gives every message its own identifier inside the window of a slot (`base + offset`), with the emitter that may send it.
 The firmware and the clients are to be written against this table; the test in tests/test_can_ids.py keeps it consistent.
 
-Nothing here has run on a board, and the firmware still uses the old identifiers until it is ported.
+Nothing here has run on a board. The bootloaders already use the four identifiers of the signed header and the downgrade token (0x19-0x1C);
+the relay of the kinematic brain and the controller board still use the old identifiers until they are ported.
 """
 from __future__ import annotations
 
@@ -43,6 +44,12 @@ MESSAGES: tuple[CanMessage, ...] = (
     # bootloader answers (kept where they are)
     CanMessage("BOOT_PAGE_ACK", 0x03, BOOTLOADER),
     CanMessage("BOOT_STATUS", 0x05, BOOTLOADER),
+    # signed image header and downgrade token (image_header.py, src/*/boot/update_verify.h): the first three are sent by the host, the nonce
+    # is the bootloader's answer to the request, so no identifier has two emitters
+    CanMessage("BOOT_IMAGE_HEADER", 0x19, HOST),
+    CanMessage("BOOT_DOWNGRADE_NONCE_REQUEST", 0x1A, HOST),
+    CanMessage("BOOT_DOWNGRADE_TOKEN", 0x1B, HOST),
+    CanMessage("BOOT_DOWNGRADE_NONCE_RESPONSE", 0x1C, BOOTLOADER),
 )
 
 

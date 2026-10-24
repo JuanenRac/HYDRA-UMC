@@ -192,6 +192,12 @@ static uint8_t DispatchFrame(SpiOtaFrame_t *in, uint8_t tx_wire[SPI_FRAME_SIZE])
             return HandleStartUpdate(in->payload); // 1 only when the request was accepted
         } else if (in->frame_type == OFS_HMAC_CHUNK && in->dlc == 8) {
             HandleHmacChunk(in->payload);
+        } else if (in->frame_type == OFS_IMAGE_HEADER && in->dlc == 8) {
+            HandleImageHeaderChunk(in->payload);
+        } else if (in->frame_type == OFS_DOWNGRADE_TOKEN && in->dlc == 8) {
+            HandleDowngradeTokenChunk(in->payload);
+        } else if (in->frame_type == OFS_DOWNGRADE_NONCE_REQUEST && in->dlc == 1) {
+            HandleDowngradeNonceRequest(in->payload, in->dlc);
         } else if (in->frame_type == OFS_DATA) {
             HandleData(in->payload, in->dlc);
         } else if (in->frame_type == OFS_END_UPDATE && in->dlc == 8) {

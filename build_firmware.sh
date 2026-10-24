@@ -206,7 +206,7 @@ else
     # the G474 one by bank and page, the two H745 ones by 128 KB sector. They map
     # the flash address range, so they run on Linux x86-64 and say so elsewhere.
     BOOTLOADER_G474_HOST_BIN="$ROOT/build/host_tests_bootloader_g474"
-    if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -I"$ROOT/tests/stubs" -I"$ROOT/src/mcu_stm32g474/boot" -o "$BOOTLOADER_G474_HOST_BIN" "$ROOT/tests/test_bootloader_g474_host.c" && "$BOOTLOADER_G474_HOST_BIN" >/dev/null; then
+    if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -I"$ROOT/tests/stubs" -I"$ROOT/src/mcu_stm32g474/boot" -I"$ROOT/tests" -o "$BOOTLOADER_G474_HOST_BIN" "$ROOT/tests/test_bootloader_g474_host.c" && "$BOOTLOADER_G474_HOST_BIN" >/dev/null; then
         pass "G474 bootloader HMAC, CRC32 and flash host logic tests passed"
     else
         "$BOOTLOADER_G474_HOST_BIN" || true
@@ -220,6 +220,42 @@ else
         else
             "$BOOTLOADER_H745_HOST_BIN" || true
             fail "H745 $H745_CORE bootloader sector erase, CRC32 and HMAC host logic tests FAILED"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+    done
+
+    # The signed image header, the anti-rollback rule and the decision at the end of an update (image_header.h, update_verify.h) exist as a real
+    # per-target copy in all three bootloaders: the same test sources are compiled and run once per target's own include path. The bytes come
+    # from tests/image_header_vectors.h, which tools/gen_image_header_vectors.py makes with the host reference tools/image_header.py.
+    for UPDATE_TARGET_DIR in "$ROOT/src/mcu_stm32g474/boot" "$ROOT/src/mcu_stm32h745/CM4/boot" "$ROOT/src/mcu_stm32h745/CM7/boot"; do
+        for UPDATE_TEST in test_image_header test_update_verify; do
+            UPDATE_HOST_BIN="$ROOT/build/host_tests_$UPDATE_TEST"
+            if "$HOST_CC" -std=c11 -Wall -Wextra -Werror -I"$UPDATE_TARGET_DIR" -I"$ROOT/tests" -o "$UPDATE_HOST_BIN" "$ROOT/tests/$UPDATE_TEST.c" && "$UPDATE_HOST_BIN" >/dev/null; then
+                pass "$UPDATE_TEST host logic tests passed for $UPDATE_TARGET_DIR"
+            else
+                "$UPDATE_HOST_BIN" || true
+                fail "$UPDATE_TEST host logic tests FAILED for $UPDATE_TARGET_DIR"
+                echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+            fi
+        done
+    done
+
+    # The whole update of the G474 bootloader, from START_UPDATE to the new application, with its protocol source compiled as it is.
+    # The two H745 cores carry the same glue (tests/test_update_glue_parity.py keeps the three copies identical); their protocol sources are
+    # only syntax-checked here, against tests/stubs/h7protocol.
+    BOOTLOADER_G474_UPDATE_BIN="$ROOT/build/host_tests_bootloader_g474_update"
+    if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -I"$ROOT/tests/stubs/protocol" -I"$ROOT/src/mcu_stm32g474" -I"$ROOT/src/mcu_stm32g474/boot" -I"$ROOT/tests" -o "$BOOTLOADER_G474_UPDATE_BIN" "$ROOT/tests/test_bootloader_g474_update_host.c" && "$BOOTLOADER_G474_UPDATE_BIN" >/dev/null; then
+        pass "G474 bootloader whole-update host tests passed"
+    else
+        "$BOOTLOADER_G474_UPDATE_BIN" || true
+        fail "G474 bootloader whole-update host tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+    for H745_CORE in CM4 CM7; do
+        if "$HOST_CC" -std=gnu11 -fsyntax-only -Wall -Wno-int-to-pointer-cast -I"$ROOT/tests/stubs/h7protocol" -I"$ROOT/src/mcu_stm32h745/$H745_CORE/boot" -I"$ROOT/src/mcu_stm32h745/Common" -I"$ROOT/src/mcu_stm32h745/$H745_CORE" -I"$ROOT/src/mcu_stm32h745" -I"$ROOT/tests" "$ROOT/src/mcu_stm32h745/$H745_CORE/boot/bootloader_protocol.c"; then
+            pass "H745 $H745_CORE bootloader protocol source compiles against the stand-in HAL"
+        else
+            fail "H745 $H745_CORE bootloader protocol source does not compile against the stand-in HAL"
             echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
         fi
     done

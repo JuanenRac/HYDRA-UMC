@@ -164,7 +164,7 @@ section 5 below:
 | +0x0A  | BOOTLOADER_VERSION (bootloader-only)  | 0x7FA |
 | +0x0B  | TEC (transmit error counter)          | 0x7FB |
 | +0x0C  | REC (receive error counter)           | 0x7FC |
-| +0x0D  | ALLOW_DOWNGRADE (bypass anti-rollback)| 0x7FD |
+| +0x0D  | ALLOW_DOWNGRADE (old constant frame: ignored by the HYDRA-UMC bootloaders; a downgrade needs +0x1B) | 0x7FD |
 | +0x0E  | BACKUP_READ_REQUEST                   | 0x7FE (request half) |
 | +0x0F  | BACKUP_READ_RESPONSE                  | 0x7FE (response half) |
 | +0x10  | AXIS_STATUS (6x endstop bits + fault) | *(new - no URTC equivalent)* |
@@ -172,7 +172,22 @@ section 5 below:
 | +0x12  | RELAY_SEND (tunnel to Tier 2 - see §5)| *(new - no URTC equivalent)* |
 | +0x13  | RELAY_RECV (tunnel from Tier 2 - §5)  | *(new - no URTC equivalent)* |
 | +0x14  | BACKUP_READ_PAGE_ACK                  | 0x7FF |
-| +0x15..+0x1F | Reserved for future Robot Controller Board features | |
+| +0x15  | CONFIRM_HEALTHY                       | *(new - no URTC equivalent)* |
+| +0x16..+0x18 | Relay protocol (see tools/can_ids.py) | |
+| +0x19  | IMAGE_HEADER (host, x8: the 64-byte signed header, after START_UPDATE) | *(new)* |
+| +0x1A  | DOWNGRADE_NONCE_REQUEST (host, DLC 1: which half, 0 or 1, of the 16-byte nonce of the session) | *(new)* |
+| +0x1B  | DOWNGRADE_TOKEN (host, x4, optional: the 32-byte token that allows one downgrade) | *(new)* |
+| +0x1C  | DOWNGRADE_NONCE_RESPONSE (bootloader, DLC 8: the half that was asked for) | *(new)* |
+| +0x1D..+0x1F | Reserved for future Robot Controller Board features | |
+
+**Signed update (HYDRA-UMC bootloaders).** START_UPDATE, the four HMAC_CHUNK frames, the eight IMAGE_HEADER frames, the optional
+DOWNGRADE_TOKEN frames, DATA and END_UPDATE. The tag is the HMAC-SHA256 of the 64-byte header followed by the image; the version of
+END_UPDATE must be the header's. The bootloader checks, in this order and stopping at the first failure: everything arrived, the CRC, the
+tag, the header against what it knows of itself (hardware id, link address, size, CRC, vector words, RAM) and the rule that the image is
+strictly newer than the installed one by major.minor.patch. An older image needs a token: HMAC-SHA256 of "hydra-umc-downgrade\0" + the nonce
+of the session + the installed and the new version (three little-endian 16-bit numbers each) + the tag of the image. The reasons the host
+is told are the VERIFY_FAIL_REASON_* codes, with 0x06 for a header that is missing, not ours or untrue. The byte layout is in
+tools/image_header.py and src/*/boot/image_header.h; the same SPI-OTA frame types reach the two H745 cores.
 
 **Correction found during implementation** (src/mcu_stm32g474/boot/):
 the original version of this table conflated URTC's 0x7FE and 0x7FF into

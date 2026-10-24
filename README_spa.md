@@ -265,7 +265,7 @@ flowchart LR
   (`RobotControllerRelay.c` - enlace descendente FDCAN2 al URTC Tool Head,
   un respondedor `AXIS_STATUS` y el túnel `RELAY_SEND`/`RELAY_RECV`) junto
   a la tarea de parpadeo con refresco de watchdog.
-* 📡 **Actualizaciones de firmware CAN-OTA, 4 niveles de profundidad:** el
+* 📡 **Actualizaciones de firmware CAN-OTA, 4 niveles de profundidad:** el **Cabecera de imagen firmada y anti-rollback (bootloaders, probado en el host):** la actualización lleva una cabecera de 64 bytes (versión completa mayor.menor.parche, id de hardware, tamaño, dirección de enlace, palabras de vectores, CRC) y la etiqueta es el HMAC de cabecera e imagen juntas, de modo que una imagen firmada antigua no puede declarar una versión más alta; se comparan los tres números de la versión y una imagen más antigua solo se instala con un token ligado al nonce de esa sesión, las dos versiones y esa imagen (la antigua trama de cuatro bytes mágicos ya no permite nada). La decisión (`image_header.h`, `update_verify.h`) es un solo fichero en los tres bootloaders, probado con bytes hechos por `tools/image_header.py` y, en la G474, de principio a fin desde START_UPDATE hasta la nueva aplicación. La clave HMAC sigue siendo simétrica y nada de esto se ha ejecutado en una placa.
   propio STM32H745 (a través de su enlace SPI existente hacia el CM5), esta
   placa, su Cabezal de Herramienta URTC (STM32F303CCT6), y - solo cuando está
   instalada - la propia Placa de Expansión Avanzada de ese cabezal

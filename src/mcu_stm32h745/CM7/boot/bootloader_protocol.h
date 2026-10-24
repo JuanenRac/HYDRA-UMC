@@ -41,6 +41,9 @@ void JumpToApplication(void);
 
 uint8_t HandleStartUpdate(uint8_t *data);
 void HandleHmacChunk(uint8_t *data);
+void HandleImageHeaderChunk(uint8_t *data);
+void HandleDowngradeTokenChunk(uint8_t *data);
+void HandleDowngradeNonceRequest(uint8_t *data, uint32_t dlc);
 void HandleData(uint8_t *data, uint32_t dlc);
 void HandleEndUpdate(uint8_t *data);
 

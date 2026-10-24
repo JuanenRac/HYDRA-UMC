@@ -147,6 +147,24 @@ class HttpServiceGuardTests(unittest.TestCase):
         status, _ = self._status(f"{base}/flash?tier=2&slot=0&hardware_id=0x48374334", data=b"\x00" * 16, method="POST")
         self.assertEqual(status, 400)
 
+    def test_the_patch_and_the_installed_version_must_be_well_formed(self):
+        base = self._serve(FakeBootloaderTransport())
+        query = "tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1"
+        for extra in ("&version_patch=x", "&downgrade_from=0.2", "&downgrade_from=a.b.c"):
+            self.assertEqual(self._status(f"{base}/flash?{query}{extra}", data=b"\x00" * 16, method="POST")[0], 400, extra)
+
+    def test_the_patch_reaches_the_header_the_board_receives(self):
+        transport = FakeBootloaderTransport()
+        base = self._serve(transport)
+        status, body = self._status(
+            f"{base}/flash?tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1&version_patch=6", data=bytes(2048), method="POST"
+        )
+        self.assertEqual(status, 200)
+        header = b"".join(f.payload for f in transport.sent_frames if f.frame_type == 0x19)
+        import struct
+
+        self.assertEqual(struct.unpack_from("<HHH", header, 12), (0, 1, 6))
+
     def test_a_tier_or_slot_outside_the_bus_is_refused(self):
         base = self._serve(FakeBootloaderTransport())
         self.assertEqual(self._status(f"{base}/version?tier=3&slot=0")[0], 400)

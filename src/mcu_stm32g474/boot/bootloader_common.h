@@ -130,7 +130,8 @@ uint32_t ReadSlotBaseId(void);
 #define OFS_BOOTLOADER_VERSION     0x0A // sent ONLY by the bootloader, alongside +0x09
 #define OFS_QUERY_ERROR_COUNTERS   0x0B // sent to either app or bootloader
 #define OFS_ERROR_COUNTERS_RESPONSE 0x0C // DLC=2: TEC + REC, read from the FDCAN peripheral's own PSR register
-#define OFS_AUTHORIZE_DOWNGRADE     0x0D // DLC=4, magic 0xD0,0x9E,0x12,0xAD - one-shot anti-rollback bypass
+#define OFS_AUTHORIZE_DOWNGRADE     0x0D // DLC=4. The old constant-magic bypass: no longer accepted (anybody on the bus could send it).
+                                             // A downgrade now needs OFS_DOWNGRADE_TOKEN, made for one image, one pair of versions and one session.
 #define OFS_BACKUP_READ_REQUEST      0x0E // any DLC starts a main-slot readback
 #define OFS_BACKUP_READ_RESPONSE      0x0F // first reply DLC=4 (total size), then DLC=8 raw bytes
 #define OFS_AXIS_STATUS                0x10 // application-only, not this bootloader
@@ -151,6 +152,12 @@ uint32_t ReadSlotBaseId(void);
 // observed the current application behaving normally for a while. Any
 // DLC. Resets FirmwareMetadata_t's own boot_attempts back to 0.
 #define OFS_CONFIRM_HEALTHY                0x15
+// The signed image header and the downgrade token (image_header.h, update_verify.h). The numbers follow tools/can_ids.py:
+// 0x16-0x18 are the relay protocol, so these four take the free ones after them; each has ONE emitter.
+#define OFS_IMAGE_HEADER                   0x19 // host -> bootloader, DLC=8 x 8 frames in order, after START_UPDATE: the 64-byte header of the image
+#define OFS_DOWNGRADE_NONCE_REQUEST        0x1A // host -> bootloader, DLC=1: which half (0 or 1) of the 16-byte nonce of this session it wants
+#define OFS_DOWNGRADE_TOKEN                0x1B // host -> bootloader, DLC=8 x 4 frames, optional: HMAC allowing exactly one downgrade (see update_verify.h)
+#define OFS_DOWNGRADE_NONCE_RESPONSE       0x1C // sent BY this bootloader, DLC=8: the half that was asked for
 
 // Status/verify-fail codes - identical values to URTC's own, so a shared
 // host-side decoder (HYDRA-UMC-STUDIO's canOta.ts) can use one status enum
@@ -167,6 +174,7 @@ uint32_t ReadSlotBaseId(void);
 #define VERIFY_FAIL_REASON_HMAC        0x03
 #define VERIFY_FAIL_REASON_HARDWARE_ID 0x04
 #define VERIFY_FAIL_REASON_ROLLBACK    0x05
+#define VERIFY_FAIL_REASON_HEADER      0x06 // the signed header is missing, is not ours, or says something that is not true of what arrived
 #define STATUS_ERROR          0xFF
 // reported (via CAN_SendHeartbeat) once this bootloader has
 // refused to jump to an app that reset back here BOOT_MAX_ATTEMPTS times in
@@ -203,7 +211,11 @@ typedef struct {
     // all (a genuinely blank chip) never reaches this field either:
     // ApplicationIsValid()'s own magic check already fails first.
     uint32_t boot_attempts;
+    // The patch of the installed version, appended after boot_attempts so the older fields keep their offsets. A page written before
+    // this field existed holds erased flash here (0xFFFFFFFF): METADATA_PATCH() reads that as 0.
+    uint32_t version_patch;
 } FirmwareMetadata_t;
+#define METADATA_PATCH(meta) (((meta).version_patch <= 0xFFFFu) ? (uint16_t)(meta).version_patch : (uint16_t)0u)
 
 void CAN_SendHeartbeat(uint8_t status, uint8_t progress_percent);
 

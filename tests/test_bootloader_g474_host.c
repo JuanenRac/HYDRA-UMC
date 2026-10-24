@@ -26,6 +26,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "image_header_vectors.h"
+
 #if defined(__linux__) && defined(__x86_64__)
 #include <sys/mman.h>
 
@@ -229,6 +231,78 @@ static void test_hmac_padding_boundaries(void)
         hmac_of(key, 32, data, cases[c].len, out);
         CHECK(hex_equals(out, cases[c].expected), what);
     }
+}
+
+/* The tag of a signed image is the HMAC of its 64-byte header (a RAM buffer) followed by the image (flash) as ONE message. The bytes come
+ * from tools/image_header.py through tests/image_header_vectors.h, so this checks the C routine against the reference, not itself. */
+static void test_hmac_of_a_header_and_an_image_matches_the_reference(void)
+{
+    printf("  HMAC-SHA256 of header || image, against the host reference\n");
+    reset_flash_model();
+    memcpy(flash_mem + (BACKUP_APP_ADDR - FLASH_BASE_ADDR), VEC_IMAGE, VEC_IMAGE_SIZE);
+    uint8_t out[32];
+    hmac_sha256_prefixed_flash_region(VEC_KEY, 32, VEC_HEADER, sizeof(VEC_HEADER), BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
+    CHECK(hmac_constant_time_compare(out, VEC_TAG, 32) == 1, "the tag the reference made for the image verifies");
+
+    /* one changed bit anywhere in the header or the image is another tag */
+    uint8_t header[sizeof(VEC_HEADER)];
+    for (size_t i = 0; i < sizeof(header); i += 9) {
+        memcpy(header, VEC_HEADER, sizeof(header));
+        header[i] ^= 0x01;
+        hmac_sha256_prefixed_flash_region(VEC_KEY, 32, header, sizeof(header), BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
+        CHECK(hmac_constant_time_compare(out, VEC_TAG, 32) == 0, "a changed header byte changes the tag");
+    }
+    for (uint32_t i = 0; i < VEC_IMAGE_SIZE; i += 61) {
+        flash_mem[BACKUP_APP_ADDR - FLASH_BASE_ADDR + i] ^= 0x01;
+        hmac_sha256_prefixed_flash_region(VEC_KEY, 32, VEC_HEADER, sizeof(VEC_HEADER), BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
+        CHECK(hmac_constant_time_compare(out, VEC_TAG, 32) == 0, "a changed image byte changes the tag");
+        flash_mem[BACKUP_APP_ADDR - FLASH_BASE_ADDR + i] ^= 0x01;
+    }
+    /* the header alone, as the old flow signed only the image, is not the tag */
+    hmac_sha256_flash_region(VEC_KEY, 32, BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
+    CHECK(hmac_constant_time_compare(out, VEC_TAG, 32) == 0, "the HMAC of the image alone is not the tag of the signed image");
+}
+
+static void test_hmac_prefix_and_region_are_one_message_whatever_the_split(void)
+{
+    printf("  HMAC-SHA256: the split between the prefix and the region does not matter\n");
+    reset_flash_model();
+    uint8_t key[32];
+    uint8_t data[200];
+    uint8_t whole[32], parts[32];
+    for (int i = 0; i < 32; i++) key[i] = (uint8_t)(i * 3 + 1);
+    for (int i = 0; i < 200; i++) data[i] = (uint8_t)(i * 5 + 7);
+    hmac_of(key, 32, data, 200, whole);
+    static const uint32_t splits[] = {0, 1, 55, 56, 63, 64, 65, 127, 128, 199, 200};
+    for (size_t k = 0; k < sizeof(splits) / sizeof(splits[0]); k++) {
+        uint32_t split = splits[k];
+        uint8_t *low = low_buffer(200 - split);
+        memcpy(low, data + split, 200 - split);
+        hmac_sha256_prefixed_flash_region(key, 32, data, split, (uint32_t)(uintptr_t)low, 200 - split, parts);
+        char what[48];
+        snprintf(what, sizeof(what), "prefix of %u bytes", split);
+        CHECK(hmac_constant_time_compare(whole, parts, 32) == 1, what);
+        munmap(low, 200 - split);
+    }
+    hmac_sha256_buffer(key, 32, data, 200, parts);
+    CHECK(hmac_constant_time_compare(whole, parts, 32) == 1, "the buffer form equals the flash form");
+    hmac_sha256_buffer(key, 32, data, 0, parts);
+    uint8_t empty[32];
+    hmac_of(key, 32, data, 0, empty);
+    CHECK(hmac_constant_time_compare(empty, parts, 32) == 1, "an empty message");
+}
+
+static void test_the_downgrade_token_matches_the_reference(void)
+{
+    printf("  downgrade token, against the host reference\n");
+    uint8_t out[32];
+    hmac_sha256_buffer(VEC_KEY, 32, VEC_DOWNGRADE_MESSAGE, sizeof(VEC_DOWNGRADE_MESSAGE), out);
+    CHECK(hmac_constant_time_compare(out, VEC_DOWNGRADE_TOKEN, 32) == 1, "the token the reference made verifies");
+    uint8_t message[sizeof(VEC_DOWNGRADE_MESSAGE)];
+    memcpy(message, VEC_DOWNGRADE_MESSAGE, sizeof(message));
+    message[sizeof(message) - 1] ^= 1; /* another target patch */
+    hmac_sha256_buffer(VEC_KEY, 32, message, sizeof(message), out);
+    CHECK(hmac_constant_time_compare(out, VEC_DOWNGRADE_TOKEN, 32) == 0, "another pair of versions is another token");
 }
 
 static void test_hmac_feeds_the_watchdog_and_reads_the_region_once(void)
@@ -518,6 +592,9 @@ int main(void)
 
     test_hmac_rfc4231();
     test_hmac_padding_boundaries();
+    test_hmac_of_a_header_and_an_image_matches_the_reference();
+    test_hmac_prefix_and_region_are_one_message_whatever_the_split();
+    test_the_downgrade_token_matches_the_reference();
     test_hmac_feeds_the_watchdog_and_reads_the_region_once();
     test_constant_time_compare();
     test_crc32();

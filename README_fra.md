@@ -266,7 +266,7 @@ flowchart LR
   descendante FDCAN2 vers l'URTC Tool Head, un répondeur `AXIS_STATUS`
   et le tunnel `RELAY_SEND`/`RELAY_RECV`) aux côtés de la tâche de
   clignotement avec rafraîchissement du watchdog.
-* 📡 **Mises à jour firmware CAN-OTA, sur 4 niveaux de profondeur :** le
+* 📡 **Mises à jour firmware CAN-OTA, sur 4 niveaux de profondeur :** le **En-tête d'image signé et anti-rollback (bootloaders, testés sur l'hôte) :** la mise à jour porte un en-tête de 64 octets (version complète majeure.mineure.correctif, identifiant matériel, taille, adresse d'édition de liens, mots de vecteurs, CRC) et l'étiquette est le HMAC de l'en-tête et de l'image ensemble, si bien qu'une ancienne image signée ne peut pas déclarer une version plus haute ; les trois nombres de la version sont comparés et une image plus ancienne n'est installée qu'avec un jeton lié au nonce de cette session, aux deux versions et à cette image (l'ancienne trame magique de quatre octets n'autorise plus rien). La décision (`image_header.h`, `update_verify.h`) est un seul fichier dans les trois bootloaders, testé avec des octets produits par `tools/image_header.py` et, pour la G474, de bout en bout de START_UPDATE à la nouvelle application. La clé HMAC reste symétrique et rien de cela n'a tourné sur une carte.
   STM32H745 lui-même (via sa liaison SPI existante vers le CM5), cette
   carte, sa Tête d'Outil URTC (STM32F303CCT6), et - seulement lorsqu'elle
   est installée - la propre Carte d'Extension Avancée de cette tête

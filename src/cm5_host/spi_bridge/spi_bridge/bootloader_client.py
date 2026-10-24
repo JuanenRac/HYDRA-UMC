@@ -29,10 +29,15 @@ import zlib
 from dataclasses import dataclass
 from typing import Iterator
 
+from . import image_header
 from .protocol import (
     AUTHORIZE_DOWNGRADE_MAGIC,
     ENTER_BOOTLOADER_MAGIC,
     OFS_DATA,
+    OFS_DOWNGRADE_NONCE_REQUEST,
+    OFS_DOWNGRADE_NONCE_RESPONSE,
+    OFS_DOWNGRADE_TOKEN,
+    OFS_IMAGE_HEADER,
     OFS_END_UPDATE,
     OFS_CONFIRM_HEALTHY,
     OFS_ENTER_BOOTLOADER,
@@ -121,25 +126,57 @@ class SpiOtaFlasher:
         version_major: int,
         version_minor: int,
         *,
+        version_patch: int = 0,
         allow_downgrade: bool = False,
+        downgrade_from: tuple[int, int, int] | None = None,
         page_timeout_seconds: float = 3.0,
     ) -> Iterator[FlashProgress]:
+        """Flash `firmware` to the board. The HYDRA-UMC bootloaders (image_header.is_signed_header_target) take a signed 64-byte header
+        with the full version (major.minor.patch) and accept only an image strictly newer than the installed one; to go back to an older
+        one `downgrade_from` must give the installed (major, minor, patch), and the board is asked for a nonce to build a token bound to
+        this session, those two versions and this image. `allow_downgrade` is the old constant-magic frame: only the URTC bootloaders
+        behind the relay still understand it, and for a HYDRA-UMC one it is refused here rather than sent."""
         pages_total = max(1, -(-len(firmware) // FLASH_PAGE_SIZE))  # ceil division
+        signed = image_header.is_signed_header_target(hardware_id)
+        version = (version_major, version_minor, version_patch)
+        if signed and allow_downgrade and downgrade_from is None:
+            yield FlashProgress("error", 0, pages_total, 0, "a downgrade of a HYDRA-UMC board needs the installed version (downgrade_from)")
+            return
+        if signed:
+            try:
+                header = image_header.build_header(hardware_id, version, firmware)
+            except image_header.ImageHeaderError as error:
+                yield FlashProgress("error", 0, pages_total, 0, str(error))
+                return
+            signature = image_header.tag_of(self._hmac_key, header, firmware)
+        else:
+            header = b""
+            signature = hmac.new(self._hmac_key, firmware, hashlib.sha256).digest()
 
         yield FlashProgress("entering_bootloader", 0, pages_total, 0)
         self._send(target_tier, target_slot, OFS_ENTER_BOOTLOADER, ENTER_BOOTLOADER_MAGIC)
         time.sleep(0.8)  # matches URTC-FLASHER's own real post-reset settle delay
 
-        if allow_downgrade:
-            self._send(target_tier, target_slot, 0x0D, AUTHORIZE_DOWNGRADE_MAGIC)  # OFS_AUTHORIZE_DOWNGRADE
+        if allow_downgrade and not signed:
+            self._send(target_tier, target_slot, 0x0D, AUTHORIZE_DOWNGRADE_MAGIC)  # OFS_AUTHORIZE_DOWNGRADE (URTC bootloaders only)
 
         size_and_hwid = struct.pack(">II", len(firmware), hardware_id)
         self._send(target_tier, target_slot, OFS_START_UPDATE, size_and_hwid)
 
-        signature = hmac.new(self._hmac_key, firmware, hashlib.sha256).digest()
         for chunk_index in range(4):
             chunk = signature[chunk_index * 8 : (chunk_index + 1) * 8]
             self._send(target_tier, target_slot, OFS_HMAC_CHUNK, chunk)
+
+        if signed:
+            for chunk_index in range(image_header.HEADER_CHUNKS):
+                self._send(target_tier, target_slot, OFS_IMAGE_HEADER, header[chunk_index * 8 : (chunk_index + 1) * 8])
+            if downgrade_from is not None:
+                token = self._downgrade_token(target_tier, target_slot, downgrade_from, version, signature)
+                if token is None:
+                    yield FlashProgress("error", 0, pages_total, 2, "the board did not give the nonce of this session")
+                    return
+                for chunk_index in range(image_header.TOKEN_CHUNKS):
+                    self._send(target_tier, target_slot, OFS_DOWNGRADE_TOKEN, token[chunk_index * 8 : (chunk_index + 1) * 8])
 
         for page_index in range(pages_total):
             page = firmware[page_index * FLASH_PAGE_SIZE : (page_index + 1) * FLASH_PAGE_SIZE]
@@ -161,6 +198,22 @@ class SpiOtaFlasher:
             return
 
         yield FlashProgress("done", pages_total, pages_total, 100)
+
+    def _downgrade_token(self, target_tier: int, target_slot: int, installed: tuple[int, int, int], target: tuple[int, int, int], tag: bytes) -> bytes | None:
+        """Asks the board for the nonce of this session (a half at a time: a frame carries 8 bytes) and builds the token from it."""
+        nonce = b""
+        for half in (0, 1):
+            self._send(target_tier, target_slot, OFS_DOWNGRADE_NONCE_REQUEST, bytes([half]))
+            answer = None
+            for _ in range(20):
+                response = self._transport.transceive(SpiOtaFrame(target_tier, target_slot, OFS_DOWNGRADE_NONCE_RESPONSE, 0))
+                if response.frame_type == OFS_DOWNGRADE_NONCE_RESPONSE and response.dlc == 8:
+                    answer = bytes(response.payload[:8])
+                    break
+            if answer is None:
+                return None
+            nonce += answer
+        return image_header.downgrade_token(self._hmac_key, nonce, installed, target, tag)
 
     def _send_page_and_wait_ack(
         self, target_tier: int, target_slot: int, page_index: int, page: bytes, timeout_seconds: float

@@ -297,6 +297,12 @@ int main(void) {
                     HandleStartUpdate(rxData);
                 } else if (ofs == OFS_HMAC_CHUNK && dlc == 8) {
                     HandleHmacChunk(rxData);
+                } else if (ofs == OFS_IMAGE_HEADER && dlc == 8) {
+                    HandleImageHeaderChunk(rxData);
+                } else if (ofs == OFS_DOWNGRADE_TOKEN && dlc == 8) {
+                    HandleDowngradeTokenChunk(rxData);
+                } else if (ofs == OFS_DOWNGRADE_NONCE_REQUEST && dlc == 1) {
+                    HandleDowngradeNonceRequest(rxData, dlc);
                 } else if (ofs == OFS_DATA) {
                     HandleData(rxData, dlc);
                 } else if (ofs == OFS_END_UPDATE && dlc == 8) {

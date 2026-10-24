@@ -53,6 +53,11 @@ OFS_BACKUP_READ_REQUEST = 0x0E
 OFS_BACKUP_READ_RESPONSE = 0x0F
 OFS_BACKUP_READ_PAGE_ACK = 0x14
 OFS_CONFIRM_HEALTHY = 0x15
+# The signed image header and the downgrade token of the HYDRA-UMC bootloaders (tools/image_header.py, image_header.py here)
+OFS_IMAGE_HEADER = 0x19
+OFS_DOWNGRADE_NONCE_REQUEST = 0x1A
+OFS_DOWNGRADE_TOKEN = 0x1B
+OFS_DOWNGRADE_NONCE_RESPONSE = 0x1C
 OFS_RELAY_SEND = 0x12
 OFS_RELAY_RECV = 0x13
 
@@ -71,12 +76,13 @@ VERIFY_FAIL_REASON_CRC32 = 0x02
 VERIFY_FAIL_REASON_HMAC = 0x03
 VERIFY_FAIL_REASON_HARDWARE_ID = 0x04
 VERIFY_FAIL_REASON_ROLLBACK = 0x05
+VERIFY_FAIL_REASON_HEADER = 0x06
 
-# Real magic payloads for the two frame types that gate a destructive/
-# privileged action - bootloader_main.c ignores ENTER_BOOTLOADER/
-# AUTHORIZE_DOWNGRADE without this exact payload, matching URTC's own
-# proven CAN bootloader convention (see docs/CANBUS.TXT).
+# Real magic payload of the frame type that gates a privileged action - bootloader_main.c ignores ENTER_BOOTLOADER without this exact payload,
+# matching URTC's own proven CAN bootloader convention (see docs/CANBUS.TXT).
 ENTER_BOOTLOADER_MAGIC = bytes((0xB0, 0x07, 0x1D, 0x5A))
+# The four constant bytes that switched the anti-rollback off in the bootloaders of URTC. The HYDRA-UMC bootloaders no longer accept them (a
+# downgrade needs a token bound to the session, the versions and the image); they are still what the URTC ones behind the relay understand.
 AUTHORIZE_DOWNGRADE_MAGIC = bytes((0xD0, 0x9E, 0x12, 0xAD))
 
 _STRUCT_FORMAT = f"<BBBB8s{SPI_FRAME_SIZE - 12}s"

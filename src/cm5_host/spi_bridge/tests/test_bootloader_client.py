@@ -82,16 +82,33 @@ class SpiOtaFlasherTests(unittest.TestCase):
         import hashlib
         import hmac as hmac_module
 
+        # a board that takes the image without a header (the URTC bootloaders behind the relay): the tag is the HMAC of the image alone
         key = b"\x11" * 32
-        transport = FakeBootloaderTransport()
+        transport = FakeBootloaderTransport(hardware_id=0x0303CC01)
         flasher = SpiOtaFlasher(transport, hmac_key=key)
         firmware = b"\xCD" * 2048
-        list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, firmware, 0, 1))
+        list(flasher.flash(SPI_TARGET_STACKA, 2, 0x0303CC01, firmware, 0, 1))
         hmac_frames = [f for f in transport.sent_frames if f.frame_type == 0x07]  # OFS_HMAC_CHUNK
         self.assertEqual(len(hmac_frames), 4)
         reassembled = b"".join(f.payload for f in hmac_frames)
         expected = hmac_module.new(key, firmware, hashlib.sha256).digest()
         self.assertEqual(reassembled, expected)
+
+    def test_a_hydra_board_gets_a_tag_over_its_header_and_the_image(self):
+        import hashlib
+        import hmac as hmac_module
+        import struct
+
+        key = b"\x11" * 32
+        transport = FakeBootloaderTransport()
+        flasher = SpiOtaFlasher(transport, hmac_key=key)
+        firmware = b"\xCD" * 2048
+        list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, firmware, 0, 1, version_patch=4))
+        tag = b"".join(f.payload for f in transport.sent_frames if f.frame_type == 0x07)
+        header = b"".join(f.payload for f in transport.sent_frames if f.frame_type == 0x19)  # OFS_IMAGE_HEADER
+        self.assertEqual(len(header), 64)
+        self.assertEqual(tag, hmac_module.new(key, header + firmware, hashlib.sha256).digest())
+        self.assertEqual(struct.unpack_from("<HHH", header, 12), (0, 1, 4))
 
     def test_a_page_ack_that_never_arrives_reports_error_not_an_infinite_hang(self):
         transport = FakeBootloaderTransport()

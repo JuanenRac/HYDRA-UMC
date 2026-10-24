@@ -10,7 +10,7 @@ HTTP" pattern SERVER already uses for Voice UI/Datalake
 
 Real routes:
   GET  /version?tier=&slot=&relay=   -> query_version()
-  POST /flash?tier=&slot=&hardware_id=&relay= -> SpiOtaFlasher.flash(),
+  POST /flash?tier=&slot=&hardware_id=&relay=&version_major=&version_minor=[&version_patch=][&downgrade_from=x.y.z] -> SpiOtaFlasher.flash(),
                                         streamed as newline-delimited JSON
 
 `tier`/`slot` always identify the directly-reachable Tier 0/1 target (the
@@ -116,13 +116,18 @@ def make_handler(transport: SpiOtaTransport, hmac_key: bytes) -> type[BaseHTTPRe
                 hardware_id = int(params.get("hardware_id", ["0"])[0], 0)
                 version_major = int(params["version_major"][0])
                 version_minor = int(params["version_minor"][0])
+                version_patch = int(params.get("version_patch", ["0"])[0])
+                installed = params.get("downgrade_from", [""])[0]
+                downgrade_from = tuple(int(part) for part in installed.split(".")) if installed else None
+                if downgrade_from is not None and len(downgrade_from) != 3:
+                    raise ValueError("downgrade_from must be major.minor.patch")
             except KeyError:
                 # Without the version of the image the board would compare it as 0.0 and
                 # refuse it as a rollback only AFTER the whole transfer.
                 self._send_json(400, {"error": "version_major and version_minor are required"})
                 return
             except ValueError:
-                self._send_json(400, {"error": "tier/slot/hardware_id/version_major/version_minor must be integers"})
+                self._send_json(400, {"error": "tier/slot/hardware_id/version_major/version_minor/version_patch must be integers and downgrade_from major.minor.patch"})
                 return
             if tier not in VALID_TIERS or slot not in VALID_SLOTS:
                 self._send_json(400, {"error": "tier must be 0, 1 or 2 and slot 0-7"})
@@ -151,7 +156,10 @@ def make_handler(transport: SpiOtaTransport, hmac_key: bytes) -> type[BaseHTTPRe
                 effective_transport = RelayedTransport(transport, tier, slot) if params.get("relay", ["0"])[0] == "1" else transport
                 flasher = SpiOtaFlasher(effective_transport, hmac_key)
                 try:
-                    for progress in flasher.flash(tier, slot, hardware_id, firmware, version_major, version_minor):
+                    for progress in flasher.flash(
+                        tier, slot, hardware_id, firmware, version_major, version_minor,
+                        version_patch=version_patch, allow_downgrade=downgrade_from is not None, downgrade_from=downgrade_from,
+                    ):
                         self._write_progress(progress.phase, progress.pages_sent, progress.pages_total, progress.percent, progress.error)
                 except (OSError, ValueError) as error:
                     # The stream has started, so the failure has to be its last line.

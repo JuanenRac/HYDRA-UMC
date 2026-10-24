@@ -266,7 +266,7 @@ flowchart LR
   URTC Tool Head, ein `AXIS_STATUS`-Responder und der
   `RELAY_SEND`/`RELAY_RECV`-Tunnel) neben der Blink-Task mit
   Watchdog-Refresh.
-* 📡 **CAN-OTA-Firmware-Updates, 4 Ebenen tief:** der STM32H745 selbst
+* 📡 **CAN-OTA-Firmware-Updates, 4 Ebenen tief:** der STM32H745 selbst **Signierter Image-Header und Anti-Rollback (Bootloader, im Host getestet):** Das Update trägt einen 64-Byte-Header (vollständige Version Major.Minor.Patch, Hardware-ID, Größe, Link-Adresse, Vektorwörter, CRC), und der Tag ist der HMAC über Header und Image zusammen, sodass ein altes signiertes Image keine höhere Version vortäuschen kann; die drei Zahlen der Version werden verglichen, und ein älteres Image wird nur mit einem Token installiert, das an die Nonce dieser Sitzung, die beiden Versionen und dieses Image gebunden ist (der alte Vier-Byte-Magic-Frame erlaubt nichts mehr). Die Entscheidung (`image_header.h`, `update_verify.h`) ist eine Datei in den drei Bootloadern, getestet mit Bytes von `tools/image_header.py` und für den G474 durchgängig von START_UPDATE bis zur neuen Anwendung. Der HMAC-Schlüssel ist weiterhin symmetrisch, und nichts davon lief auf einer Platine.
   (über seine bestehende SPI-Verbindung zum CM5), dieses Board, sein
   URTC-Werkzeugkopf (STM32F303CCT6), und - nur wenn installiert - die
   eigene Advanced Expansion Board dieses Kopfes (STM32F303CBT6,

@@ -125,9 +125,12 @@ static void sha256_final(SHA256_CTX *ctx, uint8_t hash[]) {
     }
 }
 
-void hmac_sha256_flash_region(const uint8_t *key, uint32_t key_len,
-                              uint32_t flash_addr, uint32_t len,
-                              uint8_t out[32]) {
+// HMAC-SHA256 over `prefix` (a RAM buffer, may be empty) followed by a flash region (may be empty), as one message. The two public
+// functions below are the two shapes the bootloader needs; nothing else calls this.
+static void hmac_sha256_two_parts(const uint8_t *key, uint32_t key_len,
+                                  const uint8_t *prefix, uint32_t prefix_len,
+                                  uint32_t flash_addr, uint32_t len,
+                                  uint8_t out[32]) {
     uint8_t k_ipad[64], k_opad[64];
     uint8_t key_block[64] = {0};
     if (key_len > 64) {
@@ -146,13 +149,33 @@ void hmac_sha256_flash_region(const uint8_t *key, uint32_t key_len,
     SHA256_CTX ctx;
     sha256_init(&ctx);
     sha256_update(&ctx, k_ipad, 64);
-    sha256_update(&ctx, (const uint8_t*)flash_addr, len);
+    if (prefix_len > 0) sha256_update(&ctx, prefix, prefix_len);
+    if (len > 0) sha256_update(&ctx, (const uint8_t*)flash_addr, len);
     sha256_final(&ctx, inner_hash);
 
     sha256_init(&ctx);
     sha256_update(&ctx, k_opad, 64);
     sha256_update(&ctx, inner_hash, 32);
     sha256_final(&ctx, out);
+}
+
+void hmac_sha256_flash_region(const uint8_t *key, uint32_t key_len,
+                              uint32_t flash_addr, uint32_t len,
+                              uint8_t out[32]) {
+    hmac_sha256_two_parts(key, key_len, NULL, 0, flash_addr, len, out);
+}
+
+void hmac_sha256_prefixed_flash_region(const uint8_t *key, uint32_t key_len,
+                                       const uint8_t *prefix, uint32_t prefix_len,
+                                       uint32_t flash_addr, uint32_t len,
+                                       uint8_t out[32]) {
+    hmac_sha256_two_parts(key, key_len, prefix, prefix_len, flash_addr, len, out);
+}
+
+void hmac_sha256_buffer(const uint8_t *key, uint32_t key_len,
+                        const uint8_t *msg, uint32_t msg_len,
+                        uint8_t out[32]) {
+    hmac_sha256_two_parts(key, key_len, msg, msg_len, 0, 0, out);
 }
 
 uint8_t hmac_constant_time_compare(const uint8_t *a, const uint8_t *b, uint32_t len) {

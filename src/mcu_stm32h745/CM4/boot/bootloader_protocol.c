@@ -20,6 +20,7 @@
 #include "bootloader_protocol.h"
 #include "bootloader_crypto.h"
 #include "bootloader_flash.h"
+#include "update_verify.h"
 #include "dlc_to_fdcan_data_length.h"
 #include "ipc_mailbox.h"
 
@@ -121,6 +122,7 @@ uint8_t ApplicationIsValid(void) {
         adopted.hardware_id = THIS_HARDWARE_ID;
         adopted.version_major = FIRMWARE_VERSION_MAJOR;
         adopted.version_minor = FIRMWARE_VERSION_MINOR;
+        adopted.version_patch = FIRMWARE_VERSION_PATCH;
         adopted.size = APP_MAX_SIZE;
         uint32_t crc = 0xFFFFFFFFUL;
         crc = CRC32_Update(crc, (const uint8_t*)MAIN_APP_ADDR, APP_MAX_SIZE);
@@ -198,13 +200,18 @@ uint32_t update_bytes_received = 0;
 static uint32_t update_running_crc = 0xFFFFFFFFUL;
 static uint8_t  update_expected_hmac[32];
 static uint8_t  update_hmac_chunks_received = 0;
+static uint8_t  update_header[IMAGE_HEADER_SIZE];          // the signed header (eight OFS_IMAGE_HEADER frames)
+static uint8_t  update_header_chunks_received = 0;
+static uint8_t  update_nonce[IMAGE_NONCE_SIZE];            // the nonce of this session; a downgrade token is bound to it
+static uint8_t  update_token[IMAGE_TAG_SIZE];              // the optional downgrade token (four OFS_DOWNGRADE_TOKEN frames)
+static uint8_t  update_token_chunks_received = 0;
+static uint32_t update_session_counter = 0;
 static uint8_t  page_buffer[FLASH_PAGE_SIZE];
 static uint32_t page_buffer_fill = 0;
 static uint32_t current_page_index = 0;
 uint8_t  update_in_progress = 0;
 uint32_t update_last_activity_tick = 0;
 uint8_t  update_failed = 0;
-static uint8_t update_downgrade_authorized = 0;
 
 static uint8_t FlushPageBuffer(void) {
     uint32_t page_addr = BACKUP_APP_ADDR + (current_page_index * FLASH_PAGE_SIZE);
@@ -219,6 +226,41 @@ static uint8_t FlushPageBuffer(void) {
         HAL_IWDG_Refresh(&hiwdg);
     }
     return ok;
+}
+
+// A value that is different in every session, handed to the host on request (OFS_DOWNGRADE_NONCE_REQUEST) and bound into the downgrade token,
+// so that a token recorded in one session is useless in another. It is a freshness value, not a secret: it only has to differ from every
+// nonce an attacker has seen a token for. This default mixes the state of this boot (tick, SysTick), the unique id of the chip and the
+// number of sessions of this boot; a build that wants more should define Boot_SessionEntropy itself with the hardware random generator.
+#ifndef UID_BASE
+#define UID_BASE 0UL
+#endif
+__attribute__((weak)) void Boot_SessionEntropy(uint8_t out[16]) {
+    uint32_t words[4];
+    words[0] = HAL_GetTick();
+    words[1] = SysTick->VAL;
+#if UID_BASE != 0UL
+    words[2] = *(volatile const uint32_t*)(UID_BASE) ^ *(volatile const uint32_t*)(UID_BASE + 8UL);
+    words[3] = *(volatile const uint32_t*)(UID_BASE + 4UL);
+#else
+    words[2] = 0;
+    words[3] = 0;
+#endif
+    memcpy(out, words, 16);
+}
+
+static void SendNonceHalf(const uint8_t half[8]) {
+    StashResponse(OFS_DOWNGRADE_NONCE_RESPONSE, half, 8);
+}
+
+static void MakeSessionNonce(uint8_t nonce[IMAGE_NONCE_SIZE]) {
+    uint8_t material[20];
+    uint8_t digest[32];
+    Boot_SessionEntropy(material);
+    update_session_counter++;
+    memcpy(material + 16, &update_session_counter, 4);
+    hmac_sha256_buffer(HMAC_KEY, 32, material, sizeof(material), digest);
+    memcpy(nonce, digest, IMAGE_NONCE_SIZE);
 }
 
 // Returns 1 when the update was accepted (size and hardware ID valid, backup
@@ -252,20 +294,25 @@ uint8_t HandleStartUpdate(uint8_t *data) {
     update_bytes_received = 0;
     update_running_crc = 0xFFFFFFFFUL;
     update_hmac_chunks_received = 0;
+    update_header_chunks_received = 0;
+    update_token_chunks_received = 0;
+    memset(update_header, 0, sizeof(update_header));
+    memset(update_token, 0, sizeof(update_token));
     page_buffer_fill = 0;
     current_page_index = 0;
     update_in_progress = 1;
     update_failed = 0;
-    update_downgrade_authorized = 0;
     update_last_activity_tick = HAL_GetTick();
+    MakeSessionNonce(update_nonce);
     CAN_SendStatus(STATUS_RECEIVING);
     return 1;
 }
 
+// The old flow let anybody on the bus switch the anti-rollback off with four constant bytes. That frame is now ignored: a downgrade needs the
+// token of OFS_DOWNGRADE_TOKEN, an HMAC under the update key of this session's nonce, the installed and the new version and the tag of the
+// image (update_verify.h). Kept as a function so the dispatch of the main loop stays as it was.
 void HandleAuthorizeDowngrade(uint8_t *data) {
-    if (data[0] == 0xD0 && data[1] == 0x9E && data[2] == 0x12 && data[3] == 0xAD) {
-        update_downgrade_authorized = 1;
-    }
+    (void)data;
 }
 
 // see mcu_stm32g474/boot/bootloader_protocol.c's own
@@ -334,6 +381,31 @@ void HandleHmacChunk(uint8_t *data) {
     update_last_activity_tick = HAL_GetTick();
 }
 
+// Eight frames of eight bytes, in order, right after START_UPDATE: the 64-byte header the tag was made over (image_header.h).
+void HandleImageHeaderChunk(uint8_t *data) {
+    if (!update_in_progress || update_failed) return;
+    if (update_header_chunks_received >= UPDATE_HEADER_CHUNKS) return;
+    memcpy(&update_header[update_header_chunks_received * 8], data, 8);
+    update_header_chunks_received++;
+    update_last_activity_tick = HAL_GetTick();
+}
+
+// The host asks for the nonce of this session, a half at a time (DLC=1, 0 or 1): the nonce is 16 bytes and a frame carries 8. Only while an
+// update is in progress; the answer is the bytes of that half, and the host builds the downgrade token from both.
+void HandleDowngradeNonceRequest(uint8_t *data, uint32_t dlc) {
+    if (!update_in_progress || update_failed || dlc != 1 || data[0] > 1) return;
+    SendNonceHalf(update_nonce + 8 * data[0]);
+}
+
+// Four frames of eight bytes, optional: the token that allows one downgrade. Nothing is believed until END_UPDATE checks it.
+void HandleDowngradeTokenChunk(uint8_t *data) {
+    if (!update_in_progress || update_failed) return;
+    if (update_token_chunks_received >= UPDATE_TOKEN_CHUNKS) return;
+    memcpy(&update_token[update_token_chunks_received * 8], data, 8);
+    update_token_chunks_received++;
+    update_last_activity_tick = HAL_GetTick();
+}
+
 void HandleData(uint8_t *data, uint32_t dlc) {
     if (!update_in_progress || update_failed) return;
     if (dlc > 8) return;
@@ -360,6 +432,23 @@ void HandleData(uint8_t *data, uint32_t dlc) {
     update_running_crc = CRC32_Update(update_running_crc, data, i);
 }
 
+static void UpdateHmacUnderTheKey(const uint8_t *msg, uint32_t len, uint8_t out[32], void *context) {
+    (void)context;
+    hmac_sha256_buffer(HMAC_KEY, 32, msg, len, out);
+}
+
+// What the host is told when the decision of update_verify.h is not OK.
+static uint8_t VerifyFailReasonOf(UpdateVerdict_t verdict) {
+    switch (verdict) {
+        case UPDATE_VERDICT_INCOMPLETE:   return VERIFY_FAIL_REASON_INCOMPLETE;
+        case UPDATE_VERDICT_CRC32:        return VERIFY_FAIL_REASON_CRC32;
+        case UPDATE_VERDICT_HMAC:         return VERIFY_FAIL_REASON_HMAC;
+        case UPDATE_VERDICT_HARDWARE_ID:  return VERIFY_FAIL_REASON_HARDWARE_ID;
+        case UPDATE_VERDICT_ROLLBACK:     return VERIFY_FAIL_REASON_ROLLBACK;
+        default:                          return VERIFY_FAIL_REASON_HEADER;
+    }
+}
+
 void HandleEndUpdate(uint8_t *data) {
     if (!update_in_progress || update_failed) return;
     update_last_activity_tick = HAL_GetTick();
@@ -373,13 +462,6 @@ void HandleEndUpdate(uint8_t *data) {
         }
     }
 
-    if (update_bytes_received != update_total_size || update_hmac_chunks_received != 4) {
-        CAN_SendVerifyFailReason(VERIFY_FAIL_REASON_INCOMPLETE);
-        update_in_progress = 0;
-        update_failed = 1;
-        return;
-    }
-
     uint32_t expected_crc = ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16)
                            | ((uint32_t)data[2] << 8) | data[3];
     uint16_t version_major = ((uint16_t)data[4] << 8) | data[5];
@@ -388,44 +470,71 @@ void HandleEndUpdate(uint8_t *data) {
 
     CAN_SendStatus(STATUS_VERIFYING);
 
-    if (actual_crc != expected_crc) {
-        CAN_SendVerifyFailReason(VERIFY_FAIL_REASON_CRC32);
-        update_in_progress = 0;
-        update_failed = 1;
-        return;
+    // The tag covers the 64-byte header and then the image, so the version, the hardware id, the size and the vectors cannot be changed
+    // without breaking it. It is only worth a pass over the image when everything arrived (otherwise the verdict is "incomplete").
+    uint8_t actual_tag[IMAGE_TAG_SIZE];
+    memset(actual_tag, 0, sizeof(actual_tag));
+    if (update_bytes_received == update_total_size && update_hmac_chunks_received == UPDATE_HMAC_CHUNKS &&
+        update_header_chunks_received == UPDATE_HEADER_CHUNKS) {
+        hmac_sha256_prefixed_flash_region(HMAC_KEY, 32, update_header, IMAGE_HEADER_SIZE, BACKUP_APP_ADDR, update_total_size, actual_tag);
     }
 
-    uint8_t actual_hmac[32];
-    hmac_sha256_flash_region(HMAC_KEY, 32, BACKUP_APP_ADDR, update_total_size, actual_hmac);
-    if (!hmac_constant_time_compare(actual_hmac, update_expected_hmac, 32)) {
-        CAN_SendVerifyFailReason(VERIFY_FAIL_REASON_HMAC);
-        update_in_progress = 0;
-        update_failed = 1;
-        return;
-    }
+    UpdateVerifyInput_t input;
+    memset(&input, 0, sizeof(input));
+    input.bytes_received = update_bytes_received;
+    input.total_size = update_total_size;
+    input.hmac_chunks = update_hmac_chunks_received;
+    input.header_chunks = update_header_chunks_received;
+    input.token_chunks = update_token_chunks_received;
+    input.declared_crc = expected_crc;
+    input.actual_crc = actual_crc;
+    input.declared_major = version_major;
+    input.declared_minor = version_minor;
+    input.header = update_header;
+    input.expected_tag = update_expected_hmac;
+    input.actual_tag = actual_tag;
+    input.token = update_token;
+    input.nonce = update_nonce;
+    input.expect.hw_id = THIS_HARDWARE_ID;
+    input.expect.link_address = MAIN_APP_ADDR;
+    input.expect.first_word = *(volatile const uint32_t*)BACKUP_APP_ADDR;
+    input.expect.second_word = *(volatile const uint32_t*)(BACKUP_APP_ADDR + 4UL);
+    input.expect.ram_lo = D2_AHBSRAM_BASE + 0x400UL;       // the same range StackPointerInValidRAM() accepts: the D2-domain SRAM this core's application links against
+    input.expect.ram_hi = D2_AHBSRAM_BASE + 0x48000UL;
+    input.hmac = UpdateHmacUnderTheKey;
 
     FirmwareMetadata_t current_meta;
     if (Metadata_Read(&current_meta) && current_meta.state == META_STATE_APP_VALID) {
-        uint32_t current_version = (current_meta.version_major << 16) | current_meta.version_minor;
-        uint32_t new_version = ((uint32_t)version_major << 16) | version_minor;
-        if (new_version < current_version && !update_downgrade_authorized) {
-            CAN_SendVerifyFailReason(VERIFY_FAIL_REASON_ROLLBACK);
-            update_in_progress = 0;
-            update_failed = 1;
-            return;
-        }
+        input.have_installed = 1;
+        input.installed.major = (uint16_t)current_meta.version_major;
+        input.installed.minor = (uint16_t)current_meta.version_minor;
+        input.installed.patch = METADATA_PATCH(current_meta);
     }
-    update_downgrade_authorized = 0;
+
+    ImageHeader_t header;
+    UpdateVerdict_t verdict = UpdateVerify_Decide(&input, &header);
+    if (verdict != UPDATE_VERDICT_OK) {
+        CAN_SendVerifyFailReason(VerifyFailReasonOf(verdict));
+        update_in_progress = 0;
+        update_failed = 1;
+        return;
+    }
+
+    // What the boot-time check of ApplicationIsValid() compares with is the HMAC of the image as it sits in the main slot, without the
+    // header (the header is never stored), so that is what the metadata keeps.
+    uint8_t image_hmac[32];
+    hmac_sha256_flash_region(HMAC_KEY, 32, BACKUP_APP_ADDR, update_total_size, image_hmac);
 
     FirmwareMetadata_t pending = {0};
     pending.magic = METADATA_MAGIC_VALID;
     pending.state = META_STATE_COPY_PENDING;
     pending.hardware_id = update_declared_hw_id;
-    pending.version_major = version_major;
-    pending.version_minor = version_minor;
+    pending.version_major = header.version.major;
+    pending.version_minor = header.version.minor;
+    pending.version_patch = header.version.patch;
     pending.size = update_total_size;
     pending.crc32 = actual_crc;
-    memcpy(pending.hmac, actual_hmac, 32);
+    memcpy(pending.hmac, image_hmac, 32);
     if (!Metadata_EraseAndWrite(&pending)) {
         CAN_SendStatus(STATUS_ERROR);
         update_in_progress = 0;

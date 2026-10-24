@@ -97,6 +97,13 @@ extern const uint8_t HMAC_KEY[32];
 // FirmwareMetadata_t's own boot_attempts back to 0.
 #define OFS_CONFIRM_HEALTHY                                 0x15
 
+// The signed image header and the downgrade token (image_header.h, update_verify.h). The numbers follow tools/can_ids.py (and the frame types of
+// the SPI-OTA frames are the same offsets); each has ONE emitter.
+#define OFS_IMAGE_HEADER                                      0x19 // host -> bootloader, DLC=8 x 8 frames in order, after START_UPDATE: the 64-byte header of the image
+#define OFS_DOWNGRADE_NONCE_REQUEST                           0x1A // host -> bootloader, DLC=1: which half (0 or 1) of the 16-byte nonce of this session it wants
+#define OFS_DOWNGRADE_TOKEN                                   0x1B // host -> bootloader, DLC=8 x 4 frames, optional: HMAC allowing exactly one downgrade
+#define OFS_DOWNGRADE_NONCE_RESPONSE                          0x1C // sent BY this bootloader, DLC=8: the half that was asked for
+
 #define STATUS_LISTENING     0x01
 #define STATUS_ERASING       0x02
 #define STATUS_RECEIVING     0x03
@@ -109,6 +116,7 @@ extern const uint8_t HMAC_KEY[32];
 #define VERIFY_FAIL_REASON_HMAC        0x03
 #define VERIFY_FAIL_REASON_HARDWARE_ID 0x04
 #define VERIFY_FAIL_REASON_ROLLBACK    0x05
+#define VERIFY_FAIL_REASON_HEADER      0x06 // the signed header is missing, is not ours, or says something that is not true of what arrived
 #define STATUS_ERROR          0xFF
 // reported once this bootloader has refused to jump to an
 // app that reset back here BOOT_MAX_ATTEMPTS times in a row without ever
@@ -131,7 +139,11 @@ typedef struct {
     // bootloader_common.h's own field-level comment for why this is
     // always a real, explicit 0 on a fresh install.
     uint32_t boot_attempts;
+    // The patch of the installed version, appended after boot_attempts so the older fields keep their offsets. A page written before
+    // this field existed holds erased flash here (0xFFFFFFFF): METADATA_PATCH() reads that as 0.
+    uint32_t version_patch;
 } FirmwareMetadata_t;
+#define METADATA_PATCH(meta) (((meta).version_patch <= 0xFFFFu) ? (uint16_t)(meta).version_patch : (uint16_t)0u)
 
 // Sent by this bootloader as a mailbox response (not a CAN/SPI frame
 // directly - CM4's own gateway logic relays it onward over whichever bus
