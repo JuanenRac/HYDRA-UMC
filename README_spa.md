@@ -335,6 +335,7 @@ HYDRA-UMC/
 │   │   ├── CM4/                 # Drivers FDCAN, filtrado de sensores (+ su propio boot/)
 │   │   └── Common/              # Buzón IPC de memoria compartida CM7<->CM4 (ipc_mailbox.h) - implementado, usado por los bootloaders de ambos núcleos
 │   └── mcu_stm32g474/           # Firmware de la Robot Controller Board (Nivel 1) - un solo núcleo, + su propio boot/
+├── tests/                   # Pruebas en el ordenador: la lógica en C de los bootloaders y del relé (stubs/ sustituye al HAL, image_header_vectors.h guarda los vectores de referencia) y pruebas en Python de las herramientas
 ├── os/                          # Imagen de SO del CM5 - elección de SO base, unidades systemd, aprovisionamiento de primer arranque
 ├── images/                      # Banner del README + icono + splashscreen (SVG)
 ├── build_firmware.sh            # Compila cada objetivo de firmware MCU de arriba desde una copia limpia (Linux/Mac)
@@ -348,7 +349,14 @@ HYDRA-UMC/
 ├── tools/
 │   ├── verify_firmware_inventory.py # Verificación de solo lectura del inventario de seis componentes
 │   ├── build_test.py                # Comprobación de build/compilación sin subir versión
-│   └── ci_validate.py               # Validación de manifest/CHANGELOG/docs usada por la CI
+│   ├── ci_validate.py               # Validación de manifest/CHANGELOG/docs usada por la CI
+│   ├── image_header.py              # Referencia en el ordenador de la cabecera firmada de la imagen de firmware, su firma Ed25519 y la regla anti-retroceso
+│   ├── gen_image_header_vectors.py  # Escribe tests/image_header_vectors.h: las imágenes firmadas y el token de downgrade que genera la referencia, como arrays de C
+│   ├── ed25519_ref.py               # Ed25519 (RFC 8032) en Python puro: el lado del ordenador de la firma que verifican los bootloaders
+│   ├── can_ids.py                   # Tabla de referencia de los identificadores CAN del protocolo del relé, un emisor por identificador
+│   ├── _doc_policy.py               # Reglas de documentación compartidas por la familia (copia de la de HYDRA-UMC-SDK, mantenida en sincronía)
+│   ├── _readme_parity.py            # Comprobación de que los ocho README comparten estructura (copia de la de HYDRA-UMC-SDK, mantenida en sincronía)
+│   └── hydra_project_tool.py        # Los mismos comandos en todos los repositorios: validate, test, ci, version, status, bump
 ├── firmware/                    # Salida de compilación comiteada (.bin/.hex/.elf + manifest) - NO en gitignore, misma convención que la propia carpeta de salida de URTC, ver "Compilando el Firmware" abajo
 ├── README.md                    # Este archivo
 └── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md / README_por.md    # <- traducciones

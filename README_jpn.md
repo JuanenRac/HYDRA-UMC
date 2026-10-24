@@ -299,6 +299,7 @@ HYDRA-UMC/
 │   │   ├── CM4/                 # FDCAN ドライバー、センサーフィルタリング（+ 自身の boot/）
 │   │   └── Common/              # CM7<->CM4 共有メモリ IPC メールボックス（ipc_mailbox.h）— 実装済み、両コアのブートローダーで共用
 │   └── mcu_stm32g474/           # ロボットコントローラーボードファームウェア（第 1 階層）— シングルコア、+ 自身の boot/
+├── tests/                   # ホストテスト: ブートローダーとリレーの C ロジック (stubs/ が HAL の代わり、image_header_vectors.h が基準ベクタ) とツールの Python テスト
 ├── os/                          # CM5 OS イメージ — ベース OS の選定、systemd ユニット、初回起動時のプロビジョニング
 ├── images/                      # README バナー + アイコン + スプラッシュスクリーン（SVG）
 ├── build_firmware.sh            # クリーンなチェックアウトから、上記の全 MCU ファームウェアターゲットを一括ビルド（Linux/Mac）
@@ -312,7 +313,14 @@ HYDRA-UMC/
 ├── tools/
 │   ├── verify_firmware_inventory.py # コミット済み6コンポーネント在庫の読み取り専用検証
 │   ├── build_test.py                # バージョンを更新しないビルド/コンパイル確認
-│   └── ci_validate.py               # CI が使用する manifest/CHANGELOG/docs の検証
+│   ├── ci_validate.py               # CI が使用する manifest/CHANGELOG/docs の検証
+│   ├── image_header.py              # 署名付きファームウェアイメージヘッダー、その Ed25519 署名、ロールバック防止規則のホスト側リファレンス
+│   ├── gen_image_header_vectors.py  # tests/image_header_vectors.h を書き出す: リファレンスが作る署名付きイメージとダウングレードトークンを C 配列で
+│   ├── ed25519_ref.py               # 純粋な Python による Ed25519 (RFC 8032): ブートローダーが検証する署名のホスト側
+│   ├── can_ids.py                   # リレープロトコルの CAN 識別子のリファレンス表 (識別子ごとに送信元は1つ)
+│   ├── _doc_policy.py               # ファミリー共通のドキュメント規則 (HYDRA-UMC-SDK のコピーで、同期を維持)
+│   ├── _readme_parity.py            # 8つの README が同じ構造であることの検査 (HYDRA-UMC-SDK のコピーで、同期を維持)
+│   └── hydra_project_tool.py        # すべてのリポジトリで共通のコマンド: validate、test、ci、version、status、bump
 ├── firmware/                    # コミット済みのビルド成果物（.bin/.hex/.elf + マニフェスト）— gitignore 対象外、URTC 自身の出力フォルダと同じ規約、下記「ファームウェアのビルド」参照
 ├── README.md                    # 本ファイル
 └── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md / README_por.md    # <- 各言語訳

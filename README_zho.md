@@ -299,6 +299,7 @@ HYDRA-UMC/
 │   │   ├── CM4/                 # FDCAN 驱动、传感器滤波（+ 自身的 boot/）
 │   │   └── Common/              # CM7<->CM4 共享内存 IPC 邮箱（ipc_mailbox.h）—— 已实现，被两个核心的引导加载程序共用
 │   └── mcu_stm32g474/           # 机器人控制板固件（第 1 层）—— 单核，+ 自身的 boot/
+├── tests/                   # 主机测试: 引导程序与中继的 C 逻辑 (stubs/ 代替 HAL,image_header_vectors.h 存放参考向量) 以及工具的 Python 测试
 ├── os/                          # CM5 操作系统镜像 —— 基础系统选型、systemd 单元、首次启动配置
 ├── images/                      # README 横幅 + 图标 + 启动画面（SVG）
 ├── build_firmware.sh            # 从全新检出一次性构建上述所有 MCU 固件目标（Linux/Mac）
@@ -312,7 +313,14 @@ HYDRA-UMC/
 ├── tools/
 │   ├── verify_firmware_inventory.py # 对已提交六组件清单的只读验证
 │   ├── build_test.py                # 不递增版本号的构建/编译检查
-│   └── ci_validate.py               # CI 使用的 manifest/CHANGELOG/docs 校验
+│   ├── ci_validate.py               # CI 使用的 manifest/CHANGELOG/docs 校验
+│   ├── image_header.py              # 已签名固件镜像头、其 Ed25519 签名及防回滚规则的主机端参考实现
+│   ├── gen_image_header_vectors.py  # 写出 tests/image_header_vectors.h: 参考实现生成的已签名镜像和降级令牌,以 C 数组形式
+│   ├── ed25519_ref.py               # 纯 Python 实现的 Ed25519 (RFC 8032): 引导程序所验证签名的主机端
+│   ├── can_ids.py                   # 中继协议 CAN 标识符的参考表 (每个标识符只有一个发送方)
+│   ├── _doc_policy.py               # 家族共享的文档规则 (HYDRA-UMC-SDK 的副本,保持同步)
+│   ├── _readme_parity.py            # 检查八个 README 结构一致 (HYDRA-UMC-SDK 的副本,保持同步)
+│   └── hydra_project_tool.py        # 每个仓库相同的命令: validate、test、ci、version、status、bump
 ├── firmware/                    # 已提交的构建产物（.bin/.hex/.elf + 清单文件）—— 未被 gitignore 排除，与 URTC 自身的输出文件夹约定一致，见下方“构建固件”
 ├── README.md                    # 本文件
 └── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md / README_por.md    # <- 各语言译文
