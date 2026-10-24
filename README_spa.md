@@ -40,6 +40,19 @@
 | Destino | Una placa con microcontrolador (el firmware); se compila en un PC |
 | En hardware real | Todavía no: no consta ninguna ejecución en hardware real para esta versión |
 
+## 🚦 Estado del proyecto
+
+Cada línea es una parte de este repositorio y la luz dice hasta dónde llega hoy. Se escribe con lo que el repositorio puede demostrar (pruebas, compilaciones, ejecuciones), no con lo previsto.
+
+🟢 Hecho y verificado · 🟡 Funciona, con límites conocidos · 🟠 Hecho a medias o sin verificar · 🔴 Sin hacer o sin funcionar
+
+| Área | Estado | Qué significa aquí |
+|---|---|---|
+| Software | 🟠 | Solo estructura y primeras piezas; falta la mayor parte del trabajo |
+| Pruebas | 🟠 | Todavía no consta el número de pruebas de este repositorio |
+| Hardware real | 🔴 | Todavía no: no consta ninguna ejecución en hardware real para esta versión |
+| Documentación | 🟢 | README en ocho idiomas, comprobado contra el manifiesto en cada cambio |
+
 ## 1. 🛠️ VISIÓN GENERAL DEL PROYECTO Y EL ECOSISTEMA MICRO-FÁBRICA
 
 **HYDRA-UMC** (Universal Machines Controller) es una plataforma de control distribuido y una arquitectura HMI, todavía en una fase temprana del firmware, diseñadas para robótica celular multi-eje, micro-fábricas, fabricación automatizada y orquestación compleja de cabezales de herramienta.
