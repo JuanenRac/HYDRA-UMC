@@ -52,6 +52,7 @@ from .protocol import (
     OFS_BACKUP_READ_PAGE_ACK,
     OFS_BACKUP_READ_REQUEST,
     OFS_BACKUP_READ_RESPONSE,
+    OFS_QUERY_ERROR_COUNTERS,
     OFS_QUERY_VERSION,
     OFS_RELAY_RECV,
     OFS_RELAY_RECV_RESPONSE,
@@ -70,7 +71,7 @@ from .transport import SpiOtaTransport
 # Waiting on RELAY_RECV for those too would be real, needless latency -
 # hundreds of full RELAY_RECV timeouts across a real flash cycle's HMAC/
 # DATA fragments, for a response nothing ever reads.
-_QUERY_FRAME_TYPES = frozenset((OFS_QUERY_VERSION,))
+_QUERY_FRAME_TYPES = frozenset((OFS_QUERY_VERSION, OFS_QUERY_ERROR_COUNTERS))
 
 # URTC's own real, proven CAN bootloader protocol space (docs/CANBUS.TXT in
 # the sibling URTC repo): 0x7F0-0x7FD carry the same commands as this

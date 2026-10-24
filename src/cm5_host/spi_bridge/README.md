@@ -44,7 +44,12 @@ framing to this project's real SPI framing.
   hop (URTC's own I2C bridge, CAN IDs 0x210-0x221,
   `docs/EXPANSION.TXT` in the sibling URTC repo) - not implemented yet,
   same real pattern would apply.
-- `tests/` — 45 deterministic tests against in-memory fake transports
+- `spi_bridge/telemetry_publisher.py` and `spi_bridge/__main__.py` — `python -m spi_bridge serve` starts the HTTP service and, with
+  `--collector-url` and one `--counter-target tier:slot[:relay]` per board, reads the transmit and receive error counters of the CAN controller
+  of those boards (`GET /counters` gives the same reading on demand) and sends one `can_error_counters` sample per board and round to the
+  telemetry collector (`POST /ingest/ws`). The token comes from `--collector-token-file` or `HYDRA_UMC_SPI_BRIDGE_COLLECTOR_TOKEN`, the HMAC key
+  of the images from `--hmac-key-file`; neither is ever a command-line value. A board that does not answer produces no sample.
+- `tests/` — 79 deterministic tests against in-memory fake transports
   (including a faithful fake Tier 1-relaying-to-Tier-2 stand-in) and real
   local HTTP servers (only the SPI transport underneath is faked) — see
   `../../tools/build_test.py`'s own `firmware-c` branch for how this is

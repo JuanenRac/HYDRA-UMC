@@ -35,6 +35,15 @@ static inline uint8_t RelayAnswerOffset(uint32_t request_offset)
     return 0;
 }
 
+/* The two error counters of the CAN controller as the bootloader reports them (OFS_ERROR_COUNTERS_RESPONSE, DLC 2): the transmit counter in
+ * bits 7:0 and the receive counter in bits 14:8 of the FDCAN error counter register (RM0440, ECR). The application answers the same query
+ * the bootloader does, so the CM5 can read the health of the bus whichever of the two is running. */
+static inline void RelayErrorCounters(uint32_t ecr, uint8_t out[2])
+{
+    out[0] = (uint8_t)(ecr & 0xFFu);
+    out[1] = (uint8_t)((ecr >> 8) & 0x7Fu);
+}
+
 typedef struct {
     uint8_t count;       /* 1 or 2 */
     uint8_t dlc[2];      /* data length of each fragment */

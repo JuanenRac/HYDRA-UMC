@@ -56,7 +56,7 @@ def build_header(hardware_id: int, version: tuple[int, int, int], firmware: byte
         raise ImageHeaderError(f"hardware id 0x{hardware_id:08X} is not a HYDRA-UMC bootloader that takes a signed header")
     if len(firmware) < 8:
         raise ImageHeaderError("the image is too short to hold its vector table")
-    for name, value in zip(("major", "minor", "patch"), version):
+    for name, value in zip(("major", "minor", "patch"), version, strict=True):
         if not 0 <= value <= 0xFFFF:
             raise ImageHeaderError(f"the {name} of the version must fit in 16 bits, got {value}")
     stack, reset = struct.unpack_from("<II", firmware, 0)

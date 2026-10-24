@@ -129,6 +129,8 @@ class FakeRelayingTier1Transport:
         if offset == 0x08:  # OFS_QUERY_VERSION
             payload = bytes([0x00]) + struct.pack(">I", self.hardware_id) + struct.pack(">H", 0) + bytes([3])
             self._queue_response(URTC_BOOTLOADER_CAN_BASE + OFS_VERSION_RESPONSE, payload)
+        elif offset == 0x0B:  # OFS_QUERY_ERROR_COUNTERS
+            self._queue_response(URTC_BOOTLOADER_CAN_BASE + 0x0C, bytes((3, 1)))
         elif offset == OFS_DATA:
             self._page_buffer += data
             if len(self._page_buffer) >= 2048 or dlc < 5:

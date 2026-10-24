@@ -41,6 +41,8 @@ from .protocol import (
     OFS_END_UPDATE,
     OFS_CONFIRM_HEALTHY,
     OFS_ENTER_BOOTLOADER,
+    OFS_ERROR_COUNTERS_RESPONSE,
+    OFS_QUERY_ERROR_COUNTERS,
     OFS_HEARTBEAT,
     OFS_HMAC_CHUNK,
     OFS_PAGE_ACK,
@@ -84,6 +86,29 @@ def query_version(transport: SpiOtaTransport, target_tier: int, target_slot: int
     firmware_major = struct.unpack(">H", response.payload[5:7])[0]
     firmware_minor = response.payload[7]
     return VersionInfo(True, is_bootloader, hardware_id, firmware_major, firmware_minor)
+
+
+@dataclass(frozen=True)
+class ErrorCounters:
+    """The transmit and receive error counters of the CAN controller of a board (0 to 255 and 0 to 127; 128 or more is error passive, 256 bus off)."""
+
+    online: bool
+    tec: int = 0
+    rec: int = 0
+
+
+def query_error_counters(transport: SpiOtaTransport, target_tier: int, target_slot: int) -> ErrorCounters:
+    """Asks a board (bootloader or application) for the error counters of its CAN controller. A board that does not answer, or answers with
+    something else, is offline: no counters are invented."""
+
+    request = SpiOtaFrame(target_tier, target_slot, OFS_QUERY_ERROR_COUNTERS, 1, b"\x00")
+    try:
+        response = transport.transceive(request)
+    except (OSError, ValueError):
+        return ErrorCounters(online=False)
+    if response.frame_type != OFS_ERROR_COUNTERS_RESPONSE or response.dlc < 2:
+        return ErrorCounters(online=False)
+    return ErrorCounters(True, response.payload[0], response.payload[1])
 
 
 def confirm_healthy(transport: SpiOtaTransport, target_tier: int, target_slot: int) -> bool:

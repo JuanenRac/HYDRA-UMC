@@ -345,6 +345,14 @@ static void ServiceUplinkMessage(uint32_t rx_id, const uint8_t rx_data[8], uint8
         return;
     }
 
+    if (offset == OFS_QUERY_ERROR_COUNTERS) {
+        /* the same answer the bootloader gives, read from the uplink controller itself */
+        uint8_t counters[2];
+        RelayErrorCounters(hfdcan1_app.Instance->ECR, counters);
+        SendClassicFrame(&hfdcan1_app, slot_base + OFS_ERROR_COUNTERS_RESPONSE, counters, 2);
+        return;
+    }
+
     if (offset == OFS_RELAY_SEND) {
         /* RELAY_SEND fragment - matches KinematicBrainCan.c's own
          * SendRelayFragments() byte-for-byte: rx_data[0:2] = target CAN ID

@@ -10,6 +10,7 @@ HTTP" pattern SERVER already uses for Voice UI/Datalake
 
 Real routes:
   GET  /version?tier=&slot=&relay=   -> query_version()
+  GET  /counters?tier=&slot=&relay=  -> query_error_counters(): the transmit and receive error counters of the CAN controller of a board
   POST /flash?tier=&slot=&hardware_id=&relay=&version_major=&version_minor=[&version_patch=][&downgrade_from=x.y.z] -> SpiOtaFlasher.flash(),
                                         streamed as newline-delimited JSON
 
@@ -38,7 +39,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from .bootloader_client import SpiOtaFlasher, query_version
+from .bootloader_client import SpiOtaFlasher, query_error_counters, query_version
 from .relay_tunnel import RelayedTransport
 from .transport import SpiOtaTransport
 
@@ -56,7 +57,7 @@ VALID_TIERS = (0, 1, 2)
 VALID_SLOTS = range(0, 8)
 
 
-def make_handler(transport: SpiOtaTransport, hmac_key: bytes) -> type[BaseHTTPRequestHandler]:
+def make_handler(transport: SpiOtaTransport, hmac_key: bytes, bus_lock: threading.Lock | None = None) -> type[BaseHTTPRequestHandler]:
     """Builds a request handler bound to one already-open transport - kept
     as a factory (not a module-level handler) so tests can inject a fake
     transport without a real SPI/GPIO link."""
@@ -64,12 +65,15 @@ def make_handler(transport: SpiOtaTransport, hmac_key: bytes) -> type[BaseHTTPRe
     # One SPI link, one transaction at a time: a version query that slipped in
     # between two frames of a flash would be answered with (and would swallow)
     # the flash's own reply. Whoever finds the link busy is told so (409).
-    bus_lock = threading.Lock()
+    # (Shared with whatever else reads the link, such as the publisher of the error counters.)
+    if bus_lock is None:
+        bus_lock = threading.Lock()
+    lock = bus_lock
 
     class SpiBridgeHandler(BaseHTTPRequestHandler):
         def do_GET(self):  # noqa: N802 - BaseHTTPRequestHandler requires this name
             parsed = urlparse(self.path)
-            if parsed.path != "/version":
+            if parsed.path not in ("/version", "/counters"):
                 self._send_json(404, {"error": "not found"})
                 return
             params = parse_qs(parsed.query)
@@ -83,16 +87,22 @@ def make_handler(transport: SpiOtaTransport, hmac_key: bytes) -> type[BaseHTTPRe
                 self._send_json(400, {"error": "tier must be 0, 1 or 2 and slot 0-7"})
                 return
             effective_transport = RelayedTransport(transport, tier, slot) if params.get("relay", ["0"])[0] == "1" else transport
-            if not bus_lock.acquire(blocking=False):
+            if not lock.acquire(blocking=False):
                 self._send_json(409, {"error": "the SPI link is busy with another operation"})
                 return
             try:
-                info = query_version(effective_transport, tier, slot)
+                if parsed.path == "/counters":
+                    counters = query_error_counters(effective_transport, tier, slot)
+                else:
+                    info = query_version(effective_transport, tier, slot)
             except (OSError, ValueError) as error:
                 self._send_json(502, {"error": f"SPI transfer failed: {error}"})
                 return
             finally:
-                bus_lock.release()
+                lock.release()
+            if parsed.path == "/counters":
+                self._send_json(200, {"online": counters.online, "tec": counters.tec, "rec": counters.rec})
+                return
             self._send_json(
                 200,
                 {
@@ -146,7 +156,7 @@ def make_handler(transport: SpiOtaTransport, hmac_key: bytes) -> type[BaseHTTPRe
                 return
             firmware = self.rfile.read(content_length)
 
-            if not bus_lock.acquire(blocking=False):
+            if not lock.acquire(blocking=False):
                 self._send_json(409, {"error": "the SPI link is busy with another operation"})
                 return
             try:
@@ -165,7 +175,7 @@ def make_handler(transport: SpiOtaTransport, hmac_key: bytes) -> type[BaseHTTPRe
                     # The stream has started, so the failure has to be its last line.
                     self._write_progress("error", 0, 0, 0, f"SPI transfer failed: {error}")
             finally:
-                bus_lock.release()
+                lock.release()
 
         def _write_progress(self, phase, pages_sent, pages_total, percent, error) -> None:
             line = json.dumps(
@@ -194,9 +204,16 @@ def make_handler(transport: SpiOtaTransport, hmac_key: bytes) -> type[BaseHTTPRe
     return SpiBridgeHandler
 
 
-def serve(transport: SpiOtaTransport, hmac_key: bytes, host: str = "127.0.0.1", port: int = 8765) -> ThreadingHTTPServer:
+def serve(
+    transport: SpiOtaTransport,
+    hmac_key: bytes,
+    host: str = "127.0.0.1",
+    port: int = 8765,
+    bus_lock: threading.Lock | None = None,
+) -> ThreadingHTTPServer:
     """Starts the real local HTTP service. Caller owns the returned server's
-    lifecycle (serve_forever()/shutdown())."""
+    lifecycle (serve_forever()/shutdown()). Pass the same `bus_lock` to
+    anything else that talks to the link (the counter publisher)."""
 
-    handler = make_handler(transport, hmac_key)
+    handler = make_handler(transport, hmac_key, bus_lock)
     return ThreadingHTTPServer((host, port), handler)

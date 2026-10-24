@@ -56,6 +56,14 @@ int main(void)
     RelayBuildAnswerFragments(&big, &a);
     TEST_ASSERT(a.data[0][2] == 8, "a length above 8 is cut to 8");
 
+    uint8_t counters[2];
+    RelayErrorCounters(0x00000000u, counters);
+    TEST_ASSERT(counters[0] == 0 && counters[1] == 0, "a quiet bus reports zero");
+    RelayErrorCounters(0x00001F0Cu, counters);
+    TEST_ASSERT(counters[0] == 0x0C && counters[1] == 0x1F, "transmit counter in bits 7:0, receive counter in bits 14:8");
+    RelayErrorCounters(0xFFFFFFFFu, counters);
+    TEST_ASSERT(counters[0] == 0xFF && counters[1] == 0x7F, "bit 15 (receive error passive) and above are not part of the counter");
+
     if (failures) {
         printf("%d FAILED\n", failures);
         return 1;
