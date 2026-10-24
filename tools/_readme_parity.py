@@ -116,29 +116,32 @@ _TREE_ROW = re.compile(r"^[├└]── ([^\s,]+(?:(?:, | / | \+ )[^\s,]+)*)")
 
 def readme_tree_names(path: Path) -> set[str] | None:
     """The first-level names that the file tree of `path` lists (a pattern such as `sdkconfig.*` included; `a.sh/.bat` and `a.sh / .bat`
-    list both files), or None when the README has no file tree."""
+    list both files), or None when the README has no file tree. The tree is the code block with the most tree rows."""
     text = path.read_text(encoding="utf-8")
+    best = ""
+    best_rows = 0
     for fence in _TREE_FENCE.finditer(text):
-        body = fence.group(1)
-        if not re.search(r"^[├└]── ", body, re.M):
+        rows = len(re.findall(r"^[├└]── ", fence.group(1), re.M))
+        if rows > best_rows:
+            best, best_rows = fence.group(1), rows
+    if not best_rows:
+        return None
+    names: set[str] = set()
+    for line in best.splitlines():
+        found = _TREE_ROW.match(line)
+        if not found:
             continue
-        names: set[str] = set()
-        for line in body.splitlines():
-            found = _TREE_ROW.match(line)
-            if not found:
-                continue
-            previous = ""
-            for token in re.split(r", | / | \+ ", found.group(1)):
-                for part in re.split(r"/(?=\.)", token):
-                    part = part.rstrip("/")
-                    if part.startswith(".") and "." in previous.lstrip("."):
-                        part = previous.rsplit(".", 1)[0] + part
-                    first = part.split("/")[0]
-                    if first:
-                        names.add(first)
-                    previous = part
-        return names
-    return None
+        previous = ""
+        for token in re.split(r", | / | \+ ", found.group(1)):
+            for part in re.split(r"/(?=\.)", token):
+                part = part.rstrip("/")
+                if part.startswith(".") and "." in previous.lstrip("."):
+                    part = previous.rsplit(".", 1)[0] + part
+                first = part.split("/")[0]
+                if first:
+                    names.add(first)
+                previous = part
+    return names
 
 
 def tracked_first_level(root: Path) -> list[str] | None:
