@@ -85,7 +85,9 @@ class CanIdTableTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         text = (root / "src/mcu_stm32g474/RobotControllerRelay.c").read_text(encoding="utf-8")
         for sent in re.findall(r"SendClassicFrame\(&hfdcan1_app, ([^,]+),", text):
-            self.assertIn("RelayAnswerOffset", sent, sent)
+            # the answers to the requests of the brain have their own identifiers; the error counters keep the one of the bootloader (the application
+            # and the bootloader never run at the same time, and the host asks both with the same query)
+            self.assertTrue("RelayAnswerOffset" in sent or "OFS_ERROR_COUNTERS_RESPONSE" in sent, sent)
         brain = (root / "src/mcu_stm32h745/CM4/KinematicBrainCan.c").read_text(encoding="utf-8")
         self.assertNotIn("WaitForResponse(base + OFS_AXIS_STATUS,", brain)
         self.assertNotIn("WaitForResponse(relay_recv_id,", brain)
