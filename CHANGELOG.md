@@ -6,6 +6,7 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ### Documentation
 
+- The manifest explains its deployment target (`deployment_target_note`): the firmware runs on the microcontrollers of the robot arm boards, and `user-pc` is the nearest value the manifest allows for the tools and the CM5-side bridge.
 - `docs/architecture.md` no longer marks the relay tunnel between the controller board and the Tool Head as implemented: the code exists, but the frame identifiers have not been agreed with URTC and nothing has run on a real bus.
 
 ## [0.2.3] - The CM5 side holds no signing key and the CAN error counters of the boards reach the telemetry collector
