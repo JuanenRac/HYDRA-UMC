@@ -4,6 +4,8 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **The layout of the README is checked in the CI:** the validator runs `tools/universal_readme_check.py` and lists, as a warning, what differs from the universal layout of the README.
+
 ### Documentation
 
 - The manifest explains its deployment target (`deployment_target_note`): the firmware runs on the microcontrollers of the robot arm boards, and `user-pc` is the nearest value the manifest allows for the tools and the CM5-side bridge.
