@@ -26,7 +26,7 @@ GPL-3.0-or-later - see LICENSE
 
 ---
 
-> **Stato di sicurezza (safety e security):** questo ecosistema non è un sistema di sicurezza certificato. Non esiste ancora un percorso E-STOP hardware, né limiti o interblocchi imposti dal firmware, né un comando di movimento verificato; le immagini firmware sono controllate con CRC32 e un HMAC-SHA256 a chiave condivisa, non con una firma asimmetrica; TLS e TLS reciproco sono opzionali e disattivati per impostazione predefinita; nessuna scheda propria è stata ancora assemblata o provata. Leggi la [base di sicurezza](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md) e il [modello delle minacce](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md) prima di fidarti di qualsiasi affermazione qui per la sicurezza di una persona.
+> **Stato di sicurezza (safety e security):** questo ecosistema non è un sistema di sicurezza certificato. Non esiste ancora un percorso E-STOP hardware, né limiti o interblocchi imposti dal firmware, né un comando di movimento verificato; le immagini firmware sono controllate con CRC-32 e una firma Ed25519, e una compilazione di rilascio rifiuta le chiavi di sviluppo pubblicate (le teste utensile e le schede di espansione dietro il relè usano ancora i bootloader di URTC, che accettano un HMAC-SHA256 a chiave condivisa invece di una firma); TLS e TLS reciproco sono opzionali e disattivati per impostazione predefinita; nessuna scheda propria è stata ancora assemblata o provata. Leggi la [base di sicurezza](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md) e il [modello delle minacce](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md) prima di fidarti di qualsiasi affermazione qui per la sicurezza di una persona.
 
 ---
 
@@ -271,7 +271,7 @@ Vedi `docs/COMPILE_STM32G474.TXT` e `docs/COMPILE_STM32H745.TXT` per cosa fa
 esattamente ogni passo e perché - e il proprio `README.md` di ogni cartella
 firmware per lo stato attuale. I **bootloader** per tutti e 3 i target (G474,
 H745 CM7, H745 CM4) sono implementazioni CAN-OTA/SPI-OTA reali e funzionanti
-(verifica CRC32 + HMAC-SHA256, verifica-in-backup-prima-di-copiare-nel-main,
+(verifica CRC-32 + firma Ed25519, verifica-in-backup-prima-di-copiare-nel-main,
 stessa disciplina anti-brick del proprio bootloader di URTC) - compilano
 puliti end-to-end, non ancora verificati contro hardware reale. Le
 **applicazioni** sono ancora smoke test FreeRTOS GPIO-toggle verificati per

@@ -209,7 +209,7 @@ gap this table had until the G474 bootloader was actually implemented
 against it, not a stylistic change.
 
 Same anti-bricking discipline as URTC's own bootloader: a firmware image is
-only copied into the running slot after a full CRC32 + HMAC-SHA256 verify
+only copied into the running slot after a full CRC-32 + Ed25519 signature verify
 against a backup/staging slot, so an interrupted or corrupted CAN-OTA update
 leaves the previously-working firmware intact.
 
@@ -278,11 +278,11 @@ that isn't there.
 | Piece | Status |
 |---|---|
 | CM5 <-> STM32H745 SPI transport | CONFIRMED, documented (README.md §10) |
-| STM32H745's own SPI firmware-update protocol (Tier 0) | **IMPLEMENTED** - `src/mcu_stm32h745/CM4/boot/` is a real bootloader: SPI1 slave, the frame-type-byte scheme this document's §3 describes, CRC32+HMAC-SHA256 verify-into-backup-before-copy-to-main. Compiles clean (`build_firmware.sh h745`). NOT yet verified against real hardware - see that folder's own README.md for the concrete gaps (clock tree, dual-core bring-up). |
+| STM32H745's own SPI firmware-update protocol (Tier 0) | **IMPLEMENTED** - `src/mcu_stm32h745/CM4/boot/` is a real bootloader: SPI1 slave, the frame-type-byte scheme this document's §3 describes, CRC-32 + Ed25519 signature verify-into-backup-before-copy-to-main. Compiles clean (`build_firmware.sh h745`). NOT yet verified against real hardware - see that folder's own README.md for the concrete gaps (clock tree, dual-core bring-up). |
 | STM32H745 <-> Robot Controller Board FDCAN1 bus (electrical) | CONFIRMED, documented (README.md §6) |
 | Robot Controller Board slot addressing on that shared bus | **IMPLEMENTED** - `BOARD_ID[2:0]`, a LOCAL DIP switch on each Robot Controller Board (`docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` §1c - CONFIRMED design, not derived from the STACK A connector or stack position, see `docs/PINOUT_STACKA_CONNECTOR.TXT` §1) feeds `ReadSlotBaseId()` in the G474 bootloader - this document's §4 formula is real code now, not just a formula. The CM4 gateway bootloader doesn't read this itself (it's the master, not a stack member) - it takes a target slot number from the SPI1 frame the CM5 sends (`SpiOtaFrame_t.target_slot`, `src/mcu_stm32h745/CM4/boot/bootloader_common.h`) instead. |
 | Robot Controller Board's own MCU identity | **CONFIRMED: STM32G474RET6** (LQFP-64, 512 KB flash, 3x FDCAN - 2 used, see §1). |
-| Robot Controller Board's own bootloader firmware | **IMPLEMENTED** - `src/mcu_stm32g474/boot/` is a real bootloader: FDCAN1, slot-addressed per §4's offset table, same CRC32+HMAC-SHA256 anti-bricking discipline. Compiles clean. NOT yet verified against real hardware. |
+| Robot Controller Board's own bootloader firmware | **IMPLEMENTED** - `src/mcu_stm32g474/boot/` is a real bootloader: FDCAN1, slot-addressed per §4's offset table, same CRC-32 + Ed25519 signature anti-bricking discipline. Compiles clean. NOT yet verified against real hardware. |
 | CM7<->CM4 IPC (needed to flash CM7 itself, since only CM4 owns SPI1/FDCAN1) | **IMPLEMENTED** - `src/mcu_stm32h745/Common/ipc_mailbox.h`, a 2-HSEM-channel shared-SRAM4 mailbox. CM7's own bootloader (`CM7/boot/`) runs the same protocol state machine over this mailbox instead of a bus - the only way to reach CM7 at all, since it has no SPI1/FDCAN1 access of its own. |
 | Robot Controller Board -> URTC Tool Head CAN link (electrical) | Described by the project owner; not yet on a schematic in `hardware/` |
 | Robot Controller Board <-> URTC Tool Head relay tunnel | **IN CODE, NOT WORKING YET** - the frame identifiers have not been agreed with URTC and nothing has run on a real bus, so do not rely on a tunnel to a Tool Head today (STUDIO has no tunnel to the Tool Head or the Expansion Board yet). `src/mcu_stm32g474/RobotControllerRelay.c` is the application-side relay logic this row used to flag as missing: FDCAN2 (downlink) init, a real AXIS_STATUS (+0x10) responder reading this board's own endstop/fault GPIOs, and a real RELAY_SEND/RELAY_RECV tunnel forwarding opaque frames to/from the URTC head - the exact real fragmentation scheme `KinematicBrainCan.c` (Tier 0) and `spi_bridge/relay_tunnel.py` (CM5) both already implement. Compiles and links clean (`build_firmware.sh g474`). `OFS_ENTER_BOOTLOADER` (+0x00) is intentionally still not implemented - see that module's own header for why. NOT yet verified against real hardware. |
