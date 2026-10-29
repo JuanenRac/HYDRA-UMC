@@ -2,6 +2,12 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
+## [Unreleased]
+
+### Documentation
+
+- `docs/architecture.md` no longer marks the relay tunnel between the controller board and the Tool Head as implemented: the code exists, but the frame identifiers have not been agreed with URTC and nothing has run on a real bus.
+
 ## [0.2.3] - The CM5 side holds no signing key and the CAN error counters of the boards reach the telemetry collector
 
 ### Firmware and protocol
