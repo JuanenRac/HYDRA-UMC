@@ -4,6 +4,7 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **A bus contract a program can read:** `docs/bus_contract.json` records, for STACK A, the downlink to a tool head and the SPI link to the CM5, the frame format, the bit timing the firmware sets, the clock it assumes (and the bit rate that follows from both), the identifier window of a slot and the largest frame. `tests/test_bus_contract.py` compares it with the FDCAN initialisation of the five firmware sources, with the slot base of both bootloaders, with `tools/can_ids.py` and with the SPI driver, so a change in one of them that is not made in the other fails. The data length of each message is not recorded yet. No bit rate has been measured on a board.
 - **README in the universal layout:** the README and its seven translations follow the layout that the four families share (22 sections in a fixed order), with an architecture picture and a repository-structure picture drawn from `docs/architecture.json` and `docs/structure.json`; the CI validator checks both pictures and the file tree.
 
 - **The layout of the README is checked in the CI:** the validator runs `tools/universal_readme_check.py` and lists, as a warning, what differs from the universal layout of the README.

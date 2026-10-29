@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "description": "What each bus of the controller carries, in a form a program can read: the bit timing the firmware sets, the frame format, the identifier window of a slot and the identifiers of the relay protocol. tests/test_bus_contract.py compares it with the firmware sources and with tools/can_ids.py, so a change in one of them that is not made here fails the tests. The bit rate is derived from the timing and from the kernel clock the firmware assumes; no board has measured it yet.",
+  "buses": {
+    "stack_a": {
+      "kind": "can",
+      "name": "STACK A (FDCAN1 of the kinematic brain to FDCAN1 of every controller board)",
+      "frame_format": "classic",
+      "bit_rate_switching": false,
+      "max_data_bytes": 8,
+      "nominal_bit_timing": {
+        "prescaler": 1,
+        "sync_jump_width": 1,
+        "time_segment_1": 13,
+        "time_segment_2": 2
+      },
+      "assumed_kernel_clock_hz": 16000000,
+      "time_quanta_per_bit": 16,
+      "nominal_bit_rate_bps": 1000000,
+      "slot_base": "0x600",
+      "slot_window": 32,
+      "slots": 8,
+      "sources": [
+        "src/mcu_stm32h745/CM4/boot/bootloader_main.c",
+        "src/mcu_stm32h745/CM4/KinematicBrainCan.c",
+        "src/mcu_stm32g474/boot/bootloader_main.c",
+        "src/mcu_stm32g474/RobotControllerRelay.c"
+      ]
+    },
+    "tool_head_downlink": {
+      "kind": "can",
+      "name": "Tier 2 downlink (FDCAN2 of a controller board to its tool head)",
+      "frame_format": "classic",
+      "bit_rate_switching": false,
+      "max_data_bytes": 8,
+      "nominal_bit_timing": {
+        "prescaler": 1,
+        "sync_jump_width": 1,
+        "time_segment_1": 13,
+        "time_segment_2": 2
+      },
+      "assumed_kernel_clock_hz": 16000000,
+      "time_quanta_per_bit": 16,
+      "nominal_bit_rate_bps": 1000000,
+      "sources": [
+        "src/mcu_stm32g474/RobotControllerRelay.c"
+      ]
+    },
+    "cm5_spi": {
+      "kind": "spi",
+      "name": "SPI link between the CM5 and the STM32H745",
+      "default_clock_hz": 10000000,
+      "maximum_clock_hz": 50000000,
+      "sources": [
+        "src/cm5_host/ipc_driver/src/ipc_driver.c",
+        "src/cm5_host/ipc_driver/src/ipc_driver.h"
+      ]
+    }
+  },
+  "slot_messages": "see tools/can_ids.py: each message is an offset inside the 32-identifier window of a slot; the identifier is slot_base + slot * slot_window + offset",
+  "data_length_per_message": "not yet recorded: only the classic maximum of 8 bytes is a contract today"
+}
