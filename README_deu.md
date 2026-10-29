@@ -1,34 +1,34 @@
+<!-- =============================================================================
+HYDRA-UMC - Universal Machines Controller: board design, bootloaders and the CM5 SPI bridge
+Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+GPL-3.0-or-later - see LICENSE
+============================================================================= -->
+
 <p align="center">
   <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC banner" width="100%">
 </p>
 
-# 🚀 TECHNISCHE SPEZIFIKATION VON HYDRA-UMC
+# 🚀 HYDRA-UMC
 
-<p align="center">
-  <a href="README.md">🇺🇸 English</a> |
-  <a href="README_spa.md">🇪🇸 Español</a> |
-  <a href="README_fra.md">🇫🇷 Français</a> |
-  <a href="README_ita.md">🇮🇹 Italiano</a> |
-  🇩🇪 <b>Deutsch</b> |
-  <a href="README_zho.md">🇨🇳 简体中文</a> |
-  <a href="README_jpn.md">🇯🇵 日本語</a> |
-  <a href="README_por.md">🇵🇹 Português</a>
-</p>
+<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | 🇩🇪 <b>Deutsch</b> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 🤖 Die ultimative Dual-Core-Mikrofabrik- und Multi-Roboter-Steuerungsplattform (V1.0 - Doppelter PCIe-Hailo-8+Hailo-10-KI-Beschleuniger und Doppel-USB-3.0-Hubs)
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Lizenz-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
-  <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="CERN OHL-S">
-  <img src="https://img.shields.io/badge/Sprache-C11-00599C.svg" alt="C">
-  <img src="https://img.shields.io/badge/Plattform-STM32H745-003551.svg" alt="STM32">
-  <img src="https://img.shields.io/badge/Bus-Classic%20CAN%20(FDCAN%20peripheral)-yellow.svg" alt="Classic CAN bus on an FDCAN peripheral">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
+  <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
+  <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
+  <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="Platform">
+  <img src="https://img.shields.io/badge/Tests-148%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Version-0.2.3-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
-
 
 ---
 
 > **Stand von Sicherheit (Safety) und Security:** Dieses Ökosystem ist kein zertifiziertes Sicherheitssystem. Es gibt noch keinen Hardware-E-STOP-Pfad, keine von der Firmware durchgesetzten Grenzen oder Verriegelungen und keinen verifizierten Bewegungsbefehl; Firmware-Images werden mit CRC32 und einem HMAC-SHA256 mit gemeinsamem Schlüssel geprüft, nicht mit einer asymmetrischen Signatur; TLS und gegenseitiges TLS sind optional und standardmäßig aus; noch keine eigene Platine wurde bestückt oder getestet. Lesen Sie die [Sicherheitsbasis](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md) und das [Bedrohungsmodell](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md), bevor Sie sich für die Sicherheit einer Person auf eine Aussage hier verlassen.
+
+---
 
 ## 📋 Auf einen Blick
 
@@ -36,9 +36,12 @@
 |---|---|
 | Version | `0.2.3` |
 | Reifegrad | Gerüst |
+| Tests | 148 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | Technik | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | Ziel | Eine Mikrocontroller-Platine (die Firmware); wird auf einem PC gebaut |
 | Auf echter Hardware | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
+
+**Springe zu:** [Überblick](#-überblick) · [Architektur](#-architektur) · [Funktionen](#-funktionen) · [Sicherheit und Schutz](#-sicherheit-und-schutz) · [Schnittstellen](#-schnittstellen) · [Konfiguration](#-konfiguration) · [Schnellstart](#-schnellstart) · [Tests](#-tests) · [Fehlerbehebung](#-fehlerbehebung) · [Struktur des Repositorys](#-struktur-des-repositorys) · [Verwandte Projekte](#-verwandte-projekte)
 
 ## 🚦 Projektstatus
 
@@ -49,17 +52,39 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Bereich | Stand | Was das hier bedeutet |
 |---|---|---|
 | Software | 🟠 | Nur Struktur und erste Teile; der größte Teil der Arbeit steht noch aus |
-| Tests | 🟠 | Für dieses Repository ist noch keine Testanzahl vermerkt |
+| Tests | 🟢 | 148 automatische Tests, bei jeder Änderung ausgeführt |
 | Echte Hardware | 🔴 | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
 | Dokumentation | 🟢 | README in acht Sprachen, bei jeder Änderung gegen das Manifest geprüft |
 
-## 1. 🛠️ PROJEKTÜBERSICHT UND DAS MIKROFABRIK-ÖKOSYSTEM
+## 🎯 Überblick
 
 **HYDRA-UMC** (Universal Machines Controller) ist eine verteilte Steuerungsplattform und HMI-Architektur, firmwareseitig noch in einer frühen Phase, vorgesehen für Multi-Achsen-Zellenrobotik, Mikrofabriken, automatisierte Fertigung und komplexe Werkzeugkopf-Orchestrierung.
 
 Entworfen als **heterogene Host + Echtzeit-Co-Prozessor-Architektur**, soll HYDRA-UMC das High-Level-Rendering der Benutzeroberfläche, Computer Vision, KI-Inferenz und Cloud-Konnektivität von der Echtzeit-Schritterzeugung, der Feldbusverwaltung und der Ansteuerung der Leistungselektronik entkoppeln (geplant: Schritterzeugung und Ansteuerung sind noch nicht geschrieben).
 
 > **Entwurfsstand:** Die folgenden Abschnitte beschreiben den vorgesehenen Entwurf der Platine und ihrer Firmware. Heute existieren nur die Bootloader, die Kommunikationsanwendungen von CM4 und G474 und die SPI-Brücke auf der CM5-Seite (siehe den Kasten *Sicherheitsstatus* gegen Ende und die Statustabelle in `docs/architecture.md`). Wo ein Satz unten im Präsens von Bewegungserzeugung, S-Kurven-Profilen, PID-Regelkreisen, Sicherheitsverriegelungen, einem E-STOP, Stromausfallbehandlung, Objekterkennung oder irgendeinem anderen Verhalten der fertigen Platine spricht, ist er als geplant zu lesen: nichts davon ist auf einer bestückten Platine gelaufen.
+
+### 🤖 Mikrofabrik-Fähigkeiten (Entwurfsziele):
+* 📡 **Verteiltes Multi-Roboter-Netzwerk:** Geplant: Koordination von bis zu 8 verteilten robotischen Slave-Modulen (zunächst 3, 4, 5 und 6 Achsen; Skalierung auf 7, 8, 9 Achsen und Dual-Roboter-Architekturen in zukünftigen Versionen), die über einen einzigen physischen CAN-Bus verbunden sind.
+* 🧠 **Doppeltes eingebettetes neuronales Coprocessing:** Ein Onboard-PCIe-Gen3-Switch verteilt die einzige PCIe-Lane des CM5 auf 2 M.2-KI-Beschleuniger - einen Hailo-8 (26 TOPS) für Multi-Stream-YOLOv8/YOLO11 (geplant; läuft noch nicht)-Objekterkennung, Fehlerinspektion und Echtzeit-PnP-Fiducial-Ausrichtung über alle 8 Kameras, plus einen Hailo-10 (40 TOPS) für lokales, geräteseitiges kognitives Schlussfolgern und GenAI (quantisierte LLM-/VLA-Modelle) ohne Cloud-Umweg.
+* 📐 **Lokale 6-Achsen-Stufe:** Direkte Step/Dir/Enable-Impulserzeugung für 6 lokale Achsen (X, Y1, Y2, Z, E0, E1) für Zusatzbedarfe: zusätzliche Roboter, ATC-Revolver (automatischer Werkzeugwechsler), Förderbandsynchronisation oder XYZ-Tischportale.
+* 🎯 **JuanenPNP- und JuanenCNC-Integration:** Direkt kompatibel mit Pick-and-Place-Systemen (LumenPNP-Hardwarestrukturen) und CNC-Einheiten, die mit 10W-optischen Lasermodulen für PCB-Prototyping und SMD-Bestückung ausgestattet sind.
+* 👁️ **Octal-Kamera-Vision- und Inspektionsmatrix:** Integrierte doppelte USB-3.0-Controller, die 8x dedizierte USB-Kameraports für Echtzeit-OpenCV-Pick-and-Place-optische Ausrichtung, Wärmeinspektion und Fernstream-Überwachung ansteuern.
+* ⚡ **Ansteuerungsmatrix und Wärmemanagement:** Steuert 16 industrielle Low-Side-MOSFET-Kanäle (8 elektropneumatische Ventile + 8 Vakuumpumpen/Venturi-Generatoren) sowie Hochstrom-Bett-Treiber für SMD-Reflow-Löten oder 3D-Druckbetten.
+* 🚜 **JuanenBOT-Mobilplattformen:** Skalierbare Kommunikationsarchitektur, die eine Schnittstelle zu robusten 48V-4-Rad-Transportplattformen ermöglicht (50x50x50 cm Rahmen mit omnidirektionalen/Mecanum-Rädern für 100 kg Nutzlast).
+
+## 🧩 Rolle in HYDRA-UMC
+
+**HYDRA-UMC** ist der Entwurf des Universal Machines Controller: ein Compute-Module-5-Host, ein Echtzeit-Koprozessor STM32H745 und bis zu acht Robot Controller Boards an einem CAN-Bus, gedacht für Roboterzellen und Mikrofabriken. Heute gibt es die drei Bootloader (signierte Images, Anti-Rollback), die Kommunikationsanwendungen von CM4 und G474 und die SPI-Brücke auf der CM5-Seite; der Rest ist Entwurf, und keine Platine wurde gebaut.
+
+## 🏛️ Architektur
+
+<p align="center">
+  <img src="images/architecture.svg" alt="HYDRA-UMC architecture" width="100%">
+</p>
+
+<details>
+<summary>Textversion des Diagramms (Mermaid)</summary>
 
 ```mermaid
 flowchart TB
@@ -86,174 +111,10 @@ flowchart TB
     MCU -- "FDCAN1 - STACK A Bus" --> ROBOTS["Robot-Controller-Boards A1...A8<br/>(bis zu 8 Slave-Module)"]
 ```
 
-### 🤖 Mikrofabrik-Fähigkeiten (Entwurfsziele):
-* 📡 **Verteiltes Multi-Roboter-Netzwerk:** Geplant: Koordination von bis zu 8 verteilten robotischen Slave-Modulen (zunächst 3, 4, 5 und 6 Achsen; Skalierung auf 7, 8, 9 Achsen und Dual-Roboter-Architekturen in zukünftigen Versionen), die über einen einzigen physischen CAN-Bus verbunden sind.
-* 🧠 **Doppeltes eingebettetes neuronales Coprocessing:** Ein Onboard-PCIe-Gen3-Switch verteilt die einzige PCIe-Lane des CM5 auf 2 M.2-KI-Beschleuniger - einen Hailo-8 (26 TOPS) für Multi-Stream-YOLOv8/YOLO11 (geplant; läuft noch nicht)-Objekterkennung, Fehlerinspektion und Echtzeit-PnP-Fiducial-Ausrichtung über alle 8 Kameras, plus einen Hailo-10 (40 TOPS) für lokales, geräteseitiges kognitives Schlussfolgern und GenAI (quantisierte LLM-/VLA-Modelle) ohne Cloud-Umweg.
-* 📐 **Lokale 6-Achsen-Stufe:** Direkte Step/Dir/Enable-Impulserzeugung für 6 lokale Achsen (X, Y1, Y2, Z, E0, E1) für Zusatzbedarfe: zusätzliche Roboter, ATC-Revolver (automatischer Werkzeugwechsler), Förderbandsynchronisation oder XYZ-Tischportale.
-* 🎯 **JuanenPNP- und JuanenCNC-Integration:** Direkt kompatibel mit Pick-and-Place-Systemen (LumenPNP-Hardwarestrukturen) und CNC-Einheiten, die mit 10W-optischen Lasermodulen für PCB-Prototyping und SMD-Bestückung ausgestattet sind.
-* 👁️ **Octal-Kamera-Vision- und Inspektionsmatrix:** Integrierte doppelte USB-3.0-Controller, die 8x dedizierte USB-Kameraports für Echtzeit-OpenCV-Pick-and-Place-optische Ausrichtung, Wärmeinspektion und Fernstream-Überwachung ansteuern.
-* ⚡ **Ansteuerungsmatrix und Wärmemanagement:** Steuert 16 industrielle Low-Side-MOSFET-Kanäle (8 elektropneumatische Ventile + 8 Vakuumpumpen/Venturi-Generatoren) sowie Hochstrom-Bett-Treiber für SMD-Reflow-Löten oder 3D-Druckbetten.
-* 🚜 **JuanenBOT-Mobilplattformen:** Skalierbare Kommunikationsarchitektur, die eine Schnittstelle zu robusten 48V-4-Rad-Transportplattformen ermöglicht (50x50x50 cm Rahmen mit omnidirektionalen/Mecanum-Rädern für 100 kg Nutzlast).
-
----
-
-## 2. 🖥️ HOST-COMPUTING-SUBSYSTEM (HMI & HOCHNIVEAU)
-
-* 🧩 **Modul:** Raspberry Pi Compute Module 5 (CM5)
-* ⚙️ **Prozessor:** Broadcom BCM2712 Quad-Core ARM Cortex-A76 mit 2.4 GHz
-* 🎮 **Grafik-Engine:** VideoCore VII GPU (OpenGL ES 3.1, Vulkan 1.2)
-* 💾 **Systemspeicher:** 2 GB / 4 GB LPDDR4X (integriert auf dem CM5)
-* 💽 **High-Speed-Speicher:** Integrierter eMMC-Flash
-* 🐧 **Betriebssystem:** 64-Bit-Linux (Raspberry Pi OS / Yocto, gepatcht mit `PREEMPT_RT`)
-* 📺 **Display-Schnittstelle:** MIPI-DSI (2-Lane / 4-Lane), verbunden mit einem hochauflösenden kapazitiven Touch-Panel (Bambu-Lab-artige UI mit 60 FPS)
-* 🌐 **Konnektivitäts-Suite:**
-  * 🌐 1x Gigabit-Ethernet (RJ45) für industrielles LAN / RTSP-Videostreaming / WebSockets / MQTT
-  * 📶 Wi-Fi 6 & Bluetooth 5.4
-  * 📷 **8x USB-3.0/2.0-Vision-Ports:** Angesteuert von zwei Onboard-Genesys-Logic-GL3523-Controllern.
-  * 🎮 **2x USB-2.0-HID-Ports:** Gamepad / Maus / Tastatur - siehe Abschnitt 4a.
-
----
-
-## 3. 🧠 PCIE-KI-BESCHLEUNIGER-SUBSYSTEM (DOPPELTE HAILO-8+HAILO-10-NPU)
-
-* 🔀 **PCIe-Fan-out:** Der CM5-Anschluss stellt nur **eine** PCIe-Gen-2.0/3.0-x1-Lane bereit (bestätigt anhand von Tabelle 5 des CM5-Datenblatts, `docs/PINOUT_CM5_CARRIER.TXT`) - nicht genug, um 2 M.2-KI-Beschleuniger direkt zu verkabeln. Ein Onboard-PCIe-Gen3-Paket-Switch (Kandidat: ASMedia-ASM2806-Familie oder gleichwertig, genaues Bauteil noch offen - explizit Gen3, damit die Hailo-10-Verbindung nicht unter ihrer eigenen nativen Geschwindigkeit gedrosselt wird) verteilt diese einzelne CM5-seitige Lane auf 2 unabhängige nachgelagerte PCIe-x1-Lanes, eine je M.2-Sockel unten.
-* 🔌 **Physische Schnittstellen:** 2x Onboard-M.2-Key-M-Sockel (Formfaktor 2242 / 2280), jeweils mit einem eigenen nachgelagerten Port des obigen PCIe-Switches verbunden - nicht direkt mit dem CM5.
-* 🚀 **NPU-Engine 1 - Hailo-8 (Hochgeschwindigkeits-Wahrnehmung):** Hailo-8-Industrie-KI-Prozessor mit **26 TOPS** (Tera Operations Per Second) bei einem Verbrauch unter 5W. Steuert Multi-Stream-YOLOv8/YOLO11 (geplant; läuft noch nicht)-Objekterkennung, Fehlerinspektion und Echtzeit-PnP-Fiducial-Ausrichtung über alle 8 Kameras (Abschnitt 4) - der bereits vorhandene Beschleuniger, unveränderte Rolle.
-* 🧠 **NPU-Engine 2 - Hailo-10 (Kognitives Schlussfolgern / Lokale GenAI):** Zusätzlich zum Hailo-8, kein Ersatz. Mit **40 TOPS** führt er quantisierte LLM- und Vision-Language-Action-Modelle (VLA) lokal und privat aus - übersetzt natürlichsprachliche/sprachliche Bedienerbefehle in kinematische Trajektorien und übernimmt die semantische Fehlerbehebung, wenn ein Roboter eine Aufgabe nicht ausführen kann, ganz ohne Umweg über einen externen Cloud-Dienst. Dieselbe kognitive Rolle, die dem Hailo-10 bereits im restlichen HYDRA-UMC-Ökosystem zugewiesen ist (das Schwesterprojekt HYDRA-UMC-COGNITIVE-NODE).
-* ⚡ **Software-Integration:** Offizielle Hailo-RT-Softwaresuite, integriert mit Raspberry Pi OS für beide Beschleuniger, die GStreamer-/TAPPAS-Pipelines und OpenCV für die neuronale Vision-Inferenz ohne CPU-Overhead des Hailo-8 ausführt; die eigene LLM-/VLA-Runtime-Integration des Hailo-10 befindet sich noch im Entwurfsstadium (siehe `src/cm5_host/ai_inference/README.md`).
-* ⚠️ **Offener Punkt:** sowohl die genaue Teilenummer des PCIe-Switches als auch der reale Leistungsbedarf des Hailo-10 sind noch offen - siehe `hardware/PCB/kinematic_brain_stm32h745/BOM.TXT`, Positionen 05 und 09.
-
----
-
-## 4. 📷 DOPPEL-USB-3.0-VISION-SUBSYSTEM (8x KAMERAPORTS)
-
-* 🎛️ **Hub-Controller:** 2x Genesys-Logic-`GL3523`-USB-3.0/SuperSpeed-Hub-ICs, direkt auf der Hauptplatine integriert.
-* 🔀 **Topologie und Verteilung:**
-  * 🅰️ **Hub #1 (`GL3523-A`):** Verbunden mit dem nativen USB3-0-SuperSpeed-PHY des CM5 (5 Gbps). Versorgt USB-Ports 1 bis 4 (Kameras A1-A4).
-  * 🅱️ **Hub #2 (`GL3523-B`):** Verbunden mit dem nativen USB3-1-SuperSpeed-PHY des CM5 (5 Gbps). Versorgt USB-Ports 5 bis 8 (Kameras A5-A8).
-  * ℹ️ Der CM5 stellt diese 2 SuperSpeed-PHYs direkt bereit (BCM2712) - es ist kein RP1-Companion-Chip beteiligt (der RP1 ist spezifisch für das Raspberry-Pi-5-Board, nicht für das CM5). Vollständige Signalführung auf Pin-Ebene: `docs/PINOUT_CM5_CARRIER.TXT`.
-* 🛡️ **Leistungsschalter und Schutzschaltung:** Individueller USB-VBUS-Schutz über High-Side-Strombegrenzungs-Leistungsschalter (`TPS2065` / `SY6280`), konfiguriert für 500 mA - 1 A mit Fehlermeldung.
-* ⚡ **Hochstrom-VBUS-Schiene:** Versorgt von einem dedizierten 24V-zu-5V-Step-Down-Regler (5V @ 6A kontinuierlich).
-
-### 4a. 🎮 USB-2.0-HID-SUBSYSTEM (2x PORTS FÜR GAMEPAD / MAUS / TASTATUR)
-
-* 🎛️ **Hub-Controller:** 1x kleiner USB-2.0-Hub-IC (z. B. Genesys Logic `GL850G` / `FE1.1s`, noch zu bestätigen), der den einzigen nativen USB-2.0-PHY des CM5 auf 2 physische Ports auffächert.
-* ℹ️ **Warum ein Hub benötigt wird:** Das Datenblatt des CM5 (`docs/datasheets/Raspberry Pi CM5.pdf`, §2.5) bestätigt, dass der BCM2712 genau **einen** USB-2.0-Port (High Speed) am DF40-Steckverbinder bereitstellt (`USB_N`/`USB_P`, Pins 103/105) - getrennt und unabhängig von den 2 nativen USB-3.0-SuperSpeed-PHYs, die bereits den GL3523-Kamera-Hubs zugeordnet sind (Abschnitt 4). Ein einzelnes physisches Paar kann ohne einen zwischengeschalteten Hub nicht in 2 Ports aufgeteilt werden.
-* 🔀 **Topologie:** `USB_N`/`USB_P` (CM5) -> Upstream-Port des Hubs -> 2x Downstream-USB-2.0-Type-A-Ports (Front-/Seitenpanel, für Gamepad, Maus oder Tastatur - manuelle Jog-/Teach-Pendant-Steuerung und HMI-Eingabe, unabhängig vom Touchscreen).
-* 📌 Vollständige Signalführung auf Pin-Ebene: `docs/PINOUT_CM5_CARRIER.TXT` Abschnitt 1.
-
----
-
-## 5. ⚡ ECHTZEIT-CO-PROCESSING-SUBSYSTEM (ENTWURF)
-
-* 🎛️ **Mikrocontroller:** STMicroelectronics **STM32H745ZIT6** (kostenoptimierte Dual-Core-MCU)
-* 📦 **Gehäuse:** LQFP-144 (0.5 mm Pin-Abstand)
-* 🧠 **Architektur:** Asymmetrisches Dual-Core-Multiprocessing (AMP)
-  * 🚀 **Kern 1 (Cortex-M7 mit 480 MHz):** Geplant: Echtzeit-Bewegungs-Engine, hardwarebasierte Impulserzeugung, S-Kurven-Geschwindigkeitsprofile und PID-Regelkreise. Heute ist seine Anwendung nur ein GPIO-Toggle-Smoke-Test.
-  * 📡 **Kern 2 (Cortex-M4 mit 240 MHz):** Die FDCAN1-Protokollverwaltung im klassischen CAN-Modus und die kernübergreifende Mailbox existieren (nicht auf einer Platine gelaufen); geplant und nicht implementiert: Filterung analoger Sensoren und Sicherheitsverriegelungen.
-* 💾 **Interne Speicherarchitektur:**
-  * 💾 **2 MB** interner Dual-Bank-Flash
-  * 🧠 **1 MB** gesamte interne SRAM (512 KB AXI-SRAM + 128 KB ITCM / 128 KB DTCM + SRAM1/SRAM2/SRAM3)
-* 🧵 **RTOS:** **FreeRTOS**, eine unabhängige Instanz pro Kern (AMP, nicht SMP - kein gemeinsamer Scheduler-Zustand zwischen Kern 1 und Kern 2). `src/mcu_stm32h745/`: Kern 2 (CM4) führt bereits eine echte FDCAN1-„STACK A“-Master-Anwendung aus (`CM4/STM32H745ZI_CM4_main.c`); Kern 1 (CM7)s eigenes `main()` ruft noch den alten, nichts tuenden Platzhalter auf - siehe `docs/architecture.md` Abschnitt 2.
-
----
-
-## 6. 📡 VERTEILTE FELDBUS-KOMMUNIKATION (EIN CAN-BUS; FDCAN-PERIPHERIE IM KLASSISCHEN MODUS)
-
-Die Hauptplatine fungiert als Master-Controller für bis zu 8 einzelne robotische Slave-Module, die über einen einzigen physischen CAN-Bus verteilt sind:
-
-* 🔌 **Hardware-Peripherie:** 1x nativer Hardware-FDCAN-Controller (`FDCAN1`), direkt in den STM32H745 integriert, betrieben im **klassischen CAN-Modus** (`FDCAN_FRAME_CLASSIC`, `BRS_OFF`) durch die reale Bootloader-Implementierung - die Peripherie ist FD-fähiges Silizium, aber das CAN-OTA/SPI-OTA-Protokoll, das dieses Projekt heute tatsächlich spricht (`docs/CANBUS_STM32H745.TXT`, `docs/CANBUS_STM32G474.TXT`), verwendet nur klassische Rahmen (max. DLC 8), genau wie jede andere Ebene (G474-Robot-Controller-Boards, URTC). Die größeren 64-Byte-BRS-Payloads von CAN FD sind echter Hardware-Spielraum für später, nicht etwas, das das Protokoll bereits nutzt.
-* ⚡ **Physical-Layer-Transceiver:** 1x High-Speed-CAN-FD-Transceiver (z. B. TI `TCAN1044AVD` / NXP `TJA1443`) - FD-fähige Hardware, aus demselben Zukunftsspielraum-Grund gewählt wie die obige Peripherie, auch wenn der heutige Verkehr aus klassischen Rahmen besteht.
-* 🔀 **Bus-Topologie:**
-  * 🅰️ **STACK A (`FDCAN1`):** Bedient die Slave-Module A1 bis A8.
-* ⏱️ **Protokoll-Spezifikationen:** ~1 Mbps nominale Bitrate (klassisches CAN, max. 8-Byte-Payload pro Rahmen). Die automatische Bus-Off-Erholung ist geplant, vom Cortex-M4 verwaltet zu werden - noch nicht implementiert; die heutige Anwendung des CM4 (`src/mcu_stm32h745/CM4/STM32H745ZI_CM4_main.c`) führt bereits eine echte FDCAN1-„STACK A“-Master-Task aus (Round-Robin-`AXIS_STATUS`-Abfragen über alle 8 Slots, siehe `KinematicBrainCan.c`) plus Watchdog-Refresh, aber die Bus-Off-Erholung selbst bleibt reale zukünftige Arbeit, keine bereits gelieferte Fähigkeit.
-* 🔌 **Physischer Steckverbinder:** 40-poliger STAPEL-Steckverbinder/Sockel mit 2.54mm-Abstand (+24V ×10 Pins, GND ×10 Pins, +5V ×4 Hilfspins, FDCAN1 H/L, `BOARD_PRESENT_N`, 13 Reserve) - die 8 Robot-Controller-Boards werden physisch aufeinander GESTAPELT, auf einer Seite dieses Boards (BESTÄTIGTE Topologie, kein Backplane), wobei jedes Board alle 40 Signale direkt an das durchreicht, was darüber montiert wird. Die Slot-Adressierung erfolgt über einen LOKALEN DIP-Schalter pro Board (`BOARD_ID[2:0]`, README.md Abschnitt 12), nicht abgeleitet von diesem Steckverbinder. Vollständige Pin-Tabelle und Stapel-Topologie in `docs/PINOUT_STACKA_CONNECTOR.TXT`. Identische Steckverbinder-Definition sowohl am eigenen Port des Kinematic Brain als auch an jedem Portpaar der Robot-Controller-Boards.
-
 ```mermaid
 flowchart LR
     FDCAN1["STM32H745<br/>FDCAN1-Controller"] --> XCVR["TCAN1044<br/>Transceiver"] --> BUS["STACK-A-Bus<br/>(Roboter A1 - A8)"]
 ```
-
----
-
-## 7. 💾 ULTRASCHNELLER NICHTFLÜCHTIGER SPEICHER (SPI FRAM)
-
-Entwurfsziel (noch nicht implementiert): kein Datenverlust und sofortige Zustandswiederherstellung bei Notfall-Stromunterbrechungen:
-
-* 🧪 **Speicher-IC:** Cypress/Infineon `FM25V05-G` / Fujitsu `MB85RS64` (64 KB SPI FRAM)
-* ⚡ **Bus-Schnittstelle:** Dedizierter SPI2-Bus mit bis zu 40 MHz.
-* ♾️ **Haltbarkeit:** Unendliche Ausdauer (10^14 Zyklen) mit Schreiblatenzen im Nanosekundenbereich.
-* 🛡️ **Anti-Stromausfall-Sequenz (PVD), geplant:** Der interne Power Voltage Detector (PVD) überwacht die 3.3V-Schiene. Bei Erkennung eines Spannungsabfalls lädt ein nicht maskierbarer Interrupt (NMI) Encoder-Vektoren, aktive Zustandsmaschinen und Koordinaten in weniger als **5 Mikrosekunden** in das FRAM, bevor die Stromversorgung abgeschaltet wird.
-
----
-
-## 8. 🦾 LOKALE BEWEGUNGS-, ANSTEUERUNGS- UND SENSOR-SUITE
-
-### ⚙️ Bewegungsausgänge
-* 🎯 **Unterstützte Achsen:** Lokale 6-Achsen-Stufe - Doppel-Y-Portal plus Werkzeugachsen (`X`, `Y1`, `Y2`, `Z`, `E0`, `E1`), angetrieben von 6x TMC5160A-Schrittmotortreibern in einer SPI-Daisy-Chain.
-* ⚡ **Signale:** 3.3V-CMOS (`STEP`, `DIR`, `ENABLE`), gemeinsame SPI4-Daisy-Chain zu allen 6 Treibern.
-* ⏱️ **Timer:** Advanced-Control-Timer (`TIM1` für X/Y1/Y2/Z, `TIM8` für E0/E1) mit hardwarebasierter Impulserzeugung.
-* 🛑 **Endschalter:** 12x Eingänge, 2 pro Achse (MIN + MAX).
-* 📌 Vollständige Pin-Zuordnung auf Pin-Ebene: `docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT`.
-
-### 🔌 Leistungs- und Fluidaktoren
-* 🔀 **20x Low-Side-Schaltkanäle:** Industrielle N-Kanal-MOSFET-Ausgänge mit Flyback-Schutz.
-  * 🧲 **8+2 Kanäle:** Vakuumpumpen / Venturi-Pick-and-Place-Generatoren.
-  * 💨 **8+2 Kanäle:** Elektropneumatische Ventile (5V/24V-Ansteuerung).
-* 💨 **Lüfter:** 3x 3-Draht-Lüfter (PWM-geschaltete Versorgung über Low-Side-MOSFET + Tachometer-Erfassung pro Kanal).
-* 🌡️ **Wärmemanagement:**
-  * 🔥 1x Halbleiterrelais-Steuerausgang für das Heizbett, der die **230-VAC-Netzspannung** schaltet - optoisoliert von den MCU-/Logikdomänen; dies ist ein Netzspannungskreis und benötigt echte Kriech-/Luftstrecken auf der Leiterplatte, keine 24V-Bus-Footprint.
-  * 🌡️ 2x analoge Präzisions-NTC-Thermistor-Eingänge (Heizbett), abgetastet von `ADC1`.
-
----
-
-## 9. 🔌 STROMVERTEILUNG UND -REGELUNG
-
-Die Platine arbeitet mit einer einzigen industriellen **24V-DC**-Eingangsversorgungsschiene:
-
-* ⚡ **Haupt-DC-Eingang:** 24V DC ±10%
-* 🔋 **5V-Hauptversorgungsdomäne:** Synchroner Step-Down-Buck-Regler, der **5A kontinuierlich** für das CM5-Modul, die Touchscreen-Hintergrundbeleuchtung und die Onboard-Logik liefert.
-* 📷 **5V-USB-VBUS-Versorgungsdomäne:** Dedizierter synchroner Buck-Regler, der **6A kontinuierlich** ausschließlich für die 8x USB-3.0-Kameraports und GL3523-Hub-Controller liefert.
-* 🎛️ **3.3V-Versorgungsdomäne:** Rauscharmer Regler, der **4A kontinuierlich** liefert (dimensioniert für STM32, FRAM, Transceiver, den PCIe-Switch (Abschnitt 3) und die 3.3V-Schienen beider M.2-Sockel - Hailo-8 + Hailo-10). Dieses Budget muss neu geprüft werden, sobald der reale Leistungsbedarf beider M.2-Module bestätigt ist (Hailo-8 liegt unter 5W; die eigene Zahl des Hailo-10 ist noch offen) - könnte über 4A hinauswachsen müssen; siehe `hardware/PCB/kinematic_brain_stm32h745/BOM.TXT`, Position 09.
-
----
-
-## 10. 🔄 INTERPROZESSOR-KOMMUNIKATION (IPC)
-
-Die Kommunikation zwischen dem CM5 (Host) und dem STM32H745 (Co-Prozessor) nutzt eine hardwaregestützte Zero-Copy-SPI-Verbindung:
-
-* 🔗 **Physischer Transport:** Vollduplex-SPI1, ausgelegt für bis zu 50 MHz im Slave-Modus auf dem STM32 und Master-Modus auf dem CM5 - der reale CM5-seitige Treiber (`src/cm5_host/ipc_driver/src/ipc_driver.c`) verwendet heute konservativ 10 MHz, da die dazu passende SPI1-Slave-Konfiguration des STM32H745 noch nicht an echter Hardware verifiziert wurde.
-* 🤝 **Handshake-Leitung:** `HYDRA_DATA_READY`-GPIO-Leitung.
-* ⚡ **Ausführungsablauf:** Der Cortex-M4 bereitet einen 128-Byte-Telemetrierahmen im gemeinsamen AXI-SRAM vor, aktiviert `HYDRA_DATA_READY`, und der CM5 holt das Paket über High-Speed-SPI-DMA ohne Polling-Overhead ab.
-
----
-
-## 11. 🎛️ HARDWARE-SPEZIFIKATIONEN DER 4-LAGEN-LEITERPLATTE
-
-* 📐 **Formfaktor:** Monolithische industrielle Hauptplatine.
-* 🥞 **Lagenaufbau (4 Lagen):**
-  * 🟢 **Lage 1 (Oben):** Bauteilplatzierung, Hochfrequenzsignale, 90-Ohm-USB-SuperSpeed-Differenzialpaare, 85-Ohm-PCIe-Gen-3.0-Paare.
-  * 🛡️ **Lage 2 (Innen 1):** Durchgehende massive Masseebene (`GND`).
-  * ⚡ **Lage 3 (Innen 2):** Geteilte Leistungsebenen (`24V`, `5V_MAIN`, `5V_USB`, `3.3V`).
-  * 🔴 **Lage 4 (Unten):** Sekundäre Signalleiterbahnen und Hochstrom-Leistungsauskopplungen.
-* 🛠️ **Steckverbinder und Montage:**
-  * 🔲 LQFP-144-Gehäuse (0.5 mm Abstand) für den STM32H745, QFN-88-Gehäuse für die 2 GL3523-Hubs, und 2x M.2-Key-M-2242/2280-Sockel (Hailo-8 + Hailo-10, Abschnitt 3), versorgt über einen Onboard-PCIe-Gen3-Switch.
-  * 🔌 Doppelte Hirose-DF40-Mezzanine-Steckverbinder für das Compute Module 5.
-  * 📌 40-poliger STAPEL-Steckverbinder mit 2.54-mm-Abstand für die STACK-A-Busverbindung (Basis des physischen Robot-Controller-Board-Stapels) - `docs/PINOUT_STACKA_CONNECTOR.TXT`.
-  * 🔌 8x USB-3.0-Type-A-Steckverbinder (oder industrielle Hirose-Rastverbinder) für die Roboterkameras.
-
----
-
-## 12. 🦾 ROBOT-CONTROLLER-BOARDS UND URTC-WERKZEUGKOPF (VERTEILTE EBENE)
-
-Jedes der bis zu 8 Slave-Module auf STACK A (Abschnitt 6) ist ein **Robot
-Controller Board**: eines pro Roboter, das die eigenen 6 Achsen dieses
-Roboters ansteuert (STEP/DIR/ENABLE), seine Endschalter liest und den
-Verkehr seines eigenen Werkzeugkopfs einen weiteren Sprung über eine
-*zweite* CAN-Verbindung an ein **URTC**-Board (Universal Robot Tool
-Controller - siehe das Schwester-Repository `URTC`) weiterleitet, das im
-Kopf des Roboters montiert ist, optional mit einer eigenen
-Erweiterungsplatine.
 
 ```mermaid
 flowchart LR
@@ -262,114 +123,69 @@ flowchart LR
     URTC -- CAN --> RCB
 ```
 
-* 🎛️ **MCU:** STMicroelectronics **STM32G474RET6** (Cortex-M4 mit 170 MHz,
-  LQFP-64, 512 KB Flash), das 2 seiner 3 Onboard-FDCAN-Peripheriegeräte
-  nutzt - eines als FDCAN-Uplink zum STM32H745, eines als CAN-Downlink zum
-  eigenen URTC-Kopf. Siehe `docs/architecture.md` §1.
-* 🔢 **Adressierung:** `BOARD_ID[2:0]` - ein lokaler 3-Positionen-DIP-Schalter
-  an jedem Board, manuell bei der Installation auf 0-7 eingestellt, gibt
-  jedem Board eine eigene FDCAN1-Slot-Basis-ID - nicht abgeleitet aus der
-  physischen Stapelposition oder dem STACK-A-Steckverbinder (jedes Board
-  ist dieselbe austauschbare Leiterplatte). Siehe
-  `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` §1c.
-* 🧵 **RTOS:** **FreeRTOS** (dessen Bootloader bleibt bare-metal - kein
-  Scheduler wird benötigt, um zu empfangen/verifizieren/zu springen).
-  Echte Anwendung: `src/mcu_stm32g474/STM32G474RE_main.c` führt eine
-  echte Relay-Task aus (`RobotControllerRelay.c` - FDCAN2-Downlink zum
-  URTC Tool Head, ein `AXIS_STATUS`-Responder und der
-  `RELAY_SEND`/`RELAY_RECV`-Tunnel) neben der Blink-Task mit
-  Watchdog-Refresh.
-* 📡 **CAN-OTA-Firmware-Updates, 4 Ebenen tief:** der STM32H745 selbst **Signierter Image-Header und Anti-Rollback (Bootloader, im Host getestet):** Das Update trägt einen 64-Byte-Header (vollständige Version Major.Minor.Patch, Hardware-ID, Größe, Link-Adresse, Vektorwörter, CRC), und eine Ed25519-Signatur deckt den Digest von Header und Image zusammen ab, sodass ein altes signiertes Image keine höhere Version vortäuschen kann; die drei Zahlen der Version werden verglichen, und ein älteres Image wird nur mit einem Token (selbst eine Signatur) installiert, das an die Nonce dieser Sitzung, die beiden Versionen und dieses Image gebunden ist (der alte Vier-Byte-Magic-Frame erlaubt nichts mehr). Die Entscheidung (`image_header.h`, `update_verify.h`) ist eine Datei in den drei Bootloadern, getestet mit Bytes von `tools/image_header.py` und für den G474 durchgängig von START_UPDATE bis zur neuen Anwendung. Die Platine trägt nur den öffentlichen Schlüssel (`tools/image_header.py` erzeugt die Schlüssel und signiert; der private Seed kommt nie auf eine Platine, und der Entwicklungs-Seed ist veröffentlicht, daher lehnt ein Release-Build den öffentlichen Entwicklungsschlüssel ab); die Kurvenarithmetik ist das mitgelieferte TweetNaCl (gemeinfrei, `THIRD_PARTY_NOTICES.md`). Nichts davon wurde für eine Platine kompiliert oder darauf ausgeführt.
-  (über seine bestehende SPI-Verbindung zum CM5), dieses Board, sein
-  URTC-Werkzeugkopf (STM32F303CCT6), und - nur wenn installiert - die
-  eigene Advanced Expansion Board dieses Kopfes (STM32F303CBT6,
-  `expansion_board_type` 3 oder 4, siehe URTCs eigene
-  `docs/EXPANSION.TXT`) können alle vom Flasher/Tester von
-  HYDRA-UMC-STUDIO ohne JTAG/SWD-Sonde und ohne USB-CAN-Dongle geflasht
-  und diagnostiziert werden. Vollständiges Adressierungsschema, der
-  Relay-Tunnel, der die letzten beiden Ebenen ohne jegliches neues
-  Protokolldesign erreicht, und der aktuelle Implementierungsstatus:
-  `docs/architecture.md`.
+</details>
 
-Siehe `docs/architecture.md` für die vollständige gestufte Architektur
-(dieser Abschnitt ist eine Zusammenfassung), einschließlich dessen, was als
-bestätigte Hardware-Tatsache gilt gegenüber dem, was noch ein
-vorgeschlagenes Design ist, das auf die Implementierung wartet. Abschnitt 8
-dieses Dokuments erfasst außerdem die bekannten, akzeptierten
-Sicherheitseinschränkungen der aktuellen Bootloader (noch kein
-Read-Out-Schutz, ein gemeinsam genutzter Anti-Rollback-Bypass-Wert,
-nicht authentifiziertes Rücklesen) - bewusste Vor-Hardware-Lücken, keine
-Versehen.
+## ✨ Funktionen
 
----
+Die ausführliche Spezifikation des Entwurfs (elf Subsysteme, vom Host-Rechner bis zum Werkzeugkopf) ist ein eigenes Dokument; jede Zeile unten öffnet ihren Abschnitt:
 
-## 📂 VERZEICHNISSTRUKTUR DES REPOSITORYS
+- [HOST-COMPUTING-SUBSYSTEM (HMI & HOCHNIVEAU)](docs/HARDWARE_SPECIFICATION_deu.md#2--host-computing-subsystem-hmi--hochniveau)
+- [PCIE-KI-BESCHLEUNIGER-SUBSYSTEM (DOPPELTE HAILO-8+HAILO-10-NPU)](docs/HARDWARE_SPECIFICATION_deu.md#3--pcie-ki-beschleuniger-subsystem-doppelte-hailo-8hailo-10-npu)
+- [DOPPEL-USB-3.0-VISION-SUBSYSTEM (8x KAMERAPORTS)](docs/HARDWARE_SPECIFICATION_deu.md#4--doppel-usb-30-vision-subsystem-8x-kameraports)
+- [ECHTZEIT-CO-PROCESSING-SUBSYSTEM (ENTWURF)](docs/HARDWARE_SPECIFICATION_deu.md#5--echtzeit-co-processing-subsystem-entwurf)
+- [VERTEILTE FELDBUS-KOMMUNIKATION (EIN CAN-BUS; FDCAN-PERIPHERIE IM KLASSISCHEN MODUS)](docs/HARDWARE_SPECIFICATION_deu.md#6--verteilte-feldbus-kommunikation-ein-can-bus-fdcan-peripherie-im-klassischen-modus)
+- [ULTRASCHNELLER NICHTFLÜCHTIGER SPEICHER (SPI FRAM)](docs/HARDWARE_SPECIFICATION_deu.md#7--ultraschneller-nichtflüchtiger-speicher-spi-fram)
+- [LOKALE BEWEGUNGS-, ANSTEUERUNGS- UND SENSOR-SUITE](docs/HARDWARE_SPECIFICATION_deu.md#8--lokale-bewegungs--ansteuerungs--und-sensor-suite)
+- [STROMVERTEILUNG UND -REGELUNG](docs/HARDWARE_SPECIFICATION_deu.md#9--stromverteilung-und--regelung)
+- [INTERPROZESSOR-KOMMUNIKATION (IPC)](docs/HARDWARE_SPECIFICATION_deu.md#10--interprozessor-kommunikation-ipc)
+- [HARDWARE-SPEZIFIKATIONEN DER 4-LAGEN-LEITERPLATTE](docs/HARDWARE_SPECIFICATION_deu.md#11--hardware-spezifikationen-der-4-lagen-leiterplatte)
+- [ROBOT-CONTROLLER-BOARDS UND URTC-WERKZEUGKOPF (VERTEILTE EBENE)](docs/HARDWARE_SPECIFICATION_deu.md#12--robot-controller-boards-und-urtc-werkzeugkopf-verteilte-ebene)
 
-```text
-HYDRA-UMC/
-├── .vscode/                    # Empfohlene Erweiterungen + Build-Tasks - siehe "Entwicklungsumgebung" unten
-├── docs/
-│   ├── datasheets/             # Datenblätter der auf jedem Board dieses Repositorys verwendeten Bauteile
-│   ├── architecture.md         # Die 4-Ebenen-Systemarchitektur (hier anfangen)
-│   ├── COMPILE_STM32G474.TXT   # Build-Referenz für die Robot-Controller-Board-Firmware
-│   ├── COMPILE_STM32H745.TXT   # Build-Referenz für die Kinematic-Brain-Firmware (Dual-Core)
-│   ├── PINOUT_STM32H745_KINEMATIC_BRAIN.TXT    # Vollständige Pin-Zuordnung des Kinematic Brain
-│   ├── PINOUT_STM32G474_ROBOT_CONTROLLER.TXT   # Vollständige Pin-Zuordnung des Robot Controller Board
-│   ├── PINOUT_CM5_CARRIER.TXT                  # Signalführung des CM5-Host-Subsystems
-│   ├── PINOUT_STACKA_CONNECTOR.TXT             # Gemeinsamer 40-poliger STACK-A-Stapelsteckverbinder
-│   ├── CANBUS_STM32H745.TXT                    # Protokoll auf Leitungsebene des Kinematic Brain (SPI1/Mailbox/FDCAN1-Master)
-│   ├── CANBUS_STM32G474.TXT                    # Protokoll auf Leitungsebene des Robot Controller Board (FDCAN1-Slave/FDCAN2)
-│   └── HYDRA-UMC_*.md/txt/TXT  # Ältere Dokumente - Markdown, wenn als Markdown verfasst; siehe das eigene Banner jeder Datei
-├── hardware/
-│   ├── PCB/
-│   │   ├── kinematic_brain_stm32h745/          # Haupt-Hauptplatine - noch kein Schaltplan, siehe eigenes README
-│   │   └── robot_controller_board_stm32g474/   # Pro-Roboter-Board - noch kein Schaltplan, siehe eigenes README
-│   └── gerbers/                # Fertigungsausgabedateien (leer, bis ein Board entworfen wird)
-├── src/                         # Gleiche Layout-Konvention wie das Schwester-Repository URTC: src/ ist die QUELLE
-│   ├── cm5_host/                # Linux-Userspace-Anwendungen, die OBEN auf dem eigenen Image von os/ laufen
-│   │   ├── hmi_qt6/             # Qt6-Kiosk-Shell, die das eigene Dashboard von HYDRA-UMC-STUDIO umhüllt
-│   │   ├── ai_inference/        # Hailo-8-TAPPAS-/YOLOv8-Pipeline
-│   │   ├── video_streamer/      # Multi-Kamera-RTSP/WebRTC-Server (MediaMTX)
-│   │   ├── ipc_driver/          # CM5 <-> STM32H745 SPI-Verbindung (Userspace) - unfertiges C-Skelett, als Referenz behalten
-│   │   └── spi_bridge/          # Echte CM5<->STM32H745 SPI-OTA-Brücke (Python) - ersetzt ipc_driver/,
-│   │                              übernimmt die eigene, bereits bewährte CRC32/HMAC-Bootloader-Zustandsmaschine von URTC-FLASHER
-│   ├── mcu_stm32h745/           # Kinematic-Brain-Firmware (Ebene 0) - Dual-Core
-│   │   ├── CM7/                 # Bewegungs-Engine, Hardware-Timer (+ eigene boot/)
-│   │   ├── CM4/                 # FDCAN-Treiber, Sensorfilterung (+ eigene boot/)
-│   │   └── Common/              # CM7<->CM4 Shared-Memory-IPC-Mailbox (ipc_mailbox.h) - implementiert, von den Bootloadern beider Kerne genutzt
-│   └── mcu_stm32g474/           # Robot-Controller-Board-Firmware (Ebene 1) - Single-Core, + eigene boot/
-├── tests/                   # Host-Tests: die C-Logik der Bootloader und des Relays (stubs/ ersetzt das HAL, image_header_vectors.h enthält die Referenzvektoren) und Python-Tests der Werkzeuge
-├── os/                          # CM5-OS-Image - Basis-Betriebssystemwahl, systemd-Units, Erstinbetriebnahme-Provisionierung
-├── images/                      # README-Banner + Icon + Splashscreen (SVG)
-├── build_firmware.sh            # Baut jedes obige MCU-Firmware-Ziel aus einem sauberen Checkout (Linux/Mac)
-├── build_firmware.bat           # Derselbe Build, Windows (siehe "Die Firmware bauen" unten)
-├── build-test.sh / build-test.bat # Build-/Kompilierprüfung ohne Versionserhöhung
-├── generate_manifest.py         # Regeneriert firmware/firmware_manifest.json (Versionen/CRC32) nach einem vollständigen Build
-├── bump_version.py              # Versionserhöhung im Kilometerzähler-Stil für eine Komponente
-├── bump_firmware_versions.py    # Erhöht die sechs Komponentenversionen ausdrücklich
-├── show_component_version.py    # Gibt die Version aus, die eine Komponente bereits hat
-├── bump_manifest_version.py     # Synchronisiert die Version von hydra-umc.project.json mit der nativen (--sync)
-├── tools/
-│   ├── verify_firmware_inventory.py # Schreibgeschützte Prüfung des Inventars mit sechs Komponenten
-│   ├── build_test.py                # Build-/Kompilierprüfung ohne Versionserhöhung
-│   ├── ci_validate.py               # Manifest-/CHANGELOG-/Doku-Validierung, von der CI genutzt
-│   ├── image_header.py              # Host-Referenz des signierten Firmware-Image-Headers, seiner Ed25519-Signatur und der Anti-Rollback-Regel
-│   ├── gen_image_header_vectors.py  # Schreibt tests/image_header_vectors.h: die signierten Images und das Downgrade-Token der Referenz als C-Arrays
-│   ├── ed25519_ref.py               # Ed25519 (RFC 8032) in reinem Python: die Host-Seite der Signatur, die die Bootloader prüfen
-│   ├── can_ids.py                   # Referenztabelle der CAN-Identifier des Relay-Protokolls, ein Sender je Identifier
-│   ├── _doc_policy.py               # Von der Familie geteilte Dokumentationsregeln (Kopie der von HYDRA-UMC-SDK, synchron gehalten)
-│   ├── _readme_parity.py            # Prüfung, dass die acht READMEs dieselbe Struktur haben (Kopie der von HYDRA-UMC-SDK, synchron gehalten)
-│   └── hydra_project_tool.py        # Dieselben Befehle in jedem Repository: validate, test, ci, version, status, bump
-├── firmware/                    # Committete Build-Ausgabe (.bin/.hex/.elf + Manifest) - NICHT in gitignore, dieselbe Konvention wie der eigene Ausgabeordner von URTC, siehe "Die Firmware bauen" unten
-├── README.md                    # Diese Datei
-└── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md / README_por.md    # <- Übersetzungen
+## 🔒 Sicherheit und Schutz
+
+| Bedrohung | Abwehr | Wo |
+|---|---|---|
+| Ein gefälschtes oder bearbeitetes Firmware-Image | Auf einen festen 64-Byte-Header (Magic, Version, Hardware-ID, Größe, Vektorwörter, CRC-32) folgen das Image und eine 64-Byte-Ed25519-Signatur über Header und Image; der Bootloader prüft zuerst die Signatur und glaubt nichts im Header, bevor sie verifiziert | `image_header.h`, `tools/image_header.py` |
+| Ein altes signiertes Image, das erneut gesendet wird (Rollback) | Ein neues Image muss strikt neuer sein als das installierte (Major, Minor und Patch werden verglichen); ein älteres wird nur mit einem Downgrade-Token akzeptiert, einer Ed25519-Signatur über installierte und Zielversion und den Image-Digest; die Firmware enthält keine Konstante, die ein Downgrade erlaubt | `image_header.h`, `ImageHeader_CheckRollback` |
+| Mit den Entwicklungsschlüsseln gebaute Images | Ohne `HYDRA_FW_UPDATE_PUBKEY_HEX` und `HYDRA_FW_HMAC_KEY_HEX` tragen die Bootloader Entwicklungsschlüssel, deren privater Teil im Repository veröffentlicht ist; der Build warnt, und mit `HYDRA_UMC_RELEASE=1` weigert er sich zu bauen; die Platine hält nur den öffentlichen Schlüssel, der private Seed bleibt beim Eigentümer | `build_firmware.sh` |
+| Eine Platine, die hängt | Der G474-Bootloader schärft den unabhängigen Watchdog (IWDG) als allererste Aktion von `main()`, vor `HAL_Init()`, sodass ein Hänger beim Start den Chip zurücksetzt | `src/mcu_stm32g474/boot/bootloader_main.c` |
+| Der lokale HTTP-Dienst der SPI-Brücke wird von jemand anderem erreicht | Er lauscht standardmäßig auf 127.0.0.1, nimmt einen Firmware-Body von höchstens 4 MiB an und hält keinen Signierschlüssel: Die Signatur kommt in der Anfrage, erstellt auf dem Rechner mit dem privaten Seed; er hat weder TLS noch eigene Anmeldung, wer an ihn weiterleitet, muss also entscheiden, wer flashen darf | `src/cm5_host/spi_bridge/spi_bridge/http_service.py` |
+
+**Was es heute nie tut:** einen Not-Halt, Software-Grenzen, Verriegelungen, den Sicherungsabzug in den FRAM bei Spannungsverlust oder irgendeinen Bewegungsbefehl bereitstellen; Secure Boot und Ausleseschutz des Flashs werden nicht behauptet. Lies den Sicherheitskasten oben, bevor du dich auf etwas hier verlässt.
+
+## 🔌 Schnittstellen
+
+| Topic oder Route | Was es trägt |
+|---|---|
+| CAN, FDCAN1 in classic mode | ein Bus (STACK A) vom STM32H745 zu bis zu acht Robot Controller Boards; die Kennungen des Relay-Protokolls stehen einmal in `tools/can_ids.py` und werden von `tests/test_can_ids.py` geprüft |
+| SPI + DMA + IRQ pin, 128-byte frames | von der CM5 zum STM32H745: feste `SpiOtaFrame`-Frames, die der C-Struktur Byte für Byte entsprechen; die Brücke läuft standardmäßig mit 10 MHz |
+| `GET /version`, `GET /counters`, `POST /flash` on 127.0.0.1:8765 | der lokale Dienst der SPI-Brücke: die Version einer Platine, die Fehlerzähler ihres CAN-Controllers und ein Flash als Strom (zeilengetrenntes JSON) eines Images mit seiner Ed25519-Signatur; `relay=1` erreicht einen URTC-Werkzeugkopf über sein Robot Controller Board |
+| `tools/image_header.py sign \| keygen \| pubkey` | die Host-Referenz des signierten Image-Headers: Sie erzeugt die Signaturen und Downgrade-Token, die die Bootloader prüfen, und `tests/image_header_vectors.h` wird daraus erzeugt, damit C- und Python-Seite nicht auseinanderlaufen |
+
+## ⚙️ Konfiguration
+
+Die Firmware wird beim Bauen über Umgebungsvariablen konfiguriert; die SPI-Brücke nimmt ihre Einstellungen von der Befehlszeile.
+
+| Variable | Standard | Was sie festlegt |
+|---|---|---|
+| `HYDRA_FW_UPDATE_PUBKEY_HEX` | Entwicklungsschlüssel | 64 Hexadezimalziffern: der öffentliche Ed25519-Schlüssel, für den ein Update signiert sein muss |
+| `HYDRA_FW_HMAC_KEY_HEX` | Entwicklungsschlüssel | 64 Hexadezimalziffern außerhalb des Repositorys: der Schlüssel der lokalen Integritätsprüfung der installierten Anwendung |
+| `HYDRA_UMC_RELEASE` | `0` | mit `1` weigert sich der Build, die Entwicklungsschlüssel zu verwenden |
+| `HYDRA_UMC_SKIP_HOST_TESTS`, `HOST_CC` | `0`, der System-Compiler | überspringt die Host-Logiktests von Schritt 1b oder benennt den C-Compiler, den sie verwenden |
+| `python -m spi_bridge run --spi-speed-hz --host --port --collector-url` | `10000000`, `127.0.0.1`, `8765` | der SPI-Takt, wo der lokale HTTP-Dienst lauscht, und die Adresse des HYDRA-UMC-TELEMETRY-COLLECTOR, an den die Brücke berichten kann (höchstens ein Bericht pro Sekunde) |
+
+## 🚀 Schnellstart
+
+Das Bauen der Firmware braucht die Arm-GNU-Toolchain (`arm-none-eabi-gcc` 10.3 oder neuer), `git` und `python`; die Host-Tests brauchen nur einen gewöhnlichen C-Compiler und Python. Unter Windows gibt es `build_firmware.bat`.
+
+```bash
+./build_firmware.sh                                  # builds every MCU target and runs the host tests (step 1b)
+./build_firmware.sh g474                             # only the Robot Controller Board; h745 builds only the Kinematic Brain
+python tools/verify_firmware_inventory.py            # read-only check of the committed six-component firmware inventory
+python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the firmware sources, the image header and the CAN identifiers
 ```
 
-Siehe `docs/architecture.md` für das, was jede Ebene tatsächlich tut und wie
-sie verbunden sind; jeder obige Ordner mit eigenem `README.md` hat mehr
-Details als diese Zusammenfassung auf oberster Ebene.
-
-## 🛠️ ENTWICKLUNGSUMGEBUNG
+### ENTWICKLUNGSUMGEBUNG
 
 Was die eigenen Entwicklungsmaschinen dieses Projekts tatsächlich installiert
 und funktionierend verifiziert haben
@@ -401,7 +217,13 @@ Fehler) - keine theoretische Liste:
   `build_firmware.sh` (zwischengespeichert unter `build/`, in gitignore,
   bei `--clean` erneut abgerufen).
 
-## 🏗️ DIE FIRMWARE BAUEN
+## 🧪 Tests
+
+148 automatische Tests laufen mit `python -m unittest discover -s tests -p 'test_*.py'`. Es sind 87 Tests der SPI-Brücke der CM5 plus 61 der Firmware-Quellen, des signierten Image-Headers und der CAN-Kennungen (die der SPI-Brücke laufen mit `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` und `-s src/cm5_host/spi_bridge/tests`). Die C-Logik der Bootloader und des Relays prüfen 19 weitere Programme, mit einem gewöhnlichen Host-C-Compiler im Schritt 1b von `build_firmware.sh` gebaut. Keiner braucht eine Platine.
+
+Die CI führt `HYDRA_UMC_CI=1 python tools/ci_validate.py` aus; das prüft das Manifest, die Dokumente, die acht READMEs und die Bilder.
+
+## 🏗️ Build und Veröffentlichung
 
 **Linux/Mac:**
 ```bash
@@ -467,9 +289,63 @@ real ist gegenüber dem, was noch offen ist.
 
 > **Sicherheitsstatus:** Dieses Repository enthält noch keinen E-STOP-Pfad, keine Software-Grenzen, keine Sicherheitsverriegelungen, keinen Stromausfall-Dump (PVD) ins FRAM und keinen Bewegungsbefehl. Wo die obigen Abschnitte (oder ein anderes Projekt des Ökosystems) sie beschreiben, ist das der geplante Entwurf: Nichts darf sich für die Sicherheit darauf verlassen, bis er implementiert und auf einer echten Platine getestet ist. Was die Anwendungen heute tun: Die von CM4 und G474 führen die AXIS_STATUS-Abfrage/-Antwort von STACK A und den Tier-2/3-Relay-Tunnel aus; die des CM7 ist weiterhin ein GPIO-Toggle-Smoke-Test.
 
-## 🔢 Versionierung
+Alle sechs Firmware-Komponenten (drei Bootloader und drei Anwendungen, ein Paar je Chip oder Kern) haben ihre eigene Version. Das Bauen ändert sie nie: `build_firmware.sh` und `.bat` melden sie nur. Versionen erhöht der ausdrückliche Befehl `python bump_firmware_versions.py` (`--list` zeigt sie), und `python show_component_version.py` gibt die Version einer Komponente aus.
 
-Alle 6 Firmware-Komponenten (3 Bootloader + 3 Anwendungen - STM32G474 der Robot Controller Board, CM7 und CM4 des Kinematic Brain, je ein Bootloader-/Anwendungspaar pro Chip/Kern) haben eine eigene Version, und das Kompilieren ändert sie nie: `build_firmware.sh`/`.bat` melden nur, bei welcher Version jede Komponente steht, und dieser Wert wird in das Binary und seinen Dateinamen eingebaut. Versionen erhöht man mit dem ausdrücklichen Befehl `python bump_firmware_versions.py` (alle sechs oder die genannten Komponenten; `--list` zeigt sie an); er verwendet `bump_version.py` und zieht danach das Projektmanifest mit der G474-Anwendung nach. Übertragsregel (ein "Kilometerzähler"): Überschreitet PATCH 9, wird er auf 0 zurückgesetzt und MINOR um 1 erhöht (z. B. `1.1.9` -> `1.2.0`, niemals `1.1.10`); überschreitet MINOR 9, trägt es auf dieselbe Weise in MAJOR über. Siehe die eigene `bootloader_common.h` jeder Komponente sowie den Header-Kommentar von `bump_version.py` für den vollständigen Mechanismus.
+## 🩺 Fehlerbehebung
+
+| Du siehst | Weil | Tu |
+|---|---|---|
+| „Bootloader akzeptieren mit dem ENTWICKLUNGS-Seed signierte Updates, der öffentlich ist“ | Der Build hatte kein `HYDRA_FW_UPDATE_PUBKEY_HEX` (oder kein `HYDRA_FW_HMAC_KEY_HEX`) | In Ordnung für den Prüfstand; für jede Platine, die jemand anderes erreichen kann, erzeuge ein Schlüsselpaar mit `python tools/image_header.py keygen`, baue mit dem öffentlichen Schlüssel und baue Releases mit `HYDRA_UMC_RELEASE=1` |
+| „arm-none-eabi-gcc nicht gefunden“ | Die Arm-GNU-Toolchain ist nicht installiert oder nicht im `PATH` | Installiere sie (das Skript versucht unter Linux `apt`) und baue erneut; die Host-Tests von Schritt 1b brauchen nur einen gewöhnlichen C-Compiler |
+| Die SPI-Brücke kann das Gerät nicht öffnen, oder `SPI transfer returned ... bytes` | Der echte Transport braucht `spidev` und `gpiod` auf einer CM5 mit aktiviertem SPI-Gerät und einen STM32H745 am anderen Ende; beides gibt es noch nicht, die Brücke wurde also nur gegen Attrappen geübt | Nutze bis zum Vorhandensein einer Platine den Attrappen-Transport der Tests |
+| `build_firmware.sh` endet mit FAIL bei einem Host-Test | Die Kopien einer Quelle, die die drei Bootloader teilen, sind auseinandergelaufen, oder `tests/image_header_vectors.h` ist älter als `tools/image_header.py` | Führe `python tools/gen_image_header_vectors.py` und `python -m unittest discover -s tests` aus, um zu sehen, welche Kopie abweicht |
+
+## 📂 Struktur des Repositorys
+
+<p align="center">
+  <img src="images/repository-structure.svg" alt="Repository structure of HYDRA-UMC" width="100%">
+</p>
+
+<details>
+<summary>Textversion des Baums</summary>
+
+```text
+HYDRA-UMC/
+├── src/
+│   ├── cm5_host/                    Linux-Userspace-Anwendungen, die OBEN auf dem eigenen Image von os/ laufen
+│   ├── mcu_stm32h745/               Kinematic-Brain-Firmware (Ebene 0) - Dual-Core
+│   └── mcu_stm32g474/               Robot-Controller-Board-Firmware (Ebene 1) - Single-Core, + eigene boot/
+├── .vscode/                         Empfohlene Erweiterungen + Build-Tasks - siehe "Entwicklungsumgebung" unten
+├── docs/                            Architektur, Build-Referenzen, Pinbelegungen, CAN-Protokoll, Datenblätter
+├── hardware/                        die beiden Platinenentwürfe; noch kein Schaltplan
+├── tests/                           Host-Tests: die C-Logik der Bootloader und des Relays (stubs/ ersetzt das HAL, image_header_vectors.h enthält die Referenzvektoren) und Python-Tests der Werkzeuge
+├── os/                              CM5-OS-Image - Basis-Betriebssystemwahl, systemd-Units, Erstinbetriebnahme-Provisionierung
+├── images/                          README-Banner + Icon + Splashscreen (SVG)
+├── tools/                           Projektwerkzeuge und CI-Prüfungen
+├── firmware/                        Committete Build-Ausgabe (.bin/.hex/.elf + Manifest) - NICHT in gitignore, dieselbe Konvention wie der eigene Ausgabeordner von URTC, siehe "Die Firmware bauen" unten
+├── .github/                         CI-Workflow und Issue-Vorlagen
+├── build_firmware.sh                Baut jedes obige MCU-Firmware-Ziel aus einem sauberen Checkout (Linux/Mac)
+├── build_firmware.bat               Derselbe Build, Windows (siehe "Die Firmware bauen" unten)
+├── build-test.sh / build-test.bat   Build-/Kompilierprüfung ohne Versionserhöhung
+├── generate_manifest.py             Regeneriert firmware/firmware_manifest.json (Versionen/CRC32) nach einem vollständigen Build
+├── bump_version.py                  ausdrückliche Versionserhöhung
+├── bump_firmware_versions.py        Erhöht die sechs Komponentenversionen ausdrücklich
+├── show_component_version.py        Gibt die Version aus, die eine Komponente bereits hat
+├── bump_manifest_version.py         Synchronisiert die Version von hydra-umc.project.json mit der nativen (--sync)
+├── CHANGELOG.md                     was sich in jeder Version geändert hat
+├── hydra-umc.project.json           Manifest: Version, Reifegrad, Familie
+└── test.sh                          Build-Prüfung ohne Änderungen
+```
+
+</details>
+
+## 🗺️ Roadmap und bekannte Grenzen
+
+Was es heute gibt, beschränkt sich auf die drei Bootloader, die Kommunikationsanwendungen von CM4 und G474 und die SPI-Brücke auf der CM5-Seite; der Rest der Spezifikation ist Entwurf. Keine eigene Platine wurde bestückt oder getestet, die beiden Platinenordner enthalten noch keinen Schaltplan, und die Anwendungen sind FreeRTOS-Rauchtests, die einen Pin schalten, nicht die Bewegungs-, Vision- und Relay-Firmware. Bootloader und Brücke wurden auf einem Host-Rechner getestet, nie auf den echten Chips.
+
+## 🌍 Sprachen
+
+Diese README und die Dokumente des Repositorys gibt es in acht Sprachen: Englisch, Spanisch, Deutsch, Französisch, Italienisch, Japanisch, Chinesisch und Portugiesisch (Portugal). Sie entstehen gemeinsam, und die CI prüft, dass die acht Dateien dieselben Abschnitte und dieselben Links haben. Dieses Repository hat weder eine eigene Oberfläche noch einen eigenen Meldungskatalog, es gibt also keine Oberflächentexte zu übersetzen.
 
 ## 🔗 Verwandte Projekte
 
@@ -559,31 +435,28 @@ Dieses Projekt ist Teil des HYDRA-UMC-Robotik-Ökosystems desselben Autors (Juan
 - **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — Wartungsvorfall-Koordinator: eine Edge-Rolle mit niedrigem Privileg sammelt einen bereinigten Inventar-/Gesundheits-Snapshot, eine Control-Plane-Rolle rendert ihn schreibgeschützt und bittet einen KI-Anbieter um einen Diagnosevorschlag - wendet nie einen Patch an und stellt nie etwas bereit.
 - **[HYDRA-UMC-DOCS](https://github.com/JuanenRac/HYDRA-UMC-DOCS)** — das Dokumentations- und Werkzeugzentrum des Ökosystems: Architektur, Schnittstellen, Sicherheitsbasis, Fähigkeitenmatrix und ein aus jedem Manifest erzeugter Projektkatalog.
 
----
+## 📚 Dokumentation
 
-## 📚 Dokumentation & Community
+Hier steht mehr:
 
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** — Technologie-Stack und Coding-Richtlinien für einen Pull Request.
-- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — die in dieser Community erwarteten Verhaltensstandards.
-- **[SECURITY.md](SECURITY.md)** — wie man eine Schwachstelle meldet, und die echten Sicherheitsschwerpunkte dieses Projekts.
-- **[SUPPORT.md](SUPPORT.md)** — wo man Fragen stellt und Fehler meldet.
-- **[LICENSE.md](LICENSE.md)** — die eigene Lizenz dieses Projekts.
+* [docs/SOURCE_MAP.md](docs/SOURCE_MAP.md) - jede Datei des Repositorys mit einer Zeile dazu, was sie tut
+* [docs/HARDWARE_SPECIFICATION.md](docs/HARDWARE_SPECIFICATION.md) - die Spezifikation des Entwurfs: elf Subsysteme, vom Host-Rechner bis zum Werkzeugkopf (eine Datei je Sprache)
+* [Sicherheitsgrundlage des Ökosystems](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
+* [Bedrohungsmodell des Ökosystems](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
+* [Änderungsprotokoll dieses Repositorys](CHANGELOG.md)
+* [Lizenz dieses Repositorys](LICENSE.md)
+
+## 🤝 Mitwirken und Community
+
+* Führe vor einem Pull Request `HYDRA_UMC_CI=1 py -3 tools/ci_validate.py` (oder `HYDRA_UMC_CI=1 python3 tools/ci_validate.py`) aus: Es muss `CI_VALIDATION=PASS` ausgeben. Führe dafür nicht `build.sh` oder `build.bat` aus; Bauen ist keine Prüfung.
+* Die acht READMEs entstehen aus einer einzigen Quelle in HYDRA-UMC-DOCS; bearbeite sie nicht von Hand. Ändere die Quelle und schreibe sie mit `tools/make_readmes.py` neu.
+* Behaupte in einer README nichts, was nicht gelaufen ist: Schreibe „simuliert“ oder „nicht auf Hardware erprobt“, wo das stimmt.
+* Siehe [CONTRIBUTING.md](CONTRIBUTING.md), den [Verhaltenskodex](CODE_OF_CONDUCT.md), [SECURITY.md](SECURITY.md) und [SUPPORT.md](SUPPORT.md).
 
 ## 👤 AUTOR
-**JuanenRac** (Electro Hobby 3D)
-📧 electrohobby3d@gmail.com
-📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+**JuanenRac (Electro Hobby 3D)** · electrohobby3d@gmail.com
 
 ## 📜 LIZENZ
 
-HYDRA-UMC ist (c) 2026 JuanenRac (Electro Hobby 3D). Dieser Hinweis muss in allen Verbreitungen dieses Projekts oder abgeleiteten Werken enthalten sein.
-
-Da dieses Projekt aus mehreren verschiedenen Inhaltstypen besteht, werden die einzelnen Teile unter unterschiedlichen Lizenzen bereitgestellt - jede passend zu dem, was sie tatsächlich abdeckt, anstatt eine einzige Lizenz auf alles zu erzwingen:
-
-1. Die **Firmware** unter `./firmware` (sowohl Anwendung als auch CAN-Bootloader) ist unter der **GNU General Public License v3.0 or later (GPL-3.0-or-later)** verfügbar. Vollständiger Text unter https://www.gnu.org/licenses/gpl-3.0.html.
-
-2. Die **Hardware-Designs** (Eagle-Schaltplan-/Board-Dateien, Gerber-Dateien und die 3D-druckbaren Teile unter `./hardware` und `./3D`) sind unter der **CERN Open Hardware Licence v2 - Strongly Reciprocal (CERN-OHL-S v2)** verfügbar. Vollständiger Text unter https://cern-ohl.web.cern.ch/.
-
-3. Die **Dokumentation** (dieses README, das Servicehandbuch und die Referenzdateien unter `./docs`) ist unter **Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)** verfügbar. Vollständiger Text unter https://creativecommons.org/licenses/by-sa/4.0/.
-
-Wenn Sie auf diesem Projekt aufbauen, denken Sie an die Lizenzaufteilung: Code-Änderungen an der Firmware sollten GPL-3.0-or-later bleiben, Hardware-Modifikationen sollten CERN-OHL-S bleiben, und Dokumentationsableitungen sollten CC BY-SA bleiben - jede mit Namensnennung zurück zu diesem Projekt.
+GPL-3.0-or-later - [LICENSE](LICENSE).

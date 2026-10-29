@@ -1,0 +1,198 @@
+{
+  "repo": "HYDRA-UMC",
+  "ecosystem": "hydra",
+  "tagline": "A host, a real-time co-processor and up to eight robot boards: only the bootloaders and the SPI bridge exist as code today.",
+  "description": "HYDRA-UMC describes a CM5 host that talks to an STM32H745 over SPI, which drives up to eight Robot Controller Boards over one CAN bus; the repository holds the bootloaders with their signed-image rule, the SPI bridge on the CM5 and the host tools that sign and check images.",
+  "columns": [
+    "WHO USES IT",
+    "THIS REPOSITORY",
+    "WHAT IT TALKS TO"
+  ],
+  "nodes": [
+    {
+      "id": "ope",
+      "column": 0,
+      "level": "tested",
+      "title": "The operator",
+      "lines": [
+        "the HMI on the 7 inch screen",
+        "of the CM5"
+      ],
+      "code": [
+        "src/cm5_host/hmi_qt6/"
+      ]
+    },
+    {
+      "id": "mai",
+      "column": 0,
+      "level": "tested",
+      "title": "Maintainers and CI",
+      "lines": [
+        "host tests, the inventory",
+        "check, the signing tools"
+      ],
+      "code": [
+        "tools/verify_firmware_inventory.py",
+        "tools/image_header.py"
+      ]
+    },
+    {
+      "id": "h7",
+      "column": 2,
+      "level": "untested",
+      "title": "STM32H745 board",
+      "lines": [
+        "not built; the bootloader",
+        "and bridge were never on it"
+      ]
+    },
+    {
+      "id": "rcb",
+      "column": 2,
+      "level": "untested",
+      "title": "Robot Controller Boards",
+      "lines": [
+        "up to eight, one CAN bus;",
+        "not built"
+      ]
+    },
+    {
+      "id": "urt",
+      "column": 2,
+      "level": "contract",
+      "title": "URTC tool heads",
+      "lines": [
+        "reached through the relay;",
+        "own repository"
+      ]
+    },
+    {
+      "id": "hmi",
+      "column": 1,
+      "level": "untested",
+      "title": "hmi_qt6",
+      "lines": [
+        "Qt6 kiosk shell around",
+        "the STUDIO dashboard"
+      ],
+      "code": [
+        "src/cm5_host/hmi_qt6/CMakeLists.txt"
+      ]
+    },
+    {
+      "id": "spi",
+      "column": 1,
+      "level": "tested",
+      "title": "spi_bridge",
+      "lines": [
+        "Python SPI-OTA flasher and",
+        "local HTTP service"
+      ],
+      "code": [
+        "src/cm5_host/spi_bridge/spi_bridge/bootloader_client.py",
+        "src/cm5_host/spi_bridge/spi_bridge/http_service.py"
+      ]
+    },
+    {
+      "id": "sig",
+      "column": 1,
+      "level": "tested",
+      "title": "image tools",
+      "lines": [
+        "header, Ed25519 signature,",
+        "CAN identifier table"
+      ],
+      "code": [
+        "tools/image_header.py",
+        "tools/ed25519_ref.py",
+        "tools/can_ids.py"
+      ]
+    },
+    {
+      "id": "boo",
+      "column": 1,
+      "level": "tested",
+      "title": "bootloaders",
+      "lines": [
+        "G474, H745 CM7 and CM4:",
+        "signed image, anti-rollback"
+      ],
+      "code": [
+        "src/mcu_stm32g474/boot/image_header.h",
+        "src/mcu_stm32g474/boot/bootloader_main.c"
+      ]
+    },
+    {
+      "id": "hw",
+      "column": 1,
+      "level": "untested",
+      "title": "board designs",
+      "lines": [
+        "two board folders; no",
+        "schematic yet"
+      ],
+      "code": [
+        "hardware/PCB/"
+      ]
+    },
+    {
+      "id": "app",
+      "column": 1,
+      "level": "untested",
+      "title": "applications",
+      "lines": [
+        "FreeRTOS GPIO smoke tests,",
+        "CM4 and G474 communication"
+      ],
+      "code": [
+        "src/mcu_stm32h745/CM4/",
+        "src/mcu_stm32g474/"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "ope",
+      "to": "hmi",
+      "level": "tested"
+    },
+    {
+      "from": "mai",
+      "to": "sig",
+      "level": "tested"
+    },
+    {
+      "from": "hmi",
+      "to": "spi",
+      "level": "tested"
+    },
+    {
+      "from": "sig",
+      "to": "boo",
+      "level": "tested"
+    },
+    {
+      "from": "boo",
+      "to": "app",
+      "level": "tested"
+    },
+    {
+      "from": "spi",
+      "to": "h7",
+      "level": "untested",
+      "label": "SPI"
+    },
+    {
+      "from": "app",
+      "to": "rcb",
+      "level": "untested",
+      "label": "CAN"
+    },
+    {
+      "from": "rcb",
+      "to": "urt",
+      "level": "contract"
+    }
+  ],
+  "footer": "Host tests and Python tests pass; nothing here has run on a board."
+}

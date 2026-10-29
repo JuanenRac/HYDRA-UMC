@@ -1,0 +1,559 @@
+{
+  "repo": "HYDRA-UMC",
+  "ecosystem": "hydra",
+  "svg": "en",
+  "exempt": [
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "SUPPORT.md",
+    "LICENSE",
+    "LICENSE.md",
+    "THIRD_PARTY_NOTICES.md",
+    "test.bat"
+  ],
+  "cards": [
+    {
+      "name": "src/",
+      "span": 3,
+      "accent": "a",
+      "rows": [
+        {
+          "name": "cm5_host/",
+          "desc": {
+            "en": "Linux userspace apps that run ON TOP",
+            "es": "Aplicaciones Linux userspace que corren",
+            "de": "Linux-Userspace-Anwendungen",
+            "fr": "Applications Linux userspace exécutées",
+            "it": "App Linux userspace eseguite SOPRA la",
+            "ja": "os/ 自身のイメージ上で動作する Linu",
+            "zh": "运行于 os/ 自身镜像之上的 Linux",
+            "pt": "Aplicações Linux de espaço de utilizador"
+          },
+          "tree_desc": {
+            "en": "Linux userspace apps that run ON TOP of os/'s own image",
+            "es": "Aplicaciones Linux userspace que corren ENCIMA de la propia imagen de os/",
+            "de": "Linux-Userspace-Anwendungen, die OBEN auf dem eigenen Image von os/ laufen",
+            "fr": "Applications Linux userspace exécutées AU-DESSUS de la propre image de os/",
+            "it": "App Linux userspace eseguite SOPRA la propria immagine di os/",
+            "ja": "os/ 自身のイメージ上で動作する Linux ユーザースペースアプリ",
+            "zh": "运行于 os/ 自身镜像之上的 Linux 用户空间应用",
+            "pt": "Aplicações Linux de espaço de utilizador que correm SOBRE a imagem de os/"
+          }
+        },
+        {
+          "name": "mcu_stm32h745/",
+          "desc": {
+            "en": "Kinematic Brain firmware",
+            "es": "Firmware del Kinematic Brain",
+            "de": "Kinematic-Brain-Firmware",
+            "fr": "Firmware du Kinematic Brain",
+            "it": "Firmware del Kinematic Brain",
+            "ja": "Kinematic Brain ファームウェ",
+            "zh": "运动学大脑固件（第 0 层）—— 双核",
+            "pt": "Firmware do Cérebro Cinemático"
+          },
+          "tree_desc": {
+            "en": "Kinematic Brain firmware (Tier 0) - dual-core",
+            "es": "Firmware del Kinematic Brain (Nivel 0) - doble núcleo",
+            "de": "Kinematic-Brain-Firmware (Ebene 0) - Dual-Core",
+            "fr": "Firmware du Kinematic Brain (Niveau 0) - double cœur",
+            "it": "Firmware del Kinematic Brain (Livello 0) - dual-core",
+            "ja": "Kinematic Brain ファームウェア（第 0 階層）— デュアルコア",
+            "zh": "运动学大脑固件（第 0 层）—— 双核",
+            "pt": "Firmware do Cérebro Cinemático (nível 0) - dois núcleos"
+          }
+        },
+        {
+          "name": "mcu_stm32g474/",
+          "desc": {
+            "en": "Robot Controller Board firmware",
+            "es": "Firmware de la Robot Controller Board",
+            "de": "Robot-Controller-Board-Firmware",
+            "fr": "Firmware de la Robot Controller Board",
+            "it": "Firmware della Robot Controller Board",
+            "ja": "ロボットコントローラーボードファームウェア",
+            "zh": "机器人控制板固件（第 1 层）—— 单核",
+            "pt": "Firmware da placa controladora de robô"
+          },
+          "tree_desc": {
+            "en": "Robot Controller Board firmware (Tier 1) - single-core, + its own boot/",
+            "es": "Firmware de la Robot Controller Board (Nivel 1) - un solo núcleo, + su propio boot/",
+            "de": "Robot-Controller-Board-Firmware (Ebene 1) - Single-Core, + eigene boot/",
+            "fr": "Firmware de la Robot Controller Board (Niveau 1) - cœur unique, + son propre boot/",
+            "it": "Firmware della Robot Controller Board (Livello 1) - single-core, + il proprio boot/",
+            "ja": "ロボットコントローラーボードファームウェア（第 1 階層）— シングルコア、+ 自身の boot/",
+            "zh": "机器人控制板固件（第 1 层）—— 单核，+ 自身的 boot/",
+            "pt": "Firmware da placa controladora de robô (nível 1) - um só núcleo, + o seu próprio boot/"
+          }
+        }
+      ],
+      "sub": {
+        "en": "firmware and CM5 host code",
+        "es": "firmware y código del anfitrión CM5",
+        "de": "Firmware und CM5-Host-Code",
+        "fr": "firmware et code hôte CM5",
+        "it": "firmware e codice host CM5",
+        "ja": "ファームウェアと CM5 ホストのコード",
+        "zh": "固件和 CM5 主机代码",
+        "pt": "firmware e código do anfitrião CM5"
+      }
+    },
+    {
+      "name": {
+        "en": "folders",
+        "es": "carpetas",
+        "de": "Ordner",
+        "fr": "dossiers",
+        "it": "cartelle",
+        "ja": "フォルダ",
+        "zh": "文件夹",
+        "pt": "pastas"
+      },
+      "kind": "group",
+      "span": 3,
+      "accent": "b",
+      "columns": 2,
+      "rows": [
+        {
+          "name": ".vscode/",
+          "desc": {
+            "en": "Recommended extensions + build tasks",
+            "es": "Extensiones recomendadas + tareas de build",
+            "de": "Empfohlene Erweiterungen + Build-Tasks",
+            "fr": "Extensions recommandées + tâches de build",
+            "it": "Estensioni consigliate + task di build",
+            "ja": "推奨拡張機能 + ビルドタスク",
+            "zh": "推荐扩展 + 构建任务 —— 见下方“开发环",
+            "pt": "Extensões recomendadas + tarefas de build"
+          },
+          "tree_desc": {
+            "en": "Recommended extensions + build tasks - see \"Development Environment\" below",
+            "es": "Extensiones recomendadas + tareas de build - ver \"Entorno de Desarrollo\" abajo",
+            "de": "Empfohlene Erweiterungen + Build-Tasks - siehe \"Entwicklungsumgebung\" unten",
+            "fr": "Extensions recommandées + tâches de build - voir \"Environnement de Développement\" ci-dessous",
+            "it": "Estensioni consigliate + task di build - vedi \"Ambiente di Sviluppo\" sotto",
+            "ja": "推奨拡張機能 + ビルドタスク — 下記「開発環境」参照",
+            "zh": "推荐扩展 + 构建任务 —— 见下方“开发环境”",
+            "pt": "Extensões recomendadas + tarefas de build - ver \"Ambiente de desenvolvimento\" abaixo"
+          }
+        },
+        {
+          "name": "docs/",
+          "desc": {
+            "en": "architecture, build references, pin",
+            "es": "arquitectura, referencias de compilación",
+            "de": "Architektur, Build-Referenzen",
+            "fr": "architecture, références de compilation",
+            "it": "architettura, riferimenti di compilazione",
+            "ja": "アーキテクチャ、ビルド資料、ピン割り当て、C",
+            "zh": "架构、构建参考、引脚分配、CAN 协议、数据",
+            "pt": "arquitetura, referências de compilação"
+          },
+          "tree_desc": {
+            "en": "architecture, build references, pin allocations, CAN protocol, datasheets",
+            "es": "arquitectura, referencias de compilación, asignación de pines, protocolo CAN, hojas de datos",
+            "de": "Architektur, Build-Referenzen, Pinbelegungen, CAN-Protokoll, Datenblätter",
+            "fr": "architecture, références de compilation, affectation des broches, protocole CAN, fiches techniques",
+            "it": "architettura, riferimenti di compilazione, assegnazione dei pin, protocollo CAN, schede tecniche",
+            "ja": "アーキテクチャ、ビルド資料、ピン割り当て、CAN プロトコル、データシート",
+            "zh": "架构、构建参考、引脚分配、CAN 协议、数据手册",
+            "pt": "arquitetura, referências de compilação, atribuição de pinos, protocolo CAN, folhas de dados"
+          }
+        },
+        {
+          "name": "hardware/",
+          "desc": {
+            "en": "the two board designs; no schematic yet",
+            "es": "los dos diseños de placa; aún sin esquema",
+            "de": "die beiden Platinenentwürfe",
+            "fr": "les deux conceptions de carte",
+            "it": "i due progetti di scheda",
+            "ja": "2 つの基板設計。回路図はまだありません",
+            "zh": "两个电路板设计；尚无原理图",
+            "pt": "os dois desenhos de placa; ainda sem esquema"
+          },
+          "tree_desc": {
+            "en": "the two board designs; no schematic yet",
+            "es": "los dos diseños de placa; aún sin esquema",
+            "de": "die beiden Platinenentwürfe; noch kein Schaltplan",
+            "fr": "les deux conceptions de carte ; pas encore de schéma",
+            "it": "i due progetti di scheda; ancora senza schema",
+            "ja": "2 つの基板設計。回路図はまだありません",
+            "zh": "两个电路板设计；尚无原理图",
+            "pt": "os dois desenhos de placa; ainda sem esquema"
+          }
+        },
+        {
+          "name": "tests/",
+          "desc": {
+            "en": "Host tests: C logic of the bootloaders",
+            "es": "Pruebas en el ordenador",
+            "de": "Host-Tests: die C-Logik der Bootloader und",
+            "fr": "Tests sur l'ordinateur",
+            "it": "Test sul computer",
+            "ja": "ホストテスト: ブートローダーとリレーの C",
+            "zh": "主机测试: 引导程序与中继的 C 逻辑",
+            "pt": "Testes no computador"
+          },
+          "tree_desc": {
+            "en": "Host tests: C logic of the bootloaders and the relay (stubs/ stands in for the HAL, image_header_vectors.h holds the reference vectors) and Python tests of the tools",
+            "es": "Pruebas en el ordenador: la lógica en C de los bootloaders y del relé (stubs/ sustituye al HAL, image_header_vectors.h guarda los vectores de referencia) y pruebas en Python de las herramientas",
+            "de": "Host-Tests: die C-Logik der Bootloader und des Relays (stubs/ ersetzt das HAL, image_header_vectors.h enthält die Referenzvektoren) und Python-Tests der Werkzeuge",
+            "fr": "Tests sur l'ordinateur : la logique C des bootloaders et du relais (stubs/ remplace le HAL, image_header_vectors.h contient les vecteurs de référence) et les tests Python des outils",
+            "it": "Test sul computer: la logica C dei bootloader e del relay (stubs/ sostituisce l'HAL, image_header_vectors.h contiene i vettori di riferimento) e i test Python degli strumenti",
+            "ja": "ホストテスト: ブートローダーとリレーの C ロジック (stubs/ が HAL の代わり、image_header_vectors.h が基準ベクタ) とツールの Python テスト",
+            "zh": "主机测试: 引导程序与中继的 C 逻辑 (stubs/ 代替 HAL,image_header_vectors.h 存放参考向量) 以及工具的 Python 测试",
+            "pt": "Testes no computador: a lógica em C dos bootloaders e do relé (stubs/ substitui o HAL, image_header_vectors.h guarda os vetores de referência) e testes em Python das ferramentas"
+          }
+        },
+        {
+          "name": "os/",
+          "desc": {
+            "en": "CM5 OS image - base OS choice",
+            "es": "Imagen de SO del CM5",
+            "de": "CM5-OS-Image - Basis-Betriebssystemwahl",
+            "fr": "Image OS du CM5",
+            "it": "Immagine SO del CM5",
+            "ja": "CM5 OS イメージ — ベース OS の",
+            "zh": "CM5 操作系统镜像 —— 基础系统选型",
+            "pt": "Imagem do SO do CM5"
+          },
+          "tree_desc": {
+            "en": "CM5 OS image - base OS choice, systemd units, first-boot provisioning",
+            "es": "Imagen de SO del CM5 - elección de SO base, unidades systemd, aprovisionamiento de primer arranque",
+            "de": "CM5-OS-Image - Basis-Betriebssystemwahl, systemd-Units, Erstinbetriebnahme-Provisionierung",
+            "fr": "Image OS du CM5 - choix de l'OS de base, unités systemd, provisionnement au premier démarrage",
+            "it": "Immagine SO del CM5 - scelta SO base, unit systemd, provisioning al primo avvio",
+            "ja": "CM5 OS イメージ — ベース OS の選定、systemd ユニット、初回起動時のプロビジョニング",
+            "zh": "CM5 操作系统镜像 —— 基础系统选型、systemd 单元、首次启动配置",
+            "pt": "Imagem do SO do CM5 - escolha do SO base, unidades systemd, aprovisionamento de primeiro arranque"
+          }
+        },
+        {
+          "name": "images/",
+          "desc": {
+            "en": "README banner + icon + splashscreen (SVG)",
+            "es": "Banner del README + icono + splashscreen",
+            "de": "README-Banner + Icon + Splashscreen (SVG)",
+            "fr": "Bannière du README + icône + écran de",
+            "it": "Banner del README + icona + splashscreen",
+            "ja": "README バナー + アイコン + スプ",
+            "zh": "README 横幅 + 图标 + 启动画面",
+            "pt": "Banner do README + ícone + ecrã de arranque"
+          },
+          "tree_desc": {
+            "en": "README banner + icon + splashscreen (SVG)",
+            "es": "Banner del README + icono + splashscreen (SVG)",
+            "de": "README-Banner + Icon + Splashscreen (SVG)",
+            "fr": "Bannière du README + icône + écran de démarrage (SVG)",
+            "it": "Banner del README + icona + splashscreen (SVG)",
+            "ja": "README バナー + アイコン + スプラッシュスクリーン（SVG）",
+            "zh": "README 横幅 + 图标 + 启动画面（SVG）",
+            "pt": "Banner do README + ícone + ecrã de arranque (SVG)"
+          }
+        },
+        {
+          "name": "tools/",
+          "desc": {
+            "en": "project tools and CI checks",
+            "es": "herramientas del proyecto y comprobaciones",
+            "de": "Projektwerkzeuge und CI-Prüfungen",
+            "fr": "outils du projet et vérifications de la CI",
+            "it": "strumenti del progetto e controlli della CI",
+            "ja": "プロジェクトのツールと CI の検査",
+            "zh": "项目工具和 CI 检查",
+            "pt": "ferramentas do projeto e verificações da CI"
+          },
+          "tree_desc": {
+            "en": "project tools and CI checks",
+            "es": "herramientas del proyecto y comprobaciones del CI",
+            "de": "Projektwerkzeuge und CI-Prüfungen",
+            "fr": "outils du projet et vérifications de la CI",
+            "it": "strumenti del progetto e controlli della CI",
+            "ja": "プロジェクトのツールと CI の検査",
+            "zh": "项目工具和 CI 检查",
+            "pt": "ferramentas do projeto e verificações da CI"
+          }
+        },
+        {
+          "name": "firmware/",
+          "desc": {
+            "en": "Committed build output",
+            "es": "Salida de compilación comiteada",
+            "de": "Committete Build-Ausgabe",
+            "fr": "Sortie de build commitée",
+            "it": "Output di build committato",
+            "ja": "コミット済みのビルド成果物（.bin/.he",
+            "zh": "已提交的构建产物（.bin/.hex/.el",
+            "pt": "Saída de build registada"
+          },
+          "tree_desc": {
+            "en": "Committed build output (.bin/.hex/.elf + manifest) - NOT gitignored, same convention as URTC's own output folder, see \"Building the Firmware\" below",
+            "es": "Salida de compilación comiteada (.bin/.hex/.elf + manifest) - NO en gitignore, misma convención que la propia carpeta de salida de URTC, ver \"Compilando el Firmware\" abajo",
+            "de": "Committete Build-Ausgabe (.bin/.hex/.elf + Manifest) - NICHT in gitignore, dieselbe Konvention wie der eigene Ausgabeordner von URTC, siehe \"Die Firmware bauen\" unten",
+            "fr": "Sortie de build commitée (.bin/.hex/.elf + manifest) - PAS dans gitignore, même convention que le propre dossier de sortie d'URTC, voir \"Compiler le Firmware\" ci-dessous",
+            "it": "Output di build committato (.bin/.hex/.elf + manifest) - NON in gitignore, stessa convenzione della cartella di output propria di URTC, vedi \"Compilare il Firmware\" sotto",
+            "ja": "コミット済みのビルド成果物（.bin/.hex/.elf + マニフェスト）— gitignore 対象外、URTC 自身の出力フォルダと同じ規約、下記「ファームウェアのビルド」参照",
+            "zh": "已提交的构建产物（.bin/.hex/.elf + 清单文件）—— 未被 gitignore 排除，与 URTC 自身的输出文件夹约定一致，见下方“构建固件”",
+            "pt": "Saída de build registada (.bin/.hex/.elf + manifesto) - NÃO está no gitignore, mesma convenção da pasta de saída do URTC, ver \"Compilar o firmware\" abaixo"
+          }
+        },
+        {
+          "name": ".github/",
+          "desc": {
+            "en": "CI workflow and issue templates",
+            "es": "flujo de CI y plantillas de incidencias",
+            "de": "CI-Workflow und Issue-Vorlagen",
+            "fr": "workflow de CI et modèles de tickets",
+            "it": "workflow di CI e modelli di segnalazione",
+            "ja": "CI ワークフローと Issue テンプレート",
+            "zh": "CI 工作流和 Issue 模板",
+            "pt": "fluxo de CI e modelos de problemas"
+          }
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "project files",
+        "es": "ficheros del proyecto",
+        "de": "Projektdateien",
+        "fr": "fichiers du projet",
+        "it": "file del progetto",
+        "ja": "プロジェクトのファイル",
+        "zh": "项目文件",
+        "pt": "ficheiros do projeto"
+      },
+      "kind": "group",
+      "span": 3,
+      "accent": "c",
+      "columns": 2,
+      "rows": [
+        {
+          "name": "build_firmware.sh",
+          "desc": {
+            "en": "Builds every MCU firmware target above",
+            "es": "Compila cada objetivo de firmware MCU de",
+            "de": "Baut jedes obige MCU-Firmware-Ziel aus",
+            "fr": "Compile chaque cible firmware MCU ci-dessus",
+            "it": "Compila ogni target firmware MCU sopra da",
+            "ja": "クリーンなチェックアウトから",
+            "zh": "从全新检出一次性构建上述所有 MCU 固件目",
+            "pt": "Constrói cada alvo de firmware MCU acima a"
+          },
+          "tree_desc": {
+            "en": "Builds every MCU firmware target above from a clean checkout (Linux/Mac)",
+            "es": "Compila cada objetivo de firmware MCU de arriba desde una copia limpia (Linux/Mac)",
+            "de": "Baut jedes obige MCU-Firmware-Ziel aus einem sauberen Checkout (Linux/Mac)",
+            "fr": "Compile chaque cible firmware MCU ci-dessus depuis un checkout propre (Linux/Mac)",
+            "it": "Compila ogni target firmware MCU sopra da un checkout pulito (Linux/Mac)",
+            "ja": "クリーンなチェックアウトから、上記の全 MCU ファームウェアターゲットを一括ビルド（Linux/Mac）",
+            "zh": "从全新检出一次性构建上述所有 MCU 固件目标（Linux/Mac）",
+            "pt": "Constrói cada alvo de firmware MCU acima a partir de um checkout limpo (Linux/Mac)"
+          }
+        },
+        {
+          "name": "build_firmware.bat",
+          "desc": {
+            "en": "Same build, Windows",
+            "es": "La misma compilación, Windows",
+            "de": "Derselbe Build, Windows",
+            "fr": "Même build, Windows",
+            "it": "Stessa build, Windows",
+            "ja": "同じビルド、Windows 版",
+            "zh": "相同构建，Windows 版",
+            "pt": "O mesmo build, Windows"
+          },
+          "tree_desc": {
+            "en": "Same build, Windows (see \"Building the Firmware\" below)",
+            "es": "La misma compilación, Windows (ver \"Compilando el Firmware\" abajo)",
+            "de": "Derselbe Build, Windows (siehe \"Die Firmware bauen\" unten)",
+            "fr": "Même build, Windows (voir \"Compiler le Firmware\" ci-dessous)",
+            "it": "Stessa build, Windows (vedi \"Compilare il Firmware\" sotto)",
+            "ja": "同じビルド、Windows 版（下記「ファームウェアのビルド」参照）",
+            "zh": "相同构建，Windows 版（见下方“构建固件”）",
+            "pt": "O mesmo build, Windows (ver \"Compilar o firmware\" abaixo)"
+          }
+        },
+        {
+          "name": "build-test.sh / build-test.bat",
+          "desc": {
+            "en": "Non-versioning build/compile check",
+            "es": "Comprobación de build/compilación sin subir",
+            "de": "Build-/Kompilierprüfung ohne",
+            "fr": "Contrôle build/compilation sans gestion de",
+            "it": "Controllo build/compilazione senza",
+            "ja": "バージョンを更新しないビルド/コンパイル確認",
+            "zh": "不递增版本号的构建/编译检查",
+            "pt": "Verificação de compilação sem alterar"
+          },
+          "tree_desc": {
+            "en": "Non-versioning build/compile check",
+            "es": "Comprobación de build/compilación sin subir versión",
+            "de": "Build-/Kompilierprüfung ohne Versionserhöhung",
+            "fr": "Contrôle build/compilation sans gestion de version",
+            "it": "Controllo build/compilazione senza incremento di versione",
+            "ja": "バージョンを更新しないビルド/コンパイル確認",
+            "zh": "不递增版本号的构建/编译检查",
+            "pt": "Verificação de compilação sem alterar versões"
+          }
+        },
+        {
+          "name": "generate_manifest.py",
+          "desc": {
+            "en": "Regenerates firmware/firmware_manifest.json",
+            "es": "Regenera firmware/firmware_manifest.json",
+            "de": "Regeneriert firmware/firmware_manifest.json",
+            "fr": "Régénère firmware/firmware_manifest.json",
+            "it": "Rigenera firmware/firmware_manifest.json",
+            "ja": "フルビルド後に firmware/firmw",
+            "zh": "完整构建后重新生成 firmware/fir",
+            "pt": "Regenera firmware/firmware_manifest.json"
+          },
+          "tree_desc": {
+            "en": "Regenerates firmware/firmware_manifest.json (versions/CRC32) after a full build",
+            "es": "Regenera firmware/firmware_manifest.json (versiones/CRC32) tras una compilación completa",
+            "de": "Regeneriert firmware/firmware_manifest.json (Versionen/CRC32) nach einem vollständigen Build",
+            "fr": "Régénère firmware/firmware_manifest.json (versions/CRC32) après une build complète",
+            "it": "Rigenera firmware/firmware_manifest.json (versioni/CRC32) dopo una build completa",
+            "ja": "フルビルド後に firmware/firmware_manifest.json（バージョン／CRC32）を再生成",
+            "zh": "完整构建后重新生成 firmware/firmware_manifest.json（版本号/CRC32）",
+            "pt": "Regenera firmware/firmware_manifest.json (versões/CRC32) depois de um build completo"
+          }
+        },
+        {
+          "name": "bump_version.py",
+          "desc": {
+            "en": "explicit version bump",
+            "es": "Incremento de versión tipo cuentakilómetros",
+            "de": "ausdrückliche Versionserhöhung",
+            "fr": "Incrément de version type compteur",
+            "it": "Incremento di versione stile",
+            "ja": "明示的なバージョン更新",
+            "zh": "显式提升版本",
+            "pt": "Subida de versão ao estilo"
+          },
+          "tree_desc": {
+            "en": "explicit version bump",
+            "es": "Incremento de versión tipo cuentakilómetros de un componente",
+            "de": "ausdrückliche Versionserhöhung",
+            "fr": "Incrément de version type compteur kilométrique d'un composant",
+            "it": "Incremento di versione stile contachilometri di un componente",
+            "ja": "明示的なバージョン更新",
+            "zh": "显式提升版本",
+            "pt": "Subida de versão ao estilo conta-quilómetros de um componente"
+          }
+        },
+        {
+          "name": "bump_firmware_versions.py",
+          "desc": {
+            "en": "Raises the six component versions",
+            "es": "Sube las seis versiones de componente",
+            "de": "Erhöht die sechs Komponentenversionen",
+            "fr": "Monte explicitement les six versions de",
+            "it": "Alza esplicitamente le sei versioni dei",
+            "ja": "6 つのコンポーネントバージョンを明示的に上",
+            "zh": "显式提升六个组件的版本",
+            "pt": "Sobe explicitamente as seis versões de"
+          },
+          "tree_desc": {
+            "en": "Raises the six component versions, explicitly",
+            "es": "Sube las seis versiones de componente, de forma explícita",
+            "de": "Erhöht die sechs Komponentenversionen ausdrücklich",
+            "fr": "Monte explicitement les six versions de composant",
+            "it": "Alza esplicitamente le sei versioni dei componenti",
+            "ja": "6 つのコンポーネントバージョンを明示的に上げる",
+            "zh": "显式提升六个组件的版本",
+            "pt": "Sobe explicitamente as seis versões de componente"
+          }
+        },
+        {
+          "name": "show_component_version.py",
+          "desc": {
+            "en": "Prints the version a component already has",
+            "es": "Muestra la versión que ya tiene un",
+            "de": "Gibt die Version aus",
+            "fr": "Affiche la version qu'un composant a déjà",
+            "it": "Mostra la versione che un componente ha già",
+            "ja": "コンポーネントの現在のバージョンを表示",
+            "zh": "显示组件已有的版本",
+            "pt": "Mostra a versão que um componente já tem"
+          },
+          "tree_desc": {
+            "en": "Prints the version a component already has",
+            "es": "Muestra la versión que ya tiene un componente",
+            "de": "Gibt die Version aus, die eine Komponente bereits hat",
+            "fr": "Affiche la version qu'un composant a déjà",
+            "it": "Mostra la versione che un componente ha già",
+            "ja": "コンポーネントの現在のバージョンを表示",
+            "zh": "显示组件已有的版本",
+            "pt": "Mostra a versão que um componente já tem"
+          }
+        },
+        {
+          "name": "bump_manifest_version.py",
+          "desc": {
+            "en": "Syncs hydra-umc.project.json's version",
+            "es": "Sincroniza la versión de",
+            "de": "Synchronisiert die Version von",
+            "fr": "Synchronise la version de",
+            "it": "Sincronizza la versione di",
+            "ja": "hydra-umc.project.json",
+            "zh": "将 hydra-umc.project.js",
+            "pt": "Sincroniza a versão de"
+          },
+          "tree_desc": {
+            "en": "Syncs hydra-umc.project.json's version to the native one (--sync)",
+            "es": "Sincroniza la versión de hydra-umc.project.json con la nativa (--sync)",
+            "de": "Synchronisiert die Version von hydra-umc.project.json mit der nativen (--sync)",
+            "fr": "Synchronise la version de hydra-umc.project.json avec la version native (--sync)",
+            "it": "Sincronizza la versione di hydra-umc.project.json con quella nativa (--sync)",
+            "ja": "hydra-umc.project.json のバージョンをネイティブ側と同期（--sync）",
+            "zh": "将 hydra-umc.project.json 的版本与原生版本同步（--sync）",
+            "pt": "Sincroniza a versão de hydra-umc.project.json com a nativa (--sync)"
+          }
+        },
+        {
+          "name": "CHANGELOG.md",
+          "desc": {
+            "en": "what changed in each version",
+            "es": "qué cambió en cada versión",
+            "de": "was sich in jeder Version geändert hat",
+            "fr": "ce qui a changé à chaque version",
+            "it": "cosa è cambiato in ogni versione",
+            "ja": "各バージョンの変更点",
+            "zh": "每个版本的变更",
+            "pt": "o que mudou em cada versão"
+          }
+        },
+        {
+          "name": "hydra-umc.project.json",
+          "desc": {
+            "en": "manifest: version, maturity, family",
+            "es": "manifiesto: versión, madurez, familia",
+            "de": "Manifest: Version, Reifegrad, Familie",
+            "fr": "manifeste : version, maturité, famille",
+            "it": "manifesto: versione, maturità, famiglia",
+            "ja": "マニフェスト：バージョン、成熟度、ファミリー",
+            "zh": "清单：版本、成熟度、系列",
+            "pt": "manifesto: versão, maturidade, família"
+          }
+        },
+        {
+          "name": "test.sh",
+          "desc": {
+            "en": "non-mutating build check",
+            "es": "comprobación de compilación sin cambios",
+            "de": "Build-Prüfung ohne Änderungen",
+            "fr": "vérification de build sans modification",
+            "it": "controllo di build senza modifiche",
+            "ja": "変更を伴わないビルド確認",
+            "zh": "不修改内容的构建检查",
+            "pt": "verificação de compilação sem alterações"
+          }
+        }
+      ]
+    }
+  ]
+}
