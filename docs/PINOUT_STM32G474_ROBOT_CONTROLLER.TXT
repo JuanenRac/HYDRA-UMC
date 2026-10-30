@@ -28,9 +28,11 @@ PB9  | FDCAN1_TX   | AF9  | PA11/PA12 (also valid FDCAN1 pins on this chip)
      |             |      | to keep PA11/PA12 free for USB/other use and to
      |             |      | leave PA8-PA11 as one contiguous TIM1 block for
      |             |      | STEP generation - section 3 below.
-PG7  | CAN1_STBY   | GPIO | Transceiver standby/enable (matches the
-     |             |      | Kinematic Brain's own CAN1_STBY convention,
-     |             |      | docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT §2)
+PG7  | CAN1_STBY   | GPIO | INVALID ON THIS CHIP - see section 1d. Transceiver
+     |             |      | standby/enable (matches the Kinematic Brain's own
+     |             |      | CAN1_STBY convention, docs/
+     |             |      | PINOUT_STM32H745_KINEMATIC_BRAIN.TXT §2). The
+     |             |      | proposed replacement is PC5 (section 1d).
 
 1b. FDCAN2 - downlink relay to this robot's own URTC Tool Head (README.md
 section 12, docs/architecture.md section 5)
@@ -38,7 +40,9 @@ Pin  | Signal      | AF   | Notes
 -----+-------------+------+-------------------------------------------------
 PB5  | FDCAN2_RX   | AF9  | Standard G474 mapping - re-verify in CubeMX
 PB6  | FDCAN2_TX   | AF9  | Standard G474 mapping - re-verify in CubeMX
-PG8  | CAN2_STBY   | GPIO | Transceiver standby/enable, second transceiver
+PG8  | CAN2_STBY   | GPIO | INVALID ON THIS CHIP - see section 1d. Transceiver
+     |             |      | standby/enable, second transceiver. The proposed
+     |             |      | replacement is PC8 (section 1d).
 
 (The 3rd onboard FDCAN peripheral, FDCAN3, is unused - reserved for future
 use, e.g. a second relay hop if a robot ever needs more than one URTC head.)
@@ -70,6 +74,36 @@ GPIO_PULLDOWN internally. A closed switch position pulls its pin HIGH to
 encode a '1' bit; an open position leaves the internal pulldown in charge,
 reading as '0'. An unpopulated/all-open switch therefore reads as slot 0 -
 a safe, defined default rather than a floating/undefined input.
+
+1d. CAN STANDBY PINS AND BOOT0 - PROPOSED CHANGE, PENDING BOARD REVIEW
+This is a proposal for the schematic, not a manufactured or tested board.
+Nothing is ordered or fabricated until the schematic is reviewed.
+  - Problem 1: the LQFP-64 package of the STM32G474RET6 has no PG7 or PG8.
+    The only port G pin on it is PG10, which is shared with NRST (section
+    6c). Writing to "PG7"/"PG8" in the firmware therefore does nothing, and
+    the transceivers stay in whatever state the board hardware leaves them
+    (a standby input with a pull-up keeps them asleep: no CAN).
+  - Problem 2: PB8 is also the BOOT0 pin. It is used here as FDCAN1_RX and
+    the transceiver RXD line idles high, so with the factory option bytes
+    the chip can start in the system ROM instead of in this project's
+    bootloader.
+  - Proposed pins (both are in the free list of section 6b, so nothing
+    else moves):
+        CAN1_STBY : PC5   (replaces PG7)
+        CAN2_STBY : PC8   (replaces PG8)
+    PC9, PB4, PA7 and PA12 stay free. Keep a pull-up/pull-down footprint
+    on each standby line so the transceivers have a defined level while the
+    MCU is in reset.
+  - Boot: program the option bytes so that BOOT0 is taken from the option
+    byte and not from the pin: nSWBOOT0 = 0 and nBOOT0 = 1 (boot from main
+    flash). Do this in production programming; it frees PB8 from its
+    boot role.
+  - Alternative, cleaner but it changes more of the board: move FDCAN1 to
+    PA11/PA12 and release PB8. PA11 is the STEP pin of axis 4 (section 2b),
+    so this needs a second move (STEP 4 to another timer pin) and is not
+    proposed here.
+  - Firmware follow-up (not done here): the bootloader and RobotControllerRelay
+    still name PG7/PG8; they change together with the schematic decision.
 
 --------------------------------------------------------------------------------
 2. 6x TMC5160A STEPPER DRIVERS - one per robot axis (axis numbering is
@@ -192,7 +226,7 @@ the eventual real spec has somewhere to land.
     PB0 PB1 PB2 PB3 PB5 PB6 PB7 PB8 PB9 PB10 PB11 PB12 PB13 PB14 PB15
     PC0 PC1 PC2 PC3 PC4 PC6 PC7 PC10 PC11 PC12 PC13
     PD2
-    PG7 PG8
+    PG7 PG8   (invalid on this package - to be replaced by PC5 and PC8, section 1d)
 
 6b. FREE / UNASSIGNED - standard-population LQFP-64 pins not claimed by
     any signal above (NOT individually re-verified against Table 12 the

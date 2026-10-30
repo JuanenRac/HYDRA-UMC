@@ -4,6 +4,8 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **The pinout of the STM32G474 robot controller board marks the CAN standby pins as invalid and proposes valid ones:** the LQFP-64 package has no PG7 or PG8, and PB8 (FDCAN1 RX) is also the BOOT0 pin. `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` now proposes PC5 and PC8 for the two standby lines and the option bytes that take BOOT0 from the option byte (`nSWBOOT0 = 0`, `nBOOT0 = 1`). It is a proposal pending schematic review: no board has been made and the firmware still names the old pins.
+
 - **A bus contract a program can read:** `docs/bus_contract.json` records, for STACK A, the downlink to a tool head and the SPI link to the CM5, the frame format, the bit timing the firmware sets, the clock it assumes (and the bit rate that follows from both), the identifier window of a slot and the largest frame. `tests/test_bus_contract.py` compares it with the FDCAN initialisation of the five firmware sources, with the slot base of both bootloaders, with `tools/can_ids.py` and with the SPI driver, so a change in one of them that is not made in the other fails. The data length of each message is not recorded yet. No bit rate has been measured on a board.
 - **README in the universal layout:** the README and its seven translations follow the layout that the four families share (22 sections in a fixed order), with an architecture picture and a repository-structure picture drawn from `docs/architecture.json` and `docs/structure.json`; the CI validator checks both pictures and the file tree.
 
