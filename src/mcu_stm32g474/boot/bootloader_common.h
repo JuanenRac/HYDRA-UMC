@@ -60,7 +60,7 @@ extern IWDG_HandleTypeDef  hiwdg;
 // embedded in the output filename (HYDRA_RCB_APP_v0.0.0.bin).
 #define FIRMWARE_VERSION_MAJOR 0
 #define FIRMWARE_VERSION_MINOR 2
-#define FIRMWARE_VERSION_PATCH 3
+#define FIRMWARE_VERSION_PATCH 4
 #define FIRMWARE_VERSION_BUILD 0
 
 // BOOTLOADER_VERSION_* describes THIS bootloader binary itself. Versioning
