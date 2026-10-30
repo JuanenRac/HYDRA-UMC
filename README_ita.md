@@ -52,9 +52,9 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | Area | Stato | Cosa significa qui |
 |---|---|---|
 | Software | 🟠 | Solo struttura e primi pezzi; gran parte del lavoro è ancora da fare |
-| Test | 🟢 | 154 test automatici, eseguiti a ogni modifica |
+| Test | 🟡 | 154 test automatici, eseguiti a ogni modifica |
 | Hardware reale | 🔴 | Non ancora: per questa versione non risulta alcuna esecuzione su hardware reale |
-| Documentazione | 🟢 | README in otto lingue, verificato rispetto al manifesto a ogni modifica |
+| Documentazione | 🟡 | README in otto lingue, verificato rispetto al manifesto a ogni modifica |
 
 ## 🎯 Panoramica
 

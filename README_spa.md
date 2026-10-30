@@ -52,9 +52,9 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Área | Estado | Qué significa aquí |
 |---|---|---|
 | Software | 🟠 | Solo estructura y primeras piezas; falta la mayor parte del trabajo |
-| Pruebas | 🟢 | 154 pruebas automáticas, ejecutadas en cada cambio |
+| Pruebas | 🟡 | 154 pruebas automáticas, ejecutadas en cada cambio |
 | Hardware real | 🔴 | Todavía no: no consta ninguna ejecución en hardware real para esta versión |
-| Documentación | 🟢 | README en ocho idiomas, comprobado contra el manifiesto en cada cambio |
+| Documentación | 🟡 | README en ocho idiomas, comprobado contra el manifiesto en cada cambio |
 
 ## 🎯 Resumen
 

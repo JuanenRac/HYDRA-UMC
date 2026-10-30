@@ -52,9 +52,9 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Domaine | État | Ce que cela veut dire ici |
 |---|---|---|
 | Logiciel | 🟠 | Seulement la structure et les premières pièces ; l'essentiel du travail reste à faire |
-| Tests | 🟢 | 154 tests automatiques, exécutés à chaque modification |
+| Tests | 🟡 | 154 tests automatiques, exécutés à chaque modification |
 | Matériel réel | 🔴 | Pas encore : aucune exécution sur du matériel réel n'est consignée pour cette version |
-| Documentation | 🟢 | README en huit langues, vérifié par rapport au manifeste à chaque modification |
+| Documentation | 🟡 | README en huit langues, vérifié par rapport au manifeste à chaque modification |
 
 ## 🎯 Présentation
 

@@ -17,6 +17,7 @@
   "deployment_target": "user-pc",
   "deployment_target_note": "The firmware itself runs on the microcontrollers of the robot arm boards (STM32G474, STM32H745); the value user-pc is the nearest one the manifest allows for the tools and the CM5-side bridge in this repository, which run on a computer.",
   "maturity": "scaffolding",
+  "evidence": "none",
   "family": "Core Hardware",
   "parent": null,
   "build": "6 independently-versioned components (G474 + H745 CM7 + H745 CM4, app + bootloader each). This registry tracks the G474 application as representative. Real install/build: bash build_firmware.sh.",

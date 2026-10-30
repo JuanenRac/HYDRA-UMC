@@ -52,9 +52,9 @@ Each line is one part of this repository and the light says how far it is today.
 | Area | State | What it means here |
 |---|---|---|
 | Software | 🟠 | Structure and first pieces only; most of the work is still to do |
-| Tests | 🟢 | 154 automated tests, run on every change |
+| Tests | 🟡 | 154 automated tests, run on every change |
 | Real hardware | 🔴 | Not yet: no run on real hardware is recorded for this version |
-| Documentation | 🟢 | README in eight languages, checked against the manifest on every change |
+| Documentation | 🟡 | README in eight languages, checked against the manifest on every change |
 
 ## 🎯 Overview
 
