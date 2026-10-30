@@ -4,6 +4,8 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **One entry point to build the firmware on any platform:** `python tools/build.py [--clean] [--ci] [--check] [all|g474|h745]` runs `build_firmware.sh` or `build_firmware.bat` for the platform. `--check` builds nothing: it fails when the two scripts pin different versions of the third-party sources and reports which tools are present. `tests/test_build_entry.py` runs the same comparison in the CI. The two scripts are still two files.
+
 ## [0.2.4] - Valid standby pins proposed for the G474 controller board, a bus contract a program can read, the explained deployment target and the universal README
 
 - **The pinout of the STM32G474 robot controller board marks the CAN standby pins as invalid and proposes valid ones:** the LQFP-64 package has no PG7 or PG8, and PB8 (FDCAN1 RX) is also the BOOT0 pin. `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` now proposes PC5 and PC8 for the two standby lines and the option bytes that take BOOT0 from the option byte (`nSWBOOT0 = 0`, `nBOOT0 = 1`). It is a proposal pending schematic review: no board has been made and the firmware still names the old pins.
