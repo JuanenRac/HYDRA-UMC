@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="Platform">
-  <img src="https://img.shields.io/badge/Tests-154%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-158%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.4-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versão | `0.2.4` |
 | Maturidade | Estrutura inicial |
-| Testes | 154 (`python -m unittest discover -s tests -p 'test_*.py'`) |
+| Testes | 158 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | Tecnologia | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | Destino | Uma placa com microcontrolador (o firmware); compila-se num PC |
 | Em hardware real | Ainda não: não há registo de execução em hardware real para esta versão |
@@ -52,7 +52,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Área | Estado | O que significa aqui |
 |---|---|---|
 | Software | 🟠 | Só estrutura e as primeiras peças; falta a maior parte do trabalho |
-| Testes | 🟡 | 154 testes automáticos, executados a cada alteração |
+| Testes | 🟡 | 158 testes automáticos, executados a cada alteração |
 | Hardware real | 🔴 | Ainda não: não há registo de execução em hardware real para esta versão |
 | Documentação | 🟡 | README em oito idiomas, verificado contra o manifesto a cada alteração |
 
@@ -195,7 +195,7 @@ O que as máquinas de desenvolvimento deste projeto têm realmente instalado e v
 
 ## 🧪 Testes
 
-154 testes automáticos correm com `python -m unittest discover -s tests -p 'test_*.py'`. São 87 testes da ponte SPI da CM5 mais 67 das fontes do firmware, do cabeçalho de imagem assinado e dos identificadores CAN (os da ponte SPI correm com `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` e `-s src/cm5_host/spi_bridge/tests`). A lógica em C dos carregadores de arranque e do relé é verificada por mais 19 programas compilados com um compilador de C normal do anfitrião, no passo 1b de `build_firmware.sh`. Nenhum precisa de uma placa.
+158 testes automáticos correm com `python -m unittest discover -s tests -p 'test_*.py'`. São 87 testes da ponte SPI da CM5 mais 71 das fontes do firmware, do cabeçalho de imagem assinado e dos identificadores CAN (os da ponte SPI correm com `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` e `-s src/cm5_host/spi_bridge/tests`). A lógica em C dos carregadores de arranque e do relé é verificada por mais 19 programas compilados com um compilador de C normal do anfitrião, no passo 1b de `build_firmware.sh`. Nenhum precisa de uma placa.
 
 A CI executa `HYDRA_UMC_CI=1 python tools/ci_validate.py`, que verifica o manifesto, os documentos, os oito README e as imagens.
 
