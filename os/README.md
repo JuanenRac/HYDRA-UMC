@@ -7,8 +7,7 @@ made for real in a sibling repo (see next section) — this folder predates
 that repo and hasn't been reconciled with it yet.
 
 This is where the CM5's own OS image build lives — distinct from
-`../src/cm5_host/`, which holds the individual *applications* (HMI
-shell, AI inference, video streaming, SPI IPC driver) that run **on top of**
+`../src/cm5_host/`, which holds the individual *applications* (AI inference, video streaming, SPI IPC driver) that run **on top of**
 whatever this folder produces. Think of it as: `os/` builds and configures
 the box; `src/cm5_host/` is what's installed inside it.
 
@@ -35,13 +34,12 @@ script, and test in HYDRA-UMC-OS actually targets right now.
 
 ## What this means for this folder
 
-`systemd/hydra-hmi.service` here is still what it always was — a
-non-functional placeholder referencing a binary path that doesn't exist
-yet (it now waits for HYDRA-UMC-SERVER's real `hydra-umc-server.service`,
-which serves the dashboard on port 3000; the old dashboard unit is gone,
-since the dashboard is a static front-end that the server serves, not a
-process of its own) — and now genuinely duplicate ground HYDRA-UMC-OS's own `systemd/hydra-umc-agent.service`
-and `provisioning/` already cover for real. Likewise `first_boot/` here
+This folder no longer has a `systemd/` folder: its only placeholder unit
+belonged to a Qt6 kiosk shell that was retired, and the local screen of the CM5
+is now handled by HYDRA-UMC-OS (HDMI kiosk) and HYDRA-UMC-DSI (touch screen),
+chosen with one switch. That duplicated ground HYDRA-UMC-OS's own
+`systemd/hydra-umc-agent.service` and `provisioning/` already cover for real.
+Likewise `first_boot/` here
 is still just a placeholder note, while HYDRA-UMC-OS's own
 `provisioning/first_boot.sh` is real and tested. This folder has not
 been reconciled with that repo yet — that reconciliation (most likely:
@@ -52,13 +50,6 @@ silently glossed over here.
 
 ## Layout
 
-- `systemd/` — placeholder unit files wiring `src/cm5_host/`'s own
-  components together (start order, restart policy, dependencies).
-  `hydra-hmi.service` is a starting example — references binaries/paths
-  that don't exist yet (nothing in `cm5_host/` builds a real installable
-  binary today), so this unit won't actually work until they do. See
-  "What this means for this folder" above for how this now relates to
-  HYDRA-UMC-OS's own real `systemd/`.
 - `first_boot/` — provisioning script placeholder for whatever a freshly
   flashed SD card/eMMC needs done once (hostname, network config, growing
   the root partition, installing `cm5_host/`'s own services) — not written

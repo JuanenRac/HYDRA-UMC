@@ -23,7 +23,6 @@ Every file of the repository with a line on what it does: the annotated tree tha
 │   └── gerbers/                # Manufacturing output files (empty until a board is laid out)
 ├── src/                         # Same layout convention as the sibling URTC repo: src/ is SOURCE
 │   ├── cm5_host/                # Linux userspace apps that run ON TOP of os/'s own image
-│   │   ├── hmi_qt6/             # Qt6 kiosk shell wrapping HYDRA-UMC-STUDIO's own dashboard
 │   │   ├── ai_inference/        # Hailo-8 TAPPAS / YOLOv8 pipeline
 │   │   ├── video_streamer/      # Multi-camera RTSP/WebRTC server (MediaMTX)
 │   │   ├── ipc_driver/          # CM5 <-> STM32H745 SPI link (userspace) - unfinished C skeleton, kept for reference

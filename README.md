@@ -201,7 +201,6 @@ default targets, 0 errors) - not a theoretical list:
   these): [STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension)
   (project/build/debug integration), **Cortex-Debug** (SWD/JTAG debugging -
   independent of `build_firmware.sh`, useful once real hardware exists),
-  **CMake Tools** (for `src/cm5_host/hmi_qt6/`'s own CMake project),
   **C/C++** (IntelliSense across every firmware/host source file),
   **Python** (`ai_inference/` pipeline scripts), **Hex Editor** (inspecting
   `.bin` firmware output), **YAML** (`video_streamer/`'s own MediaMTX

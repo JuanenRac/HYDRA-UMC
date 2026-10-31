@@ -202,8 +202,7 @@ cibles `g474`/`h745`/par défaut, 0 erreur) - pas une liste théorique :
   [STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension)
   (intégration projet/build/debug), **Cortex-Debug** (débogage SWD/JTAG -
   indépendant de `build_firmware.sh`, utile une fois qu'un matériel réel
-  existe), **CMake Tools** (pour le propre projet CMake de
-  `src/cm5_host/hmi_qt6/`), **C/C++** (IntelliSense sur chaque fichier
+  existe), **C/C++** (IntelliSense sur chaque fichier
   source firmware/hôte), **Python** (scripts du pipeline `ai_inference/`),
   **Hex Editor** (inspecter la sortie firmware `.bin`), **YAML** (la
   configuration propre à MediaMTX de `video_streamer/`). Ouvrez le

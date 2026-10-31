@@ -10,19 +10,6 @@
   ],
   "nodes": [
     {
-      "id": "ope",
-      "column": 0,
-      "level": "tested",
-      "title": "The operator",
-      "lines": [
-        "the HMI on the 7 inch screen",
-        "of the CM5"
-      ],
-      "code": [
-        "src/cm5_host/hmi_qt6/"
-      ]
-    },
-    {
       "id": "mai",
       "column": 0,
       "level": "tested",
@@ -67,33 +54,6 @@
       ]
     },
     {
-      "id": "hmi",
-      "column": 1,
-      "level": "untested",
-      "title": "hmi_qt6",
-      "lines": [
-        "Qt6 kiosk shell around",
-        "the STUDIO dashboard"
-      ],
-      "code": [
-        "src/cm5_host/hmi_qt6/CMakeLists.txt"
-      ]
-    },
-    {
-      "id": "spi",
-      "column": 1,
-      "level": "tested",
-      "title": "spi_bridge",
-      "lines": [
-        "Python SPI-OTA flasher and",
-        "local HTTP service"
-      ],
-      "code": [
-        "src/cm5_host/spi_bridge/spi_bridge/bootloader_client.py",
-        "src/cm5_host/spi_bridge/spi_bridge/http_service.py"
-      ]
-    },
-    {
       "id": "sig",
       "column": 1,
       "level": "tested",
@@ -123,16 +83,17 @@
       ]
     },
     {
-      "id": "hw",
+      "id": "spi",
       "column": 1,
-      "level": "untested",
-      "title": "board designs",
+      "level": "tested",
+      "title": "spi_bridge",
       "lines": [
-        "two board folders; no",
-        "schematic yet"
+        "Python SPI-OTA flasher and",
+        "local HTTP service"
       ],
       "code": [
-        "hardware/PCB/"
+        "src/cm5_host/spi_bridge/spi_bridge/bootloader_client.py",
+        "src/cm5_host/spi_bridge/spi_bridge/http_service.py"
       ]
     },
     {
@@ -148,22 +109,25 @@
         "src/mcu_stm32h745/CM4/",
         "src/mcu_stm32g474/"
       ]
+    },
+    {
+      "id": "hw",
+      "column": 1,
+      "level": "untested",
+      "title": "board designs",
+      "lines": [
+        "two board folders; no",
+        "schematic yet"
+      ],
+      "code": [
+        "hardware/PCB/"
+      ]
     }
   ],
   "edges": [
     {
-      "from": "ope",
-      "to": "hmi",
-      "level": "tested"
-    },
-    {
       "from": "mai",
       "to": "sig",
-      "level": "tested"
-    },
-    {
-      "from": "hmi",
-      "to": "spi",
       "level": "tested"
     },
     {

@@ -204,8 +204,7 @@ Fehler) - keine theoretische Liste:
   davon): [STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension)
   (Projekt-/Build-/Debug-Integration), **Cortex-Debug** (SWD/JTAG-Debugging -
   unabhängig von `build_firmware.sh`, nützlich sobald reale Hardware
-  existiert), **CMake Tools** (für das eigene CMake-Projekt von
-  `src/cm5_host/hmi_qt6/`), **C/C++** (IntelliSense über jede
+  existiert), **C/C++** (IntelliSense über jede
   Firmware-/Host-Quelldatei), **Python** (`ai_inference/`-Pipeline-Skripte),
   **Hex Editor** (Inspektion der `.bin`-Firmware-Ausgabe), **YAML** (die
   eigene MediaMTX-Konfiguration von `video_streamer/`). Öffnen Sie das

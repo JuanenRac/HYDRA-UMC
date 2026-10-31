@@ -4,6 +4,8 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **The Qt6 kiosk shell `src/cm5_host/hmi_qt6/` is retired**, together with its placeholder unit `os/systemd/hydra-hmi.service`: it was a second full-screen browser next to the HDMI kiosk of HYDRA-UMC-OS, it never ran on a screen and it pointed at a port that the dashboard is not served on. The HDMI screen is shown by the kiosk of HYDRA-UMC-OS and the touch screen by HYDRA-UMC-DSI. The architecture picture, the file trees, the editor recommendations and the README sources no longer mention it.
+
 - **One entry point to build the firmware on any platform:** `python tools/build.py [--clean] [--ci] [--check] [all|g474|h745]` runs `build_firmware.sh` or `build_firmware.bat` for the platform. `--check` builds nothing: it fails when the two scripts pin different versions of the third-party sources and reports which tools are present. `tests/test_build_entry.py` runs the same comparison in the CI. The two scripts are still two files.
 
 ## [0.2.4] - Valid standby pins proposed for the G474 controller board, a bus contract a program can read, the explained deployment target and the universal README

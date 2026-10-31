@@ -276,7 +276,6 @@ hydra-platform/
 │   └── gerbers/                # Manufacturing output files
 ├── firmware/
 │   ├── cm5_host/               # Linux system services, Qt UI, Klipper integration
-│   │   ├── hmi_qt6/
 │   │   └── ipc_driver/
 │   └── mcu_stm32h757/          # STM32CubeIDE dual-core firmware project
 │       ├── CM7/                # Motion engine, hardware timers, PID loops

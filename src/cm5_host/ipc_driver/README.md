@@ -50,7 +50,7 @@ driver needs to speak once real firmware exists on the STM32H745 side).
   unconditionally. Still unverified against real hardware (no STM32H745
   firmware exists yet to assert the line), but the handshake itself is
   real code now — see `src/ipc_driver.c`'s own header for the exact state.
-- A stable IPC boundary to `hmi_qt6/` and whatever eventually replaces
+- A stable IPC boundary to whatever eventually replaces
   HYDRA-UMC-STUDIO's own browser-based dashboard on real hardware (Unix
   domain socket, shared memory, or this driver exposed as a small local
   HTTP/WebSocket service — not decided yet)
