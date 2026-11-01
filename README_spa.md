@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="Platform">
-  <img src="https://img.shields.io/badge/Tests-158%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-162%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.4-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versión | `0.2.4` |
 | Madurez | Andamiaje |
-| Tests | 158 (`python -m unittest discover -s tests -p 'test_*.py'`) |
+| Tests | 162 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | Tecnología | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | Destino | Una placa con microcontrolador (el firmware); se compila en un PC |
 | En hardware real | Todavía no: no consta ninguna ejecución en hardware real para esta versión |
@@ -52,7 +52,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Área | Estado | Qué significa aquí |
 |---|---|---|
 | Software | 🟠 | Solo estructura y primeras piezas; falta la mayor parte del trabajo |
-| Pruebas | 🟡 | 158 pruebas automáticas, ejecutadas en cada cambio |
+| Pruebas | 🟡 | 162 pruebas automáticas, ejecutadas en cada cambio |
 | Hardware real | 🔴 | Todavía no: no consta ninguna ejecución en hardware real para esta versión |
 | Documentación | 🟡 | README en ocho idiomas, comprobado contra el manifiesto en cada cambio |
 
@@ -217,7 +217,7 @@ objetivos `g474`/`h745`/por defecto, 0 errores) - no una lista teórica:
 
 ## 🧪 Pruebas
 
-158 pruebas automáticas se ejecutan con `python -m unittest discover -s tests -p 'test_*.py'`. Son 87 pruebas del puente SPI de la CM5 más 71 de las fuentes del firmware, la cabecera de imagen firmada y los identificadores CAN (las del puente SPI se ejecutan con `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` y `-s src/cm5_host/spi_bridge/tests`). La lógica en C de los cargadores de arranque y del relé la comprueban otros 19 programas compilados con un compilador de C normal del anfitrión, en el paso 1b de `build_firmware.sh`. Ninguna necesita una placa.
+162 pruebas automáticas se ejecutan con `python -m unittest discover -s tests -p 'test_*.py'`. Son 87 pruebas del puente SPI de la CM5 más 71 de las fuentes del firmware, la cabecera de imagen firmada y los identificadores CAN (las del puente SPI se ejecutan con `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` y `-s src/cm5_host/spi_bridge/tests`). La lógica en C de los cargadores de arranque y del relé la comprueban otros 19 programas compilados con un compilador de C normal del anfitrión, en el paso 1b de `build_firmware.sh`. Ninguna necesita una placa.
 
 El CI ejecuta `HYDRA_UMC_CI=1 python tools/ci_validate.py`, que comprueba el manifiesto, los documentos, los ocho README y las imágenes.
 
@@ -287,7 +287,7 @@ sigue abierto.
 
 > **Estado de seguridad:** este repositorio todavía no contiene ninguna ruta de E-STOP, límites por software, enclavamientos de seguridad, el volcado a FRAM por pérdida de alimentación (PVD) ni ningún comando de movimiento. Allí donde las secciones anteriores (u otro proyecto del ecosistema) los describen, es el diseño previsto: nada debe depender de ello para la seguridad hasta que esté implementado y probado en una placa real. Lo que hacen hoy las aplicaciones: las del CM4 y del G474 ejecutan el sondeo/respuesta AXIS_STATUS de STACK A y el túnel de relé de Tier 2/3; la del CM7 sigue siendo una prueba de humo con GPIO-toggle.
 
-Los seis componentes del firmware (tres cargadores de arranque y tres aplicaciones, un par por chip o núcleo) tienen cada uno su versión. Compilar nunca la cambia: `build_firmware.sh` y `.bat` solo la informan. Subir versiones es el comando explícito `python bump_firmware_versions.py` (`--list` las muestra), y `python show_component_version.py` imprime la versión de un componente.
+Los seis componentes del firmware (tres cargadores de arranque y tres aplicaciones, un par por chip o núcleo) tienen cada uno su versión. Compilar nunca la cambia: `build_firmware.sh` y `.bat` solo la informan. Subir versiones es el comando explícito `python bump_firmware_versions.py` (`--list` las muestra), y `python show_component_version.py` imprime la versión de un componente. La versión del propio repositorio es la de la aplicación de la G474: `python tools/hydra_project_tool.py bump` la sube (el manifiesto la sigue) como en cualquier otro repositorio.
 
 ## 🩺 Resolución de problemas
 

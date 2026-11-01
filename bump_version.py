@@ -40,6 +40,13 @@
 #                 defining BOTH its bootloader's own version and the FIRMWARE_
 #                 VERSION_* the app it hands off to reports) untouched.
 #
+# Without arguments (how `tools/hydra_project_tool.py bump` runs a repository's
+# own bump script) it bumps the FIRMWARE_VERSION_* of the header that
+# hydra-umc.project.json names as its native version file: the version of this
+# repository is the version of that application, so the repository bumps like
+# every other one and a batch of releases can include it. The manifest then
+# follows with `bump_manifest_version.py --sync`.
+#
 # Prints the new "MAJOR.MINOR.PATCH" to stdout on success (nothing else, so
 # a caller can capture it directly); exits non-zero with a message on stderr
 # if the expected #defines aren't found - never writes a partial/inconsistent
@@ -52,11 +59,40 @@ import re
 FOUR_PART_FROM = (0, 8, 0)
 
 
-def main():
-    if len(sys.argv) != 3:
-        print("usage: bump_version.py <header_path> <MACRO_PREFIX>", file=sys.stderr)
+DEFAULT_PREFIX = "FIRMWARE_VERSION"
+
+
+def default_target(root=None):
+    """(header, prefix) that the manifest of the repository names as its native version, or None."""
+    import json as _json
+    from pathlib import Path as _Path
+
+    base = _Path(__file__).resolve().parent if root is None else _Path(root)
+    try:
+        manifest = _json.loads((base / "hydra-umc.project.json").read_text(encoding="utf-8"))
+        native = manifest["native_version"]
+        header = base / str(native["file"])
+        pattern = native["pattern"]
+    except (OSError, KeyError, TypeError, ValueError):
+        return None
+    if not header.is_file() or not isinstance(pattern, dict) or f"{DEFAULT_PREFIX}_PATCH" not in str(pattern.get("patch", "")):
+        return None
+    return str(header), DEFAULT_PREFIX
+
+
+def main(argv=None):
+    args = sys.argv[1:] if argv is None else list(argv)
+    if not args:
+        target = default_target()
+        if target is None:
+            print("bump_version.py: no header given and the manifest does not name a FIRMWARE_VERSION header", file=sys.stderr)
+            return 1
+        path, prefix = target
+    elif len(args) != 2:
+        print("usage: bump_version.py [<header_path> <MACRO_PREFIX>]", file=sys.stderr)
         return 1
-    path, prefix = sys.argv[1], sys.argv[2]
+    else:
+        path, prefix = args
 
     with open(path) as f:
         text = f.read()

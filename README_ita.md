@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="Platform">
-  <img src="https://img.shields.io/badge/Tests-158%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-162%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.4-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versione | `0.2.4` |
 | Maturità | Impalcatura |
-| Test | 158 (`python -m unittest discover -s tests -p 'test_*.py'`) |
+| Test | 162 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | Tecnologia | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | Destinazione | Una scheda con microcontrollore (il firmware); compilato su un PC |
 | Su hardware reale | Non ancora: per questa versione non risulta alcuna esecuzione su hardware reale |
@@ -52,7 +52,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | Area | Stato | Cosa significa qui |
 |---|---|---|
 | Software | 🟠 | Solo struttura e primi pezzi; gran parte del lavoro è ancora da fare |
-| Test | 🟡 | 158 test automatici, eseguiti a ogni modifica |
+| Test | 🟡 | 162 test automatici, eseguiti a ogni modifica |
 | Hardware reale | 🔴 | Non ancora: per questa versione non risulta alcuna esecuzione su hardware reale |
 | Documentazione | 🟡 | README in otto lingue, verificato rispetto al manifesto a ogni modifica |
 
@@ -214,7 +214,7 @@ target `g474`/`h745`/default, 0 errori) - non un elenco teorico:
 
 ## 🧪 Test
 
-158 test automatici si eseguono con `python -m unittest discover -s tests -p 'test_*.py'`. Sono 87 test del bridge SPI della CM5 più 71 dei sorgenti del firmware, dell'intestazione immagine firmata e degli identificatori CAN (quelli del bridge SPI si eseguono con `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` e `-s src/cm5_host/spi_bridge/tests`). La logica C dei bootloader e del relay è verificata da altri 19 programmi compilati con un normale compilatore C host, nel passo 1b di `build_firmware.sh`. Nessuno richiede una scheda.
+162 test automatici si eseguono con `python -m unittest discover -s tests -p 'test_*.py'`. Sono 87 test del bridge SPI della CM5 più 71 dei sorgenti del firmware, dell'intestazione immagine firmata e degli identificatori CAN (quelli del bridge SPI si eseguono con `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` e `-s src/cm5_host/spi_bridge/tests`). La logica C dei bootloader e del relay è verificata da altri 19 programmi compilati con un normale compilatore C host, nel passo 1b di `build_firmware.sh`. Nessuno richiede una scheda.
 
 La CI esegue `HYDRA_UMC_CI=1 python tools/ci_validate.py`, che controlla il manifesto, i documenti, gli otto README e le immagini.
 
@@ -281,7 +281,7 @@ esattamente reale rispetto a ciò che resta aperto.
 
 > **Stato della sicurezza:** questo repository non contiene ancora alcun percorso di E-STOP, limiti software, interblocchi di sicurezza, scarico su FRAM per perdita di alimentazione (PVD) né comandi di movimento. Dove le sezioni precedenti (o un altro progetto dell'ecosistema) li descrivono, si tratta del progetto previsto: nulla deve farvi affidamento per la sicurezza finché non è implementato e provato su una scheda reale. Cosa fanno oggi le applicazioni: quelle del CM4 e del G474 eseguono il polling/risposta AXIS_STATUS di STACK A e il tunnel di relay Tier 2/3; quella del CM7 è ancora uno smoke test GPIO-toggle.
 
-Tutti e sei i componenti del firmware (tre bootloader e tre applicazioni, una coppia per chip o core) hanno la propria versione. Compilare non la cambia mai: `build_firmware.sh` e `.bat` si limitano a riportarla. Alzare le versioni è il comando esplicito `python bump_firmware_versions.py` (`--list` le mostra), e `python show_component_version.py` stampa la versione di un componente.
+Tutti e sei i componenti del firmware (tre bootloader e tre applicazioni, una coppia per chip o core) hanno la propria versione. Compilare non la cambia mai: `build_firmware.sh` e `.bat` si limitano a riportarla. Alzare le versioni è il comando esplicito `python bump_firmware_versions.py` (`--list` le mostra), e `python show_component_version.py` stampa la versione di un componente. La versione del repository stesso è quella dell'applicazione G474: `python tools/hydra_project_tool.py bump` la alza (il manifesto la segue) come in ogni altro repository.
 
 ## 🩺 Risoluzione dei problemi
 

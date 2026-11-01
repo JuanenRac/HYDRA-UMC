@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="Platform">
-  <img src="https://img.shields.io/badge/Tests-158%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-162%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.4-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | バージョン | `0.2.4` |
 | 成熟度 | 足場段階 |
-| テスト | 158 (`python -m unittest discover -s tests -p 'test_*.py'`) |
+| テスト | 162 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | 技術 | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | 対象 | マイコン基板（ファームウェア）。ビルドは PC で行います |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
@@ -52,7 +52,7 @@ GPL-3.0-or-later - see LICENSE
 | 領域 | 状態 | ここでの意味 |
 |---|---|---|
 | ソフトウェア | 🟠 | 構造と最初の部品のみで、作業の大部分はこれからです |
-| テスト | 🟡 | 自動テスト 158 件。変更のたびに実行されます |
+| テスト | 🟡 | 自動テスト 162 件。変更のたびに実行されます |
 | 実機 | 🔴 | まだです：このバージョンについて実機での動作記録はありません |
 | ドキュメント | 🟡 | 8 言語の README。変更のたびにマニフェストと照合されます |
 
@@ -195,7 +195,7 @@ python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the f
 
 ## 🧪 テスト
 
-`python -m unittest discover -s tests -p 'test_*.py'` で自動テスト 158 件を実行します。 CM5 の SPI ブリッジのテスト 87 件と、ファームウェアのソース、署名付きイメージヘッダー、CAN 識別子のテスト 71 件です（SPI ブリッジ側は `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` と `-s src/cm5_host/spi_bridge/tests` で実行します）。ブートローダーとリレーの C ロジックは、`build_firmware.sh` のステップ 1b で通常のホスト C コンパイラーでビルドする 19 本のプログラムがさらに検査します。どれも基板を必要としません。
+`python -m unittest discover -s tests -p 'test_*.py'` で自動テスト 162 件を実行します。 CM5 の SPI ブリッジのテスト 87 件と、ファームウェアのソース、署名付きイメージヘッダー、CAN 識別子のテスト 71 件です（SPI ブリッジ側は `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` と `-s src/cm5_host/spi_bridge/tests` で実行します）。ブートローダーとリレーの C ロジックは、`build_firmware.sh` のステップ 1b で通常のホスト C コンパイラーでビルドする 19 本のプログラムがさらに検査します。どれも基板を必要としません。
 
 CI は `HYDRA_UMC_CI=1 python tools/ci_validate.py` を実行し、マニフェスト、文書、8 つの README、図を検査します。
 
@@ -225,7 +225,7 @@ build_firmware.bat --clean  :: ベンダリング済み HAL/CMSIS キャッシ�
 
 > **安全に関する現状：** このリポジトリには、E-STOP の経路、ソフトウェアリミット、安全インターロック、電源喪失時（PVD）の FRAM への退避、モーション指令はまだ含まれていません。上記の各セクション（またはエコシステム内の他のプロジェクト）がそれらを説明している箇所は、あくまで想定している設計です。実装され、実機基板で試験されるまで、安全のためにそれらに依存してはいけません。現在のアプリケーションの動作：CM4 と G474 のものは STACK A の AXIS_STATUS ポーリング／応答と Tier 2/3 リレートンネルを実行し、CM7 のものは依然として GPIO トグルのスモークテストです。
 
-6 つのファームウェアコンポーネント（チップまたはコアごとにブートローダーとアプリケーションの組）にはそれぞれ独自のバージョンがあります。ビルドでは変わらず、`build_firmware.sh` と `.bat` は報告するだけです。バージョンを上げるのは明示的なコマンド `python bump_firmware_versions.py`（`--list` で一覧）で、`python show_component_version.py` はコンポーネントのバージョンを表示します。
+6 つのファームウェアコンポーネント（チップまたはコアごとにブートローダーとアプリケーションの組）にはそれぞれ独自のバージョンがあります。ビルドでは変わらず、`build_firmware.sh` と `.bat` は報告するだけです。バージョンを上げるのは明示的なコマンド `python bump_firmware_versions.py`（`--list` で一覧）で、`python show_component_version.py` はコンポーネントのバージョンを表示します。リポジトリ自体のバージョンは G474 アプリケーションのバージョンで、`python tools/hydra_project_tool.py bump` が他のリポジトリと同じように（マニフェストも追従して）上げます。
 
 ## 🩺 トラブルシューティング
 

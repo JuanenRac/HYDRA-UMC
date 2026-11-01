@@ -74,5 +74,83 @@ class BumpVersionTest(unittest.TestCase):
         self.assertEqual(result.stdout.strip(), "0.1.3")
 
 
+MANIFEST = {
+    "schema_version": "1.0",
+    "ecosystem": "HYDRA-UMC",
+    "name": "HYDRA-UMC",
+    "version": "0.2.4",
+    "native_version": {
+        "file": "src/boot/bootloader_common.h",
+        "pattern": {
+            "major": r"#define\s+FIRMWARE_VERSION_MAJOR\s+(\d+)",
+            "minor": r"#define\s+FIRMWARE_VERSION_MINOR\s+(\d+)",
+            "patch": r"#define\s+FIRMWARE_VERSION_PATCH\s+(\d+)",
+            "build": r"#define\s+FIRMWARE_VERSION_BUILD\s+(\d+)",
+        },
+    },
+}
+
+
+def make_repository(root, manifest=None):
+    """A minimal copy of the repository: the bump scripts, the project tool, a manifest, a changelog and a header."""
+    import json
+    import shutil
+
+    for name in ("bump_version.py", "bump_manifest_version.py"):
+        shutil.copy(ROOT / name, root / name)
+    (root / "tools").mkdir()
+    shutil.copy(ROOT / "tools" / "hydra_project_tool.py", root / "tools" / "hydra_project_tool.py")
+    (root / "src" / "boot").mkdir(parents=True)
+    (root / "src" / "boot" / "bootloader_common.h").write_text(
+        BumpVersionTest().header(0, 2, 4, 0), encoding="utf-8"
+    )
+    (root / "hydra-umc.project.json").write_text(json.dumps(MANIFEST if manifest is None else manifest, indent=2), encoding="utf-8")
+    (root / "CHANGELOG.md").write_text("# Changelog\n\n## [Unreleased]\n\n## [0.2.4] - Earlier\n\n- Something.\n", encoding="utf-8")
+
+
+class BumpWithoutArgumentsTest(unittest.TestCase):
+    """The repository bumps through `tools/hydra_project_tool.py bump` like every other one."""
+
+    def test_without_arguments_it_bumps_the_header_the_manifest_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            make_repository(root)
+            result = subprocess.run([sys.executable, str(root / "bump_version.py")], capture_output=True, text=True, check=False, cwd=root)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "0.2.5")
+            header = (root / "src" / "boot" / "bootloader_common.h").read_text(encoding="utf-8")
+            self.assertIn("#define FIRMWARE_VERSION_PATCH 5", header)
+            self.assertIn("#define BOOTLOADER_VERSION_PATCH 7", header)  # the other family is untouched
+
+    def test_the_project_tool_bump_moves_the_header_and_the_manifest_together(self):
+        import json
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            make_repository(root)
+            for command in (["init", "-q"], ["add", "-A"], ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "-m", "init"]):
+                subprocess.run(["git", *command], cwd=root, check=True, capture_output=True)
+            result = subprocess.run(
+                [sys.executable, str(root / "tools" / "hydra_project_tool.py"), "bump"], capture_output=True, text=True, check=False, cwd=root
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("PROJECT_TOOL=BUMPED 0.2.4 -> 0.2.5", result.stdout)
+            self.assertEqual(json.loads((root / "hydra-umc.project.json").read_text(encoding="utf-8"))["version"], "0.2.5")
+            self.assertIn("#define FIRMWARE_VERSION_PATCH 5", (root / "src" / "boot" / "bootloader_common.h").read_text(encoding="utf-8"))
+
+    def test_without_a_firmware_header_in_the_manifest_it_stops_instead_of_guessing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            make_repository(root, manifest={**MANIFEST, "native_version": {"file": "pyproject.toml", "pattern": "version = \"(\\d+)\\.(\\d+)\\.(\\d+)\""}})
+            result = subprocess.run([sys.executable, str(root / "bump_version.py")], capture_output=True, text=True, check=False, cwd=root)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("does not name a FIRMWARE_VERSION header", result.stderr)
+
+    def test_one_argument_is_still_a_usage_error(self):
+        result = subprocess.run([sys.executable, str(SCRIPT), "only-one"], capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("usage", result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
