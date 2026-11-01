@@ -2,7 +2,7 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
-## [Unreleased]
+## [0.2.5] - The repository bumps like every other one, one entry point builds the firmware on any platform and the retired Qt6 kiosk shell is gone
 
 - **The repository now bumps like every other one:** `python tools/hydra_project_tool.py bump` used to stop at the repository's own `bump_version.py`, which wanted a header and a macro family on the command line. Run without arguments, that script now bumps the application version of the header that the manifest names as its native version (the one the repository version follows), and the manifest follows with `bump_manifest_version.py --sync`, so a batch of releases can include this repository. With a header and a family it works exactly as before, and the other five component versions are still raised on their own with `bump_firmware_versions.py`.
 
