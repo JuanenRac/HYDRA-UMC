@@ -24,6 +24,18 @@ jobs:
         uses: ./.github/actions/hydra-baseline
         with:
           arm-packages: libnewlib-arm-none-eabi
+
+  # These read the sources and the committed firmware files as they are: the compilation of the baseline job rewrites that directory, so they run beside it, not after it.
+  guards:
+    name: Source guards and firmware inventory
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
       - name: Run the CM5 SPI bridge and firmware source-guard tests
         if: ${{ hashFiles('src/cm5_host/spi_bridge/tests/test_protocol.py') != '' }}
         run: |
