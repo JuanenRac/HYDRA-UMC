@@ -1,0 +1,148 @@
+#!/usr/bin/env python3
+# =============================================================================
+# HYDRA-UMC - tools/host_tests.py
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+"""Compile and run the C host tests of the firmware on Linux, macOS and Windows.
+
+    python tools/host_tests.py [--require] [--list]
+
+The tests build the real firmware sources (bootloaders, relay logic) for the PC with whatever C compiler is there: HOST_CC, or cc, gcc,
+clang. Nothing is compiled for a board and nothing is flashed. With no host compiler the run says so and exits 0, unless --require is
+given (a release gate wants the tests to have run). Binaries go to build/host_tests/, which the build folder rules already ignore.
+
+The table below is the same list build_firmware.sh runs; tests/test_host_tests_table.py keeps the two from drifting apart.
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / "build" / "host_tests"
+G4 = "src/mcu_stm32g474"
+H7 = "src/mcu_stm32h745"
+BOOT_DIRS = (f"{G4}/boot", f"{H7}/CM4/boot", f"{H7}/CM7/boot")
+
+STRICT = ("-std=c11", "-Wall", "-Wextra")
+GNU = ("-std=gnu11", "-Wall", "-Wextra", "-Wno-int-to-pointer-cast")
+
+
+@dataclass(frozen=True)
+class HostTest:
+    name: str
+    source: str
+    includes: tuple[str, ...]
+    flags: tuple[str, ...] = STRICT
+    extra_sources: tuple[str, ...] = ()
+    defines: tuple[str, ...] = ()
+    needs_tweetnacl: bool = False
+    syntax_only: bool = False
+
+
+def table() -> list[HostTest]:
+    tests = [HostTest("relay_rx_queue", "tests/test_relay_rx_queue.c", ("tests", "src"))]
+    for directory in (G4, f"{H7}/CM4"):
+        tests.append(HostTest(f"dlc@{directory}", "tests/test_dlc_to_fdcan_data_length.c", (directory,)))
+    for directory in BOOT_DIRS:
+        tests.append(HostTest(f"boot_decision@{directory}", "tests/test_boot_decision.c", (directory,)))
+    tests += [
+        HostTest("flash_geometry", "tests/test_flash_geometry.c", (f"{G4}/boot",)),
+        HostTest("relay_send_reassembly", "tests/test_relay_send_reassembly.c", (G4,)),
+        HostTest("relay_ids", "tests/test_relay_ids.c", (G4,)),
+        HostTest("bootloader_g474", "tests/test_bootloader_g474_host.c", ("tests/stubs", f"{G4}/boot", "tests"), GNU,
+                 (f"{G4}/boot/update_signature.c",), needs_tweetnacl=True),
+    ]
+    for core in ("CM4", "CM7"):
+        tests.append(HostTest(f"bootloader_h745_{core}", "tests/test_bootloader_h745_host.c", ("tests/stubs", f"{H7}/{core}/boot"), GNU,
+                              defines=(f"HYDRA_TEST_{core}",)))
+    for directory in BOOT_DIRS:
+        for name in ("test_image_header", "test_update_verify"):
+            tests.append(HostTest(f"{name}@{directory}", f"tests/{name}.c", (directory, "tests"), STRICT + ("-Werror",)))
+    tests.append(HostTest("bootloader_g474_update", "tests/test_bootloader_g474_update_host.c",
+                          ("tests/stubs/protocol", G4, f"{G4}/boot", "tests"), GNU, (f"{G4}/boot/update_signature.c",),
+                          needs_tweetnacl=True))
+    for core in ("CM4", "CM7"):
+        tests.append(HostTest(f"bootloader_h745_{core}_protocol", f"{H7}/{core}/boot/bootloader_protocol.c",
+                              ("tests/stubs/h7protocol", f"{H7}/{core}/boot", f"{H7}/Common", f"{H7}/{core}", H7, "tests"),
+                              ("-std=gnu11", "-Wall", "-Wno-int-to-pointer-cast"), syntax_only=True))
+    return tests
+
+
+def find_compiler() -> str | None:
+    """HOST_CC, or the first of cc, gcc, clang that is on the PATH (None when there is none)."""
+    wanted = os.environ.get("HOST_CC")
+    for candidate in ([wanted] if wanted else []) + ["cc", "gcc", "clang"]:
+        found = shutil.which(candidate)
+        if found:
+            return found
+    return None
+
+
+def _safe(name: str) -> str:
+    return "".join(ch if ch.isalnum() else "_" for ch in name)
+
+
+def build_command(compiler: str, test: HostTest, output: Path, tweetnacl: Path | None) -> list[str]:
+    command = [compiler, *test.flags]
+    command += [f"-D{define}" for define in test.defines]
+    command += [f"-I{ROOT / include}" for include in test.includes]
+    if test.syntax_only:
+        return command + ["-fsyntax-only", str(ROOT / test.source)]
+    command += ["-o", str(output), str(ROOT / test.source)]
+    if test.needs_tweetnacl and tweetnacl is not None:
+        command.append(str(tweetnacl))
+    command += [str(ROOT / extra) for extra in test.extra_sources]
+    return command
+
+
+def run_all(compiler: str) -> int:
+    OUT.mkdir(parents=True, exist_ok=True)
+    suffix = ".exe" if os.name == "nt" else ""
+    tweetnacl = OUT / "tweetnacl.o"
+    # TweetNaCl is third-party text that is not edited for style: compiled on its own with the warnings off.
+    built = subprocess.run([compiler, "-std=gnu11", "-w", "-c", str(ROOT / G4 / "boot" / "tweetnacl.c"), "-o", str(tweetnacl)])
+    failures = 0 if built.returncode == 0 else 1
+    if failures:
+        print("FAIL tweetnacl does not compile")
+    for test in table():
+        binary = OUT / (_safe(test.name) + suffix)
+        compiled = subprocess.run(build_command(compiler, test, binary, tweetnacl))
+        if compiled.returncode != 0:
+            print(f"FAIL {test.name}: does not compile")
+            failures += 1
+            continue
+        if test.syntax_only:
+            print(f"PASS {test.name} (syntax)")
+            continue
+        ran = subprocess.run([str(binary)], stdout=subprocess.DEVNULL)
+        print(f"{'PASS' if ran.returncode == 0 else 'FAIL'} {test.name}")
+        failures += ran.returncode != 0
+    print("HOST_TESTS=" + ("PASS" if failures == 0 else f"FAIL ({failures})"))
+    return 1 if failures else 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Compile and run the C host tests of the firmware.")
+    parser.add_argument("--require", action="store_true", help="fail when there is no host C compiler")
+    parser.add_argument("--list", action="store_true", help="print the tests and build nothing")
+    options = parser.parse_args(argv)
+    if options.list:
+        for test in table():
+            print(test.name, test.source)
+        return 0
+    compiler = find_compiler()
+    if compiler is None:
+        print("HOST_TESTS=SKIPPED no host C compiler (cc/gcc/clang) found; set HOST_CC")
+        return 1 if options.require else 0
+    return run_all(compiler)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

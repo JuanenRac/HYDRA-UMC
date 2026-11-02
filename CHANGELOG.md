@@ -2,6 +2,14 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
+## [Unreleased]
+
+- **The build signs the application images:** `python tools/build.py` signs each application image (`HYDRA_<board>_APP_v<version>.bin`) with Ed25519 after a successful build and writes the signature next to it as a `.sig` file (`tools/sign_release.py`). The private seed is only read from a file outside the repository (`HYDRA_FW_SIGNING_SEED_FILE`) and is never printed; without it the images stay unsigned and the build says so, and `HYDRA_UMC_RELEASE=1` turns that into an error. `python tools/sign_release.py verify` checks the signatures against the public key the bootloaders are built with (`HYDRA_FW_UPDATE_PUBKEY_HEX`).
+
+- **The C host tests run the same way on every platform:** `python tools/build.py --host-tests` (or `python tools/host_tests.py`) compiles the real bootloader and relay sources with the host C compiler (`HOST_CC`, `cc`, `gcc` or `clang`) and runs them, on Linux, macOS and Windows. Nothing is compiled for a board. A test checks that the table of tests lists every `tests/test_*.c`.
+
+- **The Python fakes are checked against the firmware:** `tests/relay_golden_dump.c` compiles the relay logic of the controller board (`relay_ids.h`) for the PC, `python tools/gen_relay_golden.py` writes what it answers into `tests/relay_golden_vectors.json`, and `tests/test_relay_golden.py` requires the CM5 fragmenting code, the fake controller board of the bridge tests and the CAN identifier table to produce the same bytes. With a host compiler the test also fails when the file is older than the firmware.
+
 ## [0.2.5] - The repository bumps like every other one, one entry point builds the firmware on any platform and the retired Qt6 kiosk shell is gone
 
 - **The repository now bumps like every other one:** `python tools/hydra_project_tool.py bump` used to stop at the repository's own `bump_version.py`, which wanted a header and a macro family on the command line. Run without arguments, that script now bumps the application version of the header that the manifest names as its native version (the one the repository version follows), and the manifest follows with `bump_manifest_version.py --sync`, so a batch of releases can include this repository. With a header and a family it works exactly as before, and the other five component versions are still raised on their own with `bump_firmware_versions.py`.
