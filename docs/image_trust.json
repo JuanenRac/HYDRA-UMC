@@ -5,20 +5,47 @@
   "default_policy": "format2_only",
   "min_counter": 0,
   "targets": {
-    "rcb": {"table_offset": "0x400", "bootloader": "src/mcu_stm32g474/boot", "hardware_id": "0x47343031"},
-    "kb_cm7": {"table_offset": "0x400", "bootloader": "src/mcu_stm32h745/CM7/boot", "hardware_id": "0x48374337"},
-    "kb_cm4": {"table_offset": "0x400", "bootloader": "src/mcu_stm32h745/CM4/boot", "hardware_id": "0x48374334"}
+    "rcb": {
+      "table_offset": "0x400",
+      "bootloader": "src/mcu_stm32g474/boot",
+      "hardware_id": "0x47343031"
+    },
+    "kb_cm7": {
+      "table_offset": "0x400",
+      "bootloader": "src/mcu_stm32h745/CM7/boot",
+      "hardware_id": "0x48374337"
+    },
+    "kb_cm4": {
+      "table_offset": "0x400",
+      "bootloader": "src/mcu_stm32h745/CM4/boot",
+      "hardware_id": "0x48374334"
+    }
   },
   "flavours": {
     "dev": {
       "about": "Bench builds. The seed of this key is public (image_header2.DEV_SEED): a bootloader with this table is never an official one.",
       "keys": [
-        {"state": "current", "public": "3f508a29d35d9f3385fdd56b33d3d1219e35bb6180609a838f6d44bacfaf80b2", "key_id": "096e136d6408ff5b"}
+        {
+          "state": "current",
+          "public": "3f508a29d35d9f3385fdd56b33d3d1219e35bb6180609a838f6d44bacfaf80b2",
+          "key_id": "096e136d6408ff5b"
+        }
       ]
     },
     "release": {
-      "about": "Official builds. Empty until the maintainer provisions the image-signing key (procedure in tools/image_trust.py); the private half stays outside every repository. A release table with no current key cannot be built.",
-      "keys": []
+      "about": "Official builds. The image-signing key (current) and the reserved next key; the private halves stay outside every repository.",
+      "keys": [
+        {
+          "state": "current",
+          "public": "ab49202306e14e0caf0a2ae94ed3935026b3b69aa82f6cabe73c7611509fdd86",
+          "key_id": "6ca5a8d6a1bfc3b0"
+        },
+        {
+          "state": "next",
+          "public": "5e385b728fb3889ffcc204f39eaa7ef178ef17bae292bce68303d7fca7c12253",
+          "key_id": "118b5259f0371b36"
+        }
+      ]
     }
   }
 }
