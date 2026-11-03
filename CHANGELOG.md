@@ -4,7 +4,7 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
-- **Bench test script:** `docs/BENCH_TESTS.md` lists the checks of the CAN tunnel to a URTC head, the FDCAN clock and the over-the-air update that need a real bus, all marked not executed.
+- **Bench test script:** `docs/BENCH_TESTS.md` lists the checks of the CAN tunnel to a URTC head, the FDCAN clock and the over-the-air update that need a real bus, all marked not executed. It also lists the checks of the dual-core mailbox, the controller board clocks and standby pins, the SPI link, the update of several boards, the emergency stop and the loss of power, all marked not executed.
 
 ## [0.2.6] - The build signs the application images, the C host tests run the same way on every platform and the Python fakes are checked against the firmware
 

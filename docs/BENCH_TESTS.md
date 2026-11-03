@@ -25,6 +25,25 @@ Every test below is **not executed**. The tunnel between the Robot Controller an
 | 6 | Send a signed firmware image to the head through the tunnel, then a wrong key and a changed image. | Only the correct one is accepted; the others are refused before any write. | not executed |
 | 7 | Cut the power of the head during a transfer. | The head keeps its old firmware and can be updated again. | not executed |
 
+## Controller board, kinematic brain and host link
+
+Every row below is **not executed** either; it needs the STM32G474 controller board, the STM32H745 kinematic brain, a CM5 host on the SPI link, a CAN analyser and a current-limited supply.
+
+| # | Step | Expected result | Result |
+|---|------|-----------------|--------|
+| 8 | Run the dual-core mailbox of the H745 (CM4 to CM7 commands) for one hour at the highest command rate, with the hardware semaphore checked on a scope or a counter. | No lost, torn or repeated command; the semaphore is never held across a reset of one core. | not executed |
+| 9 | Compare the CAN bitrate of the controller board with the one of the stack bus on the analyser. | Both buses show the same nominal and data bitrate; any mismatch is recorded. | not executed |
+| 10 | Start the G474 bootloader from a cold power-up and measure the FDCAN kernel clock. | The kernel clock is the one the bit timing assumes and the first frame is sent without an error counter rising. | not executed |
+| 11 | Wire the CAN standby pins as in the pinout note, boot, then read the option bytes. | The transceivers leave standby and the board boots from its application; the boot pin and option bytes read back as documented. | not executed |
+| 12 | Send frames at the maximum rate before the scheduler of the G474 starts (reset loop, 100 cycles). | No fault and no hang in the tick or the receive interrupt. | not executed |
+| 13 | Run the SPI link between the CM5 and the H745 at full rate with a frame generator, cutting a byte at random. | A damaged or repeated frame is detected and answered with a clean error; the link recovers on the next frame. | not executed |
+| 14 | Ask the application on a board to enter its bootloader over the stack bus and then flash it. | The board reboots into the bootloader and accepts the signed image; a board that does not answer is reported. | not executed |
+| 15 | Flash a batch of boards one after the other, with two boards sharing a board identifier. | The duplicate is reported before any write; the others finish and each reports its new version. | not executed |
+| 16 | Read the memory of a production-protected board and send a wrong adoption code. | The memory cannot be read out and the wrong code is refused. | not executed |
+| 17 | Send an emergency stop on the highest-priority identifier while the stack bus is at 80 per cent load. | Every motion output is disabled within the documented time; measure it with the scope. | not executed |
+| 18 | Pull the supply of the tool head and of one axis board while moving. | The stack reports the loss and the motion drivers stay disabled until a person re-enables them. | not executed |
+| 19 | Read the status of the eight boards through the SPI link in application mode for ten minutes. | The status, error counters and bootloader state of each board arrive without gaps. | not executed |
+
 ## What this bench cannot show
 
 Bus load with all the nodes of a real machine, noise on long cables and the timing of the safe stop; measure them on the final wiring.
