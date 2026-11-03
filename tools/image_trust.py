@@ -4,7 +4,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-"""The trust table of the bootloaders: its bytes, its public source file (keys/image_trust.json) and the check that a compiled bootloader holds exactly it.
+"""The trust table of the bootloaders: its bytes, its public source file (docs/image_trust.json) and the check that a compiled bootloader holds exactly it.
 
     python tools/image_trust.py validate                      the source file is well formed
     python tools/image_trust.py table FLAVOUR [--c]           the table bytes (hexadecimal, or a C array for the linker section)
@@ -19,7 +19,7 @@ Provisioning the image-signing key of the applications (procedure; this reposito
   1. On the maintainer's machine, outside every repository:  ``python tools/image_header.py keygen --out ~/.hydra-umc-keys/hydra_image_ed25519.seed``
      (refuses to overwrite a file; keep an offline copy; the key that signs release assets is a different one).
   2. ``python tools/image_trust.py entry ~/.hydra-umc-keys/hydra_image_ed25519.seed --state current`` prints ONLY the public entry; paste it in the release
-     flavour of keys/image_trust.json, make a second seed the same way for ``next``, and run ``validate``.
+     flavour of docs/image_trust.json, make a second seed the same way for ``next``, and run ``validate``.
   3. Only the public file is committed. The seed is never printed, copied into a repository, an artifact or a build service.
 """
 from __future__ import annotations
@@ -38,7 +38,7 @@ import ed25519_ref as ed25519  # noqa: E402
 import image_header as ih  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-TRUST_FILE = ROOT / "keys" / "image_trust.json"
+TRUST_FILE = ROOT / "docs" / "image_trust.json"
 STATES = {"current": 1, "next": 2, "revoked": 4}
 KEY_ENTRY_SIZE = 44
 KNOWN_FLAGS = 7

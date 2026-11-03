@@ -103,7 +103,7 @@ class TrustFileTests(unittest.TestCase):
 
     def test_the_source_file_is_valid_and_holds_no_secret(self):
         tr.validate(self.doc)
-        raw = (ROOT / "keys" / "image_trust.json").read_text(encoding="utf-8")
+        raw = (ROOT / "docs" / "image_trust.json").read_text(encoding="utf-8")
         for word in ("BEGIN PRIVATE", '"seed"'):
             self.assertNotIn(word, raw)
 
