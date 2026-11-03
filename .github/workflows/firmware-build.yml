@@ -1,0 +1,317 @@
+# =============================================================================
+# HYDRA-UMC - Manual firmware build (build here, sign locally)
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Started by hand only (workflow_dispatch): it never runs on a push or a pull request. It compiles the six firmware components of this repository
+# with build_firmware.sh in CI mode (HYDRA_UMC_CI=1: no version change, nothing tracked is rewritten), checks the images against the committed
+# firmware manifest, and uploads them with SHA256SUMS and a build manifest as one artifact with a build-provenance attestation.
+#
+# It holds no key and signs nothing. The bootloaders are built here with the PUBLIC development keys of the repository, so a build made here is a bench
+# build (signing_key_kind "dev"), never an official release. An official release is built on the maintainer's machine with HYDRA_UMC_RELEASE=1 and its own
+# keys, and the application images are signed there with tools/sign_release.py. With dry_run on (the default) nothing but the artifact is made; with it
+# off a DRAFT pre-release named v<version>-bench with the unsigned files is also prepared (its tag is never the tag of an official release).
+# A failed or stuck build writes the Job Summary and opens (or updates) the issue "build-failed"; a later good build closes it.
+
+name: Firmware build (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: build and check only, no draft pre-release"
+        type: boolean
+        required: true
+        default: true
+      ref:
+        description: "Branch, tag or commit of this repository"
+        type: string
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firmware-build-${{ inputs.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan the build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      sha: ${{ steps.plan.outputs.sha }}
+    steps:
+      - name: Check the inputs
+        shell: bash
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          [[ "$REF" =~ ^[A-Za-z0-9._/-]{1,100}$ ]] || { echo "::error::the ref has characters that a branch, tag or commit does not have"; exit 1; }
+
+      - name: Check out this repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Work out the version and pin the commit
+        id: plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "version=$(python3 -c "import json; print(json.load(open('hydra-umc.project.json', encoding='utf-8'))['version'])")" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build the six components
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out the exact commit that was planned
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Make sure the build has no private key to take
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in HYDRA_UMC_RELEASE HYDRA_FW_UPDATE_PUBKEY_HEX HYDRA_FW_HMAC_KEY_HEX HYDRA_FW_SIGNING_SEED_FILE; do
+            if [ -n "${!name:-}" ]; then
+              echo "::error::$name is set in this job; a build made here must use the public development keys"
+              exit 1
+            fi
+          done
+
+      - name: Install the ARM GNU toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
+
+      - name: Compile the firmware without a version bump
+        env:
+          HYDRA_UMC_CI: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x build_firmware.sh
+          ./build_firmware.sh
+          arm-none-eabi-gcc --version | head -n 1 > toolchain.txt
+
+      - name: Check the images against the committed manifest and name the files
+        shell: bash
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python3 - <<'PY'
+          import json, shutil, sys, zlib
+          from pathlib import Path
+          manifest = json.loads(Path("firmware/firmware_manifest.json").read_text(encoding="utf-8"))
+          components = manifest["components"]
+          if len(components) != 6:
+              sys.exit("::error::the committed manifest has " + str(len(components)) + " components, expected 6")
+          out = Path("out")
+          same = 0
+          for key, component in sorted(components.items()):
+              name = component["files"]["bin"]["filename"]
+              image = Path("firmware") / name
+              if not image.is_file():
+                  sys.exit("::error::" + name + " was not made (raise the version of the component BEFORE the build, and commit the manifest)")
+              if "_v" + component["version_string"] + "." not in name:
+                  sys.exit("::error::" + name + " does not carry version " + component["version_string"])
+              if list(Path("firmware").glob(name[:-4] + ".sig")):
+                  sys.exit("::error::" + name + " has a signature: nothing may be signed in Actions")
+              crc = format(zlib.crc32(image.read_bytes()) & 0xFFFFFFFF, "08X")
+              if crc == component["files"]["bin"]["crc32"].upper().replace("0X", ""):
+                  same += 1
+              else:
+                  print("::warning::" + name + " differs from the committed image (CRC32 " + crc + " here, " + component["files"]["bin"]["crc32"] + " committed): a different toolchain or different keys")
+              for suffix in (".bin", ".hex"):
+                  shutil.copyfile(Path("firmware") / (name[:-4] + suffix), out / (name[:-4] + suffix))
+          print("images ok:", len(components), "components,", same, "byte-identical to the committed image")
+          Path("out/same-as-committed.txt").write_text(str(same), encoding="utf-8")
+          PY
+          mv out/same-as-committed.txt same-as-committed.txt
+          cp toolchain.txt out/toolchain.txt.tmp
+          cp same-as-committed.txt out/same-as-committed.txt.tmp
+          {
+            echo "### HYDRA-UMC firmware (bench build, development keys)"
+            (cd out && sha256sum HYDRA_*.bin | sed 's/^/- /')
+            echo "- toolchain: \`$(cat toolchain.txt)\`"
+            echo "- identical to the committed image: $(cat same-as-committed.txt) of 6"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the images
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: parts
+          path: |
+            out/HYDRA_*
+            out/toolchain.txt.tmp
+            out/same-as-committed.txt.tmp
+          if-no-files-found: error
+          retention-days: 7
+
+  collect:
+    name: Collect, attest and prepare the draft
+    needs: [plan, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      SHA: ${{ needs.plan.outputs.sha }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Download the images
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: parts
+          path: files
+
+      - name: Write SHA256SUMS and the build manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd files
+          mv toolchain.txt.tmp /tmp/toolchain.txt
+          mv same-as-committed.txt.tmp /tmp/same.txt
+          sha256sum HYDRA_* > SHA256SUMS
+          python3 - <<'PY'
+          import json, os
+          files = []
+          for line in open("SHA256SUMS", encoding="utf-8"):
+              digest, name = line.strip().split("  ", 1)
+              files.append({"name": name, "sha256": digest, "bytes": os.path.getsize(name)})
+          json.dump({
+              "schema": "hydra-build/1", "repository": os.environ["GITHUB_REPOSITORY"], "project": "hydra-umc", "version": os.environ["VERSION"],
+              "commit": os.environ["SHA"], "built_on": "github-actions", "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_url": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+              "toolchain": open("/tmp/toolchain.txt", encoding="utf-8").read().strip(), "signing_key_kind": "dev",
+              "identical_to_committed": int(open("/tmp/same.txt", encoding="utf-8").read().strip()),
+              "signed": False, "files": files,
+          }, open("build-manifest.json", "w", encoding="utf-8"), indent=2)
+          PY
+          cat SHA256SUMS
+
+      - name: Attest the provenance of the files
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: |
+            files/HYDRA_*
+            files/SHA256SUMS
+
+      - name: Upload the build
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: firmware-hydra-umc-${{ needs.plan.outputs.version }}
+          path: files/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Prepare the draft pre-release with the unsigned files
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="v$VERSION-bench"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "::error::the release $tag already exists: raise the version before a new build"
+            exit 1
+          fi
+          gh release create "$tag" files/* --draft --prerelease --target "$SHA" --title "HYDRA-UMC firmware $VERSION (unsigned bench build)" \
+            --notes "Unsigned bench build made by GitHub Actions with the public development keys. Not an official release; do not install it on a board that anybody else can reach."
+          echo "- draft pre-release \`$tag\` prepared with the unsigned files" >> "$GITHUB_STEP_SUMMARY"
+
+  verify:
+    name: Verify the artifact as a stranger would
+    needs: [plan, collect]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      attestations: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Download the build
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: firmware-hydra-umc-${{ needs.plan.outputs.version }}
+          path: build
+
+      - name: Check hashes, manifest and attestation
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd build
+          sha256sum -c SHA256SUMS
+          python3 - <<'PY'
+          import json
+          manifest = json.load(open("build-manifest.json", encoding="utf-8"))
+          assert manifest["signed"] is False and manifest["signing_key_kind"] == "dev" and manifest["files"], "unexpected manifest"
+          print("manifest ok:", manifest["project"], manifest["version"], len(manifest["files"]), "files")
+          PY
+          for file in HYDRA_* SHA256SUMS; do
+            gh attestation verify "$file" --repo "$GITHUB_REPOSITORY" >/dev/null
+            echo "attestation ok: $file"
+          done
+
+  notify:
+    name: Tell the owner (issue build-failed)
+    if: ${{ always() }}
+    needs: [plan, build, collect, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RESULTS: ${{ needs.plan.result }} ${{ needs.build.result }} ${{ needs.collect.result }} ${{ needs.verify.result }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Open, update or close the issue
+        shell: bash
+        run: |
+          set -euo pipefail
+          number="$(gh issue list --repo "$GITHUB_REPOSITORY" --label build-failed --state open --json number --jq '.[0].number // empty')"
+          bad=""
+          for r in $RESULTS; do [ "$r" = "success" ] || bad="$bad $r"; done
+          if [ -n "$bad" ]; then
+            body="The firmware build failed (plan / build / collect / verify: $RESULTS; anything but success counts as a failure: failure, timed out, cancelled or skipped). Run: $RUN_URL"
+            if [ -n "$number" ]; then
+              gh issue comment "$number" --repo "$GITHUB_REPOSITORY" --body "$body"
+            else
+              gh label create build-failed --repo "$GITHUB_REPOSITORY" --color B60205 --description "A build in GitHub Actions failed" 2>/dev/null || true
+              gh issue create --repo "$GITHUB_REPOSITORY" --label build-failed --title "Firmware build failed" --body "$body"
+            fi
+            echo "### The build failed: issue build-failed updated" >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "$number" ]; then
+            gh issue close "$number" --repo "$GITHUB_REPOSITORY" --comment "A later build passed: $RUN_URL"
+          fi
+
+      - name: The notice itself failed
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          echo "::error::The build did not pass (${RESULTS}) and the issue build-failed could not be written. Run: ${RUN_URL}"
+          echo "### The build did not pass and the issue could not be written" >> "$GITHUB_STEP_SUMMARY"
+          echo "Results: ${RESULTS}. Run: ${RUN_URL}" >> "$GITHUB_STEP_SUMMARY"
