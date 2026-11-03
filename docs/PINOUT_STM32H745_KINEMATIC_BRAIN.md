@@ -1,3 +1,6 @@
+# PINOUT_STM32H745_KINEMATIC_BRAIN
+
+```text
 ================================================================================
         KINEMATIC BRAIN - STM32H745ZIT6 PINOUT (LQFP-144, 0.5mm pitch)
                     PROPOSED - pre-schematic pin allocation
@@ -15,7 +18,7 @@ checked but NOT hardware-verified choice - re-confirm against Table 8/
 Table 9 (alternate functions) in STM32CubeMX before finalizing schematic
 silkscreen. Clock source pins (OSC_IN/OUT, boot pins, debug SWD, power
 pins) are out of scope for this file - already flagged as TODO in
-docs/COMPILE_STM32H745.TXT section 6.
+docs/COMPILE_STM32H745.md section 6.
 
 Total distinct GPIO pins used below: 72 of the ~75 confirmed-available
 general-purpose pins on this package (3 spare - PG8, PG9, PG10 - see
@@ -117,7 +120,7 @@ Y1   | PC12    | PC13    |  All 12: GPIO input, EXTI-capable, active-low
 Y2   | PD2     | PD3     |  with internal pull-up (matches URTC's own
 Z    | PD4     | PD5     |  generic endstop convention, referenced
 E0   | PD6     | PD7     |  already in hardware/PCB/robot_controller_
-E1   | PD8     | PD9     |  board_stm32g474/BOM.TXT item 04)          /
+E1   | PD8     | PD9     |  board_stm32g474/BOM.md item 04)          /
 
 --------------------------------------------------------------------------------
 5. FANS - 3x 3-wire (PWM control + tach sense; no direct 3rd "control"
@@ -228,7 +231,7 @@ PC1  | BED_THERM2      | ADC1_INP11 (CONFIRMED pin) - NTC thermistor 2
       PG12, PG13, PG14, PG15.
 
 9e. Out of scope for this file (system/power pins, not part of the
-    peripheral pin budget - see docs/COMPILE_STM32H745.TXT section 6 for
+    peripheral pin budget - see docs/COMPILE_STM32H745.md section 6 for
     the real clock-tree/boot TODO list these belong to): VDD/VSS pairs,
     VCAP1/VCAP2, VBAT, VREF+/VREF-, VDDA/VSSA, BOOT0, NRST, PA13/PA14 (SWD),
     PC14/PC15 (OSC32_IN/OUT, if an RTC crystal is added).
@@ -239,7 +242,7 @@ PC1  | BED_THERM2      | ADC1_INP11 (CONFIRMED pin) - NTC thermistor 2
 These 4 items are the most detailed version of what README.md section 8 (and
 the BOM it's derived from) describe at a higher level. This section is the
 single source of truth for all 4, kept in sync with README.md section 8 and
-hardware/PCB/kinematic_brain_stm32h745/BOM.TXT:
+hardware/PCB/kinematic_brain_stm32h745/BOM.md:
 
   - Axes: concrete "X, Y1, Y2, Z, E0, E1" (dual-Y gantry + 2 tool/extruder
     axes), not a generic 6-axis "X, Y, Z, A, B, C" label. This file's
@@ -254,21 +257,22 @@ hardware/PCB/kinematic_brain_stm32h745/BOM.TXT:
     bed would not need. Flag this to whoever lays out the PCB - it is not
     a drop-in swap of the same footprint as a 24V-bus design.
   - STACK A connector: 40-pin, full pinout in
-    docs/PINOUT_STACKA_CONNECTOR.TXT (README.md section 11 only carries the
+    docs/PINOUT_STACKA_CONNECTOR.md (README.md section 11 only carries the
     generic "Heavy-copper shrouded connector, 2.54mm pitch" description).
 
 --------------------------------------------------------------------------------
 11. CROSS-REFERENCES
 --------------------------------------------------------------------------------
-- docs/PINOUT_STACKA_CONNECTOR.TXT   - the 40-pin bus this chip's FDCAN1 +
+- docs/PINOUT_STACKA_CONNECTOR.md   - the 40-pin bus this chip's FDCAN1 +
   power rails feed (section 2 above only lists the MCU-side FDCAN1 pins;
   power routing to that connector is a board-level, not MCU-pin, concern).
-- docs/PINOUT_CM5_CARRIER.TXT        - the other end of section 1's SPI1
+- docs/PINOUT_CM5_CARRIER.md        - the other end of section 1's SPI1
   link.
 - docs/datasheets/STM32H745ZIT6.pdf  - Table 8 (pin definition), Table 9
   (alternate functions) - re-verify every pin above against these before
   schematic capture.
-- hardware/PCB/kinematic_brain_stm32h745/BOM.TXT - component-level BOM this
+- hardware/PCB/kinematic_brain_stm32h745/BOM.md - component-level BOM this
   pinout implies (driver ICs, MOSFETs, SSR, thermistor front-end) - updated
   alongside this file.
 ================================================================================
+```

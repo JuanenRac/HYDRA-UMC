@@ -1,5 +1,8 @@
+# BOM
+
+```text
 ================================================================================
-                  KINEMATIC BRAIN - BOM.TXT (STARTING LIST)
+                  KINEMATIC BRAIN - BOM.md (STARTING LIST)
              Bill of Materials - DRAFT, no schematic exists yet
 ================================================================================
 STATUS: derived directly from the repo-root README.md's own already-written
@@ -14,7 +17,7 @@ Item | Qty | Designator | Component / Part Number              | Package / Footp
  02  |  1  | U2         | TI TCAN1044AVD or NXP TJA1443           | SOIC-8               | FDCAN1 transceiver, STACK A bus to up to 8 Robot Controller Boards (README.md section 6)
  03  |  1  | U3         | Cypress/Infineon FM25V05-G or Fujitsu MB85RS64 | SOIC-8         | 64KB SPI FRAM, dedicated SPI2 bus (README.md section 7)
  04  |  2  | U4, U5     | Genesys Logic GL3523                    | QFN-88               | USB 3.0/SuperSpeed hub controllers, 4 camera ports each (README.md section 4)
- 05  |  1  | U13        | PCIe Gen3 1-to-2/4 packet switch (e.g. ASMedia ASM2806 family or equiv., TBD) | QFN, TBD | Fans the CM5's single PCIe Gen2/3 x1 lane out to 2 downstream x1 lanes, one per M.2 socket below (README.md section 3) - needed because the CM5 connector exposes only ONE PCIe lane (docs/PINOUT_CM5_CARRIER.TXT), so 2 simultaneous M.2 AI accelerators can't both wire directly to it. Needs Gen3 (not just Gen2) so the Hailo-10 socket isn't bottlenecked below its own native link speed - exact part TBD.
+ 05  |  1  | U13        | PCIe Gen3 1-to-2/4 packet switch (e.g. ASMedia ASM2806 family or equiv., TBD) | QFN, TBD | Fans the CM5's single PCIe Gen2/3 x1 lane out to 2 downstream x1 lanes, one per M.2 socket below (README.md section 3) - needed because the CM5 connector exposes only ONE PCIe lane (docs/PINOUT_CM5_CARRIER.md), so 2 simultaneous M.2 AI accelerators can't both wire directly to it. Needs Gen3 (not just Gen2) so the Hailo-10 socket isn't bottlenecked below its own native link speed - exact part TBD.
  05a |  1  | -          | M.2 Key M socket (2242/2280)             | SMD                  | Hailo-8 AI accelerator, PCIe x1 via the switch's downstream port 1 (README.md section 3)
  05b |  1  | -          | M.2 Key M socket (2242/2280)             | SMD                  | Hailo-10 AI accelerator, PCIe x1 via the switch's downstream port 2 (README.md section 3) - added alongside the existing Hailo-8, not a replacement
  06  |  N  | -          | TPS2065 or SY6280                        | SOT-23 or similar    | Per-USB-port VBUS current-limiting power switches, 500mA-1A (README.md section 4)
@@ -22,18 +25,18 @@ Item | Qty | Designator | Component / Part Number              | Package / Footp
  08  |  1  | -          | 5V USB buck regulator (24V->5V, 6A)      | TBD                  | Dedicated rail for 8x USB 3.0 camera ports + GL3523 hubs (README.md section 9)
  09  |  1  | -          | 3.3V regulator (4A)                      | TBD                  | STM32, FRAM, transceivers, PCIe switch (item 05), Hailo-8 + Hailo-10 3.3V rails (README.md section 9) - current budget needs re-checking against 4A once both M.2 modules' real power draw is confirmed (Hailo-8 is sub-5W; Hailo-10's own figure TBD), may need to grow past 4A
  10  |  2  | -          | Hirose DF40 mezzanine connectors         | SMD                  | Compute Module 5 (README.md section 11)
- 11  |  1  | J-STKA     | 40-pin, 2.54mm STACKING header (male, base of stack) | THT      | STACK A bus connection - base of the physical Robot Controller Board stack (CONFIRMED topology, one side of this board), full pinout: docs/PINOUT_STACKA_CONNECTOR.TXT section 3
+ 11  |  1  | J-STKA     | 40-pin, 2.54mm STACKING header (male, base of stack) | THT      | STACK A bus connection - base of the physical Robot Controller Board stack (CONFIRMED topology, one side of this board), full pinout: docs/PINOUT_STACKA_CONNECTOR.md section 3
  12  |  8  | -          | USB 3.0 Type-A (or Hirose industrial)    | THT/SMD              | Robot camera ports (README.md section 11)
- 13  |  6   | U6-U11    | Trinamic TMC5160A                        | QFN-7x7-48           | 6x stepper drivers (X,Y1,Y2,Z,E0,E1), SPI daisy-chain on SPI4 - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 3
- 14  |  20  | -          | N-Channel MOSFET (low-side)              | TBD                  | 8+2 pump + 8+2 valve channels - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT sections 6-7
- 15  |  1  | -          | Solid-state relay (230VAC mains-rated)   | TBD                  | Heated bed, opto-isolated MCU-side trigger - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 8 (mains-voltage circuit - real creepage/clearance required, NOT a 24V-bus part)
- 16  |  2  | -          | NTC thermistor input (analog)             | -                    | Heated bed, ADC1 (docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 8)
- 17  |  3  | -          | Fan driver (low-side MOSFET/gate driver)  | TBD                  | 3x 3-wire fans (PWM-switched supply + tach sense) - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 5
+ 13  |  6   | U6-U11    | Trinamic TMC5160A                        | QFN-7x7-48           | 6x stepper drivers (X,Y1,Y2,Z,E0,E1), SPI daisy-chain on SPI4 - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md section 3
+ 14  |  20  | -          | N-Channel MOSFET (low-side)              | TBD                  | 8+2 pump + 8+2 valve channels - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md sections 6-7
+ 15  |  1  | -          | Solid-state relay (230VAC mains-rated)   | TBD                  | Heated bed, opto-isolated MCU-side trigger - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md section 8 (mains-voltage circuit - real creepage/clearance required, NOT a 24V-bus part)
+ 16  |  2  | -          | NTC thermistor input (analog)             | -                    | Heated bed, ADC1 (docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md section 8)
+ 17  |  3  | -          | Fan driver (low-side MOSFET/gate driver)  | TBD                  | 3x 3-wire fans (PWM-switched supply + tach sense) - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md section 5
  18  |  1  | -          | MIPI-DSI FPC connector                   | FPC                  | Touch display interface (README.md section 11) - not the CM5's own DF40, this board's own local FPC to the panel
- 19  |  1  | U12        | Genesys Logic GL850G or FE1.1s (TBD)     | SSOP-28 or similar   | USB 2.0 hub, fans out CM5's single native USB2 PHY to 2 ports - README.md section 4a, docs/PINOUT_CM5_CARRIER.TXT
+ 19  |  1  | U12        | Genesys Logic GL850G or FE1.1s (TBD)     | SSOP-28 or similar   | USB 2.0 hub, fans out CM5's single native USB2 PHY to 2 ports - README.md section 4a, docs/PINOUT_CM5_CARRIER.md
  20  |  2  | -          | USB 2.0 Type-A                            | THT/SMD              | Gamepad/mouse/keyboard ports (README.md section 4a)
  21  |  1  | F1         | TBD - resettable PTC fuse or fast-blow fuse | TBD                | Overcurrent protection on the board's single 24V DC main input (README.md section 9), upstream of every onboard regulator (items 07-09) and of the +24V_BUS pins this board forwards onto the STACK A connector (item 11) - protects the whole board plus every downstream Robot Controller Board from an input-side fault. Rating TBD until the real combined load (regulators + up to 8 stacked boards' worth of stepper current) is known - not guessed here.
- 22  |  1  | F2         | TBD - mains-rated fuse (230VAC)           | TBD                  | Overcurrent protection in series with the LIVE conductor feeding the heated bed solid-state relay (item 15) - same mains-voltage circuit as that relay (docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 8/10: real creepage/clearance, opto-isolated trigger), NOT a 24V-bus part. Rating TBD until the heated bed's real wattage is specified.
+ 22  |  1  | F2         | TBD - mains-rated fuse (230VAC)           | TBD                  | Overcurrent protection in series with the LIVE conductor feeding the heated bed solid-state relay (item 15) - same mains-voltage circuit as that relay (docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md section 8/10: real creepage/clearance, opto-isolated trigger), NOT a 24V-bus part. Rating TBD until the heated bed's real wattage is specified.
 
 Datasheets for most of these already exist at ../../../docs/datasheets/
 (STM32H745ZIT6.pdf, GL3523.pdf, Hailo-8 family, Raspberry Pi CM5.pdf) -
@@ -44,5 +47,6 @@ candidates listed, not chosen), exact regulator ICs (topology described in
 README.md, specific parts TBD), exact PCIe switch part (item 05 -
 candidate family only, not chosen), passives (decoupling, pull-ups/downs -
 added at schematic time), endstop connectors (12x, see
-docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 4).
+docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md section 4).
 ================================================================================
+```

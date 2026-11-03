@@ -6,7 +6,7 @@
  * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
  * STARTING POINT ONLY - proves the toolchain/HAL/linker/FreeRTOS setup
- * documented in docs/COMPILE_STM32H745.TXT actually produces a working CM7
+ * documented in docs/COMPILE_STM32H745.md actually produces a working CM7
  * binary (a single FreeRTOS task toggling a GPIO), not the real
  * motion-engine firmware yet. Real work still needed here, tracked against
  * docs/architecture.md:
@@ -44,7 +44,7 @@
  * task, not to change the timeout the bootloader already set.
  *
  * PIN: PG9 - one of the 3 explicitly-spare GPIOs in this chip's real
- * pinout (docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 9c), used here
+ * pinout (docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md section 9c), used here
  * only because it's genuinely unclaimed - PB0 (the previous placeholder)
  * is now real hardware: X_DIR (see that pinout file's section 3c). Every
  * other real peripheral this core will eventually need (6x TMC5160A SPI4

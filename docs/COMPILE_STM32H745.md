@@ -1,12 +1,15 @@
+# COMPILE_STM32H745
+
+```text
 =============================================================================
-COMPILE_STM32H745.TXT - Building the Kinematic Brain firmware (STM32H745ZIT6, dual-core)
+COMPILE_STM32H745.md - Building the Kinematic Brain firmware (STM32H745ZIT6, dual-core)
 PROJECT: HYDRA-UMC
 AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
 LICENSE: This document is licensed under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
 =============================================================================
 Every command in this document was actually run against this project's own
 real source tree while writing it, via ./build_firmware.sh h745 - not
-reconstructed from memory. See docs/COMPILE_STM32G474.TXT's own section 1-2
+reconstructed from memory. See docs/COMPILE_STM32G474.md's own section 1-2
 for the shared tooling/vendoring philosophy (same pattern, applied here to
 a dual-core chip) - this document focuses on what's DIFFERENT for dual-core.
 
@@ -36,7 +39,7 @@ the CM7 application is a FreeRTOS GPIO-toggle smoke test, not real motion
 firmware yet).
 
 -----------------------------------------------------------------------------
-2. Tools - same as STM32G474 (docs/COMPILE_STM32G474.TXT section 2)
+2. Tools - same as STM32G474 (docs/COMPILE_STM32G474.md section 2)
 -----------------------------------------------------------------------------
 No additional tools needed for dual-core specifically - same
 arm-none-eabi-gcc toolchain builds both cores, just with different
@@ -93,7 +96,7 @@ a typical single-core chip:
 -----------------------------------------------------------------------------
 3a. FreeRTOS kernel sources (applications only, not the bootloaders)
 -----------------------------------------------------------------------------
-See docs/COMPILE_STM32G474.TXT section 3a for the shared vendoring
+See docs/COMPILE_STM32G474.md section 3a for the shared vendoring
 philosophy and gotcha (HAL_IncTick() via vApplicationTickHook() once
 FreeRTOS owns SysTick - identical reasoning here, both cores). FreeRTOS-
 Kernel itself is fetched ONCE (build/vendor/freertos/, shared with G474 -
@@ -174,7 +177,7 @@ for a future CM7<->CM4 shared-memory/IPC-mailbox region once that's
 actually designed - see this document's own section 6.
 
 PROPOSED throughout this section, modeled on the same bootloader+app+backup
-philosophy as G474's own split (docs/COMPILE_STM32G474.TXT section 5) and
+philosophy as G474's own split (docs/COMPILE_STM32G474.md section 5) and
 URTC's own proven original - not yet verified against real hardware.
 
 -----------------------------------------------------------------------------
@@ -228,3 +231,4 @@ rebuild (`./build_firmware.sh --clean h745`), and via a combined
 =============================================================================
 END OF FILE
 =============================================================================
+```

@@ -592,7 +592,7 @@ void HandleEndUpdate(uint8_t *data) {
 // -----------------------------------------------------------------------
 void Relay_ToStackA(uint8_t slot, const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
     // BOARD_ID[2:0] is a 3-bit local DIP switch (docs/PINOUT_STM32G474_
-    // ROBOT_CONTROLLER.TXT section 1c) - only slots 0-7 can ever exist on
+    // ROBOT_CONTROLLER.md section 1c) - only slots 0-7 can ever exist on
     // the bus. slot >= 16 would push target_id past the 11-bit standard
     // CAN ID range (undefined HAL behavior); this rejects anything past
     // the actually-addressable range instead of only the ones that would

@@ -1,3 +1,6 @@
+# CANBUS_STM32G474
+
+```text
 =============================================================================
 CAN BUS COMMAND MAP - ROBOT CONTROLLER BOARD (STM32G474RET6)
 PROJECT: HYDRA-UMC
@@ -32,7 +35,7 @@ convention as URTC's own protocol.
 0. ADDRESSING - how a raw FDCAN1 ID maps to "which board, which command"
 -----------------------------------------------------------------------------
 This board sits on a SHARED bus (FDCAN1 "STACK A") carrying up to 8 Robot
-Controller Boards in parallel (docs/PINOUT_STACKA_CONNECTOR.TXT - a
+Controller Boards in parallel (docs/PINOUT_STACKA_CONNECTOR.md - a
 physical stack, not a backplane). URTC's own protocol assumes exactly one
 board per CAN segment, so every ID below is a SLOT-RELATIVE OFFSET, not a
 fixed absolute ID:
@@ -42,8 +45,8 @@ fixed absolute ID:
 
 BOARD_ID (0-7) is NOT read from the bus or the STACK A connector - it's a
 LOCAL 3-position DIP switch on this board's own PCB (docs/PINOUT_
-STM32G474_ROBOT_CONTROLLER.TXT section 1c, hardware/PCB/robot_controller_
-board_stm32g474/BOM.TXT item 10), manually set by whoever installs the
+STM32G474_ROBOT_CONTROLLER.md section 1c, hardware/PCB/robot_controller_
+board_stm32g474/BOM.md item 10), manually set by whoever installs the
 board. Every board runs the identical firmware image; only the DIP switch
 differs board to board. `ReadSlotBaseId()` (src/mcu_stm32g474/boot/
 bootloader_main.c) computes the formula above once at boot.
@@ -67,11 +70,11 @@ Axis status
 DLC: 2 bytes (PROPOSED layout, not yet implemented)
 Data:
   - txData[0]: Endstop bitmask - one bit per axis (bit0=axis1 ... bit5=axis6,
-               docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 3),
+               docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md section 3),
                1=triggered. Axis numbering here is per-robot, NOT the
                Kinematic Brain's own X/Y1/Y2/Z/E0/E1 naming.
   - txData[1]: Fault flags - bit0=any TMC5160A DRV_DIAG_OR asserted
-               (docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 2a),
+               (docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md section 2a),
                bit1=local 5V power-good lost (PGOOD_5V), bit2=local 3.3V
                power-good lost (PGOOD_3V3) - both sensed per section 4 of
                that same pinout file. bits 3-7 reserved.
@@ -88,7 +91,7 @@ DLC: up to 8 bytes
 Data:
   - rxData[0:1]: Target CAN ID on this board's OWN second FDCAN controller
                  (FDCAN2, downlink to the URTC head - docs/PINOUT_STM32G474_
-                 ROBOT_CONTROLLER.TXT section 1b), big-endian, 11-bit
+                 ROBOT_CONTROLLER.md section 1b), big-endian, 11-bit
                  standard ID in the low bits.
   - rxData[2]: TOTAL DLC (0-8) of the frame to send on FDCAN2, repeated in
                both fragments of a frame longer than 5 bytes
@@ -322,10 +325,10 @@ Note: added during implementation - not in docs/architecture.md's
 -----------------------------------------------------------------------------
 - docs/architecture.md section 4       - the original ID-offset table this
   document expands into full wire-level detail.
-- docs/CANBUS_STM32H745.TXT             - the Kinematic Brain's own side of
+- docs/CANBUS_STM32H745.md             - the Kinematic Brain's own side of
   this same protocol (SPI1 Tier 0, and the FDCAN1 master/relay-gateway
   perspective of everything in section 2 above).
-- docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT - real MCU pins behind every
+- docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md - real MCU pins behind every
   peripheral this document assumes (FDCAN1, FDCAN2, BOARD_ID DIP switch).
 - URTC/docs/CANBUS.TXT (sibling repo)  - the original protocol this
   document's section 2 is re-based from, byte-for-byte compatible in
@@ -335,3 +338,4 @@ Note: added during implementation - not in docs/architecture.md's
   #defines, guaranteed to match this document since both were written
   from the same source of truth).
 =============================================================================
+```

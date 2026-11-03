@@ -42,7 +42,7 @@ main anti-bricking discipline as URTC's own bootloader (sibling repo) and
 this repo's own G474 bootloader. NOT yet verified against real hardware —
 **real dual-core bring-up (CM4 boot release, cache enable, real clock tree,
 cross-core scheduler-start coordination) is still NOT done** — see
-`../../docs/COMPILE_STM32H745.TXT` section 6 for the complete list of what
+`../../docs/COMPILE_STM32H745.md` section 6 for the complete list of what
 that still needs.
 
 Each application `main.c` (not the bootloaders) is still a **FreeRTOS**
@@ -50,7 +50,7 @@ GPIO-toggle smoke test (one task per core, TWO INDEPENDENT FreeRTOS
 instances — this is a dual-core AMP chip, no shared scheduler state)
 proving the toolchain/HAL/linker/RTOS pipeline works for both cores — not
 real motion/relay firmware yet. Each now blinks a real spare pin (`PG9` for
-CM7, `PG10` for CM4 — see `docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT`
+CM7, `PG10` for CM4 — see `docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md`
 section 9c) instead of a placeholder that collided with real hardware
 (the previous `PB0`/`PE0` are now `X_DIR`/`PUMP1`).
 
@@ -60,7 +60,7 @@ SRAM — see each file's own header for why `configCPU_CLOCK_HZ` is still the
 HSI64 reset default and needs updating alongside real clock config).
 Vendored the same way as the HAL/CMSIS sources, one core-specific port each
 (CM7 = ARM_CM7/r0p1, CM4 = ARM_CM4F) — see
-`../../docs/COMPILE_STM32H745.TXT` section 3a.
+`../../docs/COMPILE_STM32H745.md` section 3a.
 
 ## Hardware platform
 
@@ -103,7 +103,7 @@ controller. Not yet verified against real hardware.
 ../../build_firmware.sh h745
 ```
 
-See `../../docs/COMPILE_STM32H745.TXT` for the full compile reference,
+See `../../docs/COMPILE_STM32H745.md` for the full compile reference,
 including the dual-core-specific detail (per-core compiler flags, which of
 the 4 `system_stm32h7xx*.c` boot-strategy variants was picked and why).
 
@@ -133,4 +133,4 @@ the 4 `system_stm32h7xx*.c` boot-strategy variants was picked and why).
 
 HAL/CMSIS headers are NOT vendored here — `build_firmware.sh` fetches them
 fresh from ST's own official repos each run (cached under
-`../../build/h745/vendor/`). See `../../docs/COMPILE_STM32H745.TXT` section 3.
+`../../build/h745/vendor/`). See `../../docs/COMPILE_STM32H745.md` section 3.

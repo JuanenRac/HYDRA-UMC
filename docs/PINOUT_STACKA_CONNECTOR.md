@@ -1,3 +1,6 @@
+# PINOUT_STACKA_CONNECTOR
+
+```text
 ================================================================================
               STACK A BUS CONNECTOR - 40-PIN PINOUT (PROPOSED)
         Shared connector definition - identical on the Kinematic Brain's
@@ -14,7 +17,7 @@ supports 8 boards wired in parallel rather than daisy-chained point-to-point.
 
 This is the concrete pin-level definition of the connector referenced only
 generically ("Heavy-copper shrouded connector, 2.54mm pitch") in README.md
-section 11 and hardware/PCB/*/BOM.TXT - see section 4 below for how the two
+section 11 and hardware/PCB/*/BOM.md - see section 4 below for how the two
 relate.
 
 --------------------------------------------------------------------------------
@@ -40,7 +43,7 @@ parallel bus serving 8 independently-populated slots cannot work without it:
 SLOT ADDRESSING IS NOT ON THIS CONNECTOR: each Robot Controller Board
 carries its own FDCAN1 slot address (0-7) via 3 LOCAL DIP-switch/jumper pins
 on the board itself, set by whoever installs it - see
-docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 1c ("BOARD_ID[2:0]"). A
+docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md section 1c ("BOARD_ID[2:0]"). A
 per-position resistor strap or a ripple-propagated addressing scheme were
 both considered and rejected: either adds real complexity that a simple,
 locally-set DIP switch avoids, and every Robot Controller Board being the
@@ -140,7 +143,7 @@ board's own logic to reach the next one up.
                           +-------------------+
 
 BOARD_ID is set locally per board (docs/PINOUT_STM32G474_ROBOT_
-CONTROLLER.TXT section 1c), NOT derived from stack position by this
+CONTROLLER.md section 1c), NOT derived from stack position by this
 connector - the diagram above shows the installer setting each board's DIP
 switch to match its intended physical position, a convention worth
 following for sanity but not something the hardware enforces or derives on
@@ -191,14 +194,15 @@ decided here.
 - docs/architecture.md section 4  - FDCAN1 slot-addressed protocol this bus
   carries (CAN_ID_STACKA_BASE + N*0x20). "N" comes from BOARD_ID[2:0], a
   LOCAL DIP switch on each Robot Controller Board (docs/PINOUT_STM32G474_
-  ROBOT_CONTROLLER.TXT section 1c) - NOT from this connector, see section 1
+  ROBOT_CONTROLLER.md section 1c) - NOT from this connector, see section 1
   above.
 - README.md section 6             - FDCAN1 STACK A summary, section 9 power
   distribution, section 11 PCB connector list (its "heavy-copper shrouded
   connector" line references this file for the exact pin count and
   mechanical form factor).
-- docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT - which H745 GPIOs/peripherals
+- docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md - which H745 GPIOs/peripherals
   feed this connector on the master end.
-- docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT - which G474 GPIOs/peripherals
+- docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md - which G474 GPIOs/peripherals
   feed this connector on each slave end.
 ================================================================================
+```

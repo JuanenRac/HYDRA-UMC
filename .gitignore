@@ -1,6 +1,6 @@
 # Vendored ST HAL/CMSIS sources + compiled objects (fetched fresh by
-# build_firmware.sh from ST's own official repos - see docs/COMPILE_STM32G474.TXT
-# and docs/COMPILE_STM32H745.TXT). Never commit these; they aren't this
+# build_firmware.sh from ST's own official repos - see docs/COMPILE_STM32G474.md
+# and docs/COMPILE_STM32H745.md). Never commit these; they aren't this
 # project's own code.
 build/
 

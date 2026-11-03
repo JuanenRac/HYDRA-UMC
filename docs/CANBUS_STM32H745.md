@@ -1,3 +1,6 @@
+# CANBUS_STM32H745
+
+```text
 =============================================================================
 CAN BUS / SPI-OTA COMMAND MAP - KINEMATIC BRAIN (STM32H745ZIT6, dual-core)
 PROJECT: HYDRA-UMC
@@ -18,7 +21,7 @@ src/mcu_stm32h745/CM4/boot/, CM7/boot/, Common/ipc_mailbox.h. Section 4
 telemetry for its own local X/Y1/Y2/Z/E0/E1 stage) is PROPOSED at the ID-
 allocation level only - no application firmware implements it yet.
 
-Unlike docs/CANBUS_STM32G474.TXT (a single bus, one command map), this chip
+Unlike docs/CANBUS_STM32G474.md (a single bus, one command map), this chip
 speaks to 3 DIFFERENT physical/logical transports depending on what's being
 reached - this document is organized by transport, not by a single ID list.
 
@@ -39,7 +42,7 @@ clocked for):
 
     Byte 0    : target_tier  (0=SELF, 1=CM7, 2=STACKA - see section 3)
     Byte 1    : target_slot  (0-7, meaningful only when target_tier==STACKA)
-    Byte 2    : frame_type   (an OFS_* value - see docs/CANBUS_STM32G474.TXT
+    Byte 2    : frame_type   (an OFS_* value - see docs/CANBUS_STM32G474.md
                               section 2's own table; the SAME numeric offsets
                               are reused here as a byte instead of an FDCAN
                               ID addend, so command semantics are identical
@@ -47,14 +50,14 @@ clocked for):
                               given request)
     Byte 3    : dlc          (0-8, meaningful bytes in the payload below)
     Bytes 4-11: payload      (up to 8 bytes, same layouts as docs/CANBUS_
-                              STM32G474.TXT section 2's own per-command Data
+                              STM32G474.md section 2's own per-command Data
                               fields)
     Bytes 12-127: reserved, padded 0xFF
 
 Example: to START_UPDATE (+0x01) this chip's OWN CM4 core (self-flash), the
 CM5 sends a frame with target_tier=0, frame_type=0x01, dlc=8, payload =
 [size(4 bytes BE), HardwareID(4 bytes BE)] - byte-for-byte the same payload
-docs/CANBUS_STM32G474.TXT section 2's own +0x01 entry describes, just
+docs/CANBUS_STM32G474.md section 2's own +0x01 entry describes, just
 carried in an SPI frame instead of an FDCAN frame with ID slot_base+0x01.
 
 -----------------------------------------------------------------------------
@@ -89,11 +92,11 @@ as the next `SpiOtaFrame_t`.
 
 -----------------------------------------------------------------------------
 3. FDCAN1 "STACK A" - CM4 as the bus MASTER (this chip is always the one
-   initiating; see docs/CANBUS_STM32G474.TXT for the full command table
+   initiating; see docs/CANBUS_STM32G474.md for the full command table
    from a Robot Controller Board's own perspective as the one ANSWERING)
 -----------------------------------------------------------------------------
 Physical: FDCAN1, PD0(RX)/PD1(TX) - docs/PINOUT_STM32H745_KINEMATIC_
-BRAIN.TXT section 2. Classic-CAN-frame-only (no BRS, no FD payloads beyond
+BRAIN.md section 2. Classic-CAN-frame-only (no BRS, no FD payloads beyond
 8 bytes) - same constraint every bootloader in this project shares, so the
 SAME command byte layouts apply regardless of which chip sent them.
 
@@ -119,7 +122,7 @@ and that head's optional Advanced Expansion Board): a `RELAY_SEND`
 (+0x12)/`RELAY_RECV` (+0x13) frame targeting a STACK A slot is just another
 frame_type byte as far as this chip's own gateway is concerned - it never
 needs to understand what's on the other end of the Robot Controller
-Board's own second relay hop. See docs/CANBUS_STM32G474.TXT section 1 for
+Board's own second relay hop. See docs/CANBUS_STM32G474.md section 1 for
 what THAT board does with a RELAY_SEND/RELAY_RECV frame once it arrives.
 
 -----------------------------------------------------------------------------
@@ -127,7 +130,7 @@ what THAT board does with a RELAY_SEND/RELAY_RECV frame once it arrives.
    firmware implements any of this yet)
 -----------------------------------------------------------------------------
 The Kinematic Brain's own local 6-axis stage (docs/PINOUT_STM32H745_
-KINEMATIC_BRAIN.TXT section 3) has real, confirmed job semantics
+KINEMATIC_BRAIN.md section 3) has real, confirmed job semantics
 (CONFIRMED by the project owner):
 
     X, Y1, Y2  - dual-Y gantry, the machine's own XY table
@@ -135,7 +138,7 @@ KINEMATIC_BRAIN.TXT section 3) has real, confirmed job semantics
     E0         - NEMA stepper indexing the ATC (Automatic Tool Changer)
                  revolver/turret - a ROTARY axis, not a linear one, despite
                  sharing the same STEP/DIR/EN/TMC5160A interface as X/Y1/
-                 Y2/Z (docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 3
+                 Y2/Z (docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md section 3
                  doesn't distinguish linear vs. rotary at the electrical
                  level - that distinction only matters to the motion-
                  planning application logic that doesn't exist yet)
@@ -150,7 +153,7 @@ application has no SPI1 driver; only its bootloader does). No
 CAN ID allocation is needed for it (it's not on FDCAN1 at all - purely
 local to this chip, actuated directly by CM7's own hardware timer pulse
 generation per README.md section 5), but the SPI1 frame_type byte range
-+0x10-+0x1F (application commands, same range docs/CANBUS_STM32G474.TXT
++0x10-+0x1F (application commands, same range docs/CANBUS_STM32G474.md
 section 1 uses for the Robot Controller Board's own application layer) is
 reserved for whatever this local-stage protocol ends up needing - not
 designed further here.
@@ -158,12 +161,13 @@ designed further here.
 -----------------------------------------------------------------------------
 5. CROSS-REFERENCES
 -----------------------------------------------------------------------------
-- docs/CANBUS_STM32G474.TXT      - the full bootloader command table (every
+- docs/CANBUS_STM32G474.md      - the full bootloader command table (every
   byte layout) that sections 1 and 3 above reuse - not duplicated here.
 - docs/architecture.md sections 3-5 - the original design this document
   turns into full wire-level detail.
-- docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT - real MCU pins (SPI1, FDCAN1,
+- docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md - real MCU pins (SPI1, FDCAN1,
   the local stage's own TMC5160A/STEP/DIR/EN interface).
 - src/mcu_stm32h745/CM4/boot/, CM7/boot/, Common/ipc_mailbox.h - the
   real, compiling implementation of sections 1-3.
 =============================================================================
+```

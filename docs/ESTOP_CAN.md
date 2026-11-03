@@ -116,4 +116,4 @@ These need a person to decide or hardware that does not exist yet; none is guess
 ## Related
 
 - `docs/bus_contract.json`, `tools/estop_can.py`, `tools/can_ids.py` (`ESTOP_STATE`), `tests/estop_vectors.json`, `tests/test_estop_contract.py`
-- `docs/CANBUS_STM32G474.TXT`, `docs/CANBUS_STM32H745.TXT`, `docs/BENCH_TESTS.md`
+- `docs/CANBUS_STM32G474.md`, `docs/CANBUS_STM32H745.md`, `docs/BENCH_TESTS.md`

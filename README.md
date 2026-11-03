@@ -247,14 +247,14 @@ GNU Toolchain, `git` (to fetch ST's own HAL/CMSIS sources), and `python` for
 the manifest step.
 
 **Manual build (either OS, without the script):** the script automates
-exactly the steps in `docs/COMPILE_STM32G474.TXT` and
-`docs/COMPILE_STM32H745.TXT` - fetch the pinned HAL/CMSIS/FreeRTOS sources
+exactly the steps in `docs/COMPILE_STM32G474.md` and
+`docs/COMPILE_STM32H745.md` - fetch the pinned HAL/CMSIS/FreeRTOS sources
 listed at the top of `build_firmware.sh`/`build_firmware.bat`, compile each
 target's HAL modules and startup/system files with `arm-none-eabi-gcc`
 (flags/module lists are listed in that same script), then link each
 bootloader and application against its own linker script (`*.ld`, next to
 its source) with `arm-none-eabi-gcc`/`-Wl,--gc-sections` and convert with
-`arm-none-eabi-objcopy` to `.bin`/`.hex`. Those two `docs/COMPILE_*.TXT`
+`arm-none-eabi-objcopy` to `.bin`/`.hex`. Those two `docs/COMPILE_*.md`
 files are the authoritative, step-by-step reference if you'd rather not run
 either script - the scripts exist to automate them, not replace them as the
 source of truth.
@@ -263,7 +263,7 @@ Output lands in `firmware/`, which is committed and pushed to this
 repo (same convention as URTC's own `firmware/` output folder) so that
 HYDRA-UMC-STUDIO's GitHub-download feature can actually find real
 `.bin` files there via `firmware_manifest.json` - it is NOT gitignored.
-See `docs/COMPILE_STM32G474.TXT` and `docs/COMPILE_STM32H745.TXT` for
+See `docs/COMPILE_STM32G474.md` and `docs/COMPILE_STM32H745.md` for
 exactly what each step does and why - and each firmware folder's own
 `README.md` for current status. The **bootloaders** for all 3 targets
 (G474, H745 CM7, H745 CM4) are real, working CAN-OTA/SPI-OTA

@@ -9,7 +9,7 @@
  * bootloader+app+backup-slot split (src/F303-master/STM32F303CCTx_APP.ld in
  * the sibling URTC repo), scaled up for this chip's larger 512 KB flash /
  * 128 KB RAM. Not yet verified against real hardware - see
- * docs/COMPILE_STM32G474.TXT and HYDRA-UMC/docs/architecture.md section 3.
+ * docs/COMPILE_STM32G474.md and HYDRA-UMC/docs/architecture.md section 3.
  *
  * STM32G474RET6: LQFP-64, 512 KB flash (dual-bank capable, treated as one
  * flat 512 KB region here), 128 KB SRAM (80 KB SRAM1 + 16 KB SRAM2,

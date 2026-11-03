@@ -1,3 +1,6 @@
+# PINOUT_STM32G474_ROBOT_CONTROLLER
+
+```text
 ================================================================================
      ROBOT CONTROLLER BOARD - STM32G474RET6 PINOUT (LQFP-64, 10x10mm)
                     PROPOSED - pre-schematic pin allocation
@@ -20,7 +23,7 @@ architecture.md section 1 (Tier 1), README.md section 12.
 1. FIELDBUS - 2 of this chip's 3 FDCAN peripherals in use
 --------------------------------------------------------------------------------
 1a. FDCAN1 - uplink to the Kinematic Brain's STACK A bus (this board's own
-"STACK A IN" connector, docs/PINOUT_STACKA_CONNECTOR.TXT)
+"STACK A IN" connector, docs/PINOUT_STACKA_CONNECTOR.md)
 Pin  | Signal      | AF   | Notes
 -----+-------------+------+-------------------------------------------------
 PB8  | FDCAN1_RX   | AF9  | CONFIRMED pin (Table 12). Deliberately NOT
@@ -31,7 +34,7 @@ PB9  | FDCAN1_TX   | AF9  | PA11/PA12 (also valid FDCAN1 pins on this chip)
 PG7  | CAN1_STBY   | GPIO | INVALID ON THIS CHIP - see section 1d. Transceiver
      |             |      | standby/enable (matches the Kinematic Brain's own
      |             |      | CAN1_STBY convention, docs/
-     |             |      | PINOUT_STM32H745_KINEMATIC_BRAIN.TXT §2). The
+     |             |      | PINOUT_STM32H745_KINEMATIC_BRAIN.md §2). The
      |             |      | proposed replacement is PC5 (section 1d).
 
 1b. FDCAN2 - downlink relay to this robot's own URTC Tool Head (README.md
@@ -54,7 +57,7 @@ this board answers as. Read once at boot so firmware can compute its own
 FDCAN1 slot base ID (CAN_ID_STACKA_BASE + N*0x20, docs/architecture.md
 section 4) instead of needing N hand-programmed into a per-board firmware
 build. Deliberately NOT derived from the STACK A connector or from
-physical stack position (docs/PINOUT_STACKA_CONNECTOR.TXT section 1 has
+physical stack position (docs/PINOUT_STACKA_CONNECTOR.md section 1 has
 the full reasoning: every board is the same interchangeable PCB/BOM, so
 anything connector-position-derived needs either a different board per
 position or a fragile power-up ripple sequence - a local DIP switch avoids
@@ -66,7 +69,7 @@ PC0  | BOARD_ID_0  | GPIO input, LSB. Pulled to a defined level by a local
 PC1  | BOARD_ID_1  | GPIO input.       3-position DIP switch/jumper block -
 PC2  | BOARD_ID_2  | GPIO input, MSB.  see pull convention below. BOM entry:
      |             |                   hardware/PCB/robot_controller_board_
-     |             |                   stm32g474/BOM.TXT item 10.
+     |             |                   stm32g474/BOM.md item 10.
 
 Pull convention (matches the real firmware, src/mcu_stm32g474/boot/
 bootloader_main.c's ReadSlotBaseId()): all 3 pins are configured
@@ -111,7 +114,7 @@ Nothing is ordered or fabricated until the schematic is reviewed.
    6 joints)
 --------------------------------------------------------------------------------
 Same daisy-chain design as the Kinematic Brain
-(docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 3) for the same reason:
+(docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md section 3) for the same reason:
 fits a tight LQFP-64 pin budget, and keeps the two boards' driver interface
 consistent so firmware/HAL code can be shared between them.
 
@@ -165,9 +168,9 @@ Axis | Pin | Notes
 -----+-----+-------------------------------------------------------------
 1    | PB1 | GPIO input, EXTI-capable, active-low with internal pull-up -
 2    | PB2 | matches URTC's own generic endstop convention (already the
-3    | PB10| precedent noted in this board's own BOM.TXT item 04, and now
+3    | PB10| precedent noted in this board's own BOM.md item 04, and now
 4    | PB11| the same convention used on the Kinematic Brain's 12 endstops,
-5    | PC4 | docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 4)
+5    | PC4 | docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md section 4)
 6    | PC3 |
 
 --------------------------------------------------------------------------------
@@ -175,7 +178,7 @@ Axis | Pin | Notes
 --------------------------------------------------------------------------------
 This board generates its OWN 5V and 3.3V locally rather than relying on
 the STACK A bus's +5V_BUS pins (docs/
-PINOUT_STACKA_CONNECTOR.TXT section 1, which documents that rail as
+PINOUT_STACKA_CONNECTOR.md section 1, which documents that rail as
 auxiliary/optional for exactly this reason). PROPOSED power architecture:
 
     STACK A +24V_BUS (10 pins) --+--> local 24V->5V buck --> local +5V rail
@@ -241,7 +244,7 @@ the eventual real spec has somewhere to land.
     3.0 connector spec (section 5) turns out to need MCU-side signals
     beyond what sections 2-3 already provide (e.g. a per-connector
     present/ID line, matching the BOARD_PRESENT pattern already used on
-    the STACK A connector, docs/PINOUT_STACKA_CONNECTOR.TXT section 1) -
+    the STACK A connector, docs/PINOUT_STACKA_CONNECTOR.md section 1) -
     do not pre-assign these until that spec arrives.
 
 6c. Reserved/special-purpose, not general GPIO even though technically
@@ -250,7 +253,7 @@ the eventual real spec has somewhere to land.
     PA13, PA14  - SWD debug (SWDIO/SWCLK)
     PC14, PC15  - LSE oscillator (32.768kHz RTC crystal, if ever added)
     PF0, PF1    - HSE oscillator (if ever added instead of HSI-only,
-                  see docs/COMPILE_STM32G474.TXT's own open question)
+                  see docs/COMPILE_STM32G474.md's own open question)
     PG10        - shared with NRST per Table 12 (BOOT0-adjacent reset
                   function) - do not use as plain GPIO
 
@@ -260,14 +263,15 @@ the eventual real spec has somewhere to land.
 --------------------------------------------------------------------------------
 7. CROSS-REFERENCES
 --------------------------------------------------------------------------------
-- docs/PINOUT_STACKA_CONNECTOR.TXT   - the 40-pin bus this board's FDCAN1 +
+- docs/PINOUT_STACKA_CONNECTOR.md   - the 40-pin bus this board's FDCAN1 +
   local power input feed.
-- docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT - the master end of the FDCAN1
+- docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md - the master end of the FDCAN1
   bus and the sibling driver-daisy-chain design this file mirrors.
 - docs/architecture.md section 5     - the FDCAN2 relay tunnel to the URTC
   Tool Head this board's FDCAN2 implements.
 - docs/datasheets/STM32G474RET6.pdf  - Table 12 (pin definition) - re-verify
   every pin above against this before schematic capture.
-- hardware/PCB/robot_controller_board_stm32g474/BOM.TXT - component-level
+- hardware/PCB/robot_controller_board_stm32g474/BOM.md - component-level
   BOM this pinout implies - updated alongside this file.
 ================================================================================
+```

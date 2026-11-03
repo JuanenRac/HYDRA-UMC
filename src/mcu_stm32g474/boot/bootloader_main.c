@@ -11,16 +11,16 @@
 // own BOARD_ID-derived base (ReadSlotBaseId(), read once at startup from a
 // LOCAL DIP switch - not the STACK A connector) instead of a fixed
 // absolute ID - see docs/architecture.md section 4 and docs/PINOUT_
-// STM32G474_ROBOT_CONTROLLER.TXT sections 1a/1c for the pins and
+// STM32G474_ROBOT_CONTROLLER.md sections 1a/1c for the pins and
 // addressing scheme this file implements.
 //
-// Pin assignments below match docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT
+// Pin assignments below match docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md
 // exactly - re-verify there (and against Table 12 of the datasheet) before
 // changing anything here, not the other way around.
 //
 // SystemClock_Config() below still runs on the HSI reset default (16MHz,
 // no PLL) - same "not yet a real clock tree" TODO flagged throughout this
-// project (docs/COMPILE_STM32G474.TXT, FreeRTOSConfig.h's own header
+// project (docs/COMPILE_STM32G474.md, FreeRTOSConfig.h's own header
 // comment). The FDCAN bit-timing below (Prescaler=1, NominalTimeSeg1=13,
 // NominalTimeSeg2=2, NominalSyncJumpWidth=1 -> 16 time quanta/bit at
 // 16MHz = 1Mbps) is derived FROM that 16MHz assumption specifically to hit
@@ -64,7 +64,7 @@ void SystemClock_Config(void) {
 }
 
 // -----------------------------------------------------------------------
-// BOARD_ID[2:0] - docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 1c:
+// BOARD_ID[2:0] - docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md section 1c:
 // PC0=LSB, PC1, PC2=MSB, a LOCAL 3-position DIP switch on this board's own
 // PCB (manually set by the installer, not derived from the STACK A
 // connector or stack position). Read once at startup (a DIP switch can't
@@ -88,7 +88,7 @@ uint32_t ReadSlotBaseId(void) {
 
 // -----------------------------------------------------------------------
 // FDCAN1 init - PB8=FDCAN1_RX, PB9=FDCAN1_TX (AF9, CONFIRMED pins per
-// docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 1a), classic-CAN-only
+// docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md section 1a), classic-CAN-only
 // (FDCAN_FRAME_CLASSIC, BRS off) so every frame this protocol sends/
 // receives has the same 11-bit-ID/0-8-byte-DLC shape URTC's own bxCAN
 // protocol already assumes - this bootloader deliberately never uses any

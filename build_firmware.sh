@@ -39,7 +39,7 @@ if [ -t 0 ]; then
     trap 'echo ""; read -r -p "Press Enter to close this window..." _' EXIT
 fi
 
-# Pinned versions - see docs/COMPILE_STM32G474.TXT section 3 for why pinned
+# Pinned versions - see docs/COMPILE_STM32G474.md section 3 for why pinned
 # rather than tracking each repo's own latest master.
 G4_HAL_REPO="https://github.com/STMicroelectronics/stm32g4xx_hal_driver.git"
 G4_HAL_TAG="v1.2.7"

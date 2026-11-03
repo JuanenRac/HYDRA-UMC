@@ -253,8 +253,8 @@ Linux/Mac-Skript: den Arm-GNU-Toolchain, `git` (um STs eigene
 HAL/CMSIS-Quellen zu holen), und `python` für den Manifest-Schritt.
 
 **Manueller Build (beide Betriebssysteme, ohne das Skript):** Das Skript
-automatisiert genau die Schritte aus `docs/COMPILE_STM32G474.TXT` und
-`docs/COMPILE_STM32H745.TXT` - holt die festgelegten
+automatisiert genau die Schritte aus `docs/COMPILE_STM32G474.md` und
+`docs/COMPILE_STM32H745.md` - holt die festgelegten
 HAL-/CMSIS-/FreeRTOS-Quellen, die oben in
 `build_firmware.sh`/`build_firmware.bat` aufgeführt sind, kompiliert die
 HAL-Module und Startup-/System-Dateien jedes Ziels mit `arm-none-eabi-gcc`
@@ -262,7 +262,7 @@ HAL-Module und Startup-/System-Dateien jedes Ziels mit `arm-none-eabi-gcc`
 Bootloader und jede Anwendung gegen sein eigenes Linker-Skript (`*.ld`, neben
 seiner Quelle) mit `arm-none-eabi-gcc`/`-Wl,--gc-sections` und konvertiert
 mit `arm-none-eabi-objcopy` nach `.bin`/`.hex`. Diese beiden
-`docs/COMPILE_*.TXT`-Dateien sind die maßgebliche, schrittweise Referenz,
+`docs/COMPILE_*.md`-Dateien sind die maßgebliche, schrittweise Referenz,
 falls Sie lieber keines der beiden Skripte ausführen möchten - die Skripte
 existieren, um sie zu automatisieren, nicht um sie als Wahrheitsquelle zu
 ersetzen.
@@ -272,7 +272,7 @@ gepusht wird (dieselbe Konvention wie der eigene `firmware/`-Ausgabeordner
 von URTC), damit die GitHub-Download-Funktion von HYDRA-UMC-STUDIO dort
 tatsächlich echte `.bin`-Dateien über `firmware_manifest.json` finden kann -
 es ist NICHT in gitignore.
-Siehe `docs/COMPILE_STM32G474.TXT` und `docs/COMPILE_STM32H745.TXT` für
+Siehe `docs/COMPILE_STM32G474.md` und `docs/COMPILE_STM32H745.md` für
 genau das, was jeder Schritt tut und warum - und das eigene `README.md`
 jedes Firmware-Ordners für den aktuellen Status. Die **Bootloader** für alle
 3 Ziele (G474, H745 CM7, H745 CM4) sind echte, funktionierende

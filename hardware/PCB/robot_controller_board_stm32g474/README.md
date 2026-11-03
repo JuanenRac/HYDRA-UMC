@@ -11,12 +11,12 @@ See `../../../docs/architecture.md` for this board's role (Tier 1 — one per
 robot, up to 8 per HYDRA-UMC controller) and `../../../src/mcu_stm32g474/`
 for the firmware side.
 
-## Starting parts list (BOM.TXT)
+## Starting parts list (BOM.md)
 
 Derived from what's already confirmed (the MCU itself, per this project's
 own `docs/architecture.md`) plus what a board doing this job structurally
 needs (2x CAN transceivers, 6-axis STEP/DIR/EN driver interfaces, endstop
-inputs) — NOT a finished BOM. See `BOM.TXT` in this folder.
+inputs) — NOT a finished BOM. See `BOM.md` in this folder.
 
 ## Once a real schematic exists
 

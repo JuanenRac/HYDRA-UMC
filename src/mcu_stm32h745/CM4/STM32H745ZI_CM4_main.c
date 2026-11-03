@@ -15,7 +15,7 @@
  * proven init to reuse from the bootloader).
  *
  * REAL CLOCK CONFIG (see SystemClock_Config() below): this repo's own BOM
- * (hardware/PCB/kinematic_brain_stm32h745/BOM.TXT) confirms no external
+ * (hardware/PCB/kinematic_brain_stm32h745/BOM.md) confirms no external
  * HSE crystal on this board - PLL1 is driven from the internal HSI64
  * instead. Configured HERE, on this core only, deliberately NOT also on
  * CM7 (whose own main() still calls the old do-nothing placeholder) -
@@ -63,7 +63,7 @@ static IWDG_HandleTypeDef hiwdg;
 
 /* Real PLL1 clock tree: HSI64 -> /M -> VCO -> /P -> SYSCLK, targeting the
  * real 480 MHz SYSCLK / 240 MHz CM4 core clock this project's own BOM
- * documents (hardware/PCB/kinematic_brain_stm32h745/BOM.TXT: "Cortex-
+ * documents (hardware/PCB/kinematic_brain_stm32h745/BOM.md: "Cortex-
  * M7@480MHz + Cortex-M4@240MHz"). No external HSE crystal on this board
  * (same BOM, confirmed absent) - PLL1 is driven from the internal HSI64
  * instead, same real oscillator every bootloader in this project already

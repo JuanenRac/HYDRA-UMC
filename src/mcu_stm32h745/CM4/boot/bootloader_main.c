@@ -14,7 +14,7 @@
 // (README.md section 10 already established the link is CM4's own before
 // any of this CAN-OTA design existed).
 //
-// Pin assignments below match docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT
+// Pin assignments below match docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md
 // sections 1-2 exactly - SPI1 (PA4/5/6/7), HYDRA_DATA_READY (PA3), FDCAN1
 // (PD0/PD1), CAN1_STBY (PG7).
 // =============================================================================

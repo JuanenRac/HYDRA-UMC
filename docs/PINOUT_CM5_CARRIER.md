@@ -1,3 +1,6 @@
+# PINOUT_CM5_CARRIER
+
+```text
 ================================================================================
        CM5 CARRIER INTERFACE PINOUT - HOST COMPUTING SUBSYSTEM
               PROPOSED signal routing across real CM5 pins
@@ -31,7 +34,7 @@ Connector 1 (CM5 pins 1-100):
   README.md section 5/8 - this is specifically a CM5-cooling fan):
     Fan_PWM, Fan_Tacho -> optional CM5 heatsink fan header, independent of
     the STM32H745's own 3x fan channels (docs/
-    PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 5).
+    PINOUT_STM32H745_KINEMATIC_BRAIN.md section 5).
 
   USB3 (2 native SuperSpeed PHYs, README.md section 4):
     USB3-0-RX_P/N, USB3-0-TX_P/N, USB3-0-DP/DM -> GL3523-A upstream port
@@ -55,7 +58,7 @@ Connector 1 (CM5 pins 1-100):
       gamepad/mouse/keyboard. This is the ONLY native USB2 pair CM5 exposes
       at the connector - it cannot be split into 2 physical ports without
       this hub, which is why one is now in the BOM (hardware/PCB/
-      kinematic_brain_stm32h745/BOM.TXT item 19).
+      kinematic_brain_stm32h745/BOM.md item 19).
     USB_OTG_ID (pin 101) -> tie per the hub's own host-mode strapping
       requirement (this board only ever needs CM5 acting as USB host, never
       device, so this pin is grounded/strapped fixed, not routed to a
@@ -65,7 +68,7 @@ Connector 1 (CM5 pins 1-100):
     PCIe_CLK_P/N (100MHz ref clock, CM5 is the clock source), PCIe_RX_P/N,
     PCIe_TX_P/N, PCIe_nRST, PCIe_CLK_nREQ, PCIE_nWAKE, PCIE_PWR_EN -> the
     board's onboard PCIe Gen3 switch (hardware/PCB/kinematic_brain_
-    stm32h745/BOM.TXT item 05 - candidate ASMedia ASM2806 family or
+    stm32h745/BOM.md item 05 - candidate ASMedia ASM2806 family or
     equivalent, exact part TBD), NOT directly to an M.2 socket. The CM5
     connector exposes only ONE PCIe lane (confirmed here, per Table 5 of
     the CM5 datasheet), so this switch fans that single upstream x1 lane
@@ -209,11 +212,12 @@ section 1, which is cosmetic).
 --------------------------------------------------------------------------------
 - docs/datasheets/Raspberry Pi CM5.pdf - Table 5 (full 200-pin definition),
   Chapter 4 - source of truth for every CM5-side signal name in this file.
-- docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT section 1 - the STM32 side of
+- docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md section 1 - the STM32 side of
   the SPI1 link in section 2 above.
-- hardware/PCB/kinematic_brain_stm32h745/BOM.TXT items 05/05a/05b - the
+- hardware/PCB/kinematic_brain_stm32h745/BOM.md items 05/05a/05b - the
   PCIe Gen3 switch and its 2 downstream M.2 sockets (Hailo-8 + Hailo-10)
   referenced in section 1 above.
 - README.md sections 2 (host), 3 (Hailo-8 + Hailo-10 dual PCIe AI
   accelerator subsystem), 4 (USB vision), 10 (IPC).
 ================================================================================
+```

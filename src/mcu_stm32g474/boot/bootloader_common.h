@@ -80,9 +80,9 @@ extern IWDG_HandleTypeDef  hiwdg;
 // -----------------------------------------------------------------------
 // Slot addressing (docs/architecture.md section 4) - this board's own
 // FDCAN1 slot base ID, computed once at boot from the BOARD_ID[2:0] LOCAL
-// DIP-switch pins (docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 1c) -
+// DIP-switch pins (docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md section 1c) -
 // manually set by whoever installs this board, NOT derived from the STACK
-// A connector or physical stack position (docs/PINOUT_STACKA_CONNECTOR.TXT
+// A connector or physical stack position (docs/PINOUT_STACKA_CONNECTOR.md
 // section 1 has the reasoning: every board is the same interchangeable
 // PCB, so a connector-position-derived scheme needs either per-position
 // board variants or a fragile power-up ripple sequence - a local DIP

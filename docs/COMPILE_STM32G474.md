@@ -1,5 +1,8 @@
+# COMPILE_STM32G474
+
+```text
 =============================================================================
-COMPILE_STM32G474.TXT - Building the Robot Controller Board firmware (STM32G474RET6)
+COMPILE_STM32G474.md - Building the Robot Controller Board firmware (STM32G474RET6)
 PROJECT: HYDRA-UMC
 AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
 LICENSE: This document is licensed under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
@@ -89,7 +92,7 @@ See docs/architecture.md section 2 for why this board's application runs
 FreeRTOS while its bootloader stays bare-metal. Same not-vendored,
 pinned-tag-via-git philosophy as the ST HAL/CMSIS sources above, fetched
 ONCE at build/vendor/freertos/ (shared with the Kinematic Brain's own two
-cores - see docs/COMPILE_STM32H745.TXT - since the kernel source itself is
+cores - see docs/COMPILE_STM32H745.md - since the kernel source itself is
 chip-agnostic, only the port differs):
 
     FreeRTOS-Kernel   V11.3.0   https://github.com/FreeRTOS/FreeRTOS-Kernel.git
@@ -177,3 +180,4 @@ Last verified: both binaries build cleanly, 0 warnings, 0 errors, via a full
 =============================================================================
 END OF FILE
 =============================================================================
+```

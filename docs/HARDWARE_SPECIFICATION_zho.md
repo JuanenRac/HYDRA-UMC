@@ -22,12 +22,12 @@
 
 ## 3. 🧠 PCIE AI 加速子系统（HAILO-8 + HAILO-10 双 NPU）
 
-* 🔀 **PCIe 扇出：** CM5 连接器仅暴露 **一条** PCIe Gen 2.0/3.0 x1 通道（已对照 CM5 数据手册 Table 5 确认，`docs/PINOUT_CM5_CARRIER.TXT`）——不足以直接连接 2 个 M.2 AI 加速器。板载 PCIe Gen3 数据包交换芯片（候选方案：ASMedia ASM2806 系列或同等产品，具体型号待定 —— 需为 Gen3 规格，以避免 Hailo-10 链路速率低于其原生速度）将 CM5 侧的单条通道扇出为 2 条独立的下游 PCIe x1 通道，分别连接下方的两个 M.2 插槽。
+* 🔀 **PCIe 扇出：** CM5 连接器仅暴露 **一条** PCIe Gen 2.0/3.0 x1 通道（已对照 CM5 数据手册 Table 5 确认，`docs/PINOUT_CM5_CARRIER.md`）——不足以直接连接 2 个 M.2 AI 加速器。板载 PCIe Gen3 数据包交换芯片（候选方案：ASMedia ASM2806 系列或同等产品，具体型号待定 —— 需为 Gen3 规格，以避免 Hailo-10 链路速率低于其原生速度）将 CM5 侧的单条通道扇出为 2 条独立的下游 PCIe x1 通道，分别连接下方的两个 M.2 插槽。
 * 🔌 **物理接口：** 板载 2 个 M.2 Key M 插槽（2242 / 2280 尺寸），各自连接至上述 PCIe 交换芯片自身的一个下游端口 —— 而非直接连接 CM5。
 * 🚀 **NPU 引擎 1 — Hailo-8（高速感知）：** Hailo-8 工业级 AI 处理器，功耗低于 5W，算力达 **26 TOPS**（每秒万亿次运算）。负责全部 8 路摄像头（第 4 节）的多路 YOLOv8/YOLO11 (计划中;尚未运行) 目标检测、缺陷检测及实时 PnP 基准点对齐 —— 沿用既有加速器，角色不变。
 * 🧠 **NPU 引擎 2 — Hailo-10（认知推理 / 本地生成式 AI）：** 与 Hailo-8 并存，而非替代。算力达 **40 TOPS**，可在本地私密运行量化后的 LLM 与 Vision-Language-Action（VLA）模型 —— 将操作员的自然语言/语音指令转换为运动学轨迹，并在机器人执行任务失败时进行语义级错误恢复，全程无需连接任何外部云服务。这一认知角色与 HYDRA-UMC 生态系统其余部分（同族项目 HYDRA-UMC-COGNITIVE-NODE）中 Hailo-10 已确立的定位一致。
 * ⚡ **软件集成：** 官方 Hailo RT 软件套件已针对两颗加速器与 Raspberry Pi OS 完成集成，执行 GStreamer/TAPPAS 管线与 OpenCV，实现 Hailo-8 的零 CPU 开销视觉推理；Hailo-10 自身的 LLM/VLA 运行时集成仍处于设计阶段（见 `src/cm5_host/ai_inference/README.md`）。
-* ⚠️ **待定事项：** PCIe 交换芯片的具体型号，以及 Hailo-10 自身的真实功耗，均仍待确定 —— 见 `hardware/PCB/kinematic_brain_stm32h745/BOM.TXT` 第 05 项与第 09 项。
+* ⚠️ **待定事项：** PCIe 交换芯片的具体型号，以及 Hailo-10 自身的真实功耗，均仍待确定 —— 见 `hardware/PCB/kinematic_brain_stm32h745/BOM.md` 第 05 项与第 09 项。
 
 ## 4. 📷 双 USB 3.0 视觉子系统（8 路摄像头接口）
 
@@ -35,7 +35,7 @@
 * 🔀 **拓扑与分配：**
   * 🅰️ **集线器 #1（`GL3523-A`）：** 连接至 CM5 原生 USB3-0 SuperSpeed PHY（5 Gbps）。为 USB 端口 1 至 4（摄像头 A1-A4）供电供数据。
   * 🅱️ **集线器 #2（`GL3523-B`）：** 连接至 CM5 原生 USB3-1 SuperSpeed PHY（5 Gbps）。为 USB 端口 5 至 8（摄像头 A5-A8）供电供数据。
-  * ℹ️ CM5（BCM2712）直接暴露这两路 SuperSpeed PHY —— 无需 RP1 协处理芯片参与（RP1 是 Raspberry Pi 5 主板专属，CM5 上不存在）。完整引脚级信号走线见 `docs/PINOUT_CM5_CARRIER.TXT`。
+  * ℹ️ CM5（BCM2712）直接暴露这两路 SuperSpeed PHY —— 无需 RP1 协处理芯片参与（RP1 是 Raspberry Pi 5 主板专属，CM5 上不存在）。完整引脚级信号走线见 `docs/PINOUT_CM5_CARRIER.md`。
 * 🛡️ **电源开关与电路保护：** 每路 USB VBUS 均通过高边限流电源开关（`TPS2065` / `SY6280`）单独保护，配置为 500 mA - 1 A 并具备故障报告功能。
 * ⚡ **大电流 VBUS 供电轨：** 由专用 24V 转 5V 降压稳压器供电（5V @ 持续 6A）。
 
@@ -44,7 +44,7 @@
 * 🎛️ **集线器控制器：** 1 颗小型 USB 2.0 集线器芯片（例如 Genesys Logic `GL850G` / `FE1.1s`，具体型号待定），将 CM5 单一原生 USB 2.0 PHY 扇出为 2 个物理端口。
 * ℹ️ **为何需要集线器：** CM5 数据手册（`docs/datasheets/Raspberry Pi CM5.pdf`，§2.5）确认 BCM2712 在 DF40 连接器上仅暴露 **一路** USB 2.0（High Speed）端口（`USB_N`/`USB_P`，引脚 103/105）—— 与已专供 GL3523 摄像头集线器使用的两路原生 USB 3.0 SuperSpeed PHY（第 4 节）相互独立。单一物理信号对若不经过集线器，无法拆分为 2 个端口。
 * 🔀 **拓扑：** `USB_N`/`USB_P`（CM5）→ 集线器上行端口 → 2 个下行 USB 2.0 Type-A 端口（前面板/侧面板，用于连接手柄、鼠标或键盘 —— 独立于触摸屏的手动点动/示教器控制及 HMI 输入）。
-* 📌 完整引脚级信号走线见 `docs/PINOUT_CM5_CARRIER.TXT` 第 1 节。
+* 📌 完整引脚级信号走线见 `docs/PINOUT_CM5_CARRIER.md` 第 1 节。
 
 ## 5. ⚡ 实时协处理子系统（设计）
 
@@ -62,12 +62,12 @@
 
 主板作为主控制器，通过单一物理 CAN 总线管理最多 8 个独立的从属机器人模块：
 
-* 🔌 **硬件外设：** 1 路原生硬件 FDCAN 控制器（`FDCAN1`），直接内置于 STM32H745 中，由当前的真实引导加载程序实现以 **经典 CAN 模式** 运行（`FDCAN_FRAME_CLASSIC`，`BRS_OFF`）—— 该外设本身具备 FD 能力，但本项目目前实际采用的 CAN-OTA/SPI-OTA 协议（`docs/CANBUS_STM32H745.TXT`、`docs/CANBUS_STM32G474.TXT`）仅使用经典帧（最大 DLC 为 8），与其他各层级（G474 机器人控制板、URTC）保持一致。CAN FD 更大的 64 字节 BRS 载荷是为未来预留的真实硬件余量，目前协议尚未使用。
+* 🔌 **硬件外设：** 1 路原生硬件 FDCAN 控制器（`FDCAN1`），直接内置于 STM32H745 中，由当前的真实引导加载程序实现以 **经典 CAN 模式** 运行（`FDCAN_FRAME_CLASSIC`，`BRS_OFF`）—— 该外设本身具备 FD 能力，但本项目目前实际采用的 CAN-OTA/SPI-OTA 协议（`docs/CANBUS_STM32H745.md`、`docs/CANBUS_STM32G474.md`）仅使用经典帧（最大 DLC 为 8），与其他各层级（G474 机器人控制板、URTC）保持一致。CAN FD 更大的 64 字节 BRS 载荷是为未来预留的真实硬件余量，目前协议尚未使用。
 * ⚡ **物理层收发器：** 1 路高速 CAN FD 收发器（例如 TI `TCAN1044AVD` / NXP `TJA1443`）—— 出于与上述外设相同的未来余量考量而选用具备 FD 能力的硬件，尽管当前流量仍为经典帧。
 * 🔀 **总线拓扑：**
   * 🅰️ **STACK A（`FDCAN1`）：** 服务于从属模块 A1 至 A8。
 * ⏱️ **协议规格：** 标称比特率约 1 Mbps（经典 CAN，每帧最大 8 字节载荷）。自动总线关闭恢复计划由 Cortex-M4 管理 —— 目前尚未实现；当前 CM4 的应用（`src/mcu_stm32h745/CM4/STM32H745ZI_CM4_main.c`）已经运行着真实的 FDCAN1 “STACK A” 主机任务（对全部 8 个插槽轮询 `AXIS_STATUS`，见 `KinematicBrainCan.c`），并会刷新看门狗，但总线关闭恢复本身仍是真实的未来工作项，而非已交付的能力。
-* 🔌 **物理连接器：** 40 针、2.54mm 间距的堆叠式排针/插座（+24V ×10 针，GND ×10 针，辅助 +5V ×4 针，FDCAN1 H/L，`BOARD_PRESENT_N`，13 针备用）—— 8 块机器人控制板在本板一侧依次物理堆叠（已确认为此拓扑，而非背板式），每块板都将全部 40 路信号直通传递给堆叠在其上方的下一块板。插槽地址由每块板自身的本地 DIP 开关决定（`BOARD_ID[2:0]`，README.md 第 12 节），而非由此连接器派生。完整引脚表与堆叠拓扑见 `docs/PINOUT_STACKA_CONNECTOR.TXT`。运动学大脑自身端口与每块机器人控制板的一对端口，均采用完全相同的连接器定义。
+* 🔌 **物理连接器：** 40 针、2.54mm 间距的堆叠式排针/插座（+24V ×10 针，GND ×10 针，辅助 +5V ×4 针，FDCAN1 H/L，`BOARD_PRESENT_N`，13 针备用）—— 8 块机器人控制板在本板一侧依次物理堆叠（已确认为此拓扑，而非背板式），每块板都将全部 40 路信号直通传递给堆叠在其上方的下一块板。插槽地址由每块板自身的本地 DIP 开关决定（`BOARD_ID[2:0]`，README.md 第 12 节），而非由此连接器派生。完整引脚表与堆叠拓扑见 `docs/PINOUT_STACKA_CONNECTOR.md`。运动学大脑自身端口与每块机器人控制板的一对端口，均采用完全相同的连接器定义。
 
 ```mermaid
 flowchart LR
@@ -90,7 +90,7 @@ flowchart LR
 * ⚡ **信号：** 3.3V CMOS（`STEP`、`DIR`、`ENABLE`），全部 6 颗驱动器共享一条 SPI4 菊花链。
 * ⏱️ **定时器：** 高级控制定时器（`TIM1` 用于 X/Y1/Y2/Z，`TIM8` 用于 E0/E1），支持硬件脉冲生成。
 * 🛑 **限位开关：** 12 路输入，每轴 2 路（最小值 + 最大值）。
-* 📌 完整引脚级分配见 `docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT`。
+* 📌 完整引脚级分配见 `docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md`。
 
 ### 🔌 电源与流体驱动器
 * 🔀 **20 路低边开关通道：** 工业级 N 沟道 MOSFET 输出，带续流保护。
@@ -108,7 +108,7 @@ flowchart LR
 * ⚡ **主直流输入：** 24V DC ±10%
 * 🔋 **5V 主电源域：** 同步降压稳压器，为 CM5 模块、触摸屏背光及板载逻辑电路提供 **持续 5A** 供电。
 * 📷 **5V USB VBUS 电源域：** 专用同步降压稳压器，专门为 8 路 USB 3.0 摄像头接口及 GL3523 集线器控制器提供 **持续 6A** 供电。
-* 🎛️ **3.3V 电源域：** 低噪声稳压器，提供 **持续 4A** 供电（预算涵盖 STM32、FRAM、收发器、PCIe 交换芯片（第 3 节），以及两个 M.2 插槽的 3.3V 供电轨 —— Hailo-8 + Hailo-10）。待两颗 M.2 模块的真实功耗确认后（Hailo-8 低于 5W；Hailo-10 自身数值仍待定），该 4A 预算需要重新核算 —— 可能需要超过 4A；见 `hardware/PCB/kinematic_brain_stm32h745/BOM.TXT` 第 09 项。
+* 🎛️ **3.3V 电源域：** 低噪声稳压器，提供 **持续 4A** 供电（预算涵盖 STM32、FRAM、收发器、PCIe 交换芯片（第 3 节），以及两个 M.2 插槽的 3.3V 供电轨 —— Hailo-8 + Hailo-10）。待两颗 M.2 模块的真实功耗确认后（Hailo-8 低于 5W；Hailo-10 自身数值仍待定），该 4A 预算需要重新核算 —— 可能需要超过 4A；见 `hardware/PCB/kinematic_brain_stm32h745/BOM.md` 第 09 项。
 
 ## 10. 🔄 处理器间通信（IPC）
 
@@ -129,7 +129,7 @@ CM5（主机）与 STM32H745（协处理器）之间的通信，采用硬件辅�
 * 🛠️ **连接器与装配：**
   * 🔲 STM32H745 采用 LQFP-144 封装（0.5 mm 间距），2 颗 GL3523 集线器芯片采用 QFN-88 封装，另有 2 个由板载 PCIe Gen3 交换芯片供电的 M.2 Key M 2242/2280 插槽（Hailo-8 + Hailo-10，第 3 节）。
   * 🔌 双 Hirose DF40 夹层连接器，用于 Compute Module 5。
-  * 📌 40 针、2.54 mm 间距堆叠式排针，用于 STACK A 总线连接（机器人控制板物理堆叠的底座）—— `docs/PINOUT_STACKA_CONNECTOR.TXT`。
+  * 📌 40 针、2.54 mm 间距堆叠式排针，用于 STACK A 总线连接（机器人控制板物理堆叠的底座）—— `docs/PINOUT_STACKA_CONNECTOR.md`。
   * 🔌 8 路 USB 3.0 Type-A（或 Hirose 工业锁扣型）连接器，用于机器人摄像头。
 
 ## 12. 🦾 机器人控制板与 URTC 工具头（分布式层级）
@@ -144,7 +144,7 @@ flowchart LR
 ```
 
 * 🎛️ **MCU：** STMicroelectronics **STM32G474RET6**（Cortex-M4 @ 170 MHz，LQFP-64，512 KB 闪存），使用其自带 3 路 FDCAN 外设中的 2 路 —— 一路作为连接 STM32H745 的 FDCAN 上行链路，另一路作为连接自身 URTC 头部的 CAN 下行链路。详见 `docs/architecture.md` §1。
-* 🔢 **地址分配：** `BOARD_ID[2:0]` —— 每块板上的本地 3 位 DIP 开关，安装时手动设置为 0-7，为每块板赋予自己的 FDCAN1 插槽基础地址 —— 并非由物理堆叠位置或 STACK A 连接器派生（每块板都是完全相同、可互换的 PCB）。详见 `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` §1c。
+* 🔢 **地址分配：** `BOARD_ID[2:0]` —— 每块板上的本地 3 位 DIP 开关，安装时手动设置为 0-7，为每块板赋予自己的 FDCAN1 插槽基础地址 —— 并非由物理堆叠位置或 STACK A 连接器派生（每块板都是完全相同、可互换的 PCB）。详见 `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md` §1c。
 * 🧵 **RTOS：** **FreeRTOS**（其引导加载程序保持裸机运行 —— 接收/校验/跳转无需调度器）。真实应用：`src/mcu_stm32g474/STM32G474RE_main.c` 运行着真实的中继任务（`RobotControllerRelay.c`——通往 URTC Tool Head 的 FDCAN2 下行链路、一个 `AXIS_STATUS` 响应器，以及 `RELAY_SEND`/`RELAY_RECV` 隧道），与带看门狗刷新的闪烁任务并行运行。
 * 📡 **CAN-OTA 固件更新，深达 4 个层级：** STM32H745 自身（通过其与 CM5 之间既有的 SPI 链路）、本板、其 URTC 工具头（STM32F303CCT6），以及 —— 仅当已安装时 —— 该工具头自身的高级扩展板（STM32F303CBT6，`expansion_board_type` 为 3 或 4，详见 URTC 自身的 `docs/EXPANSION.TXT`），均可从 HYDRA-UMC-STUDIO 的烧录器/测试器中完成烧录与诊断，全程无需 JTAG/SWD 探针，也无需 USB-CAN 转接器。完整地址方案、无需任何新协议设计即可触达最后两个层级的中继隧道，以及当前实现状态：详见 `docs/architecture.md`。 **带签名的镜像头与防回滚(引导程序,已在主机上测试):** 更新带有 64 字节的头(完整版本 主.次.补丁、硬件 ID、大小、链接地址、向量字、CRC),Ed25519 签名覆盖头与镜像合在一起的摘要,因此旧的已签名镜像无法声称更高的版本;版本的三个数字会被比较,更旧的镜像只有在带有绑定该会话随机数、两个版本和该镜像的令牌时才会安装(令牌本身也是签名;旧的四字节魔术帧不再允许任何事)。该判定(`image_header.h`、`update_verify.h`)在三个引导程序中是同一个文件,用 `tools/image_header.py` 生成的字节测试,并且对 G474 从 START_UPDATE 到新应用做了端到端测试。板子上只有公钥(`tools/image_header.py` 生成密钥并签名;私钥种子永远不放到板子上,开发用种子是公开的,因此发布构建会拒绝开发用公钥);曲线运算使用内置的 TweetNaCl(公有领域,见 `THIRD_PARTY_NOTICES.md`)。这些都还没有为板子编译或在板子上运行过。
 

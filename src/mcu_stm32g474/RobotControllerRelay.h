@@ -15,12 +15,12 @@
  * Two real jobs, both driven off this board's own slot base ID
  * (CAN_ID_STACKA_BASE + N*STACKA_SLOT_WINDOW, bootloader_common.h):
  *   1. Answers AXIS_STATUS (+0x10) queries from Tier 0 with this board's
- *      own real endstop/fault GPIO state - docs/CANBUS_STM32G474.TXT's own
+ *      own real endstop/fault GPIO state - docs/CANBUS_STM32G474.md's own
  *      documented txData[0]/txData[1] layout, matching KinematicBrainCan.c's
  *      own KinematicBrainCan_QueryAxisStatus() sender.
  *   2. RELAY_SEND (+0x12) / RELAY_RECV (+0x13): the generic, ID-agnostic
  *      tunnel to this robot's own URTC Tool Head over this board's SECOND
- *      FDCAN controller (FDCAN2, docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT
+ *      FDCAN controller (FDCAN2, docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md
  *      section 1b) - reassembles a real RELAY_SEND fragment pair into one
  *      real Classic CAN frame and forwards it on FDCAN2 addressed exactly
  *      as read from the payload (this board never interprets the target ID
@@ -32,7 +32,7 @@
  *      1-byte total DLC + up to 5 data bytes per fragment.
  *
  * Deliberately NOT implemented here: OFS_ENTER_BOOTLOADER (+0x00). Real
- * docs/CANBUS_STM32G474.TXT section 2 already names this as unimplemented
+ * docs/CANBUS_STM32G474.md section 2 already names this as unimplemented
  * ("this board currently has no way to voluntarily re-enter its own
  * bootloader except via a physical reset") - resetting into this board's
  * own bootloader on command needs a real boot-selection mechanism (e.g. a
@@ -40,7 +40,7 @@
  * doesn't exist anywhere in this project yet, and is a genuinely separate
  * concern from the relay tunnel this module exists for. Left as a real,
  * named gap rather than silently glossed over - see this project's own
- * docs/CANBUS_STM32G474.TXT section 2 for where it's tracked.
+ * docs/CANBUS_STM32G474.md section 2 for where it's tracked.
  */
 #ifndef ROBOT_CONTROLLER_RELAY_H
 #define ROBOT_CONTROLLER_RELAY_H

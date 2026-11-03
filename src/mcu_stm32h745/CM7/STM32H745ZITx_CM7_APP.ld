@@ -9,7 +9,7 @@
  * slot split URTC's own firmware proves out (see the sibling URTC repo) and
  * HYDRA-UMC's own G474 scripts already apply - scaled to this chip's own
  * per-core flash bank (1 MB) instead of re-deriving the pattern from
- * scratch. See docs/COMPILE_STM32H745.TXT and docs/architecture.md section
+ * scratch. See docs/COMPILE_STM32H745.md and docs/architecture.md section
  * 2 (Tier 0 flashing is over SPI, not CAN, but reuses the same command
  * vocabulary and the same verify-before-copy anti-bricking discipline).
  *

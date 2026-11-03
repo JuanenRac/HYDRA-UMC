@@ -47,7 +47,7 @@ Flasher/Tester's own target picker uses (`canOta.ts`'s `CanOtaTier`):
   "STACK A":** CONFIRMED bus (1x native FDCAN1 on the STM32H745, up to 8
   slaves, run in Classic CAN mode at ~1 Mbps, 8-byte max payload per frame
   - the real bootloader implementation uses FDCAN_FRAME_CLASSIC/BRS_OFF,
-  not CAN FD's larger BRS payloads, see docs/CANBUS_STM32H745.TXT and
+  not CAN FD's larger BRS payloads, see docs/CANBUS_STM32H745.md and
   README.md section 6 - TCAN1044/TJA1443 transceiver). MCU **CONFIRMED:
   STM32G474RET6** (Cortex-M4 @ 170
   MHz, LQFP-64, 512 KB flash, 3x FDCAN peripherals - 2 used: one uplink to
@@ -97,8 +97,8 @@ doesn't change.
 Implementation status: `../src/mcu_stm32g474/`, `../src/mcu_stm32h745/CM7/`,
 and `../src/mcu_stm32h745/CM4/` each have a real, verified-compiling
 FreeRTOS skeleton (one task, GPIO toggle - proves the toolchain+RTOS
-pipeline itself works, not real firmware) - see `docs/COMPILE_STM32G474.TXT`
-and `docs/COMPILE_STM32H745.TXT` for exactly what that does and doesn't
+pipeline itself works, not real firmware) - see `docs/COMPILE_STM32G474.md`
+and `docs/COMPILE_STM32H745.md` for exactly what that does and doesn't
 include yet (real clock config, real tasks, cross-core IPC are all still
 open).
 
@@ -280,7 +280,7 @@ that isn't there.
 | CM5 <-> STM32H745 SPI transport | CONFIRMED, documented (README.md §10) |
 | STM32H745's own SPI firmware-update protocol (Tier 0) | **IMPLEMENTED** - `src/mcu_stm32h745/CM4/boot/` is a real bootloader: SPI1 slave, the frame-type-byte scheme this document's §3 describes, CRC-32 + Ed25519 signature verify-into-backup-before-copy-to-main. Compiles clean (`build_firmware.sh h745`). NOT yet verified against real hardware - see that folder's own README.md for the concrete gaps (clock tree, dual-core bring-up). |
 | STM32H745 <-> Robot Controller Board FDCAN1 bus (electrical) | CONFIRMED, documented (README.md §6) |
-| Robot Controller Board slot addressing on that shared bus | **IMPLEMENTED** - `BOARD_ID[2:0]`, a LOCAL DIP switch on each Robot Controller Board (`docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` §1c - CONFIRMED design, not derived from the STACK A connector or stack position, see `docs/PINOUT_STACKA_CONNECTOR.TXT` §1) feeds `ReadSlotBaseId()` in the G474 bootloader - this document's §4 formula is real code now, not just a formula. The CM4 gateway bootloader doesn't read this itself (it's the master, not a stack member) - it takes a target slot number from the SPI1 frame the CM5 sends (`SpiOtaFrame_t.target_slot`, `src/mcu_stm32h745/CM4/boot/bootloader_common.h`) instead. |
+| Robot Controller Board slot addressing on that shared bus | **IMPLEMENTED** - `BOARD_ID[2:0]`, a LOCAL DIP switch on each Robot Controller Board (`docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md` §1c - CONFIRMED design, not derived from the STACK A connector or stack position, see `docs/PINOUT_STACKA_CONNECTOR.md` §1) feeds `ReadSlotBaseId()` in the G474 bootloader - this document's §4 formula is real code now, not just a formula. The CM4 gateway bootloader doesn't read this itself (it's the master, not a stack member) - it takes a target slot number from the SPI1 frame the CM5 sends (`SpiOtaFrame_t.target_slot`, `src/mcu_stm32h745/CM4/boot/bootloader_common.h`) instead. |
 | Robot Controller Board's own MCU identity | **CONFIRMED: STM32G474RET6** (LQFP-64, 512 KB flash, 3x FDCAN - 2 used, see §1). |
 | Robot Controller Board's own bootloader firmware | **IMPLEMENTED** - `src/mcu_stm32g474/boot/` is a real bootloader: FDCAN1, slot-addressed per §4's offset table, same CRC-32 + Ed25519 signature anti-bricking discipline. Compiles clean. NOT yet verified against real hardware. |
 | CM7<->CM4 IPC (needed to flash CM7 itself, since only CM4 owns SPI1/FDCAN1) | **IMPLEMENTED** - `src/mcu_stm32h745/Common/ipc_mailbox.h`, a 2-HSEM-channel shared-SRAM4 mailbox. CM7's own bootloader (`CM7/boot/`) runs the same protocol state machine over this mailbox instead of a bus - the only way to reach CM7 at all, since it has no SPI1/FDCAN1 access of its own. |
@@ -336,7 +336,7 @@ stay visible before this project reaches real hardware.
   key shared per board type.
 - **`OFS_AUTHORIZE_DOWNGRADE`'s anti-rollback bypass is a fixed 4-byte
   value** (`0xD0,0x9E,0x12,0xAD`, identical across all 3 bootloaders,
-  and published in `docs/CANBUS_STM32G474.TXT`/`docs/CANBUS_STM32H745.TXT`
+  and published in `docs/CANBUS_STM32G474.md`/`docs/CANBUS_STM32H745.md`
   since the protocol has to be documented for the Flasher/Tester tooling
   to implement it). Any node on the relevant bus can authorize a
   downgrade to an older-but-still-validly-signed image - this doesn't

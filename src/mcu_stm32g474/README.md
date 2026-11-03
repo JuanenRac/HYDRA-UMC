@@ -19,7 +19,7 @@ FreeRTOS (a bootloader doesn't need a scheduler — see `docs/architecture.md`
 section 2), ported from URTC's own proven bootloader (sibling repo) and
 re-based onto this board's own FDCAN1 slot addressing
 (`docs/architecture.md` section 4, `docs/PINOUT_STM32G474_ROBOT_
-CONTROLLER.TXT` section 1a/1c): FDCAN1 listen loop, `BOARD_ID[2:0]`-derived
+CONTROLLER.md` section 1a/1c): FDCAN1 listen loop, `BOARD_ID[2:0]`-derived
 addressing (a local DIP switch, not the STACK A connector), CRC32 + HMAC-SHA256 verify-into-backup-before-copy-to-main
 anti-bricking discipline, version query, error counters, anti-rollback with
 explicit downgrade authorization, backup readback. NOT yet verified against
@@ -43,7 +43,7 @@ written". `OFS_ENTER_BOOTLOADER` (+0x00) is intentionally still a no-op -
 see `RobotControllerRelay.h`'s own header for why. Real 6-axis STEP/DIR/EN
 motion generation and the 6x TMC5160A SPI2 daisy-chain are still not
 written - those are pinned out in
-`docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` but not yet wired up here. See
+`docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md` but not yet wired up here. See
 each file's own header comment for exactly what's still TODO, all tracked
 against `../../docs/architecture.md`.
 
@@ -51,7 +51,7 @@ against `../../docs/architecture.md`.
 KB heap, 1000 Hz tick — see that file's own header for why
 `configCPU_CLOCK_HZ` is still the HSI reset default and needs updating
 alongside real clock config). Vendored the same way as the HAL/CMSIS
-sources — see `../../docs/COMPILE_STM32G474.TXT` section 3a.
+sources — see `../../docs/COMPILE_STM32G474.md` section 3a.
 
 ## Hardware platform
 
@@ -92,7 +92,7 @@ and this layout does not apply.
 ../../build_firmware.sh g474
 ```
 
-See `../../docs/COMPILE_STM32G474.TXT` for the full compile reference (every
+See `../../docs/COMPILE_STM32G474.md` for the full compile reference (every
 command this script runs, and why).
 
 ## Source layout
@@ -115,4 +115,4 @@ command this script runs, and why).
 `stm32g4xx_hal_conf.h` and every HAL/CMSIS header are NOT vendored here —
 `build_firmware.sh` fetches them fresh from ST's own official repos each
 run (cached under `../../build/g474/vendor/`). See
-`../../docs/COMPILE_STM32G474.TXT` section 3.
+`../../docs/COMPILE_STM32G474.md` section 3.

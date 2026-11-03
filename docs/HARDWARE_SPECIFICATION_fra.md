@@ -22,12 +22,12 @@ Voici la spécification de la conception prévue de la carte et de son firmware,
 
 ## 3. 🧠 SOUS-SYSTÈME ACCÉLÉRATEUR IA PCIE (NPU DOUBLE HAILO-8 + HAILO-10)
 
-* 🔀 **Répartition de la Voie PCIe :** Le connecteur du CM5 n'expose qu'**une seule** voie PCIe Gen 2.0/3.0 x1 (confirmé par le Tableau 5 de la fiche technique du CM5, `docs/PINOUT_CM5_CARRIER.TXT`) - insuffisant pour câbler directement 2 accélérateurs IA M.2. Un switch de paquets PCIe Gen3 embarqué (candidat : famille ASMedia ASM2806 ou équivalent, référence exacte TBD - Gen3 spécifiquement, pour que la liaison du Hailo-10 ne soit pas bridée en dessous de sa propre vitesse native) répartit cette unique voie côté CM5 en 2 voies PCIe x1 downstream indépendantes, une par emplacement M.2 ci-dessous.
+* 🔀 **Répartition de la Voie PCIe :** Le connecteur du CM5 n'expose qu'**une seule** voie PCIe Gen 2.0/3.0 x1 (confirmé par le Tableau 5 de la fiche technique du CM5, `docs/PINOUT_CM5_CARRIER.md`) - insuffisant pour câbler directement 2 accélérateurs IA M.2. Un switch de paquets PCIe Gen3 embarqué (candidat : famille ASMedia ASM2806 ou équivalent, référence exacte TBD - Gen3 spécifiquement, pour que la liaison du Hailo-10 ne soit pas bridée en dessous de sa propre vitesse native) répartit cette unique voie côté CM5 en 2 voies PCIe x1 downstream indépendantes, une par emplacement M.2 ci-dessous.
 * 🔌 **Interfaces Physiques :** 2x emplacements M.2 Key M embarqués (format 2242 / 2280), chacun câblé à son propre port downstream du switch PCIe ci-dessus - pas directement au CM5.
 * 🚀 **Moteur NPU 1 - Hailo-8 (Perception Haute Vitesse) :** Processeur IA industriel Hailo-8 délivrant **26 TOPS** (Téra Opérations Par Seconde) avec une consommation inférieure à 5W. Assure la détection d'objets multi-flux YOLOv8/YOLO11 (prévu ; ne tourne pas encore), l'inspection de défauts et l'alignement de repères fiduciaires PnP en temps réel sur les 8 caméras (section 4) - l'accélérateur déjà existant, rôle inchangé.
 * 🧠 **Moteur NPU 2 - Hailo-10 (Raisonnement Cognitif / GenAI Local) :** Ajouté aux côtés du Hailo-8, pas en remplacement. Avec **40 TOPS**, il exécute localement et en privé des modèles LLM et Vision-Language-Action (VLA) quantifiés - traduisant les instructions vocales/en langage naturel de l'opérateur en trajectoires cinématiques, et gérant la récupération sémantique d'erreurs lorsqu'un robot échoue une tâche, sans aucun aller-retour vers un service cloud externe. Le même rôle cognitif déjà établi pour le Hailo-10 dans le reste de l'écosystème HYDRA-UMC (le projet frère HYDRA-UMC-COGNITIVE-NODE).
 * ⚡ **Intégration Logicielle :** Suite logicielle officielle Hailo RT intégrée à Raspberry Pi OS pour les deux accélérateurs, exécutant des pipelines GStreamer/TAPPAS et OpenCV pour l'inférence de vision sans surcharge CPU du Hailo-8 ; l'intégration du runtime LLM/VLA propre au Hailo-10 est encore au stade de conception (voir `src/cm5_host/ai_inference/README.md`).
-* ⚠️ **Point ouvert :** la référence exacte du switch PCIe, ainsi que la consommation réelle propre du Hailo-10, restent toutes deux TBD - voir `hardware/PCB/kinematic_brain_stm32h745/BOM.TXT` éléments 05 et 09.
+* ⚠️ **Point ouvert :** la référence exacte du switch PCIe, ainsi que la consommation réelle propre du Hailo-10, restent toutes deux TBD - voir `hardware/PCB/kinematic_brain_stm32h745/BOM.md` éléments 05 et 09.
 
 ## 4. 📷 SOUS-SYSTÈME DE VISION DOUBLE USB 3.0 (8x PORTS CAMÉRA)
 
@@ -35,7 +35,7 @@ Voici la spécification de la conception prévue de la carte et de son firmware,
 * 🔀 **Topologie et Distribution :**
   * 🅰️ **Hub #1 (`GL3523-A`) :** Connecté au PHY SuperSpeed USB3-0 natif du CM5 (5 Gbps). Alimente les ports USB 1 à 4 (Caméras A1-A4).
   * 🅱️ **Hub #2 (`GL3523-B`) :** Connecté au PHY SuperSpeed USB3-1 natif du CM5 (5 Gbps). Alimente les ports USB 5 à 8 (Caméras A5-A8).
-  * ℹ️ Le CM5 expose ces 2 PHY SuperSpeed directement (BCM2712) - aucune puce compagnon RP1 n'est impliquée (le RP1 est spécifique à la carte Raspberry Pi 5, pas au CM5). Routage complet des signaux au niveau des broches : `docs/PINOUT_CM5_CARRIER.TXT`.
+  * ℹ️ Le CM5 expose ces 2 PHY SuperSpeed directement (BCM2712) - aucune puce compagnon RP1 n'est impliquée (le RP1 est spécifique à la carte Raspberry Pi 5, pas au CM5). Routage complet des signaux au niveau des broches : `docs/PINOUT_CM5_CARRIER.md`.
 * 🛡️ **Interrupteur d'Alimentation et Protection de Circuit :** Protection VBUS individuelle par USB via des interrupteurs d'alimentation à limitation de courant côté haut (`TPS2065` / `SY6280`) configurés pour 500 mA - 1 A avec signalement de défaut.
 * ⚡ **Rail VBUS Haute Intensité :** Alimenté par un régulateur Step-Down dédié de 24V vers 5V (5V @ 6A continus).
 
@@ -44,7 +44,7 @@ Voici la spécification de la conception prévue de la carte et de son firmware,
 * 🎛️ **Contrôleur de Hub :** 1x petit circuit intégré hub USB 2.0 (p. ex. Genesys Logic `GL850G` / `FE1.1s`, à confirmer) répartissant l'unique PHY USB 2.0 natif du CM5 sur 2 ports physiques.
 * ℹ️ **Pourquoi un hub est nécessaire :** la fiche technique du CM5 (`docs/datasheets/Raspberry Pi CM5.pdf`, §2.5) confirme que le BCM2712 expose exactement **un** port USB 2.0 (High Speed) sur le connecteur DF40 (`USB_N`/`USB_P`, broches 103/105) - séparé et distinct des 2 PHY SuperSpeed USB 3.0 natifs déjà dédiés aux hubs caméra GL3523 (section 4). Une seule paire physique ne peut pas être divisée en 2 ports sans un hub intermédiaire.
 * 🔀 **Topologie :** `USB_N`/`USB_P` (CM5) -> port amont du hub -> 2x ports aval USB 2.0 Type-A (panneau avant/latéral, pour manette, souris, ou clavier - contrôle manuel jog/teach-pendant et entrée HMI, indépendant de l'écran tactile).
-* 📌 Routage complet des signaux au niveau des broches : `docs/PINOUT_CM5_CARRIER.TXT` section 1.
+* 📌 Routage complet des signaux au niveau des broches : `docs/PINOUT_CM5_CARRIER.md` section 1.
 
 ## 5. ⚡ SOUS-SYSTÈME DE CO-TRAITEMENT TEMPS RÉEL (CONCEPTION)
 
@@ -62,12 +62,12 @@ Voici la spécification de la conception prévue de la carte et de son firmware,
 
 La carte mère agit comme contrôleur maître pour jusqu'à 8 modules robotiques esclaves individuels distribués sur un unique bus physique CAN :
 
-* 🔌 **Périphérique Matériel :** 1x Contrôleur FDCAN matériel natif (`FDCAN1`) intégré directement dans le STM32H745, exécuté en **mode CAN Classique** (`FDCAN_FRAME_CLASSIC`, `BRS_OFF`) par l'implémentation réelle du bootloader - le périphérique est un silicium compatible FD, mais le protocole CAN-OTA/SPI-OTA que ce projet parle réellement aujourd'hui (`docs/CANBUS_STM32H745.TXT`, `docs/CANBUS_STM32G474.TXT`) n'utilise que des trames classiques (DLC max 8), comme chaque autre niveau (Cartes Robot Controller Board G474, URTC). Les charges utiles BRS de 64 octets du CAN FD sont une marge matérielle réelle pour plus tard, pas quelque chose que le protocole utilise encore.
+* 🔌 **Périphérique Matériel :** 1x Contrôleur FDCAN matériel natif (`FDCAN1`) intégré directement dans le STM32H745, exécuté en **mode CAN Classique** (`FDCAN_FRAME_CLASSIC`, `BRS_OFF`) par l'implémentation réelle du bootloader - le périphérique est un silicium compatible FD, mais le protocole CAN-OTA/SPI-OTA que ce projet parle réellement aujourd'hui (`docs/CANBUS_STM32H745.md`, `docs/CANBUS_STM32G474.md`) n'utilise que des trames classiques (DLC max 8), comme chaque autre niveau (Cartes Robot Controller Board G474, URTC). Les charges utiles BRS de 64 octets du CAN FD sont une marge matérielle réelle pour plus tard, pas quelque chose que le protocole utilise encore.
 * ⚡ **Transceiver de Couche Physique :** 1x Transceiver CAN FD haute vitesse (p. ex. TI `TCAN1044AVD` / NXP `TJA1443`) - matériel compatible FD choisi pour la même raison de marge future que le périphérique ci-dessus, même si le trafic d'aujourd'hui reste des trames classiques.
 * 🔀 **Topologie du Bus :**
   * 🅰️ **STACK A (`FDCAN1`) :** Dessert les Modules Esclaves A1 à A8.
 * ⏱️ **Spécifications du Protocole :** ~1 Mbps de débit binaire nominal (CAN Classique, charge utile max de 8 octets par trame). La récupération automatique après bus-off est prévue pour être gérée par le Cortex-M4 - pas encore implémentée ; l'application actuelle du CM4 (`src/mcu_stm32h745/CM4/STM32H745ZI_CM4_main.c`) exécute déjà une vraie tâche maître FDCAN1 « STACK A » (requêtes `AXIS_STATUS` en round-robin sur les 8 slots, voir `KinematicBrainCan.c`) plus le rafraîchissement du watchdog, mais la récupération après bus-off en particulier reste un travail futur réel, pas une capacité déjà livrée.
-* 🔌 **Connecteur Physique :** Connecteur/embase d'EMPILEMENT 40 broches, pas 2.54mm (+24V ×10 broches, GND ×10 broches, +5V ×4 broches auxiliaires, FDCAN1 H/L, `BOARD_PRESENT_N`, 13 de réserve) - les 8 Cartes Robot Controller Board s'EMPILENT physiquement l'une sur l'autre d'un côté de cette carte (topologie CONFIRMÉE, pas un backplane), chaque carte faisant passer directement les 40 signaux vers ce qui est monté au-dessus. L'adressage des emplacements est un commutateur DIP LOCAL par carte (`BOARD_ID[2:0]`, README.md section 12), non dérivé de ce connecteur. Table complète des broches et topologie d'empilement dans `docs/PINOUT_STACKA_CONNECTOR.TXT`. Définition de connecteur identique à la fois sur le propre port du Kinematic Brain et sur chaque paire de ports des Cartes Robot Controller Board.
+* 🔌 **Connecteur Physique :** Connecteur/embase d'EMPILEMENT 40 broches, pas 2.54mm (+24V ×10 broches, GND ×10 broches, +5V ×4 broches auxiliaires, FDCAN1 H/L, `BOARD_PRESENT_N`, 13 de réserve) - les 8 Cartes Robot Controller Board s'EMPILENT physiquement l'une sur l'autre d'un côté de cette carte (topologie CONFIRMÉE, pas un backplane), chaque carte faisant passer directement les 40 signaux vers ce qui est monté au-dessus. L'adressage des emplacements est un commutateur DIP LOCAL par carte (`BOARD_ID[2:0]`, README.md section 12), non dérivé de ce connecteur. Table complète des broches et topologie d'empilement dans `docs/PINOUT_STACKA_CONNECTOR.md`. Définition de connecteur identique à la fois sur le propre port du Kinematic Brain et sur chaque paire de ports des Cartes Robot Controller Board.
 
 ```mermaid
 flowchart LR
@@ -90,7 +90,7 @@ Objectif de conception (pas encore implémenté) : zéro perte de données et r�
 * ⚡ **Signaux :** CMOS 3.3V (`STEP`, `DIR`, `ENABLE`), chaîne SPI4 partagée vers les 6 drivers.
 * ⏱️ **Timers :** Timers de Contrôle Avancé (`TIM1` pour X/Y1/Y2/Z, `TIM8` pour E0/E1) avec génération d'impulsions matérielle.
 * 🛑 **Fins de Course :** 12x entrées, 2 par axe (MIN + MAX).
-* 📌 Affectation complète des broches : `docs/PINOUT_STM32H745_KINEMATIC_BRAIN.TXT`.
+* 📌 Affectation complète des broches : `docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md`.
 
 ### 🔌 Actionneurs de Puissance et Fluidiques
 * 🔀 **20x Canaux de Commutation Côté Bas :** Sorties MOSFET industrielles canal N avec protection flyback.
@@ -108,7 +108,7 @@ La carte fonctionne à partir d'un unique bus d'alimentation industriel **24V DC
 * ⚡ **Entrée DC Principale :** 24V DC ±10%
 * 🔋 **Domaine d'Alimentation Principal 5V :** Régulateur buck synchrone step-down fournissant **5A continus** pour le module CM5, le rétroéclairage de l'écran tactile, et la logique embarquée.
 * 📷 **Domaine d'Alimentation VBUS USB 5V :** Régulateur buck synchrone dédié fournissant **6A continus** exclusivement pour les 8 ports caméra USB 3.0 et les contrôleurs de hub GL3523.
-* 🎛️ **Domaine d'Alimentation 3.3V :** Régulateur bas bruit fournissant **4A continus** (dimensionné pour le STM32, la FRAM, les transceivers, le switch PCIe (section 3), et les rails 3.3V des deux emplacements M.2 - Hailo-8 + Hailo-10). Ce budget doit être revérifié par rapport aux 4A une fois la consommation réelle des deux modules M.2 confirmée (le Hailo-8 est inférieur à 5W ; la valeur propre du Hailo-10 reste TBD) - pourrait devoir dépasser 4A ; voir `hardware/PCB/kinematic_brain_stm32h745/BOM.TXT` élément 09.
+* 🎛️ **Domaine d'Alimentation 3.3V :** Régulateur bas bruit fournissant **4A continus** (dimensionné pour le STM32, la FRAM, les transceivers, le switch PCIe (section 3), et les rails 3.3V des deux emplacements M.2 - Hailo-8 + Hailo-10). Ce budget doit être revérifié par rapport aux 4A une fois la consommation réelle des deux modules M.2 confirmée (le Hailo-8 est inférieur à 5W ; la valeur propre du Hailo-10 reste TBD) - pourrait devoir dépasser 4A ; voir `hardware/PCB/kinematic_brain_stm32h745/BOM.md` élément 09.
 
 ## 10. 🔄 COMMUNICATION INTER-PROCESSEUR (IPC)
 
@@ -129,7 +129,7 @@ La communication entre le CM5 (Hôte) et le STM32H745 (Co-Processeur) utilise un
 * 🛠️ **Connecteurs et Assemblage :**
   * 🔲 Boîtier LQFP-144 (pas 0.5 mm) pour le STM32H745, boîtiers QFN-88 pour les 2 hubs GL3523, et 2x emplacements M.2 Key M 2242/2280 (Hailo-8 + Hailo-10, section 3) alimentés par un switch PCIe Gen3 embarqué.
   * 🔌 Double connecteur mezzanine Hirose DF40 pour le Compute Module 5.
-  * 📌 Embase d'EMPILEMENT 40 broches, pas 2.54 mm, pour la connexion au bus STACK A (base de l'empilement physique des Cartes Robot Controller Board) - `docs/PINOUT_STACKA_CONNECTOR.TXT`.
+  * 📌 Embase d'EMPILEMENT 40 broches, pas 2.54 mm, pour la connexion au bus STACK A (base de l'empilement physique des Cartes Robot Controller Board) - `docs/PINOUT_STACKA_CONNECTOR.md`.
   * 🔌 8x connecteurs USB 3.0 Type-A (ou verrouillage industriel Hirose) pour les caméras du robot.
 
 ## 12. 🦾 CARTES ROBOT CONTROLLER BOARD ET TÊTE D'OUTIL URTC (NIVEAU DISTRIBUÉ)
@@ -159,7 +159,7 @@ flowchart LR
   l'installation, donne à chaque carte son propre emplacement de base
   FDCAN1 - non dérivé de la position physique dans l'empilement ni du
   connecteur STACK A (chaque carte est le même PCB interchangeable). Voir
-  `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` §1c.
+  `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md` §1c.
 * 🧵 **RTOS :** **FreeRTOS** (son bootloader reste bare-metal - aucun
   ordonnanceur n'est nécessaire pour recevoir/vérifier/sauter).
   Application réelle : `src/mcu_stm32g474/STM32G474RE_main.c` exécute

@@ -15,7 +15,7 @@
 //
 // D1/D2 domain clock-tree bring-up (CM7 and CM4 both individually reset
 // into their own default HSI64 state on this dual-core chip - see docs/
-// COMPILE_STM32H745.TXT section 6) is still TODO exactly as flagged
+// COMPILE_STM32H745.md section 6) is still TODO exactly as flagged
 // throughout this project; SystemClock_Config() below is a placeholder for
 // where that goes, same convention as every other bootloader here.
 // =============================================================================

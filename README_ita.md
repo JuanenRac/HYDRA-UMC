@@ -249,15 +249,15 @@ Linux/Mac: l'Arm GNU Toolchain, `git` (per recuperare le sorgenti HAL/CMSIS
 di ST), e `python` per il passo del manifest.
 
 **Build manuale (entrambi i SO, senza lo script):** lo script automatizza
-esattamente i passi di `docs/COMPILE_STM32G474.TXT` e
-`docs/COMPILE_STM32H745.TXT` - recupera le sorgenti fisse HAL/CMSIS/FreeRTOS
+esattamente i passi di `docs/COMPILE_STM32G474.md` e
+`docs/COMPILE_STM32H745.md` - recupera le sorgenti fisse HAL/CMSIS/FreeRTOS
 elencate all'inizio di `build_firmware.sh`/`build_firmware.bat`, compila i
 moduli HAL e i file startup/system di ogni target con `arm-none-eabi-gcc`
 (flag/elenchi moduli sono elencati in quello stesso script), poi linka ogni
 bootloader e applicazione contro il proprio linker script (`*.ld`, accanto
 alla propria sorgente) con `arm-none-eabi-gcc`/`-Wl,--gc-sections` e converte
 con `arm-none-eabi-objcopy` in `.bin`/`.hex`. Quei due file
-`docs/COMPILE_*.TXT` sono il riferimento autoritativo passo-passo se
+`docs/COMPILE_*.md` sono il riferimento autoritativo passo-passo se
 preferisci non eseguire nessuno dei due script - gli script esistono per
 automatizzarli, non per sostituirli come fonte di verità.
 
@@ -266,7 +266,7 @@ repository (stessa convenzione della propria cartella di output `firmware/`
 di URTC) affinché la funzione di download da GitHub di HYDRA-UMC-STUDIO
 possa effettivamente trovare lì file `.bin` reali tramite
 `firmware_manifest.json` - NON è in gitignore.
-Vedi `docs/COMPILE_STM32G474.TXT` e `docs/COMPILE_STM32H745.TXT` per cosa fa
+Vedi `docs/COMPILE_STM32G474.md` e `docs/COMPILE_STM32H745.md` per cosa fa
 esattamente ogni passo e perché - e il proprio `README.md` di ogni cartella
 firmware per lo stato attuale. I **bootloader** per tutti e 3 i target (G474,
 H745 CM7, H745 CM4) sono implementazioni CAN-OTA/SPI-OTA reali e funzionanti

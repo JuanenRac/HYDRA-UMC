@@ -42,7 +42,7 @@ static uint32_t slot_base;
  * own ReadSlotBaseId() (see this file's own header for why it can't just
  * be linked instead). Pull convention, pins, and formula are identical to
  * that function - re-verify both together if either ever changes,
- * docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT section 1c is the shared
+ * docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md section 1c is the shared
  * source of truth for both.
  * ----------------------------------------------------------------------- */
 static uint32_t ReadSlotBaseId_App(void)
@@ -118,7 +118,7 @@ static void MX_FDCAN1_App_Init(void)
 }
 
 /* Real FDCAN2 init - PB5=RX/PB6=TX (AF9), PG8=CAN2_STBY, the downlink to
- * this robot's own URTC Tool Head (docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT
+ * this robot's own URTC Tool Head (docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md
  * section 1b - "standard G474 mapping - re-verify in CubeMX", unlike
  * FDCAN1's Table-12-confirmed pins). Same Classic-CAN bit timing as
  * FDCAN1: URTC's own bxCAN protocol (sibling repo, docs/CANBUS.TXT) is a
@@ -191,9 +191,9 @@ static void MX_FDCAN2_Init(void)
 
 /* -----------------------------------------------------------------------
  * AXIS_STATUS (+0x10) - real endstop/fault GPIO reads, docs/
- * CANBUS_STM32G474.TXT's own documented txData[0]/txData[1] layout.
+ * CANBUS_STM32G474.md's own documented txData[0]/txData[1] layout.
  * Endstops: active-low with internal pull-up (docs/PINOUT_
- * STM32G474_ROBOT_CONTROLLER.TXT section 3, matching the Kinematic
+ * STM32G474_ROBOT_CONTROLLER.md section 3, matching the Kinematic
  * Brain's own convention) - triggered = pin reads LOW.
  * DRV_DIAG_OR/PGOOD: open-drain/wired-OR fault-sense lines (section 2a/4
  * of that same pinout file); this project has no confirmed active-high/
@@ -247,7 +247,7 @@ static uint8_t ReadAxisStatusFrame(uint8_t out[8])
 
     out[0] = endstop_mask;
     out[1] = fault_flags;
-    return 2; /* real DLC - docs/CANBUS_STM32G474.TXT only documents txData[0:1] for this frame */
+    return 2; /* real DLC - docs/CANBUS_STM32G474.md only documents txData[0:1] for this frame */
 }
 
 /* -----------------------------------------------------------------------

@@ -10,12 +10,12 @@ actually starts. Nothing here is a real design file yet; see
 `../robot_controller_board_stm32g474/README.md` for the same status note
 applied to the *other* board this repo now also scaffolds.
 
-## Starting parts list (BOM.TXT)
+## Starting parts list (BOM.md)
 
 Unlike the Robot Controller Board's own BOM (still mostly TBD), this one is
 derived directly from the repo-root README's own already-written component
 specs (sections 2-11) — a real, reasonably complete starting BOM, not a
-guess. See `BOM.TXT` in this folder.
+guess. See `BOM.md` in this folder.
 
 ## Once a real schematic exists
 
@@ -26,7 +26,7 @@ a `datasheet/` folder for any board-specific part not already covered by
 Hailo-8 family, CM5, and several other relevant datasheets — check there
 before adding a duplicate). The Hailo-10 and the PCIe Gen3 switch (BOM item
 05) are NOT in that datasheets folder yet — add them before sourcing either
-part for real, per `BOM.TXT`'s own note.
+part for real, per `BOM.md`'s own note.
 
 **Superseded reference, do not use as a source of truth:**
 `../../../docs/HYDRA-UMC_BOM.txt` and `../../../docs/HYDRA-UMC_PINOUT.txt`

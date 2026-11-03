@@ -222,8 +222,8 @@ def main():
             "flash it - a mismatch means the file changed since this manifest "
             "was generated.",
             "hardware_id is what the CAN-OTA/SPI-OTA QUERY_VERSION command "
-            "reports live from a real connected board (docs/CANBUS_STM32G474.TXT, "
-            "docs/CANBUS_STM32H745.TXT) - cross-check it against that live "
+            "reports live from a real connected board (docs/CANBUS_STM32G474.md, "
+            "docs/CANBUS_STM32H745.md) - cross-check it against that live "
             "answer before flashing anything, not just this manifest's own "
             "filename-to-chip mapping.",
             "flash_region_max_bytes is the maximum this component could ever be "

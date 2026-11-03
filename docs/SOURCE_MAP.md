@@ -7,14 +7,14 @@ Every file of the repository with a line on what it does: the annotated tree tha
 ├── docs/
 │   ├── datasheets/             # Datasheets of parts used across every board in this repo
 │   ├── architecture.md         # The 4-tier system architecture (start here)
-│   ├── COMPILE_STM32G474.TXT   # Robot Controller Board firmware build reference
-│   ├── COMPILE_STM32H745.TXT   # Kinematic Brain firmware build reference (dual-core)
-│   ├── PINOUT_STM32H745_KINEMATIC_BRAIN.TXT    # Kinematic Brain full pin allocation
-│   ├── PINOUT_STM32G474_ROBOT_CONTROLLER.TXT   # Robot Controller Board full pin allocation
-│   ├── PINOUT_CM5_CARRIER.TXT                  # CM5 host subsystem signal routing
-│   ├── PINOUT_STACKA_CONNECTOR.TXT             # Shared 40-pin STACK A stacking connector
-│   ├── CANBUS_STM32H745.TXT                    # Kinematic Brain wire-level protocol (SPI1/mailbox/FDCAN1-master)
-│   ├── CANBUS_STM32G474.TXT                    # Robot Controller Board wire-level protocol (FDCAN1-slave/FDCAN2)
+│   ├── COMPILE_STM32G474.md   # Robot Controller Board firmware build reference
+│   ├── COMPILE_STM32H745.md   # Kinematic Brain firmware build reference (dual-core)
+│   ├── PINOUT_STM32H745_KINEMATIC_BRAIN.md    # Kinematic Brain full pin allocation
+│   ├── PINOUT_STM32G474_ROBOT_CONTROLLER.md   # Robot Controller Board full pin allocation
+│   ├── PINOUT_CM5_CARRIER.md                  # CM5 host subsystem signal routing
+│   ├── PINOUT_STACKA_CONNECTOR.md             # Shared 40-pin STACK A stacking connector
+│   ├── CANBUS_STM32H745.md                    # Kinematic Brain wire-level protocol (SPI1/mailbox/FDCAN1-master)
+│   ├── CANBUS_STM32G474.md                    # Robot Controller Board wire-level protocol (FDCAN1-slave/FDCAN2)
 │   └── HYDRA-UMC_*.md/txt/TXT  # Older docs - Markdown where authored as Markdown; see each file's own banner
 ├── hardware/
 │   ├── PCB/

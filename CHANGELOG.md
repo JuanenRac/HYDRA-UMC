@@ -4,6 +4,7 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **The text references of the hardware documentation are Markdown files:** the pinout, CAN bus, build and board parts-list references under `docs/` and `hardware/PCB/` now use the `.md` extension (the original plain text sits in a `text` block, so ASCII tables keep their layout), and every link to them in the README files, the source comments, the build script and the firmware manifest follows.
 - **The manual firmware build takes the trust table as an input and measures the size of the bootloaders:** the `flavour` input of `.github/workflows/firmware-build.yml` (`dev`, the default, or `release`) replaces the fixed development-key build; the build now fails unless each of the three bootloaders holds exactly the trust table of its flavour (`tools/image_trust.py check`), and the release table stays closed until the image-signing key exists. A new step runs `tools/bootloader_size.py`: it reads the ELF of each bootloader with `arm-none-eabi-size`, takes the flash and RAM regions from its linker script, writes a table in the job summary and fails when a bootloader leaves less free space than the margins of `tools/bootloader_size.json`.
 - **The three bootloaders verify header format 2 against a table of public keys and hold no secret:** `bootloader_trust.[ch]` decodes the trust table the linker places in `.trust_keys` at offset `0x400` (generated from `docs/image_trust.json` by `tools/image_trust.py headers`; the bench build compiles the development table with `-DHYDRA_TRUST_DEV`, an official build the release table, which is closed until the image-signing key exists). `UpdateVerify_Decide2` picks the key by the key id of the header, checks the Ed25519 signature over `hydra-umc-image-sig/2 || SHA-256(header || image)`, the header against what arrived, and a signed rollback counter that nothing overrides (the downgrade token only lifts the version rule). Header format 1 is no longer accepted by the bootloaders. `HYDRA_FW_HMAC_KEY_HEX` and `HYDRA_FW_UPDATE_PUBKEY_HEX` are gone: the integrity check of the installed application is a plain SHA-256 kept in the metadata.
 - **The metadata is an append-only log:** records of generation, state and CRC-32 are appended without an erase; the valid record with the highest generation is the state, so a power cut during a write leaves the previous state in force. The G474 alternates between its two pages (the newest state is never without a valid copy); the H745 cores use their sector and erase it only when it is full.
@@ -31,7 +32,7 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [0.2.4] - Valid standby pins proposed for the G474 controller board, a bus contract a program can read, the explained deployment target and the universal README
 
-- **The pinout of the STM32G474 robot controller board marks the CAN standby pins as invalid and proposes valid ones:** the LQFP-64 package has no PG7 or PG8, and PB8 (FDCAN1 RX) is also the BOOT0 pin. `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` now proposes PC5 and PC8 for the two standby lines and the option bytes that take BOOT0 from the option byte (`nSWBOOT0 = 0`, `nBOOT0 = 1`). It is a proposal pending schematic review: no board has been made and the firmware still names the old pins.
+- **The pinout of the STM32G474 robot controller board marks the CAN standby pins as invalid and proposes valid ones:** the LQFP-64 package has no PG7 or PG8, and PB8 (FDCAN1 RX) is also the BOOT0 pin. `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md` now proposes PC5 and PC8 for the two standby lines and the option bytes that take BOOT0 from the option byte (`nSWBOOT0 = 0`, `nBOOT0 = 1`). It is a proposal pending schematic review: no board has been made and the firmware still names the old pins.
 
 - **A bus contract a program can read:** `docs/bus_contract.json` records, for STACK A, the downlink to a tool head and the SPI link to the CM5, the frame format, the bit timing the firmware sets, the clock it assumes (and the bit rate that follows from both), the identifier window of a slot and the largest frame. `tests/test_bus_contract.py` compares it with the FDCAN initialisation of the five firmware sources, with the slot base of both bootloaders, with `tools/can_ids.py` and with the SPI driver, so a change in one of them that is not made in the other fails. The data length of each message is not recorded yet. No bit rate has been measured on a board.
 - **README in the universal layout:** the README and its seven translations follow the layout that the four families share (22 sections in a fixed order), with an architecture picture and a repository-structure picture drawn from `docs/architecture.json` and `docs/structure.json`; the CI validator checks both pictures and the file tree.
@@ -301,9 +302,9 @@ None of this has run on a bench yet (no board exists): every firmware change bel
   Board's own APPLICATION-side relay logic (not its bootloader) that
   actually speaks to the URTC head is still not written." Real FDCAN2
   init (downlink to this robot's own URTC Tool Head,
-  `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.TXT` section 1b), a real
+  `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md` section 1b), a real
   AXIS_STATUS (+0x10) responder reading this board's own 6 endstop + 3
-  fault-sense GPIOs (`docs/CANBUS_STM32G474.TXT`'s own documented
+  fault-sense GPIOs (`docs/CANBUS_STM32G474.md`'s own documented
   txData[0]/[1] layout), and a real RELAY_SEND/RELAY_RECV (+0x12/+0x13)
   tunnel forwarding opaque CAN traffic between FDCAN1 (uplink, STACK A)
   and FDCAN2 - the exact real 2-fragment-max scheme (2-byte target/source
