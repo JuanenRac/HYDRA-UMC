@@ -52,7 +52,12 @@ MESSAGES: tuple[CanMessage, ...] = (
     CanMessage("BOOT_DOWNGRADE_NONCE_REQUEST", 0x1A, HOST),
     CanMessage("BOOT_DOWNGRADE_TOKEN", 0x1B, HOST),
     CanMessage("BOOT_DOWNGRADE_NONCE_RESPONSE", 0x1C, BOOTLOADER),
+    # emergency stop (docs/ESTOP_CAN.md): the controller board tells the kinematic brain whether it is latched or ready
+    CanMessage("ESTOP_STATE", 0x1D, CONTROLLER_BOARD),
 )
+
+# The emergency stop itself is not inside a slot window: one identifier for the whole stack, below every slot (docs/ESTOP_CAN.md).
+ESTOP_CAN_ID = 0x001
 
 
 def identifier(slot_base: int, message: CanMessage) -> int:

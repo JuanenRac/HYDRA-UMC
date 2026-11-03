@@ -4,6 +4,8 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **Emergency stop contract on identifier 0x001:** `docs/ESTOP_CAN.md` defines the highest-priority frame of the stack bus (trip, release and alive, 8 bytes, epoch and sequence against replay, fail-safe for anything malformed), the manual and acknowledged re-arm, the safe state of each kind of node, the timing and its relation to a hardware stop and to the jog dead-man. `docs/bus_contract.json` carries its numbers, `tools/estop_can.py` is the host reference, `tests/estop_vectors.json` holds the frames and scenarios and `tests/test_estop_contract.py` checks them. Contract only: no firmware sends or honours it yet, and the open decisions are listed in the page.
+
 - **Bench test script:** `docs/BENCH_TESTS.md` lists the checks of the CAN tunnel to a URTC head, the FDCAN clock and the over-the-air update that need a real bus, all marked not executed. It also lists the checks of the dual-core mailbox, the controller board clocks and standby pins, the SPI link, the update of several boards, the emergency stop and the loss of power, all marked not executed.
 
 ## [0.2.6] - The build signs the application images, the C host tests run the same way on every platform and the Python fakes are checked against the firmware

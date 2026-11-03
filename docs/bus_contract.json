@@ -58,5 +58,45 @@
     }
   },
   "slot_messages": "see tools/can_ids.py: each message is an offset inside the 32-identifier window of a slot; the identifier is slot_base + slot * slot_window + offset",
-  "data_length_per_message": "not yet recorded: only the classic maximum of 8 bytes is a contract today"
+  "data_length_per_message": "not yet recorded: only the classic maximum of 8 bytes is a contract today",
+  "emergency_stop": {
+    "contract": "docs/ESTOP_CAN.md",
+    "vectors": "tests/estop_vectors.json",
+    "reference": "tools/estop_can.py",
+    "status": "contract and host reference only: no firmware sends or honours it yet and nothing has run on a board",
+    "can_id": "0x001",
+    "buses": [
+      "stack_a",
+      "tool_head_downlink"
+    ],
+    "frame": {
+      "format": "classic data frame, 11-bit identifier, no remote frame",
+      "dlc": 8,
+      "bytes": [
+        "kind",
+        "detail",
+        "source",
+        "epoch",
+        "sequence_low",
+        "sequence_high",
+        "kind_complement",
+        "detail_complement"
+      ]
+    },
+    "kinds": {
+      "TRIP": "0x01",
+      "RELEASE": "0x02",
+      "ALIVE": "0x03"
+    },
+    "timing_ms": {
+      "trip_repeat": 5,
+      "alive_period": 20,
+      "alive_timeout": 100,
+      "node_reaction_max": 10,
+      "release_repeat": 20,
+      "release_ack_timeout": 500
+    },
+    "timing_note": "proposals to be confirmed on the bench (docs/BENCH_TESTS.md rows 17, 18, 20 and 21); they move to the configuration file of the machine when the firmware reads them",
+    "stop_category": "0 (drivers off at once) until the owner decides otherwise per axis"
+  }
 }

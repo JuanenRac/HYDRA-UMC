@@ -43,6 +43,8 @@ Every row below is **not executed** either; it needs the STM32G474 controller bo
 | 17 | Send an emergency stop on the highest-priority identifier while the stack bus is at 80 per cent load. | Every motion output is disabled within the documented time; measure it with the scope. | not executed |
 | 18 | Pull the supply of the tool head and of one axis board while moving. | The stack reports the loss and the motion drivers stay disabled until a person re-enables them. | not executed |
 | 19 | Read the status of the eight boards through the SPI link in application mode for ten minutes. | The status, error counters and bootloader state of each board arrive without gaps. | not executed |
+| 20 | Stop the alive frames of the kinematic brain on identifier 0x001 while the nodes are ready (unplug its transmitter, or freeze its sequence). | Every board disables its drivers within the alive timeout plus the reaction time, and the bus coming back releases nothing. | not executed |
+| 21 | Replay a recorded release frame, then send one with the wrong epoch, then a correct one without a person asking for it. | The first two are ignored; the third only makes the boards ready and the drivers stay off until the normal enable command. | not executed |
 
 ## What this bench cannot show
 

@@ -1,0 +1,508 @@
+{
+ "schema": 1,
+ "can_id": "0x001",
+ "frames": [
+  {
+   "name": "trip by the operator, brain, epoch 1, sequence 1",
+   "kind": 1,
+   "detail": 1,
+   "source": 0,
+   "epoch": 1,
+   "seq": 1,
+   "data_hex": "010100010100fefe"
+  },
+  {
+   "name": "trip by a controller fault on slot 3",
+   "kind": 1,
+   "detail": 6,
+   "source": 3,
+   "epoch": 6,
+   "seq": 13,
+   "data_hex": "010603060d00fef9"
+  },
+  {
+   "name": "trip by the CM5 bridge, stop-all",
+   "kind": 1,
+   "detail": 2,
+   "source": 16,
+   "epoch": 255,
+   "seq": 65535,
+   "data_hex": "010210fffffffefd"
+  },
+  {
+   "name": "release for epoch 5",
+   "kind": 2,
+   "detail": 0,
+   "source": 0,
+   "epoch": 5,
+   "seq": 12,
+   "data_hex": "020000050c00fdff"
+  },
+  {
+   "name": "alive, not tripped",
+   "kind": 3,
+   "detail": 0,
+   "source": 0,
+   "epoch": 0,
+   "seq": 300,
+   "data_hex": "030000002c01fcff"
+  },
+  {
+   "name": "alive, tripped",
+   "kind": 3,
+   "detail": 1,
+   "source": 0,
+   "epoch": 9,
+   "seq": 0,
+   "data_hex": "030100090000fcfe"
+  }
+ ],
+ "malformed": [
+  {
+   "name": "complement of the kind is wrong",
+   "data_hex": "01010001010000fe"
+  },
+  {
+   "name": "complement of the detail is wrong",
+   "data_hex": "010100010100fe00"
+  },
+  {
+   "name": "seven bytes",
+   "data_hex": "010100010100fe"
+  },
+  {
+   "name": "nine bytes",
+   "data_hex": "010100010100fefe00"
+  },
+  {
+   "name": "no bytes",
+   "data_hex": ""
+  },
+  {
+   "name": "unknown kind with a valid complement",
+   "data_hex": "040000010100fbff"
+  },
+  {
+   "name": "trip with an unknown reason",
+   "data_hex": "012000010100fedf"
+  },
+  {
+   "name": "trip from an unknown source",
+   "data_hex": "010109010100fefe"
+  },
+  {
+   "name": "release from a slot board",
+   "data_hex": "020003010100fdff"
+  },
+  {
+   "name": "release with a detail",
+   "data_hex": "020100010100fdfe"
+  },
+  {
+   "name": "alive from the CM5 bridge",
+   "data_hex": "030010010100fcff"
+  },
+  {
+   "name": "alive with an unknown state",
+   "data_hex": "030200010100fcfd"
+  }
+ ],
+ "alive_timeout_ms": 100,
+ "scenarios": [
+  {
+   "name": "power-up: latched, the enable command is refused",
+   "steps": [
+    {
+     "t": 0,
+     "do": "enable",
+     "expect": {
+      "accepted": false,
+      "state": "LATCHED",
+      "drivers_enabled": false
+     }
+    }
+   ]
+  },
+  {
+   "name": "normal way out: announce, release for the same epoch, then a person enables",
+   "steps": [
+    {
+     "t": 0,
+     "frame": "030100050a00fcfe",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     }
+    },
+    {
+     "t": 20,
+     "frame": "030100050b00fcfe",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     }
+    },
+    {
+     "t": 30,
+     "frame": "020000050c00fdff",
+     "expect": {
+      "state": "READY",
+      "drivers_enabled": false
+     }
+    },
+    {
+     "t": 31,
+     "do": "enable",
+     "expect": {
+      "accepted": true,
+      "state": "READY",
+      "drivers_enabled": true
+     }
+    }
+   ]
+  },
+  {
+   "name": "a replayed or mismatched release does not end a newer trip",
+   "steps": [
+    {
+     "t": 0,
+     "frame": "030100050a00fcfe"
+    },
+    {
+     "t": 10,
+     "frame": "020000050b00fdff",
+     "expect": {
+      "state": "READY",
+      "drivers_enabled": false
+     }
+    },
+    {
+     "t": 20,
+     "do": "enable",
+     "expect": {
+      "accepted": true,
+      "state": "READY",
+      "drivers_enabled": true
+     }
+    },
+    {
+     "t": 100,
+     "frame": "010603060d00fef9",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     }
+    },
+    {
+     "t": 110,
+     "frame": "030100060e00fcfe",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     }
+    },
+    {
+     "t": 120,
+     "frame": "020000050f00fdff",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     },
+     "note": "wrong epoch"
+    },
+    {
+     "t": 130,
+     "frame": "020000060c00fdff",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     },
+     "note": "sequence older than the last one seen"
+    },
+    {
+     "t": 140,
+     "frame": "020000061000fdff",
+     "expect": {
+      "state": "READY",
+      "drivers_enabled": false
+     }
+    }
+   ]
+  },
+  {
+   "name": "a release without a live master is ignored",
+   "steps": [
+    {
+     "t": 0,
+     "frame": "030100011200fcfe"
+    },
+    {
+     "t": 150,
+     "frame": "020000011300fdff",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     },
+     "note": "the last alive frame is 150 ms old"
+    }
+   ]
+  },
+  {
+   "name": "a release before any announcement is ignored (epoch unknown)",
+   "steps": [
+    {
+     "t": 0,
+     "frame": "020000011300fdff",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     }
+    }
+   ]
+  },
+  {
+   "name": "silence of the master latches a ready node, exactly after the timeout",
+   "steps": [
+    {
+     "t": 0,
+     "frame": "030100011200fcfe"
+    },
+    {
+     "t": 10,
+     "frame": "020000011300fdff",
+     "expect": {
+      "state": "READY",
+      "drivers_enabled": false
+     }
+    },
+    {
+     "t": 20,
+     "frame": "030000011400fcff"
+    },
+    {
+     "t": 120,
+     "do": "tick",
+     "expect": {
+      "state": "READY",
+      "drivers_enabled": false
+     },
+     "note": "100 ms after the last alive frame"
+    },
+    {
+     "t": 121,
+     "do": "tick",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     }
+    }
+   ]
+  },
+  {
+   "name": "a frozen sender (same sequence again) does not keep the node alive",
+   "steps": [
+    {
+     "t": 0,
+     "frame": "030100011200fcfe"
+    },
+    {
+     "t": 10,
+     "frame": "020000011300fdff"
+    },
+    {
+     "t": 20,
+     "frame": "030000011400fcff"
+    },
+    {
+     "t": 60,
+     "frame": "030000011400fcff",
+     "expect": {
+      "state": "READY",
+      "drivers_enabled": false
+     }
+    },
+    {
+     "t": 120,
+     "do": "tick",
+     "expect": {
+      "state": "READY",
+      "drivers_enabled": false
+     }
+    },
+    {
+     "t": 121,
+     "do": "tick",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     }
+    }
+   ]
+  },
+  {
+   "name": "the sequence wraps from 65535 to 0 and still counts as newer",
+   "steps": [
+    {
+     "t": 0,
+     "frame": "03010001fafffcfe"
+    },
+    {
+     "t": 10,
+     "frame": "02000001fefffdff"
+    },
+    {
+     "t": 20,
+     "frame": "03000001fffffcff"
+    },
+    {
+     "t": 60,
+     "frame": "030000010000fcff"
+    },
+    {
+     "t": 150,
+     "do": "tick",
+     "expect": {
+      "state": "READY",
+      "drivers_enabled": false
+     },
+     "note": "90 ms after the alive frame with sequence 0"
+    },
+    {
+     "t": 161,
+     "do": "tick",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     }
+    }
+   ]
+  },
+  {
+   "name": "an alive frame that says tripped recovers a trip this node never heard",
+   "steps": [
+    {
+     "t": 0,
+     "frame": "030100021c00fcfe"
+    },
+    {
+     "t": 10,
+     "frame": "020000021d00fdff",
+     "expect": {
+      "state": "READY",
+      "drivers_enabled": false
+     }
+    },
+    {
+     "t": 20,
+     "frame": "030100031e00fcfe",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     }
+    }
+   ]
+  },
+  {
+   "name": "malformed frames on 0x001 are a trip",
+   "steps": [
+    {
+     "t": 0,
+     "frame": "030100012800fcfe"
+    },
+    {
+     "t": 10,
+     "frame": "020000012900fdff",
+     "expect": {
+      "state": "READY",
+      "drivers_enabled": false
+     }
+    },
+    {
+     "t": 20,
+     "frame": "01010001010000fe",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     },
+     "note": "bad complement"
+    },
+    {
+     "t": 30,
+     "frame": "030100012a00fcfe"
+    },
+    {
+     "t": 40,
+     "frame": "020000012b00fdff",
+     "expect": {
+      "state": "READY",
+      "drivers_enabled": false
+     }
+    },
+    {
+     "t": 50,
+     "frame": "0101",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     },
+     "note": "two bytes"
+    },
+    {
+     "t": 60,
+     "frame": "030100012c00fcfe"
+    },
+    {
+     "t": 70,
+     "frame": "020000012d00fdff",
+     "expect": {
+      "state": "READY",
+      "drivers_enabled": false
+     }
+    },
+    {
+     "t": 80,
+     "frame": "020003012e00fdff",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     },
+     "note": "a release that a slot board claims to send is malformed, so a trip"
+    }
+   ]
+  },
+  {
+   "name": "bus-off latches, and the bus coming back does not release",
+   "steps": [
+    {
+     "t": 0,
+     "frame": "030100013200fcfe"
+    },
+    {
+     "t": 10,
+     "frame": "020000013300fdff",
+     "expect": {
+      "state": "READY",
+      "drivers_enabled": false
+     }
+    },
+    {
+     "t": 20,
+     "do": "bus_off",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     }
+    },
+    {
+     "t": 30,
+     "frame": "030000013400fcff",
+     "expect": {
+      "state": "LATCHED",
+      "drivers_enabled": false
+     }
+    }
+   ]
+  }
+ ],
+ "notes": "A scenario starts from a node that has just powered up. A step with 'frame' delivers it at time t; 'do' is tick, bus_off or enable. 'expect' is checked after the step."
+}
