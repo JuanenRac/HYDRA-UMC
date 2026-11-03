@@ -1,6 +1,6 @@
 # Separating the signature from the image
 
-**Status: design. Nothing described here is built for a board and no bootloader is changed by this page.** It sets out how the official firmware of the three controllers (STM32G474 robot controller, STM32H745 CM7 and CM4) can be **compiled by a public build service with no private key leaving the maintainer's computer**.
+**Status: design with a host reference. The formats below are fixed and implemented in Python (`tools/image_header2.py`, `tools/image_trust.py`) and held to shared vectors (`tests/image_format2_vectors.json`). Nothing is built for a board and no bootloader reads them yet.** It sets out how the official firmware of the three controllers (STM32G474 robot controller, STM32H745 CM7 and CM4) can be **compiled by a public build service with no private key leaving the maintainer's computer**.
 
 ## 1. The model today
 
@@ -28,11 +28,19 @@ The 64-byte little-endian header keeps its first 40 bytes (magic `HYDR`, format,
 | 44 | 8 | `key_id`: first 8 bytes of the SHA-512 of the public key that signs |
 | 52 | 12 | reserved, zero |
 
-The signature is Ed25519 over a domain string that differs from the format 1 one, followed by the SHA-256 of header and image (the exact domain bytes are fixed with the vectors). The authorised downgrade, which signs a session nonce, the two versions and the digest, is kept. A bootloader that does not know a format refuses it and keeps the installed application.
+The signature is Ed25519 over a domain string that differs from the format 1 one, followed by the SHA-256 of header and image (format 2 uses the 22 bytes `hydra-umc-image-sig/2` and a zero; the vectors fix them). The authorised downgrade, which signs a session nonce, the two versions and the digest, is kept. A bootloader that does not know a format refuses it and keeps the installed application.
 
 ### 3.2 Trust table
 
 A linker section at a fixed offset of each bootloader, little-endian: magic `TKEY` (4), schema 1 (1), number of keys 1 or 2 (1), flags (2), then per key the key id (8), the public key (32), flags (1: current, 2: next, 4: revoked) and 3 zero bytes, and a CRC-32 of all of it (4). With two keys it is 100 bytes. A test reads it back from the compiled binary and compares it with the public key file.
+
+A reader refuses a table with a wrong magic or schema, a number of keys other than 1 or 2, non-zero table flags, a wrong CRC-32 (zlib), a key id that is not the SHA-512 prefix of its key, a flag byte that is zero, has an unknown bit, sets *current* with *next* or *revoked* with anything else, non-zero padding, a repeated key or two *current* keys. A *revoked* key stays in the table and is never trusted.
+
+**Source file and offsets.** The table comes from `keys/image_trust.json` (public values only: the keys of the `dev` and `release` flavours, the default policy `format2_only`, the lowest counter, and the fixed offset of the table in each bootloader, `0x400` for the three). `python tools/image_trust.py check BIN TARGET FLAVOUR` reads the table of a compiled bootloader at that offset and compares it byte for byte; `fingerprints` prints the key ids the local release tool pins. The `release` flavour stays empty, and its table cannot be built, until the image-signing key is provisioned.
+
+**Decision order of a format 2 image** (`decide2` in `tools/image_header2.py`): size; format; the key id must be in the table and not revoked; the signature, before anything in the header is believed; the CRC-32; the hardware id; the link address; the vector words; the rollback counter against the floor; the version, which must be newer unless a downgrade token made for this session and this pair of versions is given. The token never lifts the counter.
+
+**Provisioning the image-signing key** (procedure only; this repository never makes or keeps the key): the maintainer makes a seed with `python tools/image_header.py keygen --out <file outside every repository>` (it refuses to overwrite), keeps an offline copy, prints only its public entry with `python tools/image_trust.py entry <file> --state current`, pastes that entry in the `release` flavour (a second seed made the same way is `next`), and runs `python tools/image_trust.py validate`. The key that signs release assets is a different one.
 
 ### 3.3 Rotation and revocation
 
@@ -51,6 +59,16 @@ Nothing has been measured for this design, so there are no new figures.
 * **Already in the repository:** the published bootloader binaries are 14340 bytes (RCB, region 32 KB), 11032 bytes (CM7, region 128 KB) and 16924 bytes (CM4, region 128 KB). They are from earlier firmware versions and may predate the signature code, so they do not measure the cost of Ed25519.
 * **Library:** the bootloaders already use TweetNaCl (public domain), with a hook that refreshes the watchdog during the long scalar multiplications. Monocypher (BSD-2-Clause or CC0) and ed25519-donna (public domain or MIT) are faster and larger and are compatible with GPL-3.0-or-later. Keep TweetNaCl unless a measurement says otherwise.
 * **How to measure without compiling on a workstation:** a read-only job of the existing firmware build compiles with the fixed toolchain, prints `arm-none-eabi-size -A` of every bootloader and the stack-usage files (`-fstack-usage`), and the headroom against each linker region, failing under a configured threshold. The time of one verification is measured on a board with the cycle counter; an emulator's instruction count gives only an order of magnitude.
+
+### 4.1 The size report (specification of the read-only job)
+
+The firmware build gains a job that holds no secret and publishes numbers; it never changes a binary.
+
+1. **Verifier alone:** compile `tweetnacl.c` and `update_signature.c` for the Cortex-M target of each bootloader with the pinned toolchain (`-Os -ffunction-sections -fdata-sections -fstack-usage`); print `arm-none-eabi-size -A` of the objects and the `.su` files.
+2. **Bootloaders with and without:** link each bootloader with and without the table and the format 2 code from the same sources; print `.text`, `.rodata`, `.data` and `.bss` of both and the difference.
+3. **Headroom:** print the free bytes of each region of the linker script; fail when the headroom with the verifier is under a configured threshold (default 512 bytes) or when the deepest verifier call chain does not fit the stack reserved for the bootloader.
+4. **Time:** only an order of magnitude from an emulator's instruction counter, marked as such; the reliable time is the cycle counter on a board.
+5. The report is a build artifact and a table in the job summary.
 
 ## 5. Tests
 
