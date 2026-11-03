@@ -17,7 +17,8 @@ import gen_image_header_vectors as gen  # noqa: E402
 import image_header as ih  # noqa: E402
 
 BOOT_DIRECTORIES = ("src/mcu_stm32g474/boot", "src/mcu_stm32h745/CM4/boot", "src/mcu_stm32h745/CM7/boot")
-SHARED_HEADERS = ("image_header.h", "update_verify.h", "update_signature.h", "update_signature.c", "tweetnacl.c", "tweetnacl.h")
+SHARED_HEADERS = ("image_header.h", "update_verify.h", "update_signature.h", "update_signature.c", "tweetnacl.c", "tweetnacl.h", "bootloader_trust.h", "bootloader_trust.c",
+                  "hydra_trust_dev.h", "hydra_trust_release.h")
 
 
 def _blob(version, seed):
@@ -61,15 +62,26 @@ class VectorTests(unittest.TestCase):
 
 
 class DevelopmentKeyTests(unittest.TestCase):
-    def test_the_development_public_keys_in_the_bootloaders_are_those_of_the_published_seeds(self):
+    def test_the_development_table_of_the_bootloaders_holds_the_public_key_of_the_published_seed(self):
         import ed25519_ref
+        import image_header2 as h2
+        import image_trust as trust
 
-        for name, directory in (("G401", BOOT_DIRECTORIES[0]), ("H7C4", BOOT_DIRECTORIES[1]), ("H7C7", BOOT_DIRECTORIES[2])):
-            text = (ROOT / directory / "bootloader_crypto.c").read_text(encoding="utf-8")
-            start = text.index("const uint8_t UPDATE_PUBLIC_KEY[32] = {\n") + len("const uint8_t UPDATE_PUBLIC_KEY[32] = {\n")
-            body = text[start:text.index("};", start)]
-            key = bytes(int(token, 16) for token in body.replace("\n", " ").replace(",", " ").split())
-            self.assertEqual(key, ed25519_ref.public_key(ih.DEV_SEEDS[name]), f"{directory}: the development key is not the one of the {name} seed")
+        doc = trust.load()
+        dev = doc["flavours"]["dev"]["keys"]
+        self.assertEqual(len(dev), 1)
+        self.assertEqual(bytes.fromhex(dev[0]["public"]), ed25519_ref.public_key(h2.DEV_SEED))
+        for directory in BOOT_DIRECTORIES:
+            text = (ROOT / directory / "hydra_trust_dev.h").read_bytes().decode("utf-8")
+            self.assertEqual(text.splitlines(), trust.header_text(doc, "dev").splitlines(), directory)
+
+    def test_the_bootloaders_hold_no_key_and_no_hmac(self):
+        for directory in BOOT_DIRECTORIES:
+            for name in ("bootloader_crypto.c", "bootloader_crypto.h", "bootloader_common.h"):
+                text = (ROOT / directory / name).read_text(encoding="utf-8")
+                self.assertNotIn("HMAC_KEY", text, f"{directory}/{name}")
+                self.assertNotIn("UPDATE_PUBLIC_KEY", text, f"{directory}/{name}")
+                self.assertNotIn("hmac_sha256", text, f"{directory}/{name}")
 
 
 if __name__ == "__main__":

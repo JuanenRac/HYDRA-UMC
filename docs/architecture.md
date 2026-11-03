@@ -320,12 +320,13 @@ after the fact - kept here, in the project's own documentation, so they
 stay visible before this project reaches real hardware.
 
 - **No Read-Out Protection (RDP) on any of the 3 chips.** Without it,
-  physical SWD access to any ONE board exposes `HMAC_KEY`
-  (`bootloader_crypto.h`), which is shared across every board of that
-  same type. That key is only the local integrity check of the installed
-  application: what decides whether an update is accepted is an Ed25519
-  signature checked with a PUBLIC key, so reading a board no longer
-  gives anybody the power to sign an update. Writing RDP option bytes wrong is a
+  physical SWD access to a board can read its flash, but there is nothing
+  secret in it: the bootloaders hold only PUBLIC Ed25519 keys (a table, see
+  `docs/SIGNATURE_SEPARATION.md`) and a plain SHA-256 of the installed
+  application, so reading a board gives nobody the power to sign an update.
+  The same access can still rewrite the table or the metadata, which is what
+  RDP and write protection of the bootloader pages would prevent: to be
+  reviewed on the bench. Writing RDP option bytes wrong is a
   real, irreversible bricking risk on hardware that doesn't exist to test
   against yet (the same reasoning URTC's own bootloader has already
   applied to defer this - see that project's own notes on RDP2 being a
@@ -357,13 +358,13 @@ stay visible before this project reaches real hardware.
   Ed25519 public key made by `python tools/image_header.py pubkey`; the
   private seed stays with the owner, never on a board and never on a shared
   machine) to `build_firmware.sh`, which hands it to the three bootloaders at
-  compile time. Without it a bench build carries a **development public key
+  compile time. A bench build carries a **development public key
   whose seed is published in this repository**: anybody can sign an image
   such a board accepts, so it authenticates nothing; the script says so and
-  refuses it altogether when `HYDRA_UMC_RELEASE=1` (which also needs
-  `HYDRA_FW_HMAC_KEY_HEX`, the local integrity key). One public key is
-  carried by the three bootloaders of a build; rotating it means a new
-  bootloader image.
+  compiles the release table instead when `HYDRA_UMC_RELEASE=1`, which is
+  closed (it trusts nobody and installs nothing) until the public half of the
+  image-signing key is in `docs/image_trust.json`. The table holds a current
+  and a next key; rotating or revoking one means a new bootloader image.
 - **A board that is not confirmed healthy is not parked by power cycles.**
   The bootloader counts the starts of an application that ended in a
   *watchdog* reset (a hang, a fault handler that spins) and stops jumping to it

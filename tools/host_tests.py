@@ -65,6 +65,11 @@ def table() -> list[HostTest]:
     for directory in BOOT_DIRS:
         for name in ("test_image_header", "test_update_verify"):
             tests.append(HostTest(f"{name}@{directory}", f"tests/{name}.c", (directory, "tests"), STRICT + ("-Werror",)))
+    for directory in BOOT_DIRS:
+        for flavour, define in (("trust", "HYDRA_TRUST_DEV"), ("trust_release", "HYDRA_TEST_RELEASE")):
+            defines = (define,)
+            tests.append(HostTest(f"{flavour}@{directory}", "tests/test_bootloader_trust.c", (directory, "tests"), STRICT,
+                                  (f"{directory}/bootloader_trust.c",), defines, needs_tweetnacl=True))
     tests.append(HostTest("bootloader_g474_update", "tests/test_bootloader_g474_update_host.c",
                           ("tests/stubs/protocol", G4, f"{G4}/boot", "tests"), GNU, (f"{G4}/boot/update_signature.c",),
                           needs_tweetnacl=True))

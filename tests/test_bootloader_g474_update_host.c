@@ -10,8 +10,9 @@
  *  - the signed header and the anti-rollback rule, end to end: an update over the installed version, the old flaws (a replayed image that
  *    claims a higher version, 0.1.8 -> 0.1.2 that only compared major.minor) and the downgrade that needs a token;
  *  - the downgrade token: bound to this session's nonce, to the pair of versions and to the image; the old constant-magic frame does nothing;
- *  - the Ed25519 signature over the digest of header || image, under the public key of the bootloader, against bytes the host reference
- *    (tools/image_header.py) made, and signatures this test makes itself with the vendored TweetNaCl and the (published) seed of the vectors;
+ *  - header format 2: the Ed25519 signature over the digest of header || image, under a key of the trust table picked by the key id of the
+ *    header (the development table, the next key, a revoked key, a closed table), the signed rollback counter and the metadata it leaves;
+ *  - the shared cases of tests/image_format2_vectors.h, made by the host reference (tools/image_header2.py), through the same decision;
  *  - everything that must leave the main slot and the installed metadata untouched when an update is refused.
  *
  * Needs Linux on x86-64 (a fixed mapping at the flash address); anywhere else it reports that and passes.
@@ -24,13 +25,23 @@
 #if defined(__linux__) && defined(__x86_64__)
 #include <sys/mman.h>
 
-#include "image_header_vectors.h"
+#include "image_format2_vectors.h"
 
-/* The update public key of these tests is the one of the vectors (the public half of the made-up, published seed), so the signatures the
- * reference made verify under the bootloader's own key. test_the_key_of_the_bootloader_is_the_one_of_the_vectors checks it. */
-#define HYDRA_FW_UPDATE_PUBKEY_BYTES \
-    0x25, 0x43, 0xB9, 0x2F, 0xF1, 0x09, 0x55, 0x11, 0x47, 0x6A, 0xDC, 0x83, 0x69, 0xDB, 0x6D, 0xDC, \
-    0x93, 0x36, 0x65, 0xA1, 0x19, 0x78, 0xDD, 0xA1, 0x40, 0x4E, 0xE1, 0x06, 0x6C, 0xA9, 0x55, 0x9D
+/* The bootloader of this test carries the bench trust table (the public key of the published development seed) and the hook that lets a test
+ * put another table in its place. */
+#define HYDRA_TRUST_DEV 1
+#define HYDRA_HOST_TEST 1
+
+/* The development seed (sha256 of "hydra-umc public development image key v1") and its public key: published on purpose, this is the key
+ * of every bench build. Only a test can sign with it: the board holds the public half. */
+static const uint8_t DEV_SEED[32] = {
+    0x7C, 0xCB, 0x1D, 0x59, 0x09, 0x0B, 0x41, 0x13, 0x91, 0xA7, 0xF1, 0x3D, 0x31, 0x43, 0x58, 0x04,
+    0x2B, 0x0B, 0xFF, 0x4F, 0xFC, 0xB2, 0x09, 0x77, 0x22, 0x97, 0x91, 0xD1, 0xB9, 0x4B, 0x09, 0x8D
+};
+static const uint8_t DEV_PUBLIC[32] = {
+    0x3F, 0x50, 0x8A, 0x29, 0xD3, 0x5D, 0x9F, 0x33, 0x85, 0xFD, 0xD5, 0x6B, 0x33, 0xD3, 0xD1, 0x21,
+    0x9E, 0x35, 0xBB, 0x61, 0x80, 0x60, 0x9A, 0x83, 0x8F, 0x6D, 0x44, 0xBA, 0xCF, 0xAF, 0x80, 0xB2
+};
 
 #include "stm32g4xx_hal.h"
 #include "tweetnacl.h"
@@ -133,6 +144,7 @@ HAL_StatusTypeDef HAL_FLASH_Program(uint32_t type, uint32_t address, uint64_t da
 /* The sources under test. */
 #include "bootloader_crypto.c"
 #include "bootloader_flash.c"
+#include "bootloader_trust.c"
 #include "bootloader_protocol.c"
 
 /* ---- the host side of an update ------------------------------------------------------------------------------------------------- */
@@ -149,6 +161,11 @@ static uint32_t crc_of(const uint8_t *data, uint32_t len)
 }
 
 /* An update as the host holds it before sending it. */
+/* what build_header writes in the fields of format 2 */
+static uint32_t header_counter = 1;
+static uint32_t installed_counter;   /* the floor of the rollback counter that install() gives the installed state */
+static uint8_t  header_key_id[IMAGE_KEY_ID_SIZE] = {0x09, 0x6E, 0x13, 0x6D, 0x64, 0x08, 0xFF, 0x5B};   /* the key id of the development key */
+
 typedef struct {
     uint8_t  header[IMAGE_HEADER_SIZE];
     uint8_t *image;
@@ -171,7 +188,7 @@ static void build_header(uint8_t header[IMAGE_HEADER_SIZE], uint32_t hw_id, Imag
 {
     memset(header, 0, IMAGE_HEADER_SIZE);
     put_le32(header + 0, IMAGE_HEADER_MAGIC);
-    put_le16(header + 4, IMAGE_HEADER_FORMAT);
+    put_le16(header + 4, IMAGE_HEADER_FORMAT_2);
     put_le32(header + 8, hw_id);
     put_le16(header + 12, version.major);
     put_le16(header + 14, version.minor);
@@ -181,6 +198,8 @@ static void build_header(uint8_t header[IMAGE_HEADER_SIZE], uint32_t hw_id, Imag
     put_le32(header + 28, sp);
     put_le32(header + 32, reset);
     put_le32(header + 36, crc);
+    put_le32(header + 40, header_counter);
+    memcpy(header + 44, header_key_id, IMAGE_KEY_ID_SIZE);
 }
 
 /* Signs with the seed of the vectors (the private half of the key the bootloader of this test carries). Only a test can: the board cannot. */
@@ -189,8 +208,8 @@ static void sign_message(const uint8_t *message, size_t length, uint8_t signatur
     uint8_t secret[64];
     uint8_t signed_message[IMAGE_SIGNATURE_SIZE + UPDATE_SIGNATURE_MAX_MESSAGE];
     unsigned long long signed_length = 0;
-    memcpy(secret, VEC_SEED, 32);
-    memcpy(secret + 32, VEC_PUBLIC_KEY, 32);
+    memcpy(secret, DEV_SEED, 32);
+    memcpy(secret + 32, DEV_PUBLIC, 32);
     crypto_sign(signed_message, &signed_length, message, length, secret);
     memcpy(signature, signed_message, IMAGE_SIGNATURE_SIZE);
 }
@@ -200,8 +219,8 @@ static void sign(Update *u)
 {
     memcpy(flash_mem + (SCRATCH_ADDR - FLASH_BASE_ADDR), u->image, u->size);
     sha256_prefixed_flash_region(u->header, IMAGE_HEADER_SIZE, SCRATCH_ADDR, u->size, u->digest);
-    uint8_t message[IMAGE_MESSAGE_LEN];
-    ImageHeader_SignatureMessage(u->digest, message);
+    uint8_t message[IMAGE_MESSAGE_2_LEN];
+    ImageHeader_SignatureMessage2(u->digest, message);
     sign_message(message, sizeof(message), u->signature);
 }
 
@@ -238,6 +257,9 @@ static void reset_world(void)
     resets = 0;
     clock_ms = 1000;
     memset(&update_header, 0, sizeof(update_header));
+    installed_counter = 0;
+    header_counter = 1;
+    Trust_UseTableForTest(NULL, 0);
     update_in_progress = 0;
     update_failed = 0;
     hfdcan1.Instance = &fdcan_registers;
@@ -257,15 +279,21 @@ static void install(uint32_t major, uint32_t minor, uint32_t patch_field)
     m.version_patch = patch_field;
     m.size = 1024;
     m.crc32 = 0x12345678UL;
-    memset(m.hmac, 0x77, sizeof(m.hmac));
-    memcpy(flash_mem + (METADATA_ADDR - FLASH_BASE_ADDR), &m, sizeof(m));
+    memset(m.sha256, 0x77, sizeof(m.sha256));
+    m.counter = installed_counter;
+    MetaRecord_t record;
+    memset(&record, 0, sizeof(record));
+    record.generation = 1;
+    record.meta = m;
+    record.crc = meta_record_crc(&record);
+    memcpy(flash_mem + (METADATA_ADDR - FLASH_BASE_ADDR), &record, sizeof(record));
     memset(flash_mem + (MAIN_APP_ADDR - FLASH_BASE_ADDR), 0xA5, 4096);
 }
 
 static FirmwareMetadata_t metadata(void)
 {
     FirmwareMetadata_t m;
-    memcpy(&m, flash_mem + (METADATA_ADDR - FLASH_BASE_ADDR), sizeof(m));
+    Metadata_Read(&m);
     return m;
 }
 
@@ -363,35 +391,61 @@ static int main_slot_holds(const Update *u)
 }
 
 /* ---- tests ----------------------------------------------------------------------------------------------------------------------- */
+static uint32_t make_table(uint8_t out[100], uint8_t count, const uint8_t *key0, uint8_t flags0, const uint8_t *key1, uint8_t flags1)
+{
+    memset(out, 0, 100);
+    memcpy(out, "TKEY", 4);
+    out[4] = 1;
+    out[5] = count;
+    for (uint8_t i = 0; i < count; i++) {
+        const uint8_t *key = (i == 0) ? key0 : key1;
+        uint8_t *entry = out + 8 + i * 44;
+        uint8_t digest[64];
+        crypto_hash(digest, key, 32);
+        memcpy(entry, digest, 8);
+        memcpy(entry + 8, key, 32);
+        entry[40] = (i == 0) ? flags0 : flags1;
+    }
+    uint32_t size = 8u + count * 44u + 4u;
+    uint32_t crc = crc_of(out, size - 4u);
+    put_le32(out + size - 4u, crc);
+    return size;
+}
+
 static void test_the_reference_image_installs_over_the_installed_version(void)
 {
-    printf("  an update over the installed version\n");
+    printf("  an update over the installed version, with the bytes of the host reference\n");
     reset_world();
     install(0, 2, 2);
+    const Format2Case *c = &F2_CASES[0];
+    uint8_t table[100];
+    uint32_t size = make_table(table, 1, c->trusted[0], TRUST_FLAG_CURRENT, NULL, 0);
+    Trust_UseTableForTest(table, size);
     Update u;
     memset(&u, 0, sizeof(u));
-    /* the exact bytes the host reference made: header, image and signature of vectors image A */
-    u.size = VEC_IMAGE_SIZE;
-    u.image = (uint8_t *)VEC_IMAGE;
-    memcpy(u.header, VEC_HEADER, sizeof(u.header));
-    memcpy(u.signature, VEC_SIGNATURE, sizeof(u.signature));
-    u.declared_crc = VEC_IMAGE_CRC32;
-    u.declared_major = VEC_VERSION_MAJOR;
-    u.declared_minor = VEC_VERSION_MINOR;
+    /* the exact bytes the host reference made: header, image and signature */
+    u.size = c->blob_len - IMAGE_HEADER_SIZE - IMAGE_SIGNATURE_SIZE;
+    u.image = (uint8_t *)(c->blob + IMAGE_HEADER_SIZE);
+    memcpy(u.header, c->blob, sizeof(u.header));
+    memcpy(u.signature, c->blob + c->blob_len - IMAGE_SIGNATURE_SIZE, sizeof(u.signature));
+    u.declared_crc = crc_of(u.image, u.size);
+    u.declared_major = (uint16_t)(u.header[12] | (u.header[13] << 8));
+    u.declared_minor = (uint16_t)(u.header[14] | (u.header[15] << 8));
     u.header_chunks = 8;
     u.signature_chunks = 8;
     ImageVersion_t none = {0, 0, 0};
-    CHECK(run_update(&u, none, none, 0) == 0, "the signature the reference made is accepted by the bootloader");
+    CHECK(run_update(&u, none, none, 0) == 0, "the signature the reference made is accepted through the table that holds its key");
     CHECK(resets == 1, "the board resets into the new application");
     CHECK(main_slot_holds(&u), "the image is in the main slot");
     FirmwareMetadata_t m = metadata();
     CHECK(m.state == META_STATE_APP_VALID && m.version_major == 0 && m.version_minor == 2 && m.version_patch == 3, "the metadata holds 0.2.3, the patch included");
-    CHECK(m.size == VEC_IMAGE_SIZE && m.crc32 == VEC_IMAGE_CRC32, "size and CRC");
+    CHECK(m.size == u.size && m.crc32 == u.declared_crc, "size and CRC");
+    CHECK(m.counter == 5, "the signed rollback counter of the header is the new floor");
     uint8_t expected[32];
-    hmac_sha256_flash_region(HMAC_KEY, 32, MAIN_APP_ADDR, VEC_IMAGE_SIZE, expected);
-    CHECK(memcmp(m.hmac, expected, 32) == 0, "the boot-time check value is the HMAC of the image as it sits in the main slot");
+    sha256_prefixed_flash_region(NULL, 0, MAIN_APP_ADDR, u.size, expected);
+    CHECK(memcmp(m.sha256, expected, 32) == 0, "the boot-time check value is the SHA-256 of the image as it sits in the main slot");
+    CHECK(ApplicationIsValid() == 1, "and the application validates at the next start");
 }
-
 static void test_the_session_nonce_is_asked_for_and_changes(void)
 {
     printf("  the nonce of the session\n");
@@ -667,11 +721,11 @@ static void test_what_the_header_says_must_be_true_of_what_arrived(void)
         /* the seed 0x90..0xAF and its public key, made by the host reference */
         static const uint8_t other_public[32] = {0xD2, 0xEB, 0x99, 0x3B, 0x63, 0x14, 0x35, 0x28, 0xE7, 0x0D, 0xCD, 0xC7, 0xEB, 0x9C, 0xA2, 0x10,
                                                  0x10, 0xDD, 0x76, 0x9B, 0xE9, 0x52, 0x50, 0xC2, 0xC5, 0xBA, 0xBF, 0xAD, 0x15, 0xD4, 0x58, 0xE2};
-        uint8_t other_secret[64], signed_message[IMAGE_SIGNATURE_SIZE + IMAGE_MESSAGE_LEN], message[IMAGE_MESSAGE_LEN];
+        uint8_t other_secret[64], signed_message[IMAGE_SIGNATURE_SIZE + IMAGE_MESSAGE_2_LEN], message[IMAGE_MESSAGE_2_LEN];
         unsigned long long length = 0;
         for (int i = 0; i < 32; i++) other_secret[i] = (uint8_t)(0x90 + i);
         memcpy(other_secret + 32, other_public, 32);
-        ImageHeader_SignatureMessage(u.digest, message);
+        ImageHeader_SignatureMessage2(u.digest, message);
         crypto_sign(signed_message, &length, message, sizeof(message), other_secret);
         memcpy(u.signature, signed_message, IMAGE_SIGNATURE_SIZE);
     }
@@ -696,12 +750,13 @@ static void test_a_flash_that_changed_after_the_transfer_breaks_the_signature(vo
     free_update(&u);
 }
 
-static void test_the_key_of_the_bootloader_is_the_one_of_the_vectors(void)
+static void test_the_table_of_this_build_is_the_development_one(void)
 {
-    printf("  the update public key of this build\n");
-    CHECK(memcmp(UPDATE_PUBLIC_KEY, VEC_PUBLIC_KEY, 32) == 0, "the test build carries the public key of the published test seed");
+    printf("  the trust table of this build\n");
+    Trust_UseTableForTest(NULL, 0);
+    CHECK(Trust_Active()->count == 1 && memcmp(Trust_Active()->keys[0], DEV_PUBLIC, 32) == 0, "the bench build trusts the development key and no other");
+    CHECK(memcmp(Trust_Active()->key_id[0], header_key_id, IMAGE_KEY_ID_SIZE) == 0, "and its key id is the one the test headers name");
 }
-
 static void test_an_update_over_nothing_installed(void)
 {
     printf("  an update with nothing installed\n");
@@ -711,6 +766,225 @@ static void test_an_update_over_nothing_installed(void)
     CHECK(run_update(&u, none, none, 0) == 0, "any valid signed image installs on a blank board");
     free_update(&u);
 }
+
+/* ---- the trust table, the counter and the metadata the update leaves ---------------------------------------------------------------- */
+/* A made-up seed (0x90..0xAF) and its public key, made by the host reference: the key of "somebody else". */
+static const uint8_t OTHER_PUBLIC[32] = {0xD2, 0xEB, 0x99, 0x3B, 0x63, 0x14, 0x35, 0x28, 0xE7, 0x0D, 0xCD, 0xC7, 0xEB, 0x9C, 0xA2, 0x10,
+                                         0x10, 0xDD, 0x76, 0x9B, 0xE9, 0x52, 0x50, 0xC2, 0xC5, 0xBA, 0xBF, 0xAD, 0x15, 0xD4, 0x58, 0xE2};
+
+static void other_key(uint8_t secret[64], uint8_t public_key[32])
+{
+    for (int i = 0; i < 32; i++) secret[i] = (uint8_t)(0x90 + i);
+    memcpy(secret + 32, OTHER_PUBLIC, 32);
+    memcpy(public_key, OTHER_PUBLIC, 32);
+}
+
+/* Signs the update of u with the key of `secret`, and writes its key id in the header. */
+static void sign_with(Update *u, const uint8_t secret[64], const uint8_t public_key[32])
+{
+    uint8_t digest64[64];
+    crypto_hash(digest64, public_key, 32);
+    memcpy(u->header + 44, digest64, IMAGE_KEY_ID_SIZE);
+    memcpy(flash_mem + (SCRATCH_ADDR - FLASH_BASE_ADDR), u->image, u->size);
+    sha256_prefixed_flash_region(u->header, IMAGE_HEADER_SIZE, SCRATCH_ADDR, u->size, u->digest);
+    uint8_t message[IMAGE_MESSAGE_2_LEN], signed_message[IMAGE_SIGNATURE_SIZE + IMAGE_MESSAGE_2_LEN];
+    unsigned long long length = 0;
+    ImageHeader_SignatureMessage2(u->digest, message);
+    crypto_sign(signed_message, &length, message, sizeof(message), secret);
+    memcpy(u->signature, signed_message, IMAGE_SIGNATURE_SIZE);
+}
+
+static void test_the_key_of_the_header_picks_the_key_of_the_table(void)
+{
+    printf("  the key id of the header and the trust table\n");
+    ImageVersion_t none = {0, 0, 0}, v = {0, 2, 3};
+    uint8_t secret[64], other_public[32], table[100];
+    other_key(secret, other_public);
+
+    reset_world(); install(0, 2, 2);
+    Update u = make_update(v, 5, 512);
+    sign_with(&u, secret, other_public);
+    CHECK(run_update(&u, none, none, 0) == VERIFY_FAIL_REASON_SIGNATURE, "a key the table does not hold");
+    CHECK(main_slot_untouched() && resets == 0, "nothing was installed");
+
+    reset_world(); install(0, 2, 2);
+    uint32_t size = make_table(table, 2, DEV_PUBLIC, TRUST_FLAG_CURRENT, other_public, TRUST_FLAG_NEXT);
+    Trust_UseTableForTest(table, size);
+    CHECK(run_update(&u, none, none, 0) == 0, "the same update installs when the table lists that key as the next one");
+
+    reset_world(); install(0, 2, 2);
+    size = make_table(table, 2, DEV_PUBLIC, TRUST_FLAG_CURRENT, other_public, TRUST_FLAG_REVOKED);
+    Trust_UseTableForTest(table, size);
+    CHECK(run_update(&u, none, none, 0) == VERIFY_FAIL_REASON_SIGNATURE && main_slot_untouched(), "a revoked key is refused though its signature is valid");
+
+    reset_world(); install(0, 2, 2);
+    size = make_table(table, 0, NULL, 0, NULL, 0);
+    Trust_UseTableForTest(table, size);
+    free_update(&u);
+    u = make_update(v, 5, 512);
+    CHECK(run_update(&u, none, none, 0) == VERIFY_FAIL_REASON_SIGNATURE && main_slot_untouched(), "a closed table installs nothing, not even a signature of the development key");
+
+    reset_world(); install(0, 2, 2);
+    size = make_table(table, 1, DEV_PUBLIC, TRUST_FLAG_CURRENT, NULL, 0);
+    table[20] ^= 0x04;
+    Trust_UseTableForTest(table, size);
+    CHECK(run_update(&u, none, none, 0) == VERIFY_FAIL_REASON_SIGNATURE && main_slot_untouched(), "a table with a bad CRC trusts nobody");
+    free_update(&u);
+}
+
+static void test_the_signed_counter_is_a_floor_nothing_overrides(void)
+{
+    printf("  the rollback counter\n");
+    ImageVersion_t none = {0, 0, 0}, v = {0, 2, 3};
+    reset_world(); install(0, 2, 2);
+    installed_counter = 5;
+    install(0, 2, 2);
+    header_counter = 3;
+    Update u = make_update(v, 5, 512);
+    CHECK(run_update(&u, none, none, 0) == VERIFY_FAIL_REASON_ROLLBACK, "a counter below the floor is refused though the version is newer");
+    CHECK(main_slot_untouched(), "main slot untouched");
+    free_update(&u);
+
+    reset_world(); installed_counter = 5; install(0, 2, 2);
+    header_counter = 5;
+    u = make_update(v, 5, 512);
+    CHECK(run_update(&u, none, none, 0) == 0 && metadata().counter == 5, "a counter equal to the floor installs");
+    free_update(&u);
+
+    reset_world(); installed_counter = 5; install(0, 2, 2);
+    header_counter = 9;
+    u = make_update(v, 5, 512);
+    CHECK(run_update(&u, none, none, 0) == 0 && metadata().counter == 9, "a higher counter installs and becomes the floor");
+    free_update(&u);
+
+    /* the token of a downgrade lowers the version rule and never the counter */
+    ImageVersion_t installed = {0, 2, 2}, target = {0, 1, 8};
+    reset_world(); installed_counter = 5; install(0, 2, 2);
+    header_counter = 3;
+    u = make_update(target, 5, 400);
+    CHECK(run_update(&u, installed, target, 1) == VERIFY_FAIL_REASON_ROLLBACK && main_slot_untouched(), "a valid downgrade token does not override the counter");
+    free_update(&u);
+
+    /* a board with no state keeps the floor compiled into the bootloader */
+    reset_world();
+    CHECK(Trust_MinCounter() == (uint32_t)HYDRA_TRUST_MIN_COUNTER, "the compiled floor is the one of the public file");
+}
+
+static int expected_verdict(int status)
+{
+    switch (status) {
+        case F2_STATUS_OK: return UPDATE_VERDICT_OK;
+        case F2_STATUS_TOO_SHORT: return UPDATE_VERDICT_INCOMPLETE;
+        case F2_STATUS_UNKNOWN_FORMAT:
+        case F2_STATUS_BAD_HEADER:
+        case F2_STATUS_BAD_CRC:
+        case F2_STATUS_LINK_MISMATCH:
+        case F2_STATUS_BAD_VECTORS: return UPDATE_VERDICT_HEADER;
+        case F2_STATUS_SIZE_MISMATCH: return -2;   /* a framing error: the digest of the longer image fails first, or the header's size does */
+        case F2_STATUS_UNKNOWN_KEY: return UPDATE_VERDICT_UNKNOWN_KEY;
+        case F2_STATUS_BAD_SIGNATURE: return UPDATE_VERDICT_SIGNATURE;
+        case F2_STATUS_HARDWARE_MISMATCH: return UPDATE_VERDICT_HARDWARE_ID;
+        case F2_STATUS_ROLLBACK_COUNTER: return UPDATE_VERDICT_COUNTER;
+        case F2_STATUS_ROLLBACK_VERSION: return UPDATE_VERDICT_ROLLBACK;
+        default: return -3;
+    }
+}
+
+static int verify_under_key(const uint8_t *msg, uint32_t len, const uint8_t signature[IMAGE_SIGNATURE_SIZE], const uint8_t public_key[32], void *context)
+{
+    (void)context;
+    return UpdateSignature_Verify(msg, len, signature, public_key);
+}
+
+/* Every case of the host reference through the decision of the bootloader (update_verify.h), with the real SHA-256 of the bootloader and
+ * the real Ed25519 check. */
+static void test_the_shared_cases_get_the_verdict_of_the_host_reference(void)
+{
+    printf("  the shared cases of tests/image_format2_vectors.h\n");
+    int wrong = 0;
+    for (unsigned n = 0; n < F2_CASE_COUNT; n++) {
+        const Format2Case *c = &F2_CASES[n];
+        reset_world();
+        UpdateVerify2Input_t in;
+        memset(&in, 0, sizeof(in));
+        uint8_t header[IMAGE_HEADER_SIZE] = {0}, signature[IMAGE_SIGNATURE_SIZE] = {0}, digest[IMAGE_DIGEST_SIZE] = {0};
+        uint8_t key_ids[2][IMAGE_KEY_ID_SIZE];
+        const uint8_t *image = c->blob + IMAGE_HEADER_SIZE;
+        uint32_t size = 0;
+        if (c->blob_len >= IMAGE_HEADER_SIZE + IMAGE_SIGNATURE_SIZE) {
+            size = c->blob_len - IMAGE_HEADER_SIZE - IMAGE_SIGNATURE_SIZE;
+            memcpy(header, c->blob, IMAGE_HEADER_SIZE);
+            memcpy(signature, c->blob + c->blob_len - IMAGE_SIGNATURE_SIZE, IMAGE_SIGNATURE_SIZE);
+            memcpy(flash_mem + (SCRATCH_ADDR - FLASH_BASE_ADDR), image, size);
+            sha256_prefixed_flash_region(header, IMAGE_HEADER_SIZE, SCRATCH_ADDR, size, digest);
+            in.header_chunks = 8;
+            in.signature_chunks = 8;
+        }
+        ImageHeader2_t parsed;
+        uint16_t major = 0, minor = 0;
+        if (ImageHeader_Parse2(header, &parsed) == IMAGE_HEADER_OK) {
+            major = parsed.base.version.major;
+            minor = parsed.base.version.minor;
+        }
+        for (unsigned k = 0; k < c->trusted_count; k++) {
+            uint8_t digest64[64];
+            crypto_hash(digest64, c->trusted[k], 32);
+            memcpy(key_ids[k], digest64, IMAGE_KEY_ID_SIZE);
+        }
+        in.bytes_received = size;
+        in.total_size = size;
+        in.declared_crc = crc_of(image, size);
+        in.actual_crc = in.declared_crc;
+        in.declared_major = major;
+        in.declared_minor = minor;
+        in.header = header;
+        in.signature = signature;
+        in.actual_digest = digest;
+        in.token = c->token;
+        in.token_chunks = c->token_len == 64 ? 8 : 0;
+        uint8_t nonce[IMAGE_NONCE_SIZE] = {0};
+        if (c->nonce_len == IMAGE_NONCE_SIZE) memcpy(nonce, c->nonce, sizeof(nonce));
+        in.nonce = nonce;
+        in.expect.hw_id = c->hw_id;
+        in.expect.link_address = c->link_address;
+        in.expect.first_word = size >= 8 ? (uint32_t)(image[0] | (image[1] << 8) | (image[2] << 16) | ((uint32_t)image[3] << 24)) : 0;
+        in.expect.second_word = size >= 8 ? (uint32_t)(image[4] | (image[5] << 8) | (image[6] << 16) | ((uint32_t)image[7] << 24)) : 0;
+        in.expect.ram_lo = SRAM_BASE + 0x100UL;
+        in.expect.ram_hi = SRAM_BASE + 0x18000UL;
+        in.have_installed = 1;
+        in.installed.major = c->installed[0];
+        in.installed.minor = c->installed[1];
+        in.installed.patch = c->installed[2];
+        in.counter_floor = c->floor;
+        in.key_count = c->trusted_count;
+        in.key_ids = (const uint8_t (*)[IMAGE_KEY_ID_SIZE])key_ids;
+        in.keys = (const uint8_t (*)[32])c->trusted;
+        in.verify = verify_under_key;
+        UpdateVerdict_t got = UpdateVerify_Decide2(&in, NULL);
+        int want = expected_verdict(c->expected);
+        int ok = want == -2 ? (got == UPDATE_VERDICT_HEADER || got == UPDATE_VERDICT_SIGNATURE) : (int)got == want;
+        if (!ok) {
+            printf("    case %u (%s): verdict %d, expected %d\n", n, c->name, (int)got, want);
+            wrong++;
+        }
+    }
+    CHECK(wrong == 0, "every case of the host reference gets the verdict it gets there");
+}
+
+static void test_the_metadata_after_an_update_and_a_cut_during_it(void)
+{
+    printf("  the metadata log across an update\n");
+    ImageVersion_t none = {0, 0, 0};
+    reset_world(); install(0, 2, 2);
+    Update u = make_update((ImageVersion_t){0, 2, 3}, 5, 512);
+    header_counter = 1;
+    CHECK(run_update(&u, none, none, 0) == 0, "an update installs");
+    const MetaRecord_t *first = (const MetaRecord_t *)(flash_mem + (METADATA_ADDR - FLASH_BASE_ADDR));
+    CHECK(first[0].generation == 1 && first[1].generation == 2 && first[2].generation == 3, "the old state, the pending copy and the done state are three records");
+    CHECK(first[1].meta.state == META_STATE_COPY_PENDING && first[2].meta.state == META_STATE_APP_VALID, "in that order, nothing erased between them");
+    free_update(&u);
+}
+
 
 int main(void)
 {
@@ -731,7 +1005,11 @@ int main(void)
     test_the_old_constant_frame_no_longer_allows_a_downgrade();
     test_an_update_that_did_not_arrive_whole_is_refused();
     test_what_the_header_says_must_be_true_of_what_arrived();
-    test_the_key_of_the_bootloader_is_the_one_of_the_vectors();
+    test_the_table_of_this_build_is_the_development_one();
+    test_the_key_of_the_header_picks_the_key_of_the_table();
+    test_the_signed_counter_is_a_floor_nothing_overrides();
+    test_the_shared_cases_get_the_verdict_of_the_host_reference();
+    test_the_metadata_after_an_update_and_a_cut_during_it();
     test_a_flash_that_changed_after_the_transfer_breaks_the_signature();
     test_an_update_over_nothing_installed();
 

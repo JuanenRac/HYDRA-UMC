@@ -119,49 +119,18 @@ if errorlevel 1 (
     set /a PASS+=1
 )
 
-REM The key the bootloaders verify update images with. A real build gets it from
-REM HYDRA_FW_HMAC_KEY_HEX (64 hex digits, kept outside the repository, the same key the
-REM signing tools hold); without it the bootloaders carry the DEVELOPMENT key that is
-REM published in this repository, which authenticates nothing, and HYDRA_UMC_RELEASE=1
-REM refuses that. Same behaviour as build_firmware.sh.
-REM HYDRA_FW_UPDATE_PUBKEY_HEX (64 hex digits) is the Ed25519 PUBLIC key an update must be
-REM signed for (python tools\image_header.py keygen / pubkey); the board holds nothing that
-REM signs. Without it the bootloaders accept updates signed with the DEVELOPMENT seed, which is
-REM published in this repository, and HYDRA_UMC_RELEASE=1 refuses that.
-set "HMAC_DEFS="
-if defined HYDRA_FW_UPDATE_PUBKEY_HEX (
-    python -c "import os,re,sys; sys.exit(0 if re.fullmatch('[0-9A-Fa-f]{64}', os.environ['HYDRA_FW_UPDATE_PUBKEY_HEX']) else 1)"
-    if errorlevel 1 (
-        echo   FAIL HYDRA_FW_UPDATE_PUBKEY_HEX must be exactly 64 hexadecimal digits
-        set /a FAIL+=1
-        goto :summary
-    )
-    for /f "usebackq delims=" %%K in (`python -c "import os; k=os.environ['HYDRA_FW_UPDATE_PUBKEY_HEX']; print(','.join('0x'+k[i:i+2] for i in range(0,64,2)))"`) do set "HMAC_DEFS=-DHYDRA_FW_UPDATE_PUBKEY_BYTES=%%K"
-    echo   OK   bootloaders accept updates signed for the public key from HYDRA_FW_UPDATE_PUBKEY_HEX
+REM The bootloaders hold no secret. They verify an update against a table of PUBLIC Ed25519 keys
+REM (docs\image_trust.json). A bench build (the default) compiles the development table, whose private seed
+REM is published in this repository. HYDRA_UMC_RELEASE=1 compiles the release table, which is closed (it trusts
+REM nobody and installs nothing) until the owner puts the public half of the image-signing key in
+REM docs\image_trust.json; images are signed afterwards, on the owner's machine. Same behaviour as build_firmware.sh.
+set "TRUST_DEFS=-DHYDRA_TRUST_DEV"
+if "%HYDRA_UMC_RELEASE%"=="1" (
+    set "TRUST_DEFS="
+    echo   OK   bootloaders are built with the release trust table ^(closed until the image-signing key is in docs\image_trust.json^)
     set /a PASS+=1
-) else if "%HYDRA_UMC_RELEASE%"=="1" (
-    echo   FAIL HYDRA_UMC_RELEASE=1 needs HYDRA_FW_UPDATE_PUBKEY_HEX: the development signing seed is published in the repository
-    set /a FAIL+=1
-    goto :summary
 ) else (
-    echo   WARN bootloaders accept updates signed with the DEVELOPMENT seed, which is public: do not put these images on a board that anybody else can reach
-)
-if defined HYDRA_FW_HMAC_KEY_HEX (
-    python -c "import os,re,sys; sys.exit(0 if re.fullmatch('[0-9A-Fa-f]{64}', os.environ['HYDRA_FW_HMAC_KEY_HEX']) else 1)"
-    if errorlevel 1 (
-        echo   FAIL HYDRA_FW_HMAC_KEY_HEX must be exactly 64 hexadecimal digits
-        set /a FAIL+=1
-        goto :summary
-    )
-    for /f "usebackq delims=" %%K in (`python -c "import os; k=os.environ['HYDRA_FW_HMAC_KEY_HEX']; print(','.join('0x'+k[i:i+2] for i in range(0,64,2)))"`) do set "HMAC_DEFS=!HMAC_DEFS! -DHYDRA_FW_HMAC_KEY_BYTES=%%K"
-    echo   OK   bootloaders are built with the release key from HYDRA_FW_HMAC_KEY_HEX
-    set /a PASS+=1
-) else if "%HYDRA_UMC_RELEASE%"=="1" (
-    echo   FAIL HYDRA_UMC_RELEASE=1 needs HYDRA_FW_HMAC_KEY_HEX: the development key is published in the repository
-    set /a FAIL+=1
-    goto :summary
-) else (
-    echo   WARN bootloaders are built with the DEVELOPMENT key, which is public: do not put these images on a board that anybody else can reach
+    echo   WARN bootloaders trust the DEVELOPMENT image key, whose seed is public: do not put these images on a board that anybody else can reach
 )
 
 if not exist "%FIRMWARE_OUT%" mkdir "%FIRMWARE_OUT%"
@@ -255,7 +224,7 @@ REM -----------------------------------------------------------------------
 echo.
 echo === 4. Robot Controller Board - common compiler flags and shared HAL objects ===
 REM -----------------------------------------------------------------------
-set "CFLAGS_G4=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32G474xx -DUSE_HAL_DRIVER -I!G4!\common\CMSIS_Include -I!G4!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections %HMAC_DEFS%"
+set "CFLAGS_G4=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32G474xx -DUSE_HAL_DRIVER -I!G4!\common\CMSIS_Include -I!G4!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections %TRUST_DEFS%"
 set "LDCOMMON_G4=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
 set "CFLAGS_G4_APP=%CFLAGS_G4% -I%ROOT%\src\mcu_stm32g474 -I%FREERTOS_SRC%\include -I%FREERTOS_SRC%\portable\GCC\ARM_CM4F"
 
@@ -460,8 +429,8 @@ REM module list) - unused object files for one core cost nothing, and
 REM keeping one list avoids the two cores' object sets silently drifting apart.
 set "HAL_MODULES_H7=stm32h7xx_hal stm32h7xx_hal_cortex stm32h7xx_hal_gpio stm32h7xx_hal_rcc stm32h7xx_hal_rcc_ex stm32h7xx_hal_pwr stm32h7xx_hal_pwr_ex stm32h7xx_hal_flash stm32h7xx_hal_flash_ex stm32h7xx_hal_exti stm32h7xx_hal_mdma stm32h7xx_hal_fdcan stm32h7xx_hal_iwdg stm32h7xx_hal_spi stm32h7xx_hal_hsem"
 
-set "CFLAGS_CM7=-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I!H7!\common\CMSIS_Include -I!H7!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections %HMAC_DEFS%"
-set "CFLAGS_CM4=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I!H7!\common\CMSIS_Include -I!H7!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections %HMAC_DEFS%"
+set "CFLAGS_CM7=-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I!H7!\common\CMSIS_Include -I!H7!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections %TRUST_DEFS%"
+set "CFLAGS_CM4=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I!H7!\common\CMSIS_Include -I!H7!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections %TRUST_DEFS%"
 set "LDCOMMON_CM7=-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
 set "LDCOMMON_CM4=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
 set "CFLAGS_CM7_APP=%CFLAGS_CM7% -I%ROOT%\src\mcu_stm32h745\CM7 -I%FREERTOS_SRC%\include -I%FREERTOS_SRC%\portable\GCC\ARM_CM7\r0p1"

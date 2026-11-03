@@ -210,7 +210,7 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
-    # The bootloaders' own SHA-256, HMAC-SHA256, Ed25519 check, CRC32 and flash erase/program/copy/metadata
+    # The bootloaders' own SHA-256, Ed25519 check, CRC32 and flash erase/program/copy/metadata
     # routines, compiled as they are against a stand-in HAL header (tests/stubs):
     # the G474 one by bank and page, the two H745 ones by 128 KB sector. They map
     # the flash address range, so they run on Linux x86-64 and say so elsewhere.
@@ -223,19 +223,19 @@ else
     fi
     BOOTLOADER_G474_HOST_BIN="$ROOT/build/host_tests_bootloader_g474"
     if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -I"$ROOT/tests/stubs" -I"$ROOT/src/mcu_stm32g474/boot" -I"$ROOT/tests" -o "$BOOTLOADER_G474_HOST_BIN" "$ROOT/tests/test_bootloader_g474_host.c" "$TWEETNACL_HOST_OBJ" "$ROOT/src/mcu_stm32g474/boot/update_signature.c" && "$BOOTLOADER_G474_HOST_BIN" >/dev/null; then
-        pass "G474 bootloader SHA-256, HMAC, Ed25519, CRC32 and flash host logic tests passed"
+        pass "G474 bootloader SHA-256, Ed25519, CRC32, flash and metadata log host logic tests passed"
     else
         "$BOOTLOADER_G474_HOST_BIN" || true
-        fail "G474 bootloader SHA-256, HMAC, Ed25519, CRC32 and flash host logic tests FAILED"
+        fail "G474 bootloader SHA-256, Ed25519, CRC32, flash and metadata log host logic tests FAILED"
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
     for H745_CORE in CM4 CM7; do
         BOOTLOADER_H745_HOST_BIN="$ROOT/build/host_tests_bootloader_h745_$H745_CORE"
         if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -DHYDRA_TEST_$H745_CORE -I"$ROOT/tests/stubs" -I"$ROOT/src/mcu_stm32h745/$H745_CORE/boot" -o "$BOOTLOADER_H745_HOST_BIN" "$ROOT/tests/test_bootloader_h745_host.c" && "$BOOTLOADER_H745_HOST_BIN" >/dev/null; then
-            pass "H745 $H745_CORE bootloader sector erase, CRC32 and HMAC host logic tests passed"
+            pass "H745 $H745_CORE bootloader sector erase, CRC32 and SHA-256 host logic tests passed"
         else
             "$BOOTLOADER_H745_HOST_BIN" || true
-            fail "H745 $H745_CORE bootloader sector erase, CRC32 and HMAC host logic tests FAILED"
+            fail "H745 $H745_CORE bootloader sector erase, CRC32 and SHA-256 host logic tests FAILED"
             echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
         fi
     done
@@ -251,6 +251,21 @@ else
             else
                 "$UPDATE_HOST_BIN" || true
                 fail "$UPDATE_TEST host logic tests FAILED for $UPDATE_TARGET_DIR"
+                echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+            fi
+        done
+    done
+
+    # The trust table of the bootloaders (bootloader_trust.c, one copy per bootloader): the bench table and the table of an official build.
+    for TRUST_TARGET_DIR in "$ROOT/src/mcu_stm32g474/boot" "$ROOT/src/mcu_stm32h745/CM4/boot" "$ROOT/src/mcu_stm32h745/CM7/boot"; do
+        for TRUST_FLAVOUR in HYDRA_TRUST_DEV HYDRA_TEST_RELEASE; do
+            TRUST_DEFINES="-D$TRUST_FLAVOUR"
+            TRUST_HOST_BIN="$ROOT/build/host_tests_trust"
+            if "$HOST_CC" -std=c11 -Wall -Wextra $TRUST_DEFINES -I"$TRUST_TARGET_DIR" -I"$ROOT/tests" -o "$TRUST_HOST_BIN" "$ROOT/tests/test_bootloader_trust.c" "$TRUST_TARGET_DIR/bootloader_trust.c" "$TWEETNACL_HOST_OBJ" && "$TRUST_HOST_BIN" >/dev/null; then
+                pass "trust table host tests passed ($TRUST_FLAVOUR) for $TRUST_TARGET_DIR"
+            else
+                "$TRUST_HOST_BIN" || true
+                fail "trust table host tests FAILED ($TRUST_FLAVOUR) for $TRUST_TARGET_DIR"
                 echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
             fi
         done
@@ -456,37 +471,19 @@ fi
 # -----------------------------------------------------------------------
 step "4. Robot Controller Board - common compiler flags and shared HAL objects"
 # -----------------------------------------------------------------------
-# The keys of the bootloaders. HYDRA_FW_UPDATE_PUBKEY_HEX (64 hex digits) is the Ed25519 PUBLIC key an update must be signed for: the board holds nothing that signs, and the
-# private seed stays with the owner (python tools/image_header.py keygen / pubkey). Without it the bootloaders carry a DEVELOPMENT public key whose private seed is
-# published in this repository, so anybody can sign an update for them, and HYDRA_UMC_RELEASE=1 refuses that. HYDRA_FW_HMAC_KEY_HEX (64 hex digits, kept outside the
-# repository) is the key of the local integrity check of the installed application; without it the published development key is used, which a release also refuses.
-HMAC_DEFS=""
-if [ -n "${HYDRA_FW_UPDATE_PUBKEY_HEX:-}" ]; then
-    if ! printf '%s' "$HYDRA_FW_UPDATE_PUBKEY_HEX" | grep -Eq '^[0-9A-Fa-f]{64}$'; then
-        fail "HYDRA_FW_UPDATE_PUBKEY_HEX must be exactly 64 hexadecimal digits"; exit 1
-    fi
-    PUBKEY_BYTES="$(printf '%s' "$HYDRA_FW_UPDATE_PUBKEY_HEX" | sed -E 's/(..)/0x\1,/g; s/,$//')"
-    HMAC_DEFS="-DHYDRA_FW_UPDATE_PUBKEY_BYTES=$PUBKEY_BYTES"
-    pass "bootloaders accept updates signed for the public key from HYDRA_FW_UPDATE_PUBKEY_HEX"
-elif [ "${HYDRA_UMC_RELEASE:-0}" = "1" ]; then
-    fail "HYDRA_UMC_RELEASE=1 needs HYDRA_FW_UPDATE_PUBKEY_HEX: the development signing seed is published in the repository"; exit 1
+# The bootloaders hold no secret. They verify an update against a table of PUBLIC Ed25519 keys (docs/image_trust.json, src/*/boot/hydra_trust_*.h).
+# A bench build (the default) compiles the development table, whose private seed is published in this repository: anybody can sign an update for it.
+# HYDRA_UMC_RELEASE=1 compiles the release table instead: it is closed (it trusts nobody and installs nothing) until the owner puts the public half of
+# the image-signing key in docs/image_trust.json; the images are signed afterwards, on the owner's machine, never here.
+if [ "${HYDRA_UMC_RELEASE:-0}" = "1" ]; then
+    TRUST_DEFS=""
+    pass "bootloaders are built with the release trust table (closed until the image-signing key is in docs/image_trust.json)"
 else
-    warn "bootloaders accept updates signed with the DEVELOPMENT seed, which is public: do not put these images on a board that anybody else can reach"
-fi
-if [ -n "${HYDRA_FW_HMAC_KEY_HEX:-}" ]; then
-    if ! printf '%s' "$HYDRA_FW_HMAC_KEY_HEX" | grep -Eq '^[0-9A-Fa-f]{64}$'; then
-        fail "HYDRA_FW_HMAC_KEY_HEX must be exactly 64 hexadecimal digits"; exit 1
-    fi
-    KEY_BYTES="$(printf '%s' "$HYDRA_FW_HMAC_KEY_HEX" | sed -E 's/(..)/0x\1,/g; s/,$//')"
-    HMAC_DEFS="$HMAC_DEFS -DHYDRA_FW_HMAC_KEY_BYTES=$KEY_BYTES"
-    pass "bootloaders are built with the release key from HYDRA_FW_HMAC_KEY_HEX"
-elif [ "${HYDRA_UMC_RELEASE:-0}" = "1" ]; then
-    fail "HYDRA_UMC_RELEASE=1 needs HYDRA_FW_HMAC_KEY_HEX: the development key is published in the repository"; exit 1
-else
-    warn "bootloaders are built with the DEVELOPMENT key, which is public: do not put these images on a board that anybody else can reach"
+    TRUST_DEFS="-DHYDRA_TRUST_DEV"
+    warn "bootloaders trust the DEVELOPMENT image key, whose seed is public: do not put these images on a board that anybody else can reach"
 fi
 
-CFLAGS_G4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32G474xx -DUSE_HAL_DRIVER -I$G4/common/CMSIS_Include -I$G4/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $HMAC_DEFS"
+CFLAGS_G4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32G474xx -DUSE_HAL_DRIVER -I$G4/common/CMSIS_Include -I$G4/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS"
 LDCOMMON_G4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
 # App CFLAGS additionally need this target's own FreeRTOSConfig.h directory
 # plus FreeRTOS's own headers/port headers - the bootloader (bare-metal, no
@@ -639,9 +636,9 @@ step "8. Kinematic Brain - common compiler flags and shared HAL objects (per cor
 HAL_MODULES_H7="stm32h7xx_hal stm32h7xx_hal_cortex stm32h7xx_hal_gpio stm32h7xx_hal_rcc stm32h7xx_hal_rcc_ex stm32h7xx_hal_pwr stm32h7xx_hal_pwr_ex stm32h7xx_hal_flash stm32h7xx_hal_flash_ex stm32h7xx_hal_exti stm32h7xx_hal_mdma stm32h7xx_hal_fdcan stm32h7xx_hal_iwdg stm32h7xx_hal_spi stm32h7xx_hal_hsem"
 
 for CORE in CM7 CM4; do
-    CFLAGS_H7="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $HMAC_DEFS"
+    CFLAGS_H7="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS"
     if [ "$CORE" = "CM7" ]; then
-        CFLAGS_H7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $HMAC_DEFS"
+        CFLAGS_H7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS"
     fi
     LOWER=$(echo "$CORE" | tr 'A-Z' 'a-z')
     OBJDIR="$H7/hal_obj_$LOWER"
@@ -668,9 +665,9 @@ for CORE in CM7 CM4; do
     pass "$CORE: startup + system files compiled"
 done
 
-CFLAGS_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $HMAC_DEFS"
+CFLAGS_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS"
 LDCOMMON_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
-CFLAGS_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $HMAC_DEFS"
+CFLAGS_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS"
 LDCOMMON_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
 # App CFLAGS additionally need each core's own FreeRTOSConfig.h directory
 # plus FreeRTOS's own headers/port headers - each core's bootloader

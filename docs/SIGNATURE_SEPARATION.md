@@ -1,6 +1,6 @@
 # Separating the signature from the image
 
-**Status: design with a host reference. The formats below are fixed and implemented in Python (`tools/image_header2.py`, `tools/image_trust.py`) and held to shared vectors (`tests/image_format2_vectors.json`). Nothing is built for a board and no bootloader reads them yet.** It sets out how the official firmware of the three controllers (STM32G474 robot controller, STM32H745 CM7 and CM4) can be **compiled by a public build service with no private key leaving the maintainer's computer**.
+**Status: the formats are implemented in the three bootloaders (table, header format 2, signed counter, SHA-256 instead of the local HMAC, append-only metadata) and held by host tests; nothing has run on a board. Original status: design with a host reference. The formats below are fixed and implemented in Python (`tools/image_header2.py`, `tools/image_trust.py`) and held to shared vectors (`tests/image_format2_vectors.json`). Nothing is built for a board and no bootloader reads them yet.** It sets out how the official firmware of the three controllers (STM32G474 robot controller, STM32H745 CM7 and CM4) can be **compiled by a public build service with no private key leaving the maintainer's computer**.
 
 ## 1. The model today
 
