@@ -20,6 +20,13 @@
 
 extern const uint8_t HYDRA_TRUST_TABLE[];
 
+/* The vendored TweetNaCl links against this for key generation, which nothing here does. */
+void randombytes(unsigned char *buffer, unsigned long long length);
+void randombytes(unsigned char *buffer, unsigned long long length)
+{
+    for (unsigned long long i = 0; i < length; i++) buffer[i] = 0;
+}
+
 static int failures;
 
 #define CHECK(cond, msg) \
