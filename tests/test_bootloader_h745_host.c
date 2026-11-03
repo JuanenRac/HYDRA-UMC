@@ -1,6 +1,6 @@
 /* =============================================================================
  * HYDRA-UMC Firmware - Host logic tests for the H745 bootloaders' sector
- * erase, CRC32 and HMAC-SHA256
+ * erase, CRC32 and SHA-256
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
  * GPL-3.0-or-later - see LICENSE
  * =============================================================================
@@ -155,34 +155,34 @@ static void test_a_failed_sector_stops_the_erase(void)
     CHECK(iwdg_refreshes == 1, "refreshed only for the sector that was erased");
 }
 
-static void test_hmac_uses_the_same_algorithm_as_the_other_bootloaders(void)
+static void test_sha256_uses_the_same_algorithm_as_the_other_bootloaders(void)
 {
-    printf("  HMAC-SHA256 on this bootloader's copy\n");
+    printf("  SHA-256 on this bootloader's copy\n");
 #ifdef HAVE_LOW_BUFFERS
     /* the region is read through a 32-bit address, so the data goes in the low 2 GB */
     uint8_t *low = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_32BIT, -1, 0);
     CHECK(low != MAP_FAILED, "a low buffer");
     if (low == MAP_FAILED) return;
     uint8_t out[32];
-    uint8_t key[131];
 
-    memset(key, 0x0b, 20);
-    memcpy(low, "Hi There", 8);
-    hmac_sha256_flash_region(key, 20, (uint32_t)(uintptr_t)low, 8, out);
-    CHECK(hex_equals(out, "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7"), "RFC 4231 test case 1");
+    memcpy(low, "abc", 3);
+    sha256_prefixed_flash_region(NULL, 0, (uint32_t)(uintptr_t)low, 3, out);
+    CHECK(hex_equals(out, "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"), "FIPS 180 \"abc\"");
 
-    memcpy(low, "what do ya want for nothing?", 28);
-    hmac_sha256_flash_region((const uint8_t *)"Jefe", 4, (uint32_t)(uintptr_t)low, 28, out);
-    CHECK(hex_equals(out, "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"), "RFC 4231 test case 2");
+    const char *two_blocks = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
+    memcpy(low, two_blocks, 56);
+    sha256_prefixed_flash_region(NULL, 0, (uint32_t)(uintptr_t)low, 56, out);
+    CHECK(hex_equals(out, "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1"), "FIPS 180 two-block message");
 
-    memset(key, 0xaa, 131);
-    memcpy(low, "Test Using Larger Than Block-Size Key - Hash Key First", 54);
-    hmac_sha256_flash_region(key, 131, (uint32_t)(uintptr_t)low, 54, out);
-    CHECK(hex_equals(out, "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54"), "RFC 4231 test case 6 (key longer than the block)");
+    uint8_t whole[32];
+    sha256_buffer((const uint8_t *)two_blocks, 56, whole);
+    CHECK(digest_constant_time_compare(out, whole, 32) == 1, "the buffer form equals the flash form");
+    sha256_prefixed_flash_region((const uint8_t *)two_blocks, 20, (uint32_t)(uintptr_t)(low + 20), 36, out);
+    CHECK(digest_constant_time_compare(out, whole, 32) == 1, "a prefix and a region are one message");
 
     iwdg_refreshes = 0;
     memset(low, 0, 4096);
-    hmac_sha256_flash_region(key, 32, (uint32_t)(uintptr_t)low, 4096, out);
+    sha256_prefixed_flash_region(NULL, 0, (uint32_t)(uintptr_t)low, 4096, out);
     CHECK(iwdg_refreshes >= 1, "the watchdog is fed while a region is hashed");
     munmap(low, 4096);
 #else
@@ -191,12 +191,12 @@ static void test_hmac_uses_the_same_algorithm_as_the_other_bootloaders(void)
     uint8_t a[32], b[32];
     memset(a, 0x33, 32);
     memcpy(b, a, 32);
-    CHECK(hmac_constant_time_compare(a, b, 32) == 1, "equal digests compare equal");
+    CHECK(digest_constant_time_compare(a, b, 32) == 1, "equal digests compare equal");
     b[31] ^= 1;
-    CHECK(hmac_constant_time_compare(a, b, 32) == 0, "a difference in the last byte is seen");
+    CHECK(digest_constant_time_compare(a, b, 32) == 0, "a difference in the last byte is seen");
     b[31] ^= 1;
     b[0] ^= 0x80;
-    CHECK(hmac_constant_time_compare(a, b, 32) == 0, "and in the first");
+    CHECK(digest_constant_time_compare(a, b, 32) == 0, "and in the first");
 }
 
 static void test_crc32(void)
@@ -213,7 +213,7 @@ int main(void)
     test_page_ranges_become_the_sectors_they_touch();
     test_a_sector_is_erased_exactly_when_a_page_reaches_into_it();
     test_a_failed_sector_stops_the_erase();
-    test_hmac_uses_the_same_algorithm_as_the_other_bootloaders();
+    test_sha256_uses_the_same_algorithm_as_the_other_bootloaders();
     test_crc32();
     if (failures) {
         printf("%d failure(s)\n", failures);

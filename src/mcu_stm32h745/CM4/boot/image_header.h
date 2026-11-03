@@ -206,4 +206,58 @@ static inline void ImageHeader_SignatureMessage(const uint8_t digest[IMAGE_DIGES
     for (size_t i = 0; i < IMAGE_DIGEST_SIZE; i++) out[IMAGE_DOMAIN_LEN + i] = digest[i];
 }
 
+// ---- header format 2 -------------------------------------------------------------------------------------------------------------------------
+// The bootloaders read format 2 only (the policy is format2_only: there is no second path that accepts format 1). The first 40 bytes are those of
+// format 1 with `format` = 2; then, still little endian:
+//
+//   offset size field
+//      40    4   rollback_counter  an image is refused when it is below the floor the bootloader keeps in its metadata (and the floor compiled in)
+//      44    8   key_id            the first 8 bytes of the SHA-512 of the public key that signs: it picks the key of the trust table to verify with
+//      52   12   reserved          zeros
+//
+// The signature is over IMAGE_DOMAIN_2 || SHA-256(header || image): a domain that differs from format 1's, so a signature of one format is never good
+// for the other. tools/image_header2.py is the host reference; tests/image_format2_vectors.h holds the shared cases.
+#define IMAGE_HEADER_FORMAT_2  2u
+#define IMAGE_KEY_ID_SIZE      8u
+// "hydra-umc-image-sig/2" and its terminating zero
+#define IMAGE_DOMAIN_2_LEN     22u
+#define IMAGE_MESSAGE_2_LEN    (IMAGE_DOMAIN_2_LEN + IMAGE_DIGEST_SIZE)
+
+typedef struct {
+    ImageHeader_t base;
+    uint32_t      rollback_counter;
+    uint8_t       key_id[IMAGE_KEY_ID_SIZE];
+} ImageHeader2_t;
+
+// Reads the 64 bytes of a format 2 header. Refuses a header that is not ours, is of another format or has anything set where it must be zero.
+static inline ImageHeaderStatus_t ImageHeader_Parse2(const uint8_t raw[IMAGE_HEADER_SIZE], ImageHeader2_t *out)
+{
+    if (ImageHeader_Le32(raw) != IMAGE_HEADER_MAGIC) return IMAGE_HEADER_BAD_MAGIC;
+    if (ImageHeader_Le16(raw + 4) != IMAGE_HEADER_FORMAT_2) return IMAGE_HEADER_BAD_FORMAT;
+    if (ImageHeader_Le16(raw + 6) != 0u || ImageHeader_Le16(raw + 18) != 0u) return IMAGE_HEADER_RESERVED_NOT_ZERO;
+    for (size_t i = 52; i < IMAGE_HEADER_SIZE; i++) {
+        if (raw[i] != 0u) return IMAGE_HEADER_RESERVED_NOT_ZERO;
+    }
+    out->base.hw_id = ImageHeader_Le32(raw + 8);
+    out->base.version.major = ImageHeader_Le16(raw + 12);
+    out->base.version.minor = ImageHeader_Le16(raw + 14);
+    out->base.version.patch = ImageHeader_Le16(raw + 16);
+    out->base.image_size = ImageHeader_Le32(raw + 20);
+    out->base.link_address = ImageHeader_Le32(raw + 24);
+    out->base.vector_sp = ImageHeader_Le32(raw + 28);
+    out->base.vector_reset = ImageHeader_Le32(raw + 32);
+    out->base.image_crc32 = ImageHeader_Le32(raw + 36);
+    out->rollback_counter = ImageHeader_Le32(raw + 40);
+    for (size_t i = 0; i < IMAGE_KEY_ID_SIZE; i++) out->key_id[i] = raw[44 + i];
+    return IMAGE_HEADER_OK;
+}
+
+// The message the signature of a format 2 image is made over: the domain text, then the SHA-256 digest of header || image.
+static inline void ImageHeader_SignatureMessage2(const uint8_t digest[IMAGE_DIGEST_SIZE], uint8_t out[IMAGE_MESSAGE_2_LEN])
+{
+    static const char domain[IMAGE_DOMAIN_2_LEN] = {'h', 'y', 'd', 'r', 'a', '-', 'u', 'm', 'c', '-', 'i', 'm', 'a', 'g', 'e', '-', 's', 'i', 'g', '/', '2', '\0'};
+    for (size_t i = 0; i < IMAGE_DOMAIN_2_LEN; i++) out[i] = (uint8_t)domain[i];
+    for (size_t i = 0; i < IMAGE_DIGEST_SIZE; i++) out[IMAGE_DOMAIN_2_LEN + i] = digest[i];
+}
+
 #endif // IMAGE_HEADER_H

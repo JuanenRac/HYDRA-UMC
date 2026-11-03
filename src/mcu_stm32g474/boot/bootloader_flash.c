@@ -157,23 +157,89 @@ uint8_t Flash_CopyRegion(uint32_t dest_addr, uint32_t src_addr, uint32_t total_l
     return 1;
 }
 
-uint8_t Metadata_Read(FirmwareMetadata_t *out) {
-    memcpy(out, (const void*)METADATA_ADDR, sizeof(FirmwareMetadata_t));
-    return out->magic == METADATA_MAGIC_VALID;
+// ---- metadata: an append-only log (see MetaRecord_t in bootloader_common.h) ------------------------------------------------------------------
+_Static_assert(sizeof(MetaRecord_t) == META_RECORD_SIZE, "a metadata record has the size the layout was made for");
+
+static uint32_t meta_record_crc(const MetaRecord_t *record) {
+    return CRC32_Finalize(CRC32_Update(0xFFFFFFFFUL, (const uint8_t*)record, META_RECORD_SIZE - 4u));
 }
 
-// Writes without erasing first - callers are responsible for that (this
-// chip's flash requires an erased page before programming, same rule as
-// F3). Static and single-caller (Metadata_EraseAndWrite, right below).
-static uint8_t Metadata_Write(const FirmwareMetadata_t *meta) {
-    return Flash_WriteVerified(METADATA_ADDR, (const uint8_t*)meta, sizeof(FirmwareMetadata_t));
-}
-
-uint8_t Metadata_EraseAndWrite(const FirmwareMetadata_t *meta) {
-    FirmwareMetadata_t current;
-    if (Metadata_Read(&current) && memcmp(&current, meta, sizeof(FirmwareMetadata_t)) == 0) {
-        return 1; // already holds exactly this content - skip the erase/write cycle
+static uint8_t meta_slot_blank(const MetaRecord_t *record) {
+    const uint8_t *bytes = (const uint8_t*)record;
+    for (uint32_t i = 0; i < META_RECORD_SIZE; i++) {
+        if (bytes[i] != 0xFF) return 0;
     }
-    if (!ErasePageAt(METADATA_ADDR)) return 0;
-    return Metadata_Write(meta);
+    return 1;
+}
+
+static uint8_t meta_slot_valid(const MetaRecord_t *record) {
+    return record->meta.magic == METADATA_MAGIC_VALID && record->generation != 0xFFFFFFFFUL && meta_record_crc(record) == record->crc;
+}
+
+static const MetaRecord_t *meta_slot(uint32_t page, uint32_t index) {
+    return (const MetaRecord_t*)(METADATA_ADDR + page * FLASH_PAGE_SIZE + index * META_RECORD_SIZE);
+}
+
+// The valid record with the highest generation, over the two pages of the log; 0 when there is none. A record cut by a power loss fails its CRC.
+static uint8_t meta_find_newest(uint32_t *page, uint32_t *index) {
+    uint8_t found = 0;
+    uint32_t best_generation = 0;
+    for (uint32_t p = 0; p < 2u; p++) {
+        for (uint32_t i = 0; i < META_RECORD_SLOTS; i++) {
+            const MetaRecord_t *record = meta_slot(p, i);
+            if (!meta_slot_valid(record)) continue;
+            if (!found || record->generation > best_generation) {
+                found = 1;
+                best_generation = record->generation;
+                *page = p;
+                *index = i;
+            }
+        }
+    }
+    return found;
+}
+
+uint8_t Metadata_Read(FirmwareMetadata_t *out) {
+    uint32_t page = 0, index = 0;
+    if (!meta_find_newest(&page, &index)) {
+        memset(out, 0, sizeof(*out));
+        return 0;
+    }
+    memcpy(out, &meta_slot(page, index)->meta, sizeof(*out));
+    return 1;
+}
+
+// Appends the state as a new record. The log has two pages: when the one in use is full, the other one (which only holds older records) is erased and
+// takes the new record, so the newest state is never without a valid copy: a cut during that erase or write leaves the full page and its newest
+// record in force. The name is kept from the single-record page this replaced.
+uint8_t Metadata_EraseAndWrite(const FirmwareMetadata_t *meta) {
+    uint32_t page = 0, index = 0;
+    uint32_t generation = 1;
+    uint32_t target_page = 0;
+    uint8_t have = meta_find_newest(&page, &index);
+    if (have) {
+        const MetaRecord_t *latest = meta_slot(page, index);
+        // Skip the write entirely if the log already ends with exactly this state - the page has the same endurance as any other.
+        if (memcmp(&latest->meta, meta, sizeof(*meta)) == 0) return 1;
+        generation = latest->generation + 1u;
+        target_page = page;
+    }
+    uint32_t slot = META_RECORD_SLOTS;
+    for (uint32_t i = 0; i < META_RECORD_SLOTS; i++) {
+        if (meta_slot_blank(meta_slot(target_page, i))) {
+            slot = i;
+            break;
+        }
+    }
+    if (slot == META_RECORD_SLOTS) {
+        target_page = have ? 1u - page : 0u;
+        if (!ErasePageAt((uint32_t)(METADATA_ADDR + target_page * FLASH_PAGE_SIZE))) return 0;
+        slot = 0;
+    }
+    MetaRecord_t record;
+    memset(&record, 0, sizeof(record));
+    record.generation = generation;
+    record.meta = *meta;
+    record.crc = meta_record_crc(&record);
+    return Flash_WriteVerified((uint32_t)(METADATA_ADDR + target_page * FLASH_PAGE_SIZE + slot * META_RECORD_SIZE), (const uint8_t*)&record, META_RECORD_SIZE);
 }

@@ -1,6 +1,6 @@
 /* =============================================================================
- * HYDRA-UMC Firmware - Host logic tests for the G474 bootloader's SHA-256, HMAC,
- * Ed25519 check, CRC32 and flash erase/program/copy/metadata routines
+ * HYDRA-UMC Firmware - Host logic tests for the G474 bootloader's SHA-256,
+ * Ed25519 check, CRC32 and flash erase/program/copy/metadata-log routines
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
  * GPL-3.0-or-later - see LICENSE
  * =============================================================================
@@ -9,8 +9,8 @@
  * array mapped at the real flash address, erase by bank and page, programming
  * only over erased double-words) and counts the watchdog refreshes.
  *
- *  - HMAC-SHA256 against the RFC 4231 vectors and every padding boundary of the
- *    SHA-256 block, and the constant-time comparison.
+ *  - SHA-256 against FIPS 180 digests and every padding boundary of the block,
+ *    and the constant-time comparison.
  *  - SHA-256 of header || image against the host reference, and the Ed25519 check
  *    (update_signature.c, linked with the vendored TweetNaCl) against the RFC 8032
  *    vectors and the signatures tools/image_header.py made.
@@ -19,7 +19,9 @@
  *    failure in the middle, one watchdog refresh per page.
  *  - Flash_WriteVerified: padding of a partial double-word, a refused program, a
  *    stuck cell found by the read-back, the lock after every path.
- *  - Flash_CopyRegion and Metadata_EraseAndWrite on top of them.
+ *  - Flash_CopyRegion on top of them, and the metadata log: records appended
+ *    without an erase, two pages used in turn, every power-cut point of a record
+ *    and of the change of page.
  *
  * Needs Linux on x86-64 (a fixed mapping at the flash address, and addresses
  * that fit in 32 bits); anywhere else it reports that and passes.
@@ -155,13 +157,12 @@ static uint8_t *low_buffer(size_t n)
     return (uint8_t *)p;
 }
 
-static uint32_t hmac_of(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint32_t len, uint8_t out[32])
+static void sha_of(const uint8_t *data, uint32_t len, uint8_t out[32])
 {
     uint8_t *low = low_buffer(len);
     if (len) memcpy(low, data, len);
-    hmac_sha256_flash_region(key, key_len, (uint32_t)(uintptr_t)low, len, out);
+    sha256_prefixed_flash_region(NULL, 0, (uint32_t)(uintptr_t)low, len, out);
     munmap(low, len ? len : 1);
-    return len;
 }
 
 static int hex_equals(const uint8_t *bytes, const char *hex)
@@ -171,69 +172,34 @@ static int hex_equals(const uint8_t *bytes, const char *hex)
     return strcmp(text, hex) == 0;
 }
 
-/* ---- HMAC ---------------------------------------------------------------- */
-static void test_hmac_rfc4231(void)
+/* ---- SHA-256 ------------------------------------------------------------- */
+static void test_sha256_padding_boundaries(void)
 {
-    printf("  HMAC-SHA256, RFC 4231 vectors\n");
-    uint8_t out[32];
-    uint8_t key[131];
-    uint8_t data[150];
-
-    memset(key, 0x0b, 20);
-    hmac_of(key, 20, (const uint8_t *)"Hi There", 8, out);
-    CHECK(hex_equals(out, "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7"), "test case 1");
-
-    hmac_of((const uint8_t *)"Jefe", 4, (const uint8_t *)"what do ya want for nothing?", 28, out);
-    CHECK(hex_equals(out, "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"), "test case 2");
-
-    memset(key, 0xaa, 20);
-    memset(data, 0xdd, 50);
-    hmac_of(key, 20, data, 50, out);
-    CHECK(hex_equals(out, "773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe"), "test case 3");
-
-    for (int i = 0; i < 25; i++) key[i] = (uint8_t)(i + 1);
-    memset(data, 0xcd, 50);
-    hmac_of(key, 25, data, 50, out);
-    CHECK(hex_equals(out, "82558a389a443c0ea4cc819899f2083a85f0faa3e578f8077a2e3ff46729665b"), "test case 4");
-
-    memset(key, 0xaa, 131);
-    hmac_of(key, 131, (const uint8_t *)"Test Using Larger Than Block-Size Key - Hash Key First", 54, out);
-    CHECK(hex_equals(out, "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54"), "test case 6 (key longer than the block)");
-
-    const char *long_text = "This is a test using a larger than block-size key and a larger than block-size data. The key needs to be hashed before being used by the HMAC algorithm.";
-    hmac_of(key, 131, (const uint8_t *)long_text, (uint32_t)strlen(long_text), out);
-    CHECK(hex_equals(out, "9b09ffa71b942fcb27635fbcd5b0e944bfdc63644f0713938a7f51535c3a35e2"), "test case 7 (long key and long data)");
-}
-
-static void test_hmac_padding_boundaries(void)
-{
-    printf("  HMAC-SHA256, every padding boundary of the 64-byte block\n");
+    printf("  SHA-256, every padding boundary of the 64-byte block\n");
     static const struct { uint32_t len; const char *expected; } cases[] = {
-        {0,    "d38b42096d80f45f826b44a9d5607de72496a415d3f4a1a8c88e3bb9da8dc1cb"},
-        {1,    "2a24d008789d3c74daf5e02636c675df8f09ec5e740c1bdf6305f9261f7b1c32"},
-        {55,   "e66a4fff985be53712fd4aa0892c3b80983e902b6caa3e98ed1186c0a89c7afe"},
-        {56,   "b2727065101957bf27ce9b50104c6062e0c376b71df36cb336d26948103afd3b"},
-        {57,   "182e429b428c7cbfcd036ea01e92a0c04025dc81ddf2619921d1a056963e4ce5"},
-        {63,   "47604389fafb6ab7907b9c09e23589ff0203384382bf7bddebd6130a37ffa379"},
-        {64,   "b46ff212a3a07583c8dd50c674c6cff3558e6f7b5b97081f7c73101a2b0086fb"},
-        {65,   "006baa702522d812e0ea3ab7d7f7368b0f87a1abf446187d6ae02d0d8d450dcf"},
-        {119,  "e5012dfb2a972eda915425f71385b14565a9fb0de92f0bd37705574119694a53"},
-        {120,  "aad486123ad591a6e8376bd81ae6f479ab9a2a309f08b24d65220e2572e5b45f"},
-        {121,  "fc393177c63a8c5d9c2bb8a565f21509b44ca1e5d3962b4301c05005cbf36e61"},
-        {127,  "737bf24b356aeed0a29bbcf886a0aea0b0e02ca5a1de3fb0602620e826f42878"},
-        {128,  "32580bd113595450aeaa291ce4db3db6b529206e7b04e16bd0408224e29d61b6"},
-        {129,  "59829dbfbf4e8c8680f11979c7d338f7c6331caa5eabc072bfbab1cf87a737bb"},
-        {1000, "13f22d9be5636c710a12699e36a0390622d622f876e5aec2ddd33db4862cfd4f"},
+        {0, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+        {1, "084fed08b978af4d7d196a7446a86b58009e636b611db16211b65a9aadff29c5"},
+        {55, "e7313d333c272e639f790978283f9eb392e843d0f29b7016828bb1daa4aac70b"},
+        {56, "4324d65f3c103567f5589c710bc08f8523f929a9272e3af36fc968e52abc6c27"},
+        {57, "35df609437dcfea3279283ab79fd554e2bf78f8f7ae2de532d8ee300b09e8f73"},
+        {63, "81c80242132f230c3bd41b3e63bbcff16107339549214a99614ff26664625055"},
+        {64, "39e3d7b6b5d075d37d053ad89b24b41bef4f3c29760c84447cab3f3be1882241"},
+        {65, "aacca6ff74fdbb296d165a45cecfa04e5127bc008770fbbdd48006f2d2fae95e"},
+        {119, "9ce7368e4daf32341631b492e80359dc9f594b48453cd0dd5bf0b19279cc177e"},
+        {120, "7836b787757e95e58b3ca5aec90b1b004e8deba1e50e9675af9cabf1a13a04b5"},
+        {121, "1189a98a00c71bc1848ea8bdc9700b442bee0be7c3f45172303f1ab0b6f1617e"},
+        {127, "a8d23e75d936f303d248888d9b165ee543f4cbafcad3c9dd2a79bd84faa11d07"},
+        {128, "d2742f1f4ac6bb7ca2b239ee18402ba8b3f9f8e652d2a72973c2b9ba11c08cf6"},
+        {129, "307f8fc2c1622b92762e818d39a185d4d667ad49a4b07ceae1f4afa008a93ec4"},
+        {1000, "1e9bc38cbf860b9ec31918b065f9b52476c549a782e0e7990bed8ce3868d2371"}
     };
-    uint8_t key[32];
     uint8_t data[1000];
     uint8_t out[32];
-    for (int i = 0; i < 32; i++) key[i] = (uint8_t)i;
     for (int i = 0; i < 1000; i++) data[i] = (uint8_t)((i * 7 + 3) & 0xFF);
     for (size_t c = 0; c < sizeof(cases) / sizeof(cases[0]); c++) {
         char what[48];
         snprintf(what, sizeof(what), "%u bytes", cases[c].len);
-        hmac_of(key, 32, data, cases[c].len, out);
+        sha_of(data, cases[c].len, out);
         CHECK(hex_equals(out, cases[c].expected), what);
     }
 }
@@ -247,7 +213,7 @@ static void test_the_digest_of_a_header_and_an_image_matches_the_reference(void)
     memcpy(flash_mem + (BACKUP_APP_ADDR - FLASH_BASE_ADDR), VEC_IMAGE, VEC_IMAGE_SIZE);
     uint8_t out[32];
     sha256_prefixed_flash_region(VEC_HEADER, sizeof(VEC_HEADER), BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
-    CHECK(hmac_constant_time_compare(out, VEC_DIGEST, 32) == 1, "the digest the reference made for the image matches");
+    CHECK(digest_constant_time_compare(out, VEC_DIGEST, 32) == 1, "the digest the reference made for the image matches");
 
     /* one changed bit anywhere in the header or the image is another digest */
     uint8_t header[sizeof(VEC_HEADER)];
@@ -255,17 +221,17 @@ static void test_the_digest_of_a_header_and_an_image_matches_the_reference(void)
         memcpy(header, VEC_HEADER, sizeof(header));
         header[i] ^= 0x01;
         sha256_prefixed_flash_region(header, sizeof(header), BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
-        CHECK(hmac_constant_time_compare(out, VEC_DIGEST, 32) == 0, "a changed header byte changes the digest");
+        CHECK(digest_constant_time_compare(out, VEC_DIGEST, 32) == 0, "a changed header byte changes the digest");
     }
     for (uint32_t i = 0; i < VEC_IMAGE_SIZE; i += 61) {
         flash_mem[BACKUP_APP_ADDR - FLASH_BASE_ADDR + i] ^= 0x01;
         sha256_prefixed_flash_region(VEC_HEADER, sizeof(VEC_HEADER), BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
-        CHECK(hmac_constant_time_compare(out, VEC_DIGEST, 32) == 0, "a changed image byte changes the digest");
+        CHECK(digest_constant_time_compare(out, VEC_DIGEST, 32) == 0, "a changed image byte changes the digest");
         flash_mem[BACKUP_APP_ADDR - FLASH_BASE_ADDR + i] ^= 0x01;
     }
     /* the image alone, as the old flow covered, is not the digest of the signed image */
     sha256_prefixed_flash_region(NULL, 0, BACKUP_APP_ADDR, VEC_IMAGE_SIZE, out);
-    CHECK(hmac_constant_time_compare(out, VEC_DIGEST, 32) == 0, "the SHA-256 of the image alone is not the digest of the signed image");
+    CHECK(digest_constant_time_compare(out, VEC_DIGEST, 32) == 0, "the SHA-256 of the image alone is not the digest of the signed image");
 }
 
 static void test_sha256_buffer_and_the_split_between_prefix_and_region(void)
@@ -292,38 +258,9 @@ static void test_sha256_buffer_and_the_split_between_prefix_and_region(void)
         sha256_prefixed_flash_region(data, split, (uint32_t)(uintptr_t)low, 200 - split, parts);
         char what[48];
         snprintf(what, sizeof(what), "prefix of %u bytes", split);
-        CHECK(hmac_constant_time_compare(whole, parts, 32) == 1, what);
+        CHECK(digest_constant_time_compare(whole, parts, 32) == 1, what);
         munmap(low, 200 - split + 1);
     }
-}
-
-static void test_hmac_prefix_and_region_are_one_message_whatever_the_split(void)
-{
-    printf("  HMAC-SHA256: the split between the prefix and the region does not matter\n");
-    reset_flash_model();
-    uint8_t key[32];
-    uint8_t data[200];
-    uint8_t whole[32], parts[32];
-    for (int i = 0; i < 32; i++) key[i] = (uint8_t)(i * 3 + 1);
-    for (int i = 0; i < 200; i++) data[i] = (uint8_t)(i * 5 + 7);
-    hmac_of(key, 32, data, 200, whole);
-    static const uint32_t splits[] = {0, 1, 55, 56, 63, 64, 65, 127, 128, 199, 200};
-    for (size_t k = 0; k < sizeof(splits) / sizeof(splits[0]); k++) {
-        uint32_t split = splits[k];
-        uint8_t *low = low_buffer(200 - split);
-        memcpy(low, data + split, 200 - split);
-        hmac_sha256_prefixed_flash_region(key, 32, data, split, (uint32_t)(uintptr_t)low, 200 - split, parts);
-        char what[48];
-        snprintf(what, sizeof(what), "prefix of %u bytes", split);
-        CHECK(hmac_constant_time_compare(whole, parts, 32) == 1, what);
-        munmap(low, 200 - split);
-    }
-    hmac_sha256_buffer(key, 32, data, 200, parts);
-    CHECK(hmac_constant_time_compare(whole, parts, 32) == 1, "the buffer form equals the flash form");
-    hmac_sha256_buffer(key, 32, data, 0, parts);
-    uint8_t empty[32];
-    hmac_of(key, 32, data, 0, empty);
-    CHECK(hmac_constant_time_compare(empty, parts, 32) == 1, "an empty message");
 }
 
 static void sig_from_hex(const char *hex, uint8_t *out, size_t length)
@@ -405,26 +342,14 @@ static void test_the_signature_check_keeps_the_watchdog_fed(void)
     CHECK(iwdg_refreshes >= 256, "at least one refresh per bit of a scalar");
 }
 
-static void test_the_development_public_key_is_in_the_bootloader(void)
+static void test_sha256_feeds_the_watchdog_on_a_large_region(void)
 {
-    printf("  development public key of the bootloader\n");
-    int all_zero = 1;
-    for (int i = 0; i < 32; i++) {
-        if (UPDATE_PUBLIC_KEY[i] != 0) all_zero = 0;
-    }
-    CHECK(all_zero == 0, "the key of the bootloader is not empty");
-    CHECK(memcmp(UPDATE_PUBLIC_KEY, VEC_PUBLIC_KEY, 32) != 0, "and it is not the key of the test vectors");
-}
-
-static void test_hmac_feeds_the_watchdog_and_reads_the_region_once(void)
-{
-    printf("  HMAC-SHA256 keeps the watchdog fed on a large region\n");
+    printf("  SHA-256 keeps the watchdog fed on a large region\n");
     reset_flash_model();
-    uint8_t key[32] = {0};
     uint8_t out[32];
     uint32_t len = 100000;
     uint8_t *data = calloc(1, len);
-    hmac_of(key, 32, data, len, out);
+    sha_of(data, len, out);
     free(data);
     CHECK(iwdg_refreshes >= (int)(len / 4096U), "at least one refresh per 4096 bytes");
 }
@@ -435,13 +360,13 @@ static void test_constant_time_compare(void)
     uint8_t a[32], b[32];
     memset(a, 0x5a, 32);
     memcpy(b, a, 32);
-    CHECK(hmac_constant_time_compare(a, b, 32) == 1, "equal buffers");
+    CHECK(digest_constant_time_compare(a, b, 32) == 1, "equal buffers");
     for (int i = 0; i < 32; i++) {
         b[i] ^= 0x01;
-        CHECK(hmac_constant_time_compare(a, b, 32) == 0, "a single changed bit anywhere is a mismatch");
+        CHECK(digest_constant_time_compare(a, b, 32) == 0, "a single changed bit anywhere is a mismatch");
         b[i] ^= 0x01;
     }
-    CHECK(hmac_constant_time_compare(a, b, 0) == 1, "nothing to compare is equal");
+    CHECK(digest_constant_time_compare(a, b, 0) == 1, "nothing to compare is equal");
 }
 
 /* ---- CRC32 --------------------------------------------------------------- */
@@ -643,57 +568,176 @@ static FirmwareMetadata_t sample_metadata(void)
     m.version_minor = 2;
     m.size = 12345;
     m.crc32 = 0xDEADBEEF;
-    memset(m.hmac, 0xA5, sizeof(m.hmac));
+    memset(m.sha256, 0xA5, sizeof(m.sha256));
+    m.counter = 7;
     return m;
 }
 
-static void test_metadata_is_only_valid_with_its_magic(void)
+static FirmwareMetadata_t state_number(uint32_t n)
+{
+    FirmwareMetadata_t m = sample_metadata();
+    m.version_patch = n;
+    m.size = 1000 + n;
+    return m;
+}
+
+static const MetaRecord_t *log_slot(uint32_t page, uint32_t index)
+{
+    return (const MetaRecord_t *)(flash_mem + (METADATA_ADDR - FLASH_BASE_ADDR) + page * FLASH_PAGE_SIZE + index * META_RECORD_SIZE);
+}
+
+static uint32_t log_used(uint32_t page)
+{
+    uint32_t used = 0;
+    for (uint32_t i = 0; i < META_RECORD_SLOTS; i++) {
+        const uint8_t *bytes = (const uint8_t *)log_slot(page, i);
+        for (uint32_t k = 0; k < META_RECORD_SIZE; k++) {
+            if (bytes[k] != 0xFF) { used++; break; }
+        }
+    }
+    return used;
+}
+
+static void test_the_record_has_the_size_the_layout_was_made_for(void)
+{
+    printf("  metadata record layout\n");
+    CHECK(sizeof(FirmwareMetadata_t) == 72 && sizeof(MetaRecord_t) == META_RECORD_SIZE && META_RECORD_SIZE % 8 == 0 && META_RECORD_SLOTS == 25,
+          "72 bytes of state, an 80-byte record (whole double-words), 25 to a page");
+}
+
+static void test_metadata_is_only_valid_with_its_magic_and_its_crc(void)
 {
     printf("  Metadata_Read\n");
     reset_flash_model();
     FirmwareMetadata_t read;
-    CHECK(Metadata_Read(&read) == 0, "blank flash is not valid metadata");
-    FirmwareMetadata_t m = sample_metadata();
-    memcpy(flash_mem + (METADATA_ADDR - FLASH_BASE_ADDR), &m, sizeof(m));
-    CHECK(Metadata_Read(&read) == 1 && memcmp(&read, &m, sizeof(m)) == 0, "a written record reads back");
-    m.magic ^= 1;
-    memcpy(flash_mem + (METADATA_ADDR - FLASH_BASE_ADDR), &m, sizeof(m));
-    CHECK(Metadata_Read(&read) == 0, "a record with a damaged magic is refused");
+    CHECK(Metadata_Read(&read) == 0 && read.magic == 0, "blank flash is not valid metadata");
+    MetaRecord_t record;
+    memset(&record, 0, sizeof(record));
+    record.generation = 1;
+    record.meta = sample_metadata();
+    record.crc = meta_record_crc(&record);
+    memcpy(flash_mem + (METADATA_ADDR - FLASH_BASE_ADDR), &record, sizeof(record));
+    CHECK(Metadata_Read(&read) == 1 && memcmp(&read, &record.meta, sizeof(read)) == 0, "a written record reads back");
+    record.crc ^= 1;
+    memcpy(flash_mem + (METADATA_ADDR - FLASH_BASE_ADDR), &record, sizeof(record));
+    CHECK(Metadata_Read(&read) == 0, "a record with a wrong CRC is refused");
+    record.crc ^= 1;
+    record.meta.magic ^= 1;
+    record.crc = meta_record_crc(&record);
+    memcpy(flash_mem + (METADATA_ADDR - FLASH_BASE_ADDR), &record, sizeof(record));
+    CHECK(Metadata_Read(&read) == 0, "a record with a damaged magic is refused even with a good CRC");
 }
 
-static void test_metadata_write_skips_an_identical_record_and_replaces_a_different_one(void)
+static void test_metadata_appends_records_without_erasing(void)
 {
-    printf("  Metadata_EraseAndWrite\n");
+    printf("  Metadata_EraseAndWrite: an append-only log\n");
     reset_flash_model();
-    FirmwareMetadata_t m = sample_metadata();
     FirmwareMetadata_t read;
-    CHECK(Metadata_EraseAndWrite(&m) == 1, "first write");
-    CHECK(erase_calls == 1 && erase_bank[0] == FLASH_BANK_1 && erase_page[0] == 16, "erased page 16 of bank 1");
-    CHECK(Metadata_Read(&read) == 1 && memcmp(&read, &m, sizeof(m)) == 0, "it reads back");
-
-    int erases = erase_calls, programs = program_calls;
-    CHECK(Metadata_EraseAndWrite(&m) == 1, "the same record again");
-    CHECK(erase_calls == erases && program_calls == programs, "no erase and no programming for an identical record");
-
-    m.boot_attempts = 2;
-    CHECK(Metadata_EraseAndWrite(&m) == 1, "a changed record");
-    CHECK(erase_calls == erases + 1, "is written after an erase");
-    CHECK(Metadata_Read(&read) == 1 && read.boot_attempts == 2, "the new value is there");
+    for (uint32_t n = 1; n <= 5; n++) {
+        FirmwareMetadata_t m = state_number(n);
+        CHECK(Metadata_EraseAndWrite(&m) == 1, "a commit");
+    }
+    CHECK(erase_calls == 0, "five commits and not one erase");
+    CHECK(log_used(0) == 5 && log_used(1) == 0, "five records in the first page");
+    CHECK(Metadata_Read(&read) == 1 && read.version_patch == 5, "the state is the last record");
+    CHECK(log_slot(0, 0)->generation == 1 && log_slot(0, 4)->generation == 5, "the generations count 1, 2, 3...");
+    int programs = program_calls;
+    FirmwareMetadata_t same = state_number(5);
+    CHECK(Metadata_EraseAndWrite(&same) == 1 && program_calls == programs && erase_calls == 0, "the state that already is the last one is not written again");
+    CHECK(unlocks == locks && !is_unlocked, "the flash is locked again");
 }
 
-static void test_metadata_write_fails_when_the_erase_fails(void)
+static void test_metadata_uses_the_two_pages_in_turn(void)
 {
-    printf("  Metadata_EraseAndWrite: failure\n");
+    printf("  Metadata_EraseAndWrite: two pages in turn\n");
     reset_flash_model();
-    FirmwareMetadata_t m = sample_metadata();
+    FirmwareMetadata_t read;
+    for (uint32_t n = 1; n <= META_RECORD_SLOTS; n++) {
+        FirmwareMetadata_t m = state_number(n);
+        Metadata_EraseAndWrite(&m);
+    }
+    CHECK(log_used(0) == META_RECORD_SLOTS && erase_calls == 0, "25 commits fill the first page without an erase");
+    FirmwareMetadata_t next = state_number(26);
+    CHECK(Metadata_EraseAndWrite(&next) == 1, "the 26th commit");
+    CHECK(erase_calls == 1 && erase_bank[0] == FLASH_BANK_1 && erase_page[0] == 17, "erases the second page (page 17 of bank 1) and nothing else");
+    CHECK(log_used(0) == META_RECORD_SLOTS && log_used(1) == 1, "the first page keeps its records, the new one is the first of the second");
+    CHECK(Metadata_Read(&read) == 1 && read.version_patch == 26 && log_slot(1, 0)->generation == 26, "the generations go on across the pages");
+    for (uint32_t n = 27; n <= 26 + META_RECORD_SLOTS - 1; n++) {
+        FirmwareMetadata_t m = state_number(n);
+        Metadata_EraseAndWrite(&m);
+    }
+    CHECK(log_used(1) == META_RECORD_SLOTS && erase_calls == 1, "the second page fills");
+    FirmwareMetadata_t again = state_number(51);
+    CHECK(Metadata_EraseAndWrite(&again) == 1 && erase_calls == 2 && erase_page[1] == 16, "the next commit goes back to the first page (page 16), erased");
+    CHECK(Metadata_Read(&read) == 1 && read.version_patch == 51 && log_used(0) == 1 && log_used(1) == META_RECORD_SLOTS, "and it is the state");
+}
+
+static void test_a_power_cut_in_the_middle_of_a_record_keeps_the_previous_state(void)
+{
+    printf("  Metadata_EraseAndWrite: a cut at every double-word of a record\n");
+    int all_kept = 1, all_retried = 1;
+    for (int cut = 1; cut <= 10; cut++) {
+        reset_flash_model();
+        FirmwareMetadata_t a = state_number(1), b = state_number(2), read;
+        Metadata_EraseAndWrite(&a);
+        fail_program_on_call = program_calls + cut;
+        uint8_t ok = Metadata_EraseAndWrite(&b);
+        fail_program_on_call = 0;
+        if (ok || !Metadata_Read(&read) || read.version_patch != 1 || read.size != 1001) all_kept = 0;
+        if (!Metadata_EraseAndWrite(&b) || !Metadata_Read(&read) || read.version_patch != 2 || read.counter != 7) all_retried = 0;
+    }
+    CHECK(all_kept, "a cut at any of the ten double-words leaves the previous state in force");
+    CHECK(all_retried, "after the cut the same commit succeeds on the next free slot");
+}
+
+static void test_a_cut_while_the_page_changes_never_loses_the_state(void)
+{
+    printf("  Metadata_EraseAndWrite: a cut while the log changes page\n");
+    FirmwareMetadata_t read;
+    reset_flash_model();
+    for (uint32_t n = 1; n <= META_RECORD_SLOTS; n++) {
+        FirmwareMetadata_t m = state_number(n);
+        Metadata_EraseAndWrite(&m);
+    }
     fail_erase_on_call = 1;
-    CHECK(Metadata_EraseAndWrite(&m) == 0, "the erase fails");
-    CHECK(program_calls == 0, "and nothing is programmed");
+    FirmwareMetadata_t next = state_number(26);
+    CHECK(Metadata_EraseAndWrite(&next) == 0, "the erase of the other page fails");
+    fail_erase_on_call = 0;
+    CHECK(Metadata_Read(&read) == 1 && read.version_patch == META_RECORD_SLOTS, "the full page and its newest record are still the state");
+
+    int all_kept = 1;
+    for (int cut = 1; cut <= 10; cut++) {
+        reset_flash_model();
+        for (uint32_t n = 1; n <= META_RECORD_SLOTS; n++) {
+            FirmwareMetadata_t m = state_number(n);
+            Metadata_EraseAndWrite(&m);
+        }
+        fail_program_on_call = program_calls + cut;
+        FirmwareMetadata_t after = state_number(26);
+        uint8_t ok = Metadata_EraseAndWrite(&after);
+        fail_program_on_call = 0;
+        if (ok || !Metadata_Read(&read) || read.version_patch != META_RECORD_SLOTS) all_kept = 0;
+        if (!Metadata_EraseAndWrite(&after) || !Metadata_Read(&read) || read.version_patch != 26) all_kept = 0;
+    }
+    CHECK(all_kept, "a cut at any double-word of the first record of the new page leaves the old state, and the retry works");
+}
+
+static void test_a_damaged_record_is_skipped_and_the_newest_valid_one_wins(void)
+{
+    printf("  Metadata_Read: a damaged record in the log\n");
+    reset_flash_model();
+    FirmwareMetadata_t read;
+    for (uint32_t n = 1; n <= 4; n++) {
+        FirmwareMetadata_t m = state_number(n);
+        Metadata_EraseAndWrite(&m);
+    }
+    flash_mem[METADATA_ADDR - FLASH_BASE_ADDR + 3 * META_RECORD_SIZE + 20] = 0x00;   /* spoil the fourth record: a bit clears, its CRC no longer matches */
+    CHECK(Metadata_Read(&read) == 1 && read.version_patch == 3, "the previous record stays in force");
 }
 
 int main(void)
 {
-    printf("HYDRA-UMC host logic tests - G474 bootloader HMAC, CRC32 and flash routines\n");
+    printf("HYDRA-UMC host logic tests - G474 bootloader SHA-256, CRC32, flash routines and metadata log\n");
 
     flash_mem = mmap((void *)FLASH_BASE_ADDR, FLASH_TOTAL, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
     if (flash_mem == MAP_FAILED || (uintptr_t)flash_mem != FLASH_BASE_ADDR) {
@@ -701,15 +745,12 @@ int main(void)
         return 0;
     }
 
-    test_hmac_rfc4231();
-    test_hmac_padding_boundaries();
+    test_sha256_padding_boundaries();
     test_the_digest_of_a_header_and_an_image_matches_the_reference();
     test_sha256_buffer_and_the_split_between_prefix_and_region();
-    test_hmac_prefix_and_region_are_one_message_whatever_the_split();
     test_the_signature_check_matches_rfc_8032_and_the_reference();
     test_the_signature_check_keeps_the_watchdog_fed();
-    test_the_development_public_key_is_in_the_bootloader();
-    test_hmac_feeds_the_watchdog_and_reads_the_region_once();
+    test_sha256_feeds_the_watchdog_on_a_large_region();
     test_constant_time_compare();
     test_crc32();
     test_erase_maps_each_address_to_bank_and_page();
@@ -724,9 +765,13 @@ int main(void)
     test_write_feeds_the_watchdog_on_long_writes();
     test_copy_moves_the_backup_slot_to_the_main_slot_page_by_page();
     test_copy_never_modifies_the_source_and_stops_at_a_failed_erase();
-    test_metadata_is_only_valid_with_its_magic();
-    test_metadata_write_skips_an_identical_record_and_replaces_a_different_one();
-    test_metadata_write_fails_when_the_erase_fails();
+    test_the_record_has_the_size_the_layout_was_made_for();
+    test_metadata_is_only_valid_with_its_magic_and_its_crc();
+    test_metadata_appends_records_without_erasing();
+    test_metadata_uses_the_two_pages_in_turn();
+    test_a_power_cut_in_the_middle_of_a_record_keeps_the_previous_state();
+    test_a_cut_while_the_page_changes_never_loses_the_state();
+    test_a_damaged_record_is_skipped_and_the_newest_valid_one_wins();
 
     if (failures) {
         printf("%d failure(s)\n", failures);

@@ -4,7 +4,7 @@
 // GPL-3.0-or-later - see repo root LICENSE
 // =============================================================================
 // One function, the same file in the three bootloaders: is `signature` a valid Ed25519 (RFC 8032) signature of `msg` under a public key?
-// The board holds only the public key (UPDATE_PUBLIC_KEY, bootloader_crypto.c), so nothing on it can sign an update. The messages that
+// The board holds only the public key (the trust table, bootloader_trust.h), so nothing on it can sign an update. The messages that
 // are verified are short (the 52-byte image message and the 80-byte downgrade message of image_header.h): the image itself is hashed with
 // SHA-256 straight out of the flash while it arrives, and only that digest is signed. The curve arithmetic is TweetNaCl (tweetnacl.c,
 // public domain, see THIRD_PARTY_NOTICES.md).

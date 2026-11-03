@@ -22,6 +22,7 @@
 #include "bootloader_flash.h"
 #include "update_signature.h"
 #include "update_verify.h"
+#include "bootloader_trust.h"
 #include "dlc_to_fdcan_data_length.h"
 #include "ipc_mailbox.h"
 
@@ -128,7 +129,8 @@ uint8_t ApplicationIsValid(void) {
         uint32_t crc = 0xFFFFFFFFUL;
         crc = CRC32_Update(crc, (const uint8_t*)MAIN_APP_ADDR, APP_MAX_SIZE);
         adopted.crc32 = CRC32_Finalize(crc);
-        hmac_sha256_flash_region(HMAC_KEY, 32, MAIN_APP_ADDR, APP_MAX_SIZE, adopted.hmac);
+        adopted.counter = Trust_MinCounter();
+        sha256_prefixed_flash_region(NULL, 0, MAIN_APP_ADDR, APP_MAX_SIZE, adopted.sha256);
         return Metadata_EraseAndWrite(&adopted) ? 1 : 0;
     }
 
@@ -151,9 +153,9 @@ uint8_t ApplicationIsValid(void) {
     crc = CRC32_Finalize(crc);
     if (crc != meta.crc32) return 0;
 
-    uint8_t actual_hmac[32];
-    hmac_sha256_flash_region(HMAC_KEY, 32, MAIN_APP_ADDR, meta.size, actual_hmac);
-    if (!hmac_constant_time_compare(actual_hmac, meta.hmac, 32)) return 0;
+    uint8_t actual_digest[32];
+    sha256_prefixed_flash_region(NULL, 0, MAIN_APP_ADDR, meta.size, actual_digest);
+    if (!digest_constant_time_compare(actual_digest, meta.sha256, 32)) return 0;
 
     return 1;
 }
@@ -435,9 +437,9 @@ void HandleData(uint8_t *data, uint32_t dlc) {
     update_running_crc = CRC32_Update(update_running_crc, data, i);
 }
 
-static int UpdateSignatureUnderTheKey(const uint8_t *msg, uint32_t len, const uint8_t signature[IMAGE_SIGNATURE_SIZE], void *context) {
+static int UpdateSignatureUnderTheKey(const uint8_t *msg, uint32_t len, const uint8_t signature[IMAGE_SIGNATURE_SIZE], const uint8_t public_key[32], void *context) {
     (void)context;
-    return UpdateSignature_Verify(msg, len, signature, UPDATE_PUBLIC_KEY);
+    return UpdateSignature_Verify(msg, len, signature, public_key);
 }
 
 // What the host is told when the decision of update_verify.h is not OK.
@@ -446,6 +448,8 @@ static uint8_t VerifyFailReasonOf(UpdateVerdict_t verdict) {
         case UPDATE_VERDICT_INCOMPLETE:   return VERIFY_FAIL_REASON_INCOMPLETE;
         case UPDATE_VERDICT_CRC32:        return VERIFY_FAIL_REASON_CRC32;
         case UPDATE_VERDICT_SIGNATURE:    return VERIFY_FAIL_REASON_SIGNATURE;
+        case UPDATE_VERDICT_UNKNOWN_KEY:  return VERIFY_FAIL_REASON_SIGNATURE;   // no key of the trust table made it
+        case UPDATE_VERDICT_COUNTER:      return VERIFY_FAIL_REASON_ROLLBACK;    // the signed counter is below the floor
         case UPDATE_VERDICT_HARDWARE_ID:  return VERIFY_FAIL_REASON_HARDWARE_ID;
         case UPDATE_VERDICT_ROLLBACK:     return VERIFY_FAIL_REASON_ROLLBACK;
         default:                          return VERIFY_FAIL_REASON_HEADER;
@@ -483,7 +487,7 @@ void HandleEndUpdate(uint8_t *data) {
         sha256_prefixed_flash_region(update_header, IMAGE_HEADER_SIZE, BACKUP_APP_ADDR, update_total_size, actual_digest);
     }
 
-    UpdateVerifyInput_t input;
+    UpdateVerify2Input_t input;
     memset(&input, 0, sizeof(input));
     input.bytes_received = update_bytes_received;
     input.total_size = update_total_size;
@@ -505,18 +509,25 @@ void HandleEndUpdate(uint8_t *data) {
     input.expect.second_word = *(volatile const uint32_t*)(BACKUP_APP_ADDR + 4UL);
     input.expect.ram_lo = D2_AHBSRAM_BASE + 0x400UL;       // the same range StackPointerInValidRAM() accepts: the D2-domain SRAM this core's application links against
     input.expect.ram_hi = D2_AHBSRAM_BASE + 0x48000UL;
+    const TrustKeys_t *trust = Trust_Active();
+    input.key_count = trust->count;
+    input.key_ids = (const uint8_t (*)[IMAGE_KEY_ID_SIZE])trust->key_id;
+    input.keys = (const uint8_t (*)[32])trust->keys;
     input.verify = UpdateSignatureUnderTheKey;
 
     FirmwareMetadata_t current_meta;
-    if (Metadata_Read(&current_meta) && current_meta.state == META_STATE_APP_VALID) {
+    uint8_t have_meta = Metadata_Read(&current_meta);
+    input.counter_floor = Trust_MinCounter();
+    if (have_meta && current_meta.counter > input.counter_floor) input.counter_floor = current_meta.counter;
+    if (have_meta && current_meta.state == META_STATE_APP_VALID) {
         input.have_installed = 1;
         input.installed.major = (uint16_t)current_meta.version_major;
         input.installed.minor = (uint16_t)current_meta.version_minor;
         input.installed.patch = METADATA_PATCH(current_meta);
     }
 
-    ImageHeader_t header;
-    UpdateVerdict_t verdict = UpdateVerify_Decide(&input, &header);
+    ImageHeader2_t header;
+    UpdateVerdict_t verdict = UpdateVerify_Decide2(&input, &header);
     if (verdict != UPDATE_VERDICT_OK) {
         CAN_SendVerifyFailReason(VerifyFailReasonOf(verdict));
         update_in_progress = 0;
@@ -524,21 +535,22 @@ void HandleEndUpdate(uint8_t *data) {
         return;
     }
 
-    // What the boot-time check of ApplicationIsValid() compares with is the local-integrity HMAC of the image as it sits in the main
-    // slot, without the header (the header is never stored), so that is what the metadata keeps.
-    uint8_t image_hmac[32];
-    hmac_sha256_flash_region(HMAC_KEY, 32, BACKUP_APP_ADDR, update_total_size, image_hmac);
+    // What the boot-time check of ApplicationIsValid() compares with is the SHA-256 of the image as it sits in the main slot, without the
+    // header (the header is never stored), so that is what the metadata keeps; it needs no key, the signature was checked above.
+    uint8_t image_digest[32];
+    sha256_prefixed_flash_region(NULL, 0, BACKUP_APP_ADDR, update_total_size, image_digest);
 
     FirmwareMetadata_t pending = {0};
     pending.magic = METADATA_MAGIC_VALID;
     pending.state = META_STATE_COPY_PENDING;
     pending.hardware_id = update_declared_hw_id;
-    pending.version_major = header.version.major;
-    pending.version_minor = header.version.minor;
-    pending.version_patch = header.version.patch;
+    pending.version_major = header.base.version.major;
+    pending.version_minor = header.base.version.minor;
+    pending.version_patch = header.base.version.patch;
     pending.size = update_total_size;
     pending.crc32 = actual_crc;
-    memcpy(pending.hmac, image_hmac, 32);
+    memcpy(pending.sha256, image_digest, 32);
+    pending.counter = header.rollback_counter;   // the new floor: nothing signed with a lower counter installs again
     if (!Metadata_EraseAndWrite(&pending)) {
         CAN_SendStatus(STATUS_ERROR);
         update_in_progress = 0;

@@ -66,11 +66,9 @@ extern IWDG_HandleTypeDef hiwdg;
 #define BOOTLOADER_VERSION_MINOR 1
 #define BOOTLOADER_VERSION_PATCH 8
 
-// Local integrity only: the check at boot of the application that is installed, and the freshness value of an update session. It does
-// NOT decide whether an update is accepted any more (that is the signature, under UPDATE_PUBLIC_KEY).
-extern const uint8_t HMAC_KEY[32];
-// The Ed25519 public key an update must be signed for (bootloader_crypto.c): the board holds nothing that signs.
-extern const uint8_t UPDATE_PUBLIC_KEY[32];
+// Image authentication: the bootloader holds no secret and no key of its own. An update is installed only when its Ed25519 signature verifies under a
+// PUBLIC key of the trust table (bootloader_trust.h); with an empty table nothing installs. What the metadata keeps to notice a damaged flash is a plain
+// SHA-256 of the installed application.
 
 // Same offset table as G474's own bootloader_common.h (docs/architecture.md
 // section 4) - reused here even though this core is never reached over
@@ -139,7 +137,7 @@ typedef struct {
     uint32_t version_minor;
     uint32_t size;
     uint32_t crc32;
-    uint8_t  hmac[32];
+    uint8_t  sha256[32];   // SHA-256 of the installed application (no key: it detects a damaged flash; the signature was checked at the installation)
     // appended at the end - see mcu_stm32g474/boot/
     // bootloader_common.h's own field-level comment for why this is
     // always a real, explicit 0 on a fresh install.
@@ -147,8 +145,21 @@ typedef struct {
     // The patch of the installed version, appended after boot_attempts so the older fields keep their offsets. A page written before
     // this field existed holds erased flash here (0xFFFFFFFF): METADATA_PATCH() reads that as 0.
     uint32_t version_patch;
+    // The floor of the signed rollback counter: an image whose counter is below it is refused. Appended last so the older fields keep their offsets.
+    uint32_t counter;
 } FirmwareMetadata_t;
 #define METADATA_PATCH(meta) (((meta).version_patch <= 0xFFFFu) ? (uint16_t)(meta).version_patch : (uint16_t)0u)
+
+// The metadata is an append-only log of records (generation, state, CRC-32), not one record that is erased and written again: the valid record with the
+// highest generation is the state, a record cut by a power loss fails its CRC and is ignored, so the previous state stays in force.
+typedef struct {
+    uint32_t generation;
+    FirmwareMetadata_t meta;
+    uint32_t reserved[4];  // pads the record to three flash words of 32 bytes
+    uint32_t crc;          // CRC-32 (zlib) of everything before it
+} MetaRecord_t;
+#define META_RECORD_SIZE   96u
+#define META_RECORD_SLOTS  (0x20000u / META_RECORD_SIZE)   // records in the dedicated 128 KB sector
 
 // Sent by this bootloader as a mailbox response (not a CAN/SPI frame
 // directly - CM4's own gateway logic relays it onward over whichever bus

@@ -1,56 +1,15 @@
 // =============================================================================
-// HYDRA-UMC Robot Controller Board Bootloader - SHA-256 / HMAC-SHA256
+// HYDRA-UMC Robot Controller Board Bootloader - SHA-256
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 // GPL-3.0-or-later - see repo root LICENSE
 //
-// Ported verbatim from URTC's own proven bootloader_crypto.c (same repo's
-// own RFC 4231 test-case-2 verification applies unchanged - this is the
-// exact same algorithm, no chip-specific instructions anywhere in it).
-// Only HAL_IWDG_Refresh(&hiwdg) ties this to a specific chip family, and
-// that call has the same signature on G4 as it did on F3.
+// A from-scratch SHA-256 (not a library). There is no key in this file: the digest of an image is what the Ed25519 signature covers, and the digest
+// of the installed application is what the metadata keeps to notice a damaged flash.
 // =============================================================================
 #include "stm32g4xx_hal.h"
 #include <string.h>
 #include "bootloader_common.h"
 #include "bootloader_crypto.h"
-
-// Single definition matching bootloader_common.h's extern declaration.
-// PLACEHOLDER default - change before relying on this for anything real,
-// and keep whatever build/signing tool prepares HYDRA-UMC update images in
-// sync. Deliberately different from URTC's own HMAC_KEY (bootloader_crypto.c
-// in that repo) - two separate trust domains, a URTC-signed image must
-// never verify against a HYDRA-UMC board's key and vice versa.
-#ifdef HYDRA_FW_HMAC_KEY_BYTES
-// The key of a real build: build_firmware.sh turns HYDRA_FW_HMAC_KEY_HEX (64 hex digits, kept outside the repository) into these 32 bytes. The tools that sign update
-// images for the boards must hold the same key.
-const uint8_t HMAC_KEY[32] = { HYDRA_FW_HMAC_KEY_BYTES };
-#else
-// DEVELOPMENT KEY, PUBLISHED IN THIS REPOSITORY: anybody can sign an image that a board built like this accepts. It exists only so that a bench build works with no setup;
-// build_firmware.sh says so out loud and refuses it altogether when HYDRA_UMC_RELEASE=1. Build with HYDRA_FW_HMAC_KEY_HEX set for anything that is to be trusted.
-const uint8_t HMAC_KEY[32] = {
-    0x48, 0x59, 0x44, 0x52, 0x41, 0x2D, 0x55, 0x4D,
-    0x43, 0x2D, 0x52, 0x43, 0x42, 0x2D, 0x32, 0x30,
-    0x32, 0x36, 0x2D, 0x43, 0x48, 0x41, 0x4E, 0x47,
-    0x45, 0x2D, 0x4D, 0x45, 0x2D, 0x21, 0x21, 0x21
-};
-#endif
-
-// The key that decides whether an update is accepted: the Ed25519 PUBLIC key of whoever signs the images (tools/image_header.py). The
-// board holds nothing that signs, so reading its flash gives nobody the power to make an update. A real build gets it from
-// HYDRA_FW_UPDATE_PUBKEY_HEX (64 hex digits, made by `python tools/image_header.py pubkey SEEDFILE`; the private seed never leaves the owner).
-#ifdef HYDRA_FW_UPDATE_PUBKEY_BYTES
-const uint8_t UPDATE_PUBLIC_KEY[32] = { HYDRA_FW_UPDATE_PUBKEY_BYTES };
-#else
-// DEVELOPMENT PUBLIC KEY, whose private seed is PUBLISHED IN THIS REPOSITORY (tools/image_header.py, DEV_SEEDS): anybody can sign an image
-// that a board built like this accepts. It exists only so that a bench build works with no setup; build_firmware.sh says so out loud and
-// refuses it altogether when HYDRA_UMC_RELEASE=1. tests/test_update_signature_keys.py keeps it equal to the key of that seed.
-const uint8_t UPDATE_PUBLIC_KEY[32] = {
-    0x12, 0x55, 0x40, 0x75, 0x7A, 0xB4, 0x18, 0x16,
-    0x94, 0x5B, 0x38, 0xAC, 0x0D, 0x92, 0x3D, 0x4F,
-    0xDF, 0x64, 0x4D, 0x4A, 0x27, 0x1D, 0x40, 0x10,
-    0xD8, 0x3C, 0x68, 0x40, 0x3F, 0xEC, 0x97, 0x42
-};
-#endif
 
 typedef struct {
     uint32_t state[8];
@@ -111,7 +70,7 @@ static void sha256_update(SHA256_CTX *ctx, const uint8_t data[], uint32_t len) {
             ctx->datalen = 0;
         }
         // A single call here can span the full 236KB backup slot (via
-        // hmac_sha256_flash_region) - every 4096 bytes keeps the IWDG
+        // sha256_prefixed_flash_region) - every 4096 bytes keeps the IWDG
         // refresh frequent without adding meaningful overhead to the hot
         // loop, same reasoning/interval as URTC's own bootloader.
         if ((i & 0xFFF) == 0) {
@@ -149,67 +108,6 @@ static void sha256_final(SHA256_CTX *ctx, uint8_t hash[]) {
     }
 }
 
-// HMAC-SHA256 over `prefix` (a RAM buffer, may be empty) followed by a flash region (may be empty), as one message. The two public
-// functions below are the two shapes the bootloader needs; nothing else calls this.
-static void hmac_sha256_two_parts(const uint8_t *key, uint32_t key_len,
-                                  const uint8_t *prefix, uint32_t prefix_len,
-                                  uint32_t flash_addr, uint32_t len,
-                                  uint8_t out[32]) {
-    uint8_t k_ipad[64], k_opad[64];
-    uint8_t key_block[64] = {0};
-    if (key_len > 64) {
-        SHA256_CTX kctx;
-        sha256_init(&kctx);
-        sha256_update(&kctx, key, key_len);
-        sha256_final(&kctx, key_block);
-    } else {
-        memcpy(key_block, key, key_len);
-    }
-    for (int i = 0; i < 64; i++) {
-        k_ipad[i] = key_block[i] ^ 0x36;
-        k_opad[i] = key_block[i] ^ 0x5c;
-    }
-    uint8_t inner_hash[32];
-    SHA256_CTX ctx;
-    sha256_init(&ctx);
-    sha256_update(&ctx, k_ipad, 64);
-    if (prefix_len > 0) sha256_update(&ctx, prefix, prefix_len);
-    if (len > 0) sha256_update(&ctx, (const uint8_t*)flash_addr, len);
-    sha256_final(&ctx, inner_hash);
-
-    sha256_init(&ctx);
-    sha256_update(&ctx, k_opad, 64);
-    sha256_update(&ctx, inner_hash, 32);
-    sha256_final(&ctx, out);
-}
-
-void hmac_sha256_flash_region(const uint8_t *key, uint32_t key_len,
-                              uint32_t flash_addr, uint32_t len,
-                              uint8_t out[32]) {
-    hmac_sha256_two_parts(key, key_len, NULL, 0, flash_addr, len, out);
-}
-
-void hmac_sha256_prefixed_flash_region(const uint8_t *key, uint32_t key_len,
-                                       const uint8_t *prefix, uint32_t prefix_len,
-                                       uint32_t flash_addr, uint32_t len,
-                                       uint8_t out[32]) {
-    hmac_sha256_two_parts(key, key_len, prefix, prefix_len, flash_addr, len, out);
-}
-
-void hmac_sha256_buffer(const uint8_t *key, uint32_t key_len,
-                        const uint8_t *msg, uint32_t msg_len,
-                        uint8_t out[32]) {
-    hmac_sha256_two_parts(key, key_len, msg, msg_len, 0, 0, out);
-}
-
-uint8_t hmac_constant_time_compare(const uint8_t *a, const uint8_t *b, uint32_t len) {
-    uint8_t diff = 0;
-    for (uint32_t i = 0; i < len; i++) diff |= a[i] ^ b[i];
-    return diff == 0;
-}
-
-// Plain SHA-256 over `prefix` (a buffer in RAM, may be empty) followed by a flash region (may be empty), as one message: the digest of an
-// image is over its 64-byte header and then the image, which is in flash. The signature is checked over this digest.
 void sha256_prefixed_flash_region(const uint8_t *prefix, uint32_t prefix_len,
                                   uint32_t flash_addr, uint32_t len,
                                   uint8_t out[32]) {
@@ -225,4 +123,10 @@ void sha256_buffer(const uint8_t *msg, uint32_t msg_len, uint8_t out[32]) {
     sha256_init(&ctx);
     if (msg_len > 0) sha256_update(&ctx, msg, msg_len);
     sha256_final(&ctx, out);
+}
+
+uint8_t digest_constant_time_compare(const uint8_t *a, const uint8_t *b, uint32_t len) {
+    uint8_t diff = 0;
+    for (uint32_t i = 0; i < len; i++) diff |= (uint8_t)(a[i] ^ b[i]);
+    return diff == 0;
 }

@@ -42,7 +42,7 @@ extern IWDG_HandleTypeDef  hiwdg;
 
 // -----------------------------------------------------------------------
 // Firmware identity - rejects an image built for different hardware or
-// declared incompatible, before ever trusting its CRC/HMAC.
+// declared incompatible, before ever trusting its CRC/signature.
 // -----------------------------------------------------------------------
 #define THIS_HARDWARE_ID       0x47343031UL // "G401" - STM32G474RET6, HYDRA-UMC Robot Controller Board revision 1
 
@@ -73,19 +73,9 @@ extern IWDG_HandleTypeDef  hiwdg;
 #define BOOTLOADER_VERSION_MINOR 1
 #define BOOTLOADER_VERSION_PATCH 9
 
-// -----------------------------------------------------------------------
-// HMAC-SHA256 signing key - PLACEHOLDER, same caveat as URTC's own key
-// (bootloader_crypto.c): change before relying on this for anything real,
-// and keep whatever build/signing tool prepares HYDRA-UMC update images in
-// sync. Deliberately a DIFFERENT key than URTC's own (see bootloader_crypto.c)
-// - these are two separate trust domains, a URTC-signed image must never
-// verify against a HYDRA-UMC board and vice versa.
-// -----------------------------------------------------------------------
-// Local integrity only: the check at boot of the application that is installed, and the freshness value of an update session. It does
-// NOT decide whether an update is accepted any more (that is the signature, under UPDATE_PUBLIC_KEY).
-extern const uint8_t HMAC_KEY[32];
-// The Ed25519 public key an update must be signed for (bootloader_crypto.c): the board holds nothing that signs.
-extern const uint8_t UPDATE_PUBLIC_KEY[32];
+// Image authentication: the bootloader holds no secret and no key of its own. An update is installed only when its Ed25519 signature verifies under a
+// PUBLIC key of the trust table (bootloader_trust.h); with an empty table nothing installs. What the metadata keeps to notice a damaged flash is a plain
+// SHA-256 of the installed application.
 
 // -----------------------------------------------------------------------
 // Slot addressing (docs/architecture.md section 4) - this board's own
@@ -211,7 +201,7 @@ typedef struct {
     uint32_t version_minor;
     uint32_t size;
     uint32_t crc32;
-    uint8_t  hmac[32];
+    uint8_t  sha256[32];   // SHA-256 of the installed application (no key: it detects a damaged flash; the signature was checked at the installation)
     // appended at the end. Every real writer already
     // zero-initializes the whole struct first (`FirmwareMetadata_t pending
     // = {0};` in HandleEndUpdate) before setting the fields it cares about,
@@ -223,8 +213,20 @@ typedef struct {
     // The patch of the installed version, appended after boot_attempts so the older fields keep their offsets. A page written before
     // this field existed holds erased flash here (0xFFFFFFFF): METADATA_PATCH() reads that as 0.
     uint32_t version_patch;
+    // The floor of the signed rollback counter: an image whose counter is below it is refused. Appended last so the older fields keep their offsets.
+    uint32_t counter;
 } FirmwareMetadata_t;
 #define METADATA_PATCH(meta) (((meta).version_patch <= 0xFFFFu) ? (uint16_t)(meta).version_patch : (uint16_t)0u)
+
+// The metadata is an append-only log of records (generation, state, CRC-32), not one record that is erased and written again: the valid record with the
+// highest generation is the state, a record cut by a power loss fails its CRC and is ignored, so the previous state stays in force.
+typedef struct {
+    uint32_t generation;
+    FirmwareMetadata_t meta;
+    uint32_t crc;         // CRC-32 (zlib) of the generation and the metadata
+} MetaRecord_t;
+#define META_RECORD_SIZE   80u                      // a multiple of 8: the programming unit of this flash is the double-word
+#define META_RECORD_SLOTS  (2048u / META_RECORD_SIZE)   // records in one page; the log alternates between two pages (METADATA_ADDR and the next)
 
 void CAN_SendHeartbeat(uint8_t status, uint8_t progress_percent);
 
