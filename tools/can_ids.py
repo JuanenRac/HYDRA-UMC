@@ -54,6 +54,9 @@ MESSAGES: tuple[CanMessage, ...] = (
     CanMessage("BOOT_DOWNGRADE_NONCE_RESPONSE", 0x1C, BOOTLOADER),
     # emergency stop (docs/ESTOP_CAN.md): the controller board tells the kinematic brain whether it is latched or ready
     CanMessage("ESTOP_STATE", 0x1D, CONTROLLER_BOARD),
+    # slot scan (docs/SLOT_SCAN.md): the host asks every slot window who is there; each board answers on its own window, so two boards with the same board identifier are seen
+    CanMessage("SLOT_SCAN_PROBE", 0x1E, HOST),
+    CanMessage("SLOT_SCAN_REPLY", 0x1F, BOOTLOADER),
 )
 
 # The emergency stop itself is not inside a slot window: one identifier for the whole stack, below every slot (docs/ESTOP_CAN.md).

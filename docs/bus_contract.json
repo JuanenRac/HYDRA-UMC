@@ -98,5 +98,22 @@
     },
     "timing_note": "proposals to be confirmed on the bench (docs/BENCH_TESTS.md rows 17, 18, 20 and 21); they move to the configuration file of the machine when the firmware reads them",
     "stop_category": "0 (drivers off at once) until the owner decides otherwise per axis"
+  },
+  "slot_scan": {
+    "contract": "docs/SLOT_SCAN.md",
+    "vectors": "tests/slot_scan_vectors.json",
+    "reference": "tools/slot_scan.py",
+    "status": "contract and host reference only: no firmware answers the probe yet and nothing has run on a board",
+    "probe_offset": "0x1E",
+    "reply_offset": "0x1F",
+    "probe_magic": "0x5C",
+    "reply_magic": "0x5D",
+    "timing_ms": {
+      "scan_window": 100,
+      "reply_step": 1,
+      "reply_steps": 32,
+      "probe_repeat": 1
+    },
+    "timing_note": "proposals to be confirmed on the bench (docs/BENCH_TESTS.md row 15); they move to the configuration file of the machine when the firmware reads them"
   }
 }

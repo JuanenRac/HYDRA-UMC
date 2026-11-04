@@ -1,0 +1,279 @@
+{
+  "description": "Frames and scenarios of the slot scan (docs/SLOT_SCAN.md). tests/test_slot_scan.py checks tools/slot_scan.py against them; the firmware has to reproduce them. Nothing has run on a board. The unique identifiers are made up.",
+  "probes": [
+    {
+      "name": "scan 0",
+      "scan_id": 0,
+      "data_hex": "5c0000000000a3ff"
+    },
+    {
+      "name": "scan 7",
+      "scan_id": 7,
+      "data_hex": "5c0700000000a3f8"
+    },
+    {
+      "name": "scan 255",
+      "scan_id": 255,
+      "data_hex": "5cff00000000a300"
+    }
+  ],
+  "replies": [
+    {
+      "name": "slot 0 bootloader",
+      "board_id": 0,
+      "role": 0,
+      "scan_id": 1,
+      "uid32": 1,
+      "data_hex": "5d0001010000005d"
+    },
+    {
+      "name": "slot 3 application",
+      "board_id": 3,
+      "role": 1,
+      "scan_id": 7,
+      "uid32": 3735928559,
+      "data_hex": "5d1307efbeadde6b"
+    },
+    {
+      "name": "slot 7 bootloader",
+      "board_id": 7,
+      "role": 0,
+      "scan_id": 255,
+      "uid32": 4294967295,
+      "data_hex": "5d07ffffffffffa5"
+    }
+  ],
+  "malformed": [
+    {
+      "name": "short",
+      "data_hex": "5d1307efbead"
+    },
+    {
+      "name": "wrong magic",
+      "data_hex": "5e1307efbeadde6a"
+    },
+    {
+      "name": "bad check",
+      "data_hex": "5d1307efbeaddeff"
+    },
+    {
+      "name": "role 2",
+      "data_hex": "5d2300"
+    }
+  ],
+  "delays": [
+    {
+      "uid32": 0,
+      "delay_ms": 0
+    },
+    {
+      "uid32": 1,
+      "delay_ms": 17
+    },
+    {
+      "uid32": 2,
+      "delay_ms": 2
+    },
+    {
+      "uid32": 3,
+      "delay_ms": 19
+    },
+    {
+      "uid32": 3735928559,
+      "delay_ms": 31
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "every slot empty",
+      "scan_id": 1,
+      "heard": {},
+      "expect": {
+        "0": "ABSENT",
+        "1": "ABSENT",
+        "2": "ABSENT",
+        "3": "ABSENT",
+        "4": "ABSENT",
+        "5": "ABSENT",
+        "6": "ABSENT",
+        "7": "ABSENT"
+      }
+    },
+    {
+      "name": "one board in slot 2",
+      "scan_id": 1,
+      "heard": {
+        "2": {
+          "frames": [
+            "5d12010100aaaa4f"
+          ],
+          "bus_errors": 0
+        }
+      },
+      "expect": {
+        "0": "ABSENT",
+        "1": "ABSENT",
+        "2": "OK",
+        "3": "ABSENT",
+        "4": "ABSENT",
+        "5": "ABSENT",
+        "6": "ABSENT",
+        "7": "ABSENT"
+      }
+    },
+    {
+      "name": "two boards with the same board identifier answer one after the other",
+      "scan_id": 1,
+      "heard": {
+        "5": {
+          "frames": [
+            "5d15011111111149",
+            "5d15012222222249"
+          ],
+          "bus_errors": 0
+        }
+      },
+      "expect": {
+        "0": "ABSENT",
+        "1": "ABSENT",
+        "2": "ABSENT",
+        "3": "ABSENT",
+        "4": "ABSENT",
+        "5": "DUPLICATE",
+        "6": "ABSENT",
+        "7": "ABSENT"
+      }
+    },
+    {
+      "name": "the same unique identifier heard twice is one board",
+      "scan_id": 1,
+      "heard": {
+        "4": {
+          "frames": [
+            "5d14013333333348",
+            "5d14013333333348"
+          ],
+          "bus_errors": 0
+        }
+      },
+      "expect": {
+        "0": "ABSENT",
+        "1": "ABSENT",
+        "2": "ABSENT",
+        "3": "ABSENT",
+        "4": "OK",
+        "5": "ABSENT",
+        "6": "ABSENT",
+        "7": "ABSENT"
+      }
+    },
+    {
+      "name": "two boards collide on the bus and one frame survives",
+      "scan_id": 1,
+      "heard": {
+        "1": {
+          "frames": [
+            "5d1101444444444d"
+          ],
+          "bus_errors": 3
+        }
+      },
+      "expect": {
+        "0": "ABSENT",
+        "1": "DUPLICATE",
+        "2": "ABSENT",
+        "3": "ABSENT",
+        "4": "ABSENT",
+        "5": "ABSENT",
+        "6": "ABSENT",
+        "7": "ABSENT"
+      }
+    },
+    {
+      "name": "error frames and no readable answer",
+      "scan_id": 1,
+      "heard": {
+        "6": {
+          "frames": [],
+          "bus_errors": 5
+        }
+      },
+      "expect": {
+        "0": "ABSENT",
+        "1": "ABSENT",
+        "2": "ABSENT",
+        "3": "ABSENT",
+        "4": "ABSENT",
+        "5": "ABSENT",
+        "6": "NOISY",
+        "7": "ABSENT"
+      }
+    },
+    {
+      "name": "a board answers in the window of another slot",
+      "scan_id": 1,
+      "heard": {
+        "0": {
+          "frames": [
+            "5d1101555555554d"
+          ],
+          "bus_errors": 0
+        }
+      },
+      "expect": {
+        "0": "MISPLACED",
+        "1": "ABSENT",
+        "2": "ABSENT",
+        "3": "ABSENT",
+        "4": "ABSENT",
+        "5": "ABSENT",
+        "6": "ABSENT",
+        "7": "ABSENT"
+      }
+    },
+    {
+      "name": "an answer of an older scan is ignored",
+      "scan_id": 1,
+      "heard": {
+        "3": {
+          "frames": [
+            "5d13096666666647"
+          ],
+          "bus_errors": 0
+        }
+      },
+      "expect": {
+        "0": "ABSENT",
+        "1": "ABSENT",
+        "2": "ABSENT",
+        "3": "ABSENT",
+        "4": "ABSENT",
+        "5": "ABSENT",
+        "6": "ABSENT",
+        "7": "ABSENT"
+      }
+    },
+    {
+      "name": "a malformed frame is ignored",
+      "scan_id": 1,
+      "heard": {
+        "3": {
+          "frames": [
+            "5d1307efbeaddeff"
+          ],
+          "bus_errors": 0
+        }
+      },
+      "expect": {
+        "0": "ABSENT",
+        "1": "ABSENT",
+        "2": "ABSENT",
+        "3": "ABSENT",
+        "4": "ABSENT",
+        "5": "ABSENT",
+        "6": "ABSENT",
+        "7": "ABSENT"
+      }
+    }
+  ]
+}

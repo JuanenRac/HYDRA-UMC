@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="Platform">
-  <img src="https://img.shields.io/badge/Tests-178%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-229%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.6-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | バージョン | `0.2.6` |
 | 成熟度 | 足場段階 |
-| テスト | 178 (`python -m unittest discover -s tests -p 'test_*.py'`) |
+| テスト | 229 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | 技術 | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | 対象 | マイコン基板（ファームウェア）。ビルドは PC で行います |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
@@ -52,7 +52,7 @@ GPL-3.0-or-later - see LICENSE
 | 領域 | 状態 | ここでの意味 |
 |---|---|---|
 | ソフトウェア | 🟠 | 構造と最初の部品のみで、作業の大部分はこれからです |
-| テスト | 🟡 | 自動テスト 178 件。変更のたびに実行されます |
+| テスト | 🟡 | 自動テスト 229 件。変更のたびに実行されます |
 | 実機 | 🔴 | まだです：このバージョンについて実機での動作記録はありません |
 | ドキュメント | 🟡 | 8 言語の README。変更のたびにマニフェストと照合されます |
 
