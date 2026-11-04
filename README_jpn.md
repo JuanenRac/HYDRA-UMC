@@ -181,7 +181,7 @@ flowchart LR
 ```bash
 ./build_firmware.sh                                  # builds every MCU target and runs the host tests (step 1b)
 ./build_firmware.sh g474                             # only the Robot Controller Board; h745 builds only the Kinematic Brain
-python tools/verify_firmware_inventory.py            # read-only check of the committed six-component firmware inventory
+python tools/verify_firmware_inventory.py            # read-only check of the six-component firmware inventory (the manifest, and the images when they are in firmware/)
 python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the firmware sources, the image header and the CAN identifiers
 ```
 
@@ -221,7 +221,7 @@ build_firmware.bat --clean  :: ベンダリング済み HAL/CMSIS キャッシ�
 
 **手動ビルド（いずれの OS でも、スクリプトを使わない場合）：** このスクリプトが自動化しているのは、まさに `docs/COMPILE_STM32G474.md` および `docs/COMPILE_STM32H745.md` に記載された手順そのものです — `build_firmware.sh`/`build_firmware.bat` の冒頭にリストされた固定バージョンの HAL/CMSIS/FreeRTOS ソースを取得し、各ターゲットの HAL モジュールとスタートアップ／システムファイルを `arm-none-eabi-gcc` でコンパイル（コンパイルオプション／モジュール一覧は同スクリプト内に記載）、その後各ブートローダー・アプリケーションを、ソースの隣にあるそれぞれ自身のリンカスクリプト（`*.ld`）に対して `arm-none-eabi-gcc`／`-Wl,--gc-sections` でリンクし、`arm-none-eabi-objcopy` で `.bin`／`.hex` へ変換します。いずれのスクリプトも使いたくない場合は、これら 2 つの `docs/COMPILE_*.md` ファイルが権威ある手順書です — スクリプトはこれらを自動化するために存在するのであり、事実上の根拠を置き換えるものではありません。
 
-ビルド成果物は `firmware/` に配置され、本リポジトリにコミット・プッシュされます（URTC 自身の `firmware/` 出力フォルダと同じ規約）。これにより、HYDRA-UMC-STUDIO の GitHub ダウンロード機能が `firmware_manifest.json` 経由で実際に存在する `.bin` ファイルを見つけられるようになっています — このディレクトリは gitignore の対象では **ありません**。各ステップの内容と理由は `docs/COMPILE_STM32G474.md` および `docs/COMPILE_STM32H745.md` を、現在の状況は各ファームウェアフォルダ自身の `README.md` を参照してください。3 つのターゲット（G474、H745 CM7、H745 CM4）すべての **ブートローダー** は、実際に動作する CAN-OTA/SPI-OTA 実装です（CRC32 + HMAC-SHA256 による検証後にバックアップへ書き込み、その後メイン領域へコピーするという、URTC 自身のブートローダーと同じ防文鎮化の仕組み）— エンドツーエンドでクリーンにコンパイルされていますが、実機での検証はまだです。**アプリケーション** は、現時点ではコンパイル検証済みの FreeRTOS GPIO 点滅スモークテストにとどまり、実際のモーション／ビジョン／中継ファームウェアではまだありません。何が実際で何がまだ未着手かは、`docs/architecture.md`（特に第 6 節の状況表と第 8 節の既知かつ許容済みのセキュリティ上の制約）を参照してください。
+ビルド成果物は `firmware/` に配置されますが、git では追跡されません。イメージ（`.bin`/`.hex`/`.elf`）は GitHub Actions（手動の「Firmware build」ワークフロー）でビルドされ、バージョンと CRC32 を記した `firmware_manifest.json` とともに、リリースのアセットとしてのみ公開されます。リポジトリに残るのはこのマニフェストだけで、HYDRA-UMC-STUDIO の GitHub ダウンロード機能はリリースのアセットを読み取ります。各ステップの内容と理由は `docs/COMPILE_STM32G474.md` および `docs/COMPILE_STM32H745.md` を、現在の状況は各ファームウェアフォルダ自身の `README.md` を参照してください。3 つのターゲット（G474、H745 CM7、H745 CM4）すべての **ブートローダー** は、実際に動作する CAN-OTA/SPI-OTA 実装です（CRC32 + HMAC-SHA256 による検証後にバックアップへ書き込み、その後メイン領域へコピーするという、URTC 自身のブートローダーと同じ防文鎮化の仕組み）— エンドツーエンドでクリーンにコンパイルされていますが、実機での検証はまだです。**アプリケーション** は、現時点ではコンパイル検証済みの FreeRTOS GPIO 点滅スモークテストにとどまり、実際のモーション／ビジョン／中継ファームウェアではまだありません。何が実際で何がまだ未着手かは、`docs/architecture.md`（特に第 6 節の状況表と第 8 節の既知かつ許容済みのセキュリティ上の制約）を参照してください。
 
 > **安全に関する現状：** このリポジトリには、E-STOP の経路、ソフトウェアリミット、安全インターロック、電源喪失時（PVD）の FRAM への退避、モーション指令はまだ含まれていません。上記の各セクション（またはエコシステム内の他のプロジェクト）がそれらを説明している箇所は、あくまで想定している設計です。実装され、実機基板で試験されるまで、安全のためにそれらに依存してはいけません。現在のアプリケーションの動作：CM4 と G474 のものは STACK A の AXIS_STATUS ポーリング／応答と Tier 2/3 リレートンネルを実行し、CM7 のものは依然として GPIO トグルのスモークテストです。
 
@@ -258,7 +258,7 @@ HYDRA-UMC/
 ├── os/                              CM5 OS イメージ — ベース OS の選定、systemd ユニット、初回起動時のプロビジョニング
 ├── images/                          README バナー + アイコン + スプラッシュスクリーン（SVG）
 ├── tools/                           プロジェクトのツールと CI の検査
-├── firmware/                        コミット済みのビルド成果物（.bin/.hex/.elf + マニフェスト）— gitignore 対象外、URTC 自身の出力フォルダと同じ規約、下記「ファームウェアのビルド」参照
+├── firmware/                        ビルド成果物、git では追跡されません（.bin/.hex/.elf は GitHub Actions でビルドされるリリースのアセットで、マニフェストのみ保持）、下記「ファームウェアのビルド」参照
 ├── .github/                         CI ワークフローと Issue テンプレート
 ├── build_firmware.sh                クリーンなチェックアウトから、上記の全 MCU ファームウェアターゲットを一括ビルド（Linux/Mac）
 ├── build_firmware.bat               同じビルド、Windows 版（下記「ファームウェアのビルド」参照）

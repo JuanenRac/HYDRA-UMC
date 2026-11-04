@@ -181,7 +181,7 @@ Building the firmware needs the Arm GNU Toolchain (`arm-none-eabi-gcc` 10.3 or n
 ```bash
 ./build_firmware.sh                                  # builds every MCU target and runs the host tests (step 1b)
 ./build_firmware.sh g474                             # only the Robot Controller Board; h745 builds only the Kinematic Brain
-python tools/verify_firmware_inventory.py            # read-only check of the committed six-component firmware inventory
+python tools/verify_firmware_inventory.py            # read-only check of the six-component firmware inventory (the manifest, and the images when they are in firmware/)
 python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the firmware sources, the image header and the CAN identifiers
 ```
 
@@ -259,10 +259,7 @@ files are the authoritative, step-by-step reference if you'd rather not run
 either script - the scripts exist to automate them, not replace them as the
 source of truth.
 
-Output lands in `firmware/`, which is committed and pushed to this
-repo (same convention as URTC's own `firmware/` output folder) so that
-HYDRA-UMC-STUDIO's GitHub-download feature can actually find real
-`.bin` files there via `firmware_manifest.json` - it is NOT gitignored.
+Output lands in `firmware/`, which git does not track: the images (`.bin`/`.hex`/`.elf`) are built in GitHub Actions (the manual "Firmware build" workflow) and published only as assets of a release, next to a `firmware_manifest.json` with their versions and CRC32. Only that manifest is kept in the repository, and HYDRA-UMC-STUDIO's GitHub-download feature reads the release assets.
 See `docs/COMPILE_STM32G474.md` and `docs/COMPILE_STM32H745.md` for
 exactly what each step does and why - and each firmware folder's own
 `README.md` for current status. The **bootloaders** for all 3 targets
@@ -310,7 +307,7 @@ HYDRA-UMC/
 ├── os/                              CM5 OS image - base OS choice, systemd units, first-boot provisioning
 ├── images/                          README banner + icon + splashscreen (SVG)
 ├── tools/                           project tools and CI checks
-├── firmware/                        Committed build output (.bin/.hex/.elf + manifest) - NOT gitignored, same convention as URTC's own output folder, see "Building the Firmware" below
+├── firmware/                        Build output, NOT tracked by git (.bin/.hex/.elf are release assets built in GitHub Actions; only the manifest is kept), see "Building the Firmware" below
 ├── .github/                         CI workflow and issue templates
 ├── build_firmware.sh                Builds every MCU firmware target above from a clean checkout (Linux/Mac)
 ├── build_firmware.bat               Same build, Windows (see "Building the Firmware" below)

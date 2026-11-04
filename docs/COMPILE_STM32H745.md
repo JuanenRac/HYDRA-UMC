@@ -34,7 +34,8 @@ see section 3a below for what the applications need beyond the bootloaders.
 Each core gets its OWN flash bank (1 MB each of the chip's 2 MB total) and
 its OWN bootloader+app+backup split within that bank - see each *.ld
 script's own header comment for the exact byte ranges. All 4 outputs land
-in firmware/ (committed on purpose and indexed by firmware_manifest.json;
+in firmware/ (git does not track them: the images are built in GitHub
+Actions and published as release assets, indexed by firmware_manifest.json;
 the CM7 application is a FreeRTOS GPIO-toggle smoke test, not real motion
 firmware yet).
 

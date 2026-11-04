@@ -45,7 +45,7 @@ Every file of the repository with a line on what it does: the annotated tree tha
 ├── show_component_version.py    # Prints the version a component already has
 ├── bump_manifest_version.py     # Syncs hydra-umc.project.json's version to the native one (--sync)
 ├── tools/
-│   ├── verify_firmware_inventory.py # Read-only verification of the committed six-component inventory
+│   ├── verify_firmware_inventory.py # Read-only verification of the six-component inventory (the manifest, and the images when they are in firmware/)
 │   ├── build_test.py                # Non-versioning build/compile check
 │   ├── ci_validate.py               # Manifest/CHANGELOG/docs validation used by CI
 │   ├── image_header.py              # Host reference of the signed firmware image header, its Ed25519 signature and the anti-rollback rule
@@ -55,7 +55,7 @@ Every file of the repository with a line on what it does: the annotated tree tha
 │   ├── _doc_policy.py               # Documentation rules shared by the family (a copy of HYDRA-UMC-SDK's, kept in sync)
 │   ├── _readme_parity.py            # Check that the eight READMEs share one structure (a copy of HYDRA-UMC-SDK's, kept in sync)
 │   └── hydra_project_tool.py        # The same commands in every repository: validate, test, ci, version, status, bump
-├── firmware/                    # Committed build output (.bin/.hex/.elf + manifest) - NOT gitignored, same convention as URTC's own output folder, see "Building the Firmware" below
+├── firmware/                    # Build output, NOT tracked by git (.bin/.hex/.elf are release assets built in GitHub Actions; only the manifest is kept), see "Building the Firmware" below
 ├── README.md                    # This file
 └── README_spa.md / README_ita.md / README_fra.md / README_deu.md / README_zho.md / README_jpn.md / README_por.md    # <- translations
 ```

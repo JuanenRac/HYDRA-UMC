@@ -7,14 +7,18 @@
 """Fail closed if firmware_manifest.json no longer describes firmware/.
 
 This is intentionally a read-only check.  It verifies the six expected MCU
-components, their binary filename/version, byte count and CRC32 before a
-release consumer is allowed to trust the committed firmware inventory.
+components and their binary filename/version, and, when the images are in
+firmware/ (after a build or after downloading the release assets), their
+byte count and CRC32.  The images are not kept in git: without them the
+check covers the manifest only, and --require-binaries makes their absence
+a failure (use it on a folder that holds a build or the release assets).
 """
 
 from __future__ import annotations
 
 import json
 import re
+import argparse
 import sys
 import zlib
 from pathlib import Path
@@ -40,6 +44,10 @@ def fail(message: str) -> None:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Verify the firmware inventory.")
+    parser.add_argument("--require-binaries", action="store_true", help="fail when an image listed in the manifest is not in firmware/")
+    options = parser.parse_args()
+    missing = 0
     try:
         payload = json.loads(MANIFEST.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -66,6 +74,10 @@ def main() -> int:
         if not isinstance(version, str) or not match or match.group(1) != version:
             fail(f"{name}: filename version does not match version_string")
         path = FIRMWARE / filename
+        if not path.is_file() and not options.require_binaries:
+            missing += 1
+            print(f"FIRMWARE_INVENTORY_COMPONENT=PASS name={name} version={version} binaries=release-assets")
+            continue
         try:
             data = path.read_bytes()
         except OSError as exc:
@@ -85,7 +97,7 @@ def main() -> int:
             if not companion_path.is_file() or companion.get("size_bytes") != companion_path.stat().st_size:
                 fail(f"{name}: {extension} companion does not match its record")
         print(f"FIRMWARE_INVENTORY_COMPONENT=PASS name={name} version={version}")
-    print("FIRMWARE_INVENTORY=PASS components=6")
+    print(f"FIRMWARE_INVENTORY=PASS components=6 binaries={'release-assets' if missing == 6 else 'present' if missing == 0 else 'partial'}")
     return 0
 
 

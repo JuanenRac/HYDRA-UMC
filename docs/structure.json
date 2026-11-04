@@ -279,24 +279,24 @@
         {
           "name": "firmware/",
           "desc": {
-            "en": "Committed build output",
-            "es": "Salida de compilación comiteada",
-            "de": "Committete Build-Ausgabe",
-            "fr": "Sortie de build commitée",
-            "it": "Output di build committato",
-            "ja": "コミット済みのビルド成果物（.bin/.he",
-            "zh": "已提交的构建产物（.bin/.hex/.el",
-            "pt": "Saída de build registada"
+            "en": "Build output, not tracked by git",
+            "es": "Salida de compilación, que git no sigue",
+            "de": "Build-Ausgabe, von git nicht verfolgt",
+            "fr": "Sortie de build, non suivie par git",
+            "it": "Output di build, non tracciato da git",
+            "ja": "ビルド成果物（git では追跡されません）",
+            "zh": "构建产物（不被 git 跟踪）",
+            "pt": "Saída de build, que o git não acompanha"
           },
           "tree_desc": {
-            "en": "Committed build output (.bin/.hex/.elf + manifest) - NOT gitignored, same convention as URTC's own output folder, see \"Building the Firmware\" below",
-            "es": "Salida de compilación comiteada (.bin/.hex/.elf + manifest) - NO en gitignore, misma convención que la propia carpeta de salida de URTC, ver \"Compilando el Firmware\" abajo",
-            "de": "Committete Build-Ausgabe (.bin/.hex/.elf + Manifest) - NICHT in gitignore, dieselbe Konvention wie der eigene Ausgabeordner von URTC, siehe \"Die Firmware bauen\" unten",
-            "fr": "Sortie de build commitée (.bin/.hex/.elf + manifest) - PAS dans gitignore, même convention que le propre dossier de sortie d'URTC, voir \"Compiler le Firmware\" ci-dessous",
-            "it": "Output di build committato (.bin/.hex/.elf + manifest) - NON in gitignore, stessa convenzione della cartella di output propria di URTC, vedi \"Compilare il Firmware\" sotto",
-            "ja": "コミット済みのビルド成果物（.bin/.hex/.elf + マニフェスト）— gitignore 対象外、URTC 自身の出力フォルダと同じ規約、下記「ファームウェアのビルド」参照",
-            "zh": "已提交的构建产物（.bin/.hex/.elf + 清单文件）—— 未被 gitignore 排除，与 URTC 自身的输出文件夹约定一致，见下方“构建固件”",
-            "pt": "Saída de build registada (.bin/.hex/.elf + manifesto) - NÃO está no gitignore, mesma convenção da pasta de saída do URTC, ver \"Compilar o firmware\" abaixo"
+            "en": "Build output, NOT tracked by git (.bin/.hex/.elf are release assets built in GitHub Actions; only the manifest is kept), see \"Building the Firmware\" below",
+            "es": "Salida de compilación, que git NO sigue (.bin/.hex/.elf son assets de la release compilados en GitHub Actions; solo se conserva el manifest), ver \"Compilando el Firmware\" abajo",
+            "de": "Build-Ausgabe, von git NICHT verfolgt (.bin/.hex/.elf sind Release-Assets aus GitHub Actions; nur das Manifest bleibt), siehe \"Die Firmware bauen\" unten",
+            "fr": "Sortie de build, NON suivie par git (.bin/.hex/.elf sont des assets de release compilés dans GitHub Actions ; seul le manifeste reste), voir \"Compiler le Firmware\" ci-dessous",
+            "it": "Output di build, NON tracciato da git (.bin/.hex/.elf sono asset della release compilati in GitHub Actions; resta solo il manifest), vedi \"Compilare il Firmware\" sotto",
+            "ja": "ビルド成果物、git では追跡されません（.bin/.hex/.elf は GitHub Actions でビルドされるリリースのアセットで、マニフェストのみ保持）、下記「ファームウェアのビルド」参照",
+            "zh": "构建产物，不被 git 跟踪（.bin/.hex/.elf 是在 GitHub Actions 中构建的 release 附件，仅保留清单文件），见下方“构建固件”",
+            "pt": "Saída de build, que o git NÃO acompanha (.bin/.hex/.elf são anexos da release compilados no GitHub Actions; só fica o manifesto), ver \"Compilar o firmware\" abaixo"
           }
         },
         {

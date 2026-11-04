@@ -20,11 +20,10 @@
 #
 # Same layout as the sibling URTC repo now: `src/` is source
 # (mcu_stm32g474/, mcu_stm32h745/), `firmware/` is build OUTPUT.
-# firmware/ is intentionally committed and pushed to this repo (NOT
-# gitignored - it has no entry in .gitignore), so that
-# HYDRA-UMC-STUDIO's own GitHub-download feature has real .bin files to
-# find via firmware_manifest.json. This script writes a fresh manifest
-# there on every build.
+# firmware/ is not tracked by git except for firmware_manifest.json: the
+# images are built in GitHub Actions and published only as release assets
+# (HYDRA-UMC-STUDIO's GitHub-download feature reads those assets). This
+# script writes a fresh manifest there on every build.
 #
 # Usage: python3 generate_manifest.py [repo_root]
 #   repo_root defaults to this script's own parent directory.
@@ -233,10 +232,9 @@ def main():
             "last step of a full build_firmware.sh run - hand-editing this file "
             "is pointless, it'll be overwritten the next time either script (or "
             "this one directly) runs.",
-            "firmware/ is intentionally committed and pushed to this repo "
-            "(same convention as URTC's own output folder) so that "
-            "HYDRA-UMC-STUDIO's GitHub-download feature can find real .bin "
-            "files here via this manifest.",
+            "The images this manifest describes are not kept in the repository: "
+            "they are built in GitHub Actions and published as assets of a "
+            "release, next to this manifest.",
         ],
         "components": {
             "g474_bootloader": component(

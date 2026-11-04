@@ -167,6 +167,10 @@ jobs:
                   shutil.copyfile(str(image)[:-4] + suffix, out / (image.name[:-4] + suffix))
           print("images ok:", ", ".join(image.name for image, _ in found.values()))
           PY
+          # the manifest the apps read (versions and CRC32 of exactly these images) is made from the build and travels with them as a release asset
+          python3 generate_manifest.py .
+          python3 tools/verify_firmware_inventory.py --require-binaries
+          cp firmware/firmware_manifest.json out/firmware_manifest.json
           # every bootloader must hold, at the fixed offset, exactly the trust table of the flavour (release: the closed table while the key does not exist)
           for pair in rcb:RCB kb_cm7:KB_CM7 kb_cm4:KB_CM4; do
             python3 tools/image_trust.py check firmware/HYDRA_${pair#*:}_BOOTLOADER_v*.bin "${pair%%:*}" "$FLAVOUR"
@@ -190,6 +194,7 @@ jobs:
           name: parts
           path: |
             out/HYDRA_*
+            out/firmware_manifest.json
             out/toolchain.txt.tmp
           if-no-files-found: error
           retention-days: 7
@@ -220,7 +225,7 @@ jobs:
           set -euo pipefail
           cd files
           mv toolchain.txt.tmp /tmp/toolchain.txt
-          sha256sum HYDRA_* > SHA256SUMS
+          sha256sum HYDRA_* firmware_manifest.json > SHA256SUMS
           python3 - <<'PY'
           import json, os
           files = []
@@ -242,6 +247,7 @@ jobs:
         with:
           subject-path: |
             files/HYDRA_*
+            files/firmware_manifest.json
             files/SHA256SUMS
 
       - name: Upload the build
@@ -282,7 +288,7 @@ jobs:
           assert manifest["signed"] is False and manifest["signing_key_kind"] in ("dev", "release") and manifest["files"], "unexpected manifest"
           print("manifest ok:", manifest["project"], manifest["version"], len(manifest["files"]), "files")
           PY
-          for file in HYDRA_* SHA256SUMS; do
+          for file in HYDRA_* firmware_manifest.json SHA256SUMS; do
             gh attestation verify "$file" --repo "$GITHUB_REPOSITORY" --signer-workflow "$SIGNER" --source-digest "$GITHUB_SHA" >/dev/null
             echo "attestation ok: $file"
           done

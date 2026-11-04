@@ -181,7 +181,7 @@ Compilar el firmware requiere la cadena de herramientas Arm GNU (`arm-none-eabi-
 ```bash
 ./build_firmware.sh                                  # builds every MCU target and runs the host tests (step 1b)
 ./build_firmware.sh g474                             # only the Robot Controller Board; h745 builds only the Kinematic Brain
-python tools/verify_firmware_inventory.py            # read-only check of the committed six-component firmware inventory
+python tools/verify_firmware_inventory.py            # read-only check of the six-component firmware inventory (the manifest, and the images when they are in firmware/)
 python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the firmware sources, the image header and the CAN identifiers
 ```
 
@@ -265,11 +265,7 @@ junto a su fuente) con `arm-none-eabi-gcc`/`-Wl,--gc-sections` y convierte con
 no ejecutar ninguno de los scripts - los scripts existen para automatizarlos,
 no para reemplazarlos como fuente de verdad.
 
-La salida termina en `firmware/`, que está comiteada y subida a este
-repositorio (misma convención que la propia carpeta de salida `firmware/` de
-URTC) para que la función de descarga desde GitHub de HYDRA-UMC-STUDIO pueda
-encontrar de verdad archivos `.bin` reales ahí vía
-`firmware_manifest.json` - NO está en gitignore.
+La salida termina en `firmware/`, que git no sigue: las imágenes (`.bin`/`.hex`/`.elf`) se compilan en GitHub Actions (el workflow manual «Firmware build») y se publican solo como assets de una release, junto a un `firmware_manifest.json` con sus versiones y CRC32. En el repositorio solo se conserva ese manifest, y la función de descarga desde GitHub de HYDRA-UMC-STUDIO lee los assets de la release.
 Ver `docs/COMPILE_STM32G474.md` y `docs/COMPILE_STM32H745.md` para
 exactamente qué hace cada paso y por qué - y el propio `README.md` de cada
 carpeta de firmware para el estado actual. Los **bootloaders** de los 3
@@ -320,7 +316,7 @@ HYDRA-UMC/
 ├── os/                              Imagen de SO del CM5 - elección de SO base, unidades systemd, aprovisionamiento de primer arranque
 ├── images/                          Banner del README + icono + splashscreen (SVG)
 ├── tools/                           herramientas del proyecto y comprobaciones del CI
-├── firmware/                        Salida de compilación comiteada (.bin/.hex/.elf + manifest) - NO en gitignore, misma convención que la propia carpeta de salida de URTC, ver "Compilando el Firmware" abajo
+├── firmware/                        Salida de compilación, que git NO sigue (.bin/.hex/.elf son assets de la release compilados en GitHub Actions; solo se conserva el manifest), ver "Compilando el Firmware" abajo
 ├── .github/                         flujo de CI y plantillas de incidencias
 ├── build_firmware.sh                Compila cada objetivo de firmware MCU de arriba desde una copia limpia (Linux/Mac)
 ├── build_firmware.bat               La misma compilación, Windows (ver "Compilando el Firmware" abajo)

@@ -181,7 +181,7 @@ Compiler le firmware demande la chaîne d'outils Arm GNU (`arm-none-eabi-gcc` 10
 ```bash
 ./build_firmware.sh                                  # builds every MCU target and runs the host tests (step 1b)
 ./build_firmware.sh g474                             # only the Robot Controller Board; h745 builds only the Kinematic Brain
-python tools/verify_firmware_inventory.py            # read-only check of the committed six-component firmware inventory
+python tools/verify_firmware_inventory.py            # read-only check of the six-component firmware inventory (the manifest, and the images when they are in firmware/)
 python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the firmware sources, the image header and the CAN identifiers
 ```
 
@@ -264,11 +264,7 @@ convertit avec `arm-none-eabi-objcopy` en `.bin`/`.hex`. Ces deux fichiers
 vous préférez ne pas exécuter l'un des deux scripts - les scripts existent
 pour les automatiser, pas pour les remplacer comme source de vérité.
 
-La sortie atterrit dans `firmware/`, qui est commitée et poussée vers ce
-repository (même convention que le propre dossier de sortie `firmware/`
-d'URTC) afin que la fonctionnalité de téléchargement depuis GitHub de
-HYDRA-UMC-STUDIO puisse réellement y trouver de vrais fichiers `.bin` via
-`firmware_manifest.json` - ce n'est PAS dans gitignore.
+La sortie atterrit dans `firmware/`, que git ne suit pas : les images (`.bin`/`.hex`/`.elf`) sont compilées dans GitHub Actions (le workflow manuel « Firmware build ») et publiées uniquement comme assets d'une release, avec un `firmware_manifest.json` contenant leurs versions et CRC32. Seul ce manifeste reste dans le dépôt, et la fonctionnalité de téléchargement depuis GitHub de HYDRA-UMC-STUDIO lit les assets de la release.
 Voir `docs/COMPILE_STM32G474.md` et `docs/COMPILE_STM32H745.md` pour ce que
 fait exactement chaque étape et pourquoi - et le propre `README.md` de
 chaque dossier firmware pour l'état actuel. Les **bootloaders** pour les 3
@@ -319,7 +315,7 @@ HYDRA-UMC/
 ├── os/                              Image OS du CM5 - choix de l'OS de base, unités systemd, provisionnement au premier démarrage
 ├── images/                          Bannière du README + icône + écran de démarrage (SVG)
 ├── tools/                           outils du projet et vérifications de la CI
-├── firmware/                        Sortie de build commitée (.bin/.hex/.elf + manifest) - PAS dans gitignore, même convention que le propre dossier de sortie d'URTC, voir "Compiler le Firmware" ci-dessous
+├── firmware/                        Sortie de build, NON suivie par git (.bin/.hex/.elf sont des assets de release compilés dans GitHub Actions ; seul le manifeste reste), voir "Compiler le Firmware" ci-dessous
 ├── .github/                         workflow de CI et modèles de tickets
 ├── build_firmware.sh                Compile chaque cible firmware MCU ci-dessus depuis un checkout propre (Linux/Mac)
 ├── build_firmware.bat               Même build, Windows (voir "Compiler le Firmware" ci-dessous)

@@ -17,3 +17,10 @@ __pycache__/
 .vscode/*
 !.vscode/tasks.json
 !.vscode/extensions.json
+
+# Firmware images are build output: they are made in GitHub Actions and published only as release assets.
+# firmware/firmware_manifest.json (versions and CRC32) stays tracked.
+firmware/*.bin
+firmware/*.elf
+firmware/*.hex
+firmware/*.sig

@@ -181,7 +181,7 @@ flowchart LR
 ```bash
 ./build_firmware.sh                                  # builds every MCU target and runs the host tests (step 1b)
 ./build_firmware.sh g474                             # only the Robot Controller Board; h745 builds only the Kinematic Brain
-python tools/verify_firmware_inventory.py            # read-only check of the committed six-component firmware inventory
+python tools/verify_firmware_inventory.py            # read-only check of the six-component firmware inventory (the manifest, and the images when they are in firmware/)
 python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the firmware sources, the image header and the CAN identifiers
 ```
 
@@ -221,7 +221,7 @@ build_firmware.bat --clean  :: 先清空已缓存的 HAL/CMSIS
 
 **手动构建（任一操作系统，不使用脚本）：** 该脚本自动化的正是 `docs/COMPILE_STM32G474.md` 与 `docs/COMPILE_STM32H745.md` 中列出的步骤 —— 获取 `build_firmware.sh`/`build_firmware.bat` 顶部列出的固定版本 HAL/CMSIS/FreeRTOS 源码，用 `arm-none-eabi-gcc` 编译每个目标的 HAL 模块与启动/系统文件（编译参数/模块列表均列于该脚本中），然后为每个引导加载程序与应用程序分别链接其自身的链接脚本（`*.ld`，位于源码旁），使用 `arm-none-eabi-gcc`/`-Wl,--gc-sections`，并通过 `arm-none-eabi-objcopy` 转换为 `.bin`/`.hex`。如果你不想运行任一脚本，这两份 `docs/COMPILE_*.md` 文档就是权威的分步参考 —— 脚本的存在是为了自动化这些步骤，而非取代它们作为事实依据。
 
-构建产物存放于 `firmware/`，该目录会被提交并推送到本仓库（与 URTC 自身 `firmware/` 输出文件夹的约定一致），以便 HYDRA-UMC-STUDIO 的 GitHub 下载功能能够通过 `firmware_manifest.json` 真正找到实际存在的 `.bin` 文件 —— 该目录 **不会** 被 gitignore 排除。各步骤的具体内容与原因详见 `docs/COMPILE_STM32G474.md` 与 `docs/COMPILE_STM32H745.md`；当前状态详见各固件文件夹自身的 `README.md`。全部 3 个目标（G474、H745 CM7、H745 CM4）的 **引导加载程序** 均为真实可用的 CAN-OTA/SPI-OTA 实现（CRC32 + HMAC-SHA256 校验后先写入备份区再复制到主区，与 URTC 自身引导加载程序相同的防变砖机制）—— 端到端编译干净通过，但尚未在真实硬件上验证。**应用程序** 目前仍是经过编译验证的 FreeRTOS GPIO 闪烁烟雾测试代码，尚非真正的运动/视觉/中继固件。哪些内容属实、哪些仍待完成，详见 `docs/architecture.md`（尤其是第 6 节的状态表与第 8 节已知且已被接受的安全局限）。
+构建产物存放于 `firmware/`，该目录不被 git 跟踪：镜像（`.bin`/`.hex`/`.elf`）在 GitHub Actions 中构建（手动的“Firmware build”工作流），仅作为 release 的附件发布，并附带记录版本号与 CRC32 的 `firmware_manifest.json`。仓库中只保留该清单文件，HYDRA-UMC-STUDIO 的 GitHub 下载功能读取的是 release 附件。各步骤的具体内容与原因详见 `docs/COMPILE_STM32G474.md` 与 `docs/COMPILE_STM32H745.md`；当前状态详见各固件文件夹自身的 `README.md`。全部 3 个目标（G474、H745 CM7、H745 CM4）的 **引导加载程序** 均为真实可用的 CAN-OTA/SPI-OTA 实现（CRC32 + HMAC-SHA256 校验后先写入备份区再复制到主区，与 URTC 自身引导加载程序相同的防变砖机制）—— 端到端编译干净通过，但尚未在真实硬件上验证。**应用程序** 目前仍是经过编译验证的 FreeRTOS GPIO 闪烁烟雾测试代码，尚非真正的运动/视觉/中继固件。哪些内容属实、哪些仍待完成，详见 `docs/architecture.md`（尤其是第 6 节的状态表与第 8 节已知且已被接受的安全局限）。
 
 > **安全状态：** 本仓库目前尚不包含 E-STOP 通路、软件限位、安全联锁、掉电（PVD）时向 FRAM 转储，也没有任何运动指令。上文各章节（或生态系统中其他项目）对这些功能的描述均属预期设计：在其实现并在真实电路板上测试之前，不得依赖它们来保障安全。目前各应用程序的实际行为：CM4 与 G474 的应用程序运行 STACK A 的 AXIS_STATUS 轮询/应答和 Tier 2/3 中继隧道；CM7 的应用程序仍只是 GPIO 翻转冒烟测试。
 
@@ -258,7 +258,7 @@ HYDRA-UMC/
 ├── os/                              CM5 操作系统镜像 —— 基础系统选型、systemd 单元、首次启动配置
 ├── images/                          README 横幅 + 图标 + 启动画面（SVG）
 ├── tools/                           项目工具和 CI 检查
-├── firmware/                        已提交的构建产物（.bin/.hex/.elf + 清单文件）—— 未被 gitignore 排除，与 URTC 自身的输出文件夹约定一致，见下方“构建固件”
+├── firmware/                        构建产物，不被 git 跟踪（.bin/.hex/.elf 是在 GitHub Actions 中构建的 release 附件，仅保留清单文件），见下方“构建固件”
 ├── .github/                         CI 工作流和 Issue 模板
 ├── build_firmware.sh                从全新检出一次性构建上述所有 MCU 固件目标（Linux/Mac）
 ├── build_firmware.bat               相同构建，Windows 版（见下方“构建固件”）
