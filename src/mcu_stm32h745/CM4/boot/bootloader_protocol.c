@@ -713,6 +713,8 @@ void Relay_ToCM7(const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
     IPC_MAILBOX->cmd.dlc = in->dlc;
     memset((void*)IPC_MAILBOX->cmd.payload, 0, 8);
     memcpy((void*)IPC_MAILBOX->cmd.payload, (const void*)in->payload, in->dlc > 8 ? 8 : in->dlc);
+    static uint8_t ipc_cmd_seq;
+    IpcFrame_Seal(&IPC_MAILBOX->cmd, ipc_cmd_seq++);
     // SRAM4 writes above are Normal (bufferable) memory; the HSEM take just
     // below is a peripheral (Device) write - the two bus types have no
     // ordering guarantee relative to each other without an explicit
@@ -735,9 +737,11 @@ void Relay_ToCM7(const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
     while ((HAL_GetTick() - wait_start) < 200) {
         HAL_IWDG_Refresh(&hiwdg);
         if (HAL_HSEM_IsSemTaken(IPC_HSEM_RESP_ID)) {
-            out->frame_type = IPC_MAILBOX->resp.frame_type;
-            out->dlc = IPC_MAILBOX->resp.dlc;
-            memcpy(out->payload, (const void*)IPC_MAILBOX->resp.payload, 8);
+            if (IpcFrame_Valid(&IPC_MAILBOX->resp)) {   // a damaged answer leaves the STATUS_ERROR set above
+                out->frame_type = IPC_MAILBOX->resp.frame_type;
+                out->dlc = IPC_MAILBOX->resp.dlc;
+                memcpy(out->payload, (const void*)IPC_MAILBOX->resp.payload, 8);
+            }
             HAL_HSEM_Release(IPC_HSEM_RESP_ID, 0);
             return;
         }

@@ -56,6 +56,7 @@ def table() -> list[HostTest]:
         HostTest("flash_geometry", "tests/test_flash_geometry.c", (f"{G4}/boot",)),
         HostTest("relay_send_reassembly", "tests/test_relay_send_reassembly.c", (G4,)),
         HostTest("relay_ids", "tests/test_relay_ids.c", (G4,)),
+        HostTest("spi_frame_crc", "tests/test_spi_frame_crc.c", (f"{H7}/CM4/boot",)),
         HostTest("bootloader_g474", "tests/test_bootloader_g474_host.c", ("tests/stubs", f"{G4}/boot", "tests"), GNU,
                  (f"{G4}/boot/update_signature.c",), needs_tweetnacl=True),
     ]

@@ -80,7 +80,11 @@ int main(void) {
     hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
     hiwdg.Init.Reload = 4095; // generous placeholder - TODO tune against real 128KB sector-erase timing once measured on real hardware, see bootloader_flash.c's own header
     hiwdg.Init.Window = IWDG_WINDOW_DISABLE; // full-range window: a zero window would reset the chip on the first refresh
-    HAL_IWDG_Init(&hiwdg);
+    if (HAL_IWDG_Init(&hiwdg) != HAL_OK) {
+        // Without an armed watchdog nothing recovers a stuck core: stop with the interrupts off instead of running unguarded.
+        __disable_irq();
+        for (;;) { }
+    }
 
     HAL_Init();
 
@@ -109,7 +113,9 @@ int main(void) {
             uint8_t dlc = IPC_MAILBOX->cmd.dlc;
             uint8_t data[8];
             memcpy(data, (const void*)IPC_MAILBOX->cmd.payload, 8);
+            const uint8_t ipc_valid = IpcFrame_Valid(&IPC_MAILBOX->cmd);
             HAL_HSEM_Release(IPC_HSEM_CMD_ID, 0);
+            if (!ipc_valid) continue;   // a damaged command is dropped; the CM4 side times out and reports the error to the CM5
 
             if (ofs == OFS_START_UPDATE && dlc == 8) {
                 // Only an accepted request takes the core out of its normal
@@ -160,7 +166,9 @@ int main(void) {
             uint8_t dlc = IPC_MAILBOX->cmd.dlc;
             uint8_t data[8];
             memcpy(data, (const void*)IPC_MAILBOX->cmd.payload, 8);
+            const uint8_t ipc_valid = IpcFrame_Valid(&IPC_MAILBOX->cmd);
             HAL_HSEM_Release(IPC_HSEM_CMD_ID, 0);
+            if (!ipc_valid) continue;   // a damaged command is dropped; the CM4 side times out and reports the error to the CM5
 
             if (ofs == OFS_START_UPDATE && dlc == 8) {
                 HandleStartUpdate(data);

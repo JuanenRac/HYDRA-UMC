@@ -67,4 +67,9 @@ void RobotControllerRelay_Init(void);
  * real Classic CAN frame's worth of polling - safe to call every tick. */
 void RobotControllerRelay_Poll(void);
 
+/* Drives the six driver ENABLE outputs (docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md section 2d) to the level that switches the drivers OFF, with
+ * direct register writes that need no initialisation and no scheduler. Called before the board stops on a failed set-up, a stack overflow or a
+ * fault; defined in STM32G474RE_main.c. */
+void MotionOutputs_ForceDisabled(void);
+
 #endif /* ROBOT_CONTROLLER_RELAY_H */

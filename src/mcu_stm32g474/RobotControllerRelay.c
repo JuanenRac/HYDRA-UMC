@@ -63,6 +63,21 @@ static uint32_t ReadSlotBaseId_App(void)
 
 /* Real FDCAN1 init - PB8=RX/PB9=TX (AF9), PG7=CAN1_STBY - byte-for-byte
  * the bootloader's own MX_FDCAN1_Init() (see this file's own header). */
+/* A set-up call of the peripherals that fails leaves the board unable to answer the brain: stop here with the interrupts off. Nothing refreshes the
+ * watchdog any more, it resets the chip into the bootloader, whose boot-attempt count decides whether this application is tried again. */
+static void RelayHalRequire(HAL_StatusTypeDef status)
+{
+    if (status != HAL_OK) {
+        MotionOutputs_ForceDisabled();
+        __disable_irq();
+        for (;;) { }
+    }
+}
+
+/* STACK A: the window of 32 identifiers of this slot (mask 0x7E0) and the emergency stop (0x001). */
+#define RELAY_SLOT_FILTER_MASK 0x7E0u
+#define RELAY_ESTOP_CAN_ID     0x001u
+
 static void MX_FDCAN1_App_Init(void)
 {
     __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -99,22 +114,26 @@ static void MX_FDCAN1_App_Init(void)
     hfdcan1_app.Init.DataSyncJumpWidth = 1;
     hfdcan1_app.Init.DataTimeSeg1 = 13;
     hfdcan1_app.Init.DataTimeSeg2 = 2;
-    hfdcan1_app.Init.StdFiltersNbr = 1;
+    hfdcan1_app.Init.StdFiltersNbr = 2;
     hfdcan1_app.Init.ExtFiltersNbr = 0;
     hfdcan1_app.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
-    HAL_FDCAN_Init(&hfdcan1_app);
+    RelayHalRequire(HAL_FDCAN_Init(&hfdcan1_app));
 
     FDCAN_FilterTypeDef sf;
     sf.IdType = FDCAN_STANDARD_ID;
     sf.FilterIndex = 0;
     sf.FilterType = FDCAN_FILTER_MASK;
     sf.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-    sf.FilterID1 = 0x000;
-    sf.FilterID2 = 0x000; /* wide open, same reasoning as the bootloader's own identical filter - this application checks the ID in software */
-    HAL_FDCAN_ConfigFilter(&hfdcan1_app, &sf);
-    HAL_FDCAN_ConfigGlobalFilter(&hfdcan1_app, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE);
+    sf.FilterID1 = slot_base; /* same two filters as the bootloader: this slot's window and the emergency stop, everything else rejected by the peripheral */
+    sf.FilterID2 = RELAY_SLOT_FILTER_MASK;
+    RelayHalRequire(HAL_FDCAN_ConfigFilter(&hfdcan1_app, &sf));
+    sf.FilterIndex = 1;
+    sf.FilterID1 = RELAY_ESTOP_CAN_ID;
+    sf.FilterID2 = 0x7FF; /* exact match */
+    RelayHalRequire(HAL_FDCAN_ConfigFilter(&hfdcan1_app, &sf));
+    RelayHalRequire(HAL_FDCAN_ConfigGlobalFilter(&hfdcan1_app, FDCAN_REJECT, FDCAN_REJECT, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE));
 
-    HAL_FDCAN_Start(&hfdcan1_app);
+    RelayHalRequire(HAL_FDCAN_Start(&hfdcan1_app));
 }
 
 /* Real FDCAN2 init - PB5=RX/PB6=TX (AF9), PG8=CAN2_STBY, the downlink to
@@ -168,7 +187,7 @@ static void MX_FDCAN2_Init(void)
     hfdcan2_app.Init.StdFiltersNbr = 1;
     hfdcan2_app.Init.ExtFiltersNbr = 0;
     hfdcan2_app.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
-    HAL_FDCAN_Init(&hfdcan2_app);
+    RelayHalRequire(HAL_FDCAN_Init(&hfdcan2_app));
 
     /* Wide open too - this board's own URTC head is the ONLY thing on
      * FDCAN2, but URTC's own protocol spans over a hundred IDs
@@ -183,10 +202,10 @@ static void MX_FDCAN2_Init(void)
     sf2.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
     sf2.FilterID1 = 0x000;
     sf2.FilterID2 = 0x000;
-    HAL_FDCAN_ConfigFilter(&hfdcan2_app, &sf2);
-    HAL_FDCAN_ConfigGlobalFilter(&hfdcan2_app, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE);
+    RelayHalRequire(HAL_FDCAN_ConfigFilter(&hfdcan2_app, &sf2));
+    RelayHalRequire(HAL_FDCAN_ConfigGlobalFilter(&hfdcan2_app, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE));
 
-    HAL_FDCAN_Start(&hfdcan2_app);
+    RelayHalRequire(HAL_FDCAN_Start(&hfdcan2_app));
 }
 
 /* -----------------------------------------------------------------------

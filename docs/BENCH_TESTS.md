@@ -45,6 +45,10 @@ Every row below is **not executed** either; it needs the STM32G474 controller bo
 | 19 | Read the status of the eight boards through the SPI link in application mode for ten minutes. | The status, error counters and bootloader state of each board arrive without gaps. | not executed |
 | 20 | Stop the alive frames of the kinematic brain on identifier 0x001 while the nodes are ready (unplug its transmitter, or freeze its sequence). | Every board disables its drivers within the alive timeout plus the reaction time, and the bus coming back releases nothing. | not executed |
 | 21 | Replay a recorded release frame, then send one with the wrong epoch, then a correct one without a person asking for it. | The first two are ignored; the third only makes the boards ready and the drivers stay off until the normal enable command. | not executed |
+| 26 | Measure the voltage of the six driver enable lines of the controller board with the chip held in reset, then during the bootloader, then after a forced hard fault of the application. | The lines sit at the level that switches the drivers off in all three cases; with the pull-ups removed the first two cases fail, which shows the pull-ups matter. | not executed |
+| 27 | Make the FDCAN initialisation fail on a board (clock gated, peripheral held) and reset it with and without a valid application. | With a valid application it starts and takes no update; without one the watchdog resets the board in a loop and the lines of the drivers stay off. | not executed |
+| 28 | Send frames of the other slots, of the emergency stop and of random identifiers at the maximum rate to a controller board. | Only the frames of its own slot window and `0x001` reach the receive FIFO; the FIFO never overflows from foreign traffic. | not executed |
+| 29 | Stop the relay task of a board in a debugger while the blink task keeps running. | The watchdog is no longer refreshed and the board resets within its timeout. | not executed |
 
 ## What this bench cannot show
 

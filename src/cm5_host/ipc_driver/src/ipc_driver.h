@@ -15,6 +15,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "spi_frame_crc.h" /* marker, sequence and CRC16 that seal a frame: docs/SPI_FRAME_INTEGRITY.md */
+
 #define HYDRA_IPC_FRAME_SIZE 128 /* matches README.md section 10 - TBD final layout */
 
 typedef struct {

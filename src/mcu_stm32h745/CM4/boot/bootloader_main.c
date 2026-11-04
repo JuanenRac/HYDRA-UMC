@@ -26,10 +26,33 @@
 #include "bootloader_protocol.h"
 #include "ipc_mailbox.h"
 #include "boot_decision.h"
+#include "spi_frame_crc.h"
 
 SPI_HandleTypeDef   hspi1;
 FDCAN_HandleTypeDef hfdcan1;
 IWDG_HandleTypeDef  hiwdg;
+
+// Failures of the HAL set-up calls, one bit each. A bootloader that cannot bring up its link must still be able to start a valid application,
+// so the failures are recorded here and decided on in main() instead of being ignored.
+#define BOOT_FAULT_CLOCK        0x01u
+#define BOOT_FAULT_CAN_INIT     0x02u
+#define BOOT_FAULT_CAN_FILTER   0x04u
+#define BOOT_FAULT_CAN_START    0x08u
+#define BOOT_FAULT_SPI_INIT     0x10u
+#define BOOT_FAULT_LINK_MASK    (BOOT_FAULT_CAN_INIT | BOOT_FAULT_CAN_FILTER | BOOT_FAULT_CAN_START | BOOT_FAULT_SPI_INIT)
+volatile uint32_t boot_hal_fault = 0;
+#define BOOT_HAL_NOTE(call, bit) do { if ((call) != HAL_OK) boot_hal_fault |= (bit); } while (0)
+
+// Without an armed watchdog nothing recovers a stuck board: stop in a state with the interrupts off instead of running unguarded.
+static void Boot_WatchdogFailed(void) {
+    __disable_irq();
+    for (;;) { }
+}
+
+// STACK A, seen from the kinematic brain: the windows of all 8 slots (0x600 .. 0x6FF, mask 0x700) and the emergency stop (0x001).
+#define BOOT_STACKA_FILTER_ID   0x600u
+#define BOOT_STACKA_FILTER_MASK 0x700u
+#define BOOT_ESTOP_CAN_ID       0x001u
 
 #define HYDRA_DATA_READY_PORT GPIOA
 #define HYDRA_DATA_READY_PIN  GPIO_PIN_3
@@ -69,7 +92,7 @@ static void MX_SPI1_Init(void) {
     hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
     hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
     hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-    HAL_SPI_Init(&hspi1);
+    BOOT_HAL_NOTE(HAL_SPI_Init(&hspi1), BOOT_FAULT_SPI_INIT);
 }
 
 static void MX_FDCAN1_Init(void) {
@@ -113,7 +136,7 @@ static void MX_FDCAN1_Init(void) {
     hfdcan1.Init.DataTimeSeg1 = 13;
     hfdcan1.Init.DataTimeSeg2 = 2;
     hfdcan1.Init.MessageRAMOffset = 0;
-    hfdcan1.Init.StdFiltersNbr = 1;
+    hfdcan1.Init.StdFiltersNbr = 2;
     hfdcan1.Init.ExtFiltersNbr = 0;
     hfdcan1.Init.RxFifo0ElmtsNbr = 8;
     hfdcan1.Init.RxFifo0ElmtSize = FDCAN_DATA_BYTES_8;
@@ -124,19 +147,25 @@ static void MX_FDCAN1_Init(void) {
     hfdcan1.Init.TxFifoQueueElmtsNbr = 8;
     hfdcan1.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
     hfdcan1.Init.TxElmtSize = FDCAN_DATA_BYTES_8;
-    HAL_FDCAN_Init(&hfdcan1);
+    BOOT_HAL_NOTE(HAL_FDCAN_Init(&hfdcan1), BOOT_FAULT_CAN_INIT);
+    if (boot_hal_fault & BOOT_FAULT_CAN_INIT) return; // the peripheral is not usable: no filter, no start
 
     FDCAN_FilterTypeDef sf;
     sf.IdType = FDCAN_STANDARD_ID;
     sf.FilterIndex = 0;
     sf.FilterType = FDCAN_FILTER_MASK;
     sf.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-    sf.FilterID1 = 0x000;
-    sf.FilterID2 = 0x000; // wide open, same reasoning as every other FDCAN bootloader in this project - this core sees traffic from ALL 8 STACK A slots, not just one, so a narrow filter would need to be reconfigured per-relay anyway
-    HAL_FDCAN_ConfigFilter(&hfdcan1, &sf);
-    HAL_FDCAN_ConfigGlobalFilter(&hfdcan1, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE);
+    sf.FilterID1 = BOOT_STACKA_FILTER_ID; // this core sees the traffic of all 8 STACK A slots, so the window is the whole 0x600..0x6FF range
+    sf.FilterID2 = BOOT_STACKA_FILTER_MASK;
+    BOOT_HAL_NOTE(HAL_FDCAN_ConfigFilter(&hfdcan1, &sf), BOOT_FAULT_CAN_FILTER);
+    sf.FilterIndex = 1;
+    sf.FilterID1 = BOOT_ESTOP_CAN_ID;
+    sf.FilterID2 = 0x7FF; // exact match
+    BOOT_HAL_NOTE(HAL_FDCAN_ConfigFilter(&hfdcan1, &sf), BOOT_FAULT_CAN_FILTER);
+    BOOT_HAL_NOTE(HAL_FDCAN_ConfigGlobalFilter(&hfdcan1, FDCAN_REJECT, FDCAN_REJECT, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE), BOOT_FAULT_CAN_FILTER);
+    if (boot_hal_fault & BOOT_FAULT_CAN_FILTER) return; // never start with a filter that is not the one that was asked for
 
-    HAL_FDCAN_Start(&hfdcan1);
+    BOOT_HAL_NOTE(HAL_FDCAN_Start(&hfdcan1), BOOT_FAULT_CAN_START);
 }
 
 // Converts an SpiOtaFrame_t into the raw 128-byte wire format and back -
@@ -147,6 +176,20 @@ static void MX_FDCAN1_Init(void) {
 // pair (this bootloader and whatever runs on the CM5), so no cross-
 // language serialization concern applies the way it might for the FDCAN
 // side (which URTC's own tooling also has to speak).
+// Integrity of the link (spi_frame_crc.h): every frame this core sends is sealed with a sequence number and a CRC16; a received frame whose seal
+// does not match is dropped, a repeated sequence is a retry that is not run twice, and a frame without the seal (the older kind) is still
+// accepted unless the build sets HYDRA_SPI_REQUIRE_CRC to 1. The counters are read with a debugger or reported by a later status frame.
+#ifndef HYDRA_SPI_REQUIRE_CRC
+#define HYDRA_SPI_REQUIRE_CRC 0
+#endif
+static uint8_t  spi_tx_seq;
+static uint8_t  spi_rx_have_last;
+static uint8_t  spi_rx_last;
+volatile uint32_t spi_crc_errors;   // frames dropped for a wrong CRC
+volatile uint32_t spi_retries;      // frames received twice with the same sequence
+volatile uint32_t spi_seq_gaps;     // sequence jumps (frames lost on the way)
+volatile uint32_t spi_unsealed;     // frames of the older kind without the seal
+
 static void FrameToWire(const SpiOtaFrame_t *f, uint8_t wire[SPI_FRAME_SIZE]) {
     memset(wire, 0xFF, SPI_FRAME_SIZE);
     wire[0] = f->target_tier;
@@ -154,6 +197,7 @@ static void FrameToWire(const SpiOtaFrame_t *f, uint8_t wire[SPI_FRAME_SIZE]) {
     wire[2] = f->frame_type;
     wire[3] = f->dlc;
     memcpy(&wire[4], f->payload, 8);
+    SpiWire_Seal(wire, spi_tx_seq++);
 }
 
 static void WireToFrame(const uint8_t wire[SPI_FRAME_SIZE], SpiOtaFrame_t *f) {
@@ -163,6 +207,30 @@ static void WireToFrame(const uint8_t wire[SPI_FRAME_SIZE], SpiOtaFrame_t *f) {
     f->frame_type = wire[2];
     f->dlc = wire[3];
     memcpy(f->payload, &wire[4], 8);
+}
+
+// 1 when the received frame is to be run (and `f` is filled in), 0 when it was damaged, was a retry or is refused for lacking the seal.
+static uint8_t Spi_AcceptFrame(const uint8_t wire[SPI_FRAME_SIZE], SpiOtaFrame_t *f) {
+    uint8_t seq = 0;
+    switch (SpiWire_Judge(wire, spi_rx_have_last, spi_rx_last, &seq)) {
+        case SPI_ACCEPT_BAD_CRC:
+            spi_crc_errors++;
+            return 0;
+        case SPI_ACCEPT_DUPLICATE:
+            spi_retries++;
+            return 0;
+        case SPI_ACCEPT_UNSEALED:
+            spi_unsealed++;
+            if (HYDRA_SPI_REQUIRE_CRC) return 0;
+            break;
+        default:
+            if (spi_rx_have_last && (uint8_t)(seq - spi_rx_last) != 1u) spi_seq_gaps++;
+            spi_rx_have_last = 1;
+            spi_rx_last = seq;
+            break;
+    }
+    WireToFrame(wire, f);
+    return 1;
 }
 
 // Dispatches one received SPI1 frame to the STACK A relay, the CM7 relay,
@@ -234,7 +302,7 @@ int main(void) {
     hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
     hiwdg.Init.Reload = 4095; // generous placeholder, same TODO as CM7's own bootloader_main.c
     hiwdg.Init.Window = IWDG_WINDOW_DISABLE; // full-range window: a zero window would reset the chip on the first refresh
-    HAL_IWDG_Init(&hiwdg);
+    if (HAL_IWDG_Init(&hiwdg) != HAL_OK) Boot_WatchdogFailed();
 
     HAL_Init();
 
@@ -246,6 +314,7 @@ int main(void) {
 
     MX_SPI1_Init();
     MX_FDCAN1_Init();
+    const uint8_t link_ok = (boot_hal_fault & BOOT_FAULT_LINK_MASK) == 0; // false: the SPI or the bus is not usable, a valid application still starts but no update can come in
 
     uint8_t app_valid = ApplicationIsValid();
 
@@ -266,13 +335,12 @@ int main(void) {
     // operation - HAL_SPI_TransmitReceive's own short timeout below just
     // means this loop moves on rather than blocking the whole window on a
     // single transaction attempt).
-    while ((HAL_GetTick() - listen_start) < 600) {
+    while (link_ok && (HAL_GetTick() - listen_start) < 600) {
         HAL_IWDG_Refresh(&hiwdg);
         HAL_GPIO_WritePin(HYDRA_DATA_READY_PORT, HYDRA_DATA_READY_PIN, GPIO_PIN_SET);
         if (HAL_SPI_TransmitReceive(&hspi1, tx_wire, rx_wire, SPI_FRAME_SIZE, 20) == HAL_OK) {
             SpiOtaFrame_t in;
-            WireToFrame(rx_wire, &in);
-            if (DispatchFrame(&in, tx_wire)) {
+            if (Spi_AcceptFrame(rx_wire, &in) && DispatchFrame(&in, tx_wire)) {
                 enter_update_mode = 1;
                 break;
             }
@@ -307,8 +375,14 @@ int main(void) {
 
     if (should_jump) {
         JumpToApplication();
-    } else if (!enter_update_mode && app_valid) {
+    } else if (!enter_update_mode && app_valid && link_ok) {
         CAN_SendHeartbeat(STATUS_ROLLBACK_SUSPECT, 0xFF);
+    }
+
+    if (!link_ok) {
+        // No usable link and no application to start: stop refreshing the watchdog so the reset tries the whole set-up again.
+        __disable_irq();
+        for (;;) { }
     }
 
     CAN_SendStatus(STATUS_LISTENING);
@@ -317,8 +391,7 @@ int main(void) {
         HAL_GPIO_WritePin(HYDRA_DATA_READY_PORT, HYDRA_DATA_READY_PIN, GPIO_PIN_SET);
         if (HAL_SPI_TransmitReceive(&hspi1, tx_wire, rx_wire, SPI_FRAME_SIZE, 20) == HAL_OK) {
             SpiOtaFrame_t in;
-            WireToFrame(rx_wire, &in);
-            DispatchFrame(&in, tx_wire);
+            if (Spi_AcceptFrame(rx_wire, &in)) DispatchFrame(&in, tx_wire);
         }
         HAL_GPIO_WritePin(HYDRA_DATA_READY_PORT, HYDRA_DATA_READY_PIN, GPIO_PIN_RESET);
 

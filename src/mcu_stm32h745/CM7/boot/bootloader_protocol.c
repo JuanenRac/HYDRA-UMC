@@ -42,6 +42,8 @@ static void IPC_SendResponse(uint8_t frame_type, const uint8_t *data, uint8_t dl
     IPC_MAILBOX->resp.dlc = dlc;
     memset((void*)IPC_MAILBOX->resp.payload, 0, 8);
     if (dlc > 0) memcpy((void*)IPC_MAILBOX->resp.payload, data, dlc);
+    static uint8_t ipc_resp_seq;
+    IpcFrame_Seal(&IPC_MAILBOX->resp, ipc_resp_seq++);
     // SRAM4 writes above are Normal (bufferable) memory; the HSEM take just
     // below is a peripheral (Device) write, with no ordering guarantee
     // between the two bus types without an explicit barrier. Without this
@@ -350,6 +352,7 @@ static uint8_t WaitForReadbackPageAck(uint32_t page_index) {
     while ((HAL_GetTick() - wait_start) < 3000) {
         HAL_IWDG_Refresh(&hiwdg);
         if (HAL_HSEM_IsSemTaken(IPC_HSEM_CMD_ID)) {
+            const uint8_t ipc_valid = IpcFrame_Valid(&IPC_MAILBOX->cmd);
             uint8_t frame_type = IPC_MAILBOX->cmd.frame_type;
             uint8_t dlc = IPC_MAILBOX->cmd.dlc;
             uint32_t acked = ((uint32_t)IPC_MAILBOX->cmd.payload[0] << 24) | ((uint32_t)IPC_MAILBOX->cmd.payload[1] << 16)
@@ -361,7 +364,7 @@ static uint8_t WaitForReadbackPageAck(uint32_t page_index) {
             // until the 3s timeout and aborts the whole readback instead of
             // discarding the unrelated frame and continuing to wait.
             HAL_HSEM_Release(IPC_HSEM_CMD_ID, 0);
-            if (frame_type == OFS_BACKUP_READ_PAGE_ACK && dlc == 4) {
+            if (ipc_valid && frame_type == OFS_BACKUP_READ_PAGE_ACK && dlc == 4) {
                 if (acked == page_index) return 1;
                 return 0; // desynced ack for the wrong page - abandon rather than guess
             }

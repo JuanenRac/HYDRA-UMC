@@ -210,6 +210,15 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # spi_frame_crc.h: marker, sequence and CRC16 that seal the frame of the SPI link between the CM5 and the H745.
+    SPI_FRAME_HOST_BIN="$ROOT/build/host_tests_spi_frame_crc"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h745/CM4/boot" -o "$SPI_FRAME_HOST_BIN" "$ROOT/tests/test_spi_frame_crc.c" && "$SPI_FRAME_HOST_BIN"; then
+        pass "spi_frame_crc host logic tests passed"
+    else
+        fail "spi_frame_crc host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # The bootloaders' own SHA-256, Ed25519 check, CRC32 and flash erase/program/copy/metadata
     # routines, compiled as they are against a stand-in HAL header (tests/stubs):
     # the G474 one by bank and page, the two H745 ones by 128 KB sector. They map

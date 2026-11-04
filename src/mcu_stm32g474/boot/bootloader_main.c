@@ -39,6 +39,27 @@
 FDCAN_HandleTypeDef hfdcan1;
 IWDG_HandleTypeDef  hiwdg;
 
+// Failures of the HAL set-up calls, one bit each. A bootloader that cannot bring up its link must still be able to start a valid application,
+// so the failures are recorded here and decided on in main() instead of being ignored.
+#define BOOT_FAULT_CLOCK        0x01u
+#define BOOT_FAULT_CAN_INIT     0x02u
+#define BOOT_FAULT_CAN_FILTER   0x04u
+#define BOOT_FAULT_CAN_START    0x08u
+#define BOOT_FAULT_SPI_INIT     0x10u
+#define BOOT_FAULT_LINK_MASK    (BOOT_FAULT_CAN_INIT | BOOT_FAULT_CAN_FILTER | BOOT_FAULT_CAN_START | BOOT_FAULT_SPI_INIT)
+volatile uint32_t boot_hal_fault = 0;
+#define BOOT_HAL_NOTE(call, bit) do { if ((call) != HAL_OK) boot_hal_fault |= (bit); } while (0)
+
+// Without an armed watchdog nothing recovers a stuck board: stop in a state with the interrupts off instead of running unguarded.
+static void Boot_WatchdogFailed(void) {
+    __disable_irq();
+    for (;;) { }
+}
+
+// STACK A: this board listens to its own window of 32 identifiers (slot_base .. slot_base + 0x1F, mask 0x7E0) and to the emergency stop (0x001).
+#define BOOT_SLOT_FILTER_MASK 0x7E0u
+#define BOOT_ESTOP_CAN_ID     0x001u
+
 void SystemClock_Config(void) {
     // HSI (16MHz) reset default, no PLL - TODO once a real clock tree is
     // designed (see this file's own header comment). HAL_Init() already
@@ -52,7 +73,7 @@ void SystemClock_Config(void) {
     RCC_OscInitStruct.HSIState = RCC_HSI_ON;
     RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
     RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
-    HAL_RCC_OscConfig(&RCC_OscInitStruct);
+    BOOT_HAL_NOTE(HAL_RCC_OscConfig(&RCC_OscInitStruct), BOOT_FAULT_CLOCK);
 
     RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK
                                  | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
@@ -60,7 +81,7 @@ void SystemClock_Config(void) {
     RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
     RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
     RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-    HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0);
+    BOOT_HAL_NOTE(HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0), BOOT_FAULT_CLOCK);
 }
 
 // -----------------------------------------------------------------------
@@ -95,7 +116,7 @@ uint32_t ReadSlotBaseId(void) {
 // FD-only feature. PG7 (CAN1_STBY) driven low to bring the transceiver out
 // of standby before FDCAN1 itself starts.
 // -----------------------------------------------------------------------
-static void MX_FDCAN1_Init(void) {
+static void MX_FDCAN1_Init(uint32_t slot_base) {
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOG_CLK_ENABLE();
     __HAL_RCC_FDCAN_CLK_ENABLE();
@@ -135,7 +156,7 @@ static void MX_FDCAN1_Init(void) {
     hfdcan1.Init.DataSyncJumpWidth = 1;
     hfdcan1.Init.DataTimeSeg1 = 13;
     hfdcan1.Init.DataTimeSeg2 = 2;
-    hfdcan1.Init.StdFiltersNbr = 1;
+    hfdcan1.Init.StdFiltersNbr = 2;
     hfdcan1.Init.ExtFiltersNbr = 0;
     // No MessageRAMOffset/RxFifoNElmts*/TxFifoQueueElmts*/TxElmtSize fields
     // on this HAL version (v1.2.7) - CONFIRMED by actually compiling
@@ -144,27 +165,28 @@ static void MX_FDCAN1_Init(void) {
     // internally with a fixed default rather than being caller-configured
     // the way later HAL versions (and the H7 family's own HAL) allow.
     hfdcan1.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
-    HAL_FDCAN_Init(&hfdcan1);
+    BOOT_HAL_NOTE(HAL_FDCAN_Init(&hfdcan1), BOOT_FAULT_CAN_INIT);
+    if (boot_hal_fault & BOOT_FAULT_CAN_INIT) return; // the peripheral is not usable: no filter, no start
 
-    // Wide-open filter, same reasoning as URTC's own bootloader: this
-    // bootloader only ever cares about its own slot_base+0x00..0x1F window
-    // and just checks the ID in software after receiving - narrowing the
-    // hardware filter isn't worth the risk of a bit-alignment mistake here
-    // any more than it was there. Unmatched frames still need SOMEWHERE to
-    // go, so they're routed to Rx FIFO0 like everything else rather than
-    // rejected, per HAL_FDCAN_ConfigGlobalFilter's own reject-vs-accept
-    // default-filter arguments below.
+    // Hardware filters: only this board's own window of 32 identifiers (mask 0x7E0) and the emergency stop reach the receive FIFO; every
+    // other identifier is rejected by the peripheral, so the other slots' traffic never costs this loop any time. The bootloader still
+    // checks the offset in software after receiving.
     FDCAN_FilterTypeDef sf;
     sf.IdType = FDCAN_STANDARD_ID;
     sf.FilterIndex = 0;
     sf.FilterType = FDCAN_FILTER_MASK;
     sf.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-    sf.FilterID1 = 0x000;
-    sf.FilterID2 = 0x000; // mask=0 -> match anything
-    HAL_FDCAN_ConfigFilter(&hfdcan1, &sf);
-    HAL_FDCAN_ConfigGlobalFilter(&hfdcan1, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE);
+    sf.FilterID1 = slot_base;
+    sf.FilterID2 = BOOT_SLOT_FILTER_MASK;
+    BOOT_HAL_NOTE(HAL_FDCAN_ConfigFilter(&hfdcan1, &sf), BOOT_FAULT_CAN_FILTER);
+    sf.FilterIndex = 1;
+    sf.FilterID1 = BOOT_ESTOP_CAN_ID;
+    sf.FilterID2 = 0x7FF; // exact match
+    BOOT_HAL_NOTE(HAL_FDCAN_ConfigFilter(&hfdcan1, &sf), BOOT_FAULT_CAN_FILTER);
+    BOOT_HAL_NOTE(HAL_FDCAN_ConfigGlobalFilter(&hfdcan1, FDCAN_REJECT, FDCAN_REJECT, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE), BOOT_FAULT_CAN_FILTER);
+    if (boot_hal_fault & BOOT_FAULT_CAN_FILTER) return; // never start with a filter that is not the one that was asked for
 
-    HAL_FDCAN_Start(&hfdcan1);
+    BOOT_HAL_NOTE(HAL_FDCAN_Start(&hfdcan1), BOOT_FAULT_CAN_START);
 }
 
 static uint32_t last_heartbeat_tick = 0 - 1000; // forces an immediate heartbeat on the first check
@@ -192,7 +214,7 @@ int main(void) {
     hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
     hiwdg.Init.Reload = 999;
     hiwdg.Init.Window = IWDG_WINDOW_DISABLE; // full-range window: a zero window would reset the chip on the first refresh
-    HAL_IWDG_Init(&hiwdg);
+    if (HAL_IWDG_Init(&hiwdg) != HAL_OK) Boot_WatchdogFailed();
 
     HAL_Init();
 
@@ -204,14 +226,15 @@ int main(void) {
     uint32_t slot_base = ReadSlotBaseId();
     Protocol_Init(slot_base);
 
-    MX_FDCAN1_Init();
+    MX_FDCAN1_Init(slot_base);
+    const uint8_t link_ok = (boot_hal_fault & BOOT_FAULT_LINK_MASK) == 0; // false: the bus is not usable, a valid application still starts but no update can come in
 
     uint8_t app_valid = ApplicationIsValid();
 
     uint32_t listen_start = HAL_GetTick();
     uint8_t enter_update_mode = 0;
 
-    while ((HAL_GetTick() - listen_start) < 600) {
+    while (link_ok && (HAL_GetTick() - listen_start) < 600) {
         HAL_IWDG_Refresh(&hiwdg);
         if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) > 0) {
             FDCAN_RxHeaderTypeDef rxHeader;
@@ -273,12 +296,18 @@ int main(void) {
 
     if (should_jump) {
         JumpToApplication();
-    } else if (!enter_update_mode && app_valid) {
+    } else if (!enter_update_mode && app_valid && link_ok) {
         // Refused only because of the real boot-attempt count above (a
         // structurally invalid app, or an explicit update request, was
         // already handled elsewhere) - stays recoverable over CAN instead
         // of silently crash-looping into the same suspect app forever.
         CAN_SendHeartbeat(STATUS_ROLLBACK_SUSPECT, 0xFF);
+    }
+
+    if (!link_ok) {
+        // No usable bus and no application to start: stop refreshing the watchdog so the reset tries the whole set-up again.
+        __disable_irq();
+        for (;;) { }
     }
 
     CAN_SendStatus(STATUS_LISTENING);

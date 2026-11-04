@@ -68,11 +68,43 @@
 #include "stm32g4xx_hal.h"
 #include "RobotControllerRelay.h"
 
+/* The six driver ENABLE outputs (PA0, PA1, PA3, PA4, PA5, PA15 - pinout section 2d). The TMC5160 input is ENN, active low: driving it HIGH
+ * switches the driver off. The level the outputs are forced to is a build setting, MOTION_DISABLE_LEVEL_HIGH (1 by default, for ENN). The board
+ * also needs a pull-up on every ENN line so the drivers stay off while this chip is in reset or in the bootloader (docs/BENCH_TESTS.md). */
+#ifndef MOTION_DISABLE_LEVEL_HIGH
+#define MOTION_DISABLE_LEVEL_HIGH 1
+#endif
+#define MOTION_ENABLE_PINS_MASK ((1u << 0) | (1u << 1) | (1u << 3) | (1u << 4) | (1u << 5) | (1u << 15))
+
+/* Register writes only, no HAL, no clock tree: the level is written to the output data register before the pins become outputs, so a pin that
+ * was an input (pulled up or down) never glitches the wrong way. Safe to call from a fault handler. */
+void MotionOutputs_ForceDisabled(void)
+{
+  RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN;
+  (void)RCC->AHB2ENR; /* read back: the clock is on before the port is touched */
+#if MOTION_DISABLE_LEVEL_HIGH
+  GPIOA->BSRR = MOTION_ENABLE_PINS_MASK;
+#else
+  GPIOA->BSRR = MOTION_ENABLE_PINS_MASK << 16;
+#endif
+  uint32_t moder = GPIOA->MODER;
+  const uint32_t pins[6] = {0, 1, 3, 4, 5, 15};
+  for (unsigned i = 0; i < 6; i++) {
+    moder = (moder & ~(3u << (pins[i] * 2u))) | (1u << (pins[i] * 2u)); /* 01 = general purpose output */
+  }
+  GPIOA->MODER = moder;
+}
+
 static void Error_Handler(void)
 {
+  MotionOutputs_ForceDisabled();
   __disable_irq();
   while (1) { }
 }
+
+/* Each task that has to stay alive bumps its own counter every pass; the blink task refreshes the watchdog only while every counter moved
+ * since the last look, so one stuck task ends in a reset instead of being hidden by the blink task that kept running. */
+static volatile uint32_t relay_task_alive;
 
 static IWDG_HandleTypeDef hiwdg;
 
@@ -91,8 +123,12 @@ static void GPIO_Init(void)
 static void vBlinkTask(void *pvParameters)
 {
   (void)pvParameters;
+  uint32_t relay_seen = 0;
   for (;;) {
-    HAL_IWDG_Refresh(&hiwdg); /* see this file's own header WATCHDOG NOTE - the bootloader's ~1s IWDG survives the jump into here unrefreshed otherwise */
+    if (relay_task_alive != relay_seen) { /* the relay task ran since the last look: only then is the watchdog refreshed */
+      relay_seen = relay_task_alive;
+      HAL_IWDG_Refresh(&hiwdg); /* see this file's own header WATCHDOG NOTE - the bootloader's ~1s IWDG survives the jump into here unrefreshed otherwise */
+    }
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
     vTaskDelay(pdMS_TO_TICKS(500));
   }
@@ -111,6 +147,7 @@ static void vRelayTask(void *pvParameters)
   (void)pvParameters;
   for (;;) {
     RobotControllerRelay_Poll();
+    relay_task_alive++;
     vTaskDelay(pdMS_TO_TICKS(5));
   }
 }
@@ -126,7 +163,9 @@ int main(void)
   hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
   hiwdg.Init.Reload = 999;
   hiwdg.Init.Window = IWDG_WINDOW_DISABLE; /* full-range window: a zero window would reset the chip on the first refresh */
-  HAL_IWDG_Init(&hiwdg);
+  if (HAL_IWDG_Init(&hiwdg) != HAL_OK) {
+    Error_Handler();
+  }
 
   HAL_StatusTypeDef hal_status = HAL_Init();
   if (hal_status != HAL_OK) {
@@ -156,6 +195,7 @@ int main(void)
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
   (void)xTask; (void)pcTaskName;
+  MotionOutputs_ForceDisabled();
   __disable_irq();
   while (1) { }
 }
@@ -182,7 +222,7 @@ void HAL_MspInit(void)
 }
 
 void NMI_Handler(void) { }
-void HardFault_Handler(void) { while (1) { } }
+void HardFault_Handler(void) { MotionOutputs_ForceDisabled(); while (1) { } }
 void MemManage_Handler(void) { while (1) { } }
 void BusFault_Handler(void) { while (1) { } }
 void UsageFault_Handler(void) { while (1) { } }

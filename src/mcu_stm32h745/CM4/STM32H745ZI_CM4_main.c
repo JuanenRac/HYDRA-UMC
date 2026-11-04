@@ -147,11 +147,18 @@ static void GPIO_Init(void)
   HAL_GPIO_Init(GPIOG, &gpio);
 }
 
+/* Bumped by the STACK A task on every pass; the blink task refreshes the watchdog only while it moves, so a stuck STACK A task ends in a reset. */
+static volatile uint32_t stacka_task_alive;
+
 static void vBlinkTask(void *pvParameters)
 {
   (void)pvParameters;
+  uint32_t stacka_seen = 0;
   for (;;) {
-    HAL_IWDG_Refresh(&hiwdg); /* see this file's own header WATCHDOG NOTE - the bootloader's ~4s IWDG2 survives the jump into here unrefreshed otherwise */
+    if (stacka_task_alive != stacka_seen) { /* the STACK A task ran since the last look: only then is the watchdog refreshed */
+      stacka_seen = stacka_task_alive;
+      HAL_IWDG_Refresh(&hiwdg); /* see this file's own header WATCHDOG NOTE - the bootloader's ~4s IWDG2 survives the jump into here unrefreshed otherwise */
+    }
     HAL_GPIO_TogglePin(GPIOG, GPIO_PIN_10);
     vTaskDelay(pdMS_TO_TICKS(400));
   }
@@ -173,6 +180,7 @@ static void vStackATask(void *pvParameters)
     uint8_t dlc = 0;
     (void)KinematicBrainCan_QueryAxisStatus(slot, status, &dlc, 50);
     slot = (uint8_t)((slot + 1) % 8);
+    stacka_task_alive++;
     vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
@@ -188,9 +196,15 @@ int main(void)
   hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
   hiwdg.Init.Reload = 4095;
   hiwdg.Init.Window = IWDG_WINDOW_DISABLE; /* full-range window: a zero window would reset the chip on the first refresh */
-  HAL_IWDG_Init(&hiwdg);
+  if (HAL_IWDG_Init(&hiwdg) != HAL_OK) {
+    __disable_irq();
+    for (;;) { }
+  }
 
-  HAL_Init();
+  if (HAL_Init() != HAL_OK) {
+    __disable_irq();
+    for (;;) { }
+  }
   SystemClock_Config();
   GPIO_Init();
 

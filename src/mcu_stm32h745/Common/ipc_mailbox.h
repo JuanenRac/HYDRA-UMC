@@ -80,4 +80,43 @@ typedef struct {
 
 #define IPC_MAILBOX ((IpcMailbox_t*)IPC_MAILBOX_BASE)
 
+// Integrity of a frame in the mailbox, with the same CRC-16/CCITT-FALSE as the SPI frame (tools/spi_frame.py is the reference): the first of the
+// reserved bytes is a sequence number, the second and third the CRC over frame_type, dlc, the payload and the sequence, the fourth the marker 0xA1.
+// A frame without the marker (a core with the older bootloader) is accepted unless the build sets HYDRA_IPC_REQUIRE_CRC to 1.
+#ifndef HYDRA_IPC_REQUIRE_CRC
+#define HYDRA_IPC_REQUIRE_CRC 0
+#endif
+#define IPC_FRAME_MARKER 0xA1u
+
+static inline uint16_t IpcFrame_Crc(const volatile IpcFrame_t *f)
+{
+    uint16_t crc = 0xFFFFu;
+    for (unsigned i = 0; i < 11u; i++) {
+        const uint8_t byte = (i == 0) ? f->frame_type : (i == 1) ? f->dlc : (i < 10u) ? f->payload[i - 2u] : f->_reserved[0];
+        crc = (uint16_t)(crc ^ ((uint16_t)byte << 8));
+        for (int bit = 0; bit < 8; bit++) {
+            crc = (crc & 0x8000u) ? (uint16_t)((crc << 1) ^ 0x1021u) : (uint16_t)(crc << 1);
+        }
+    }
+    return crc;
+}
+
+// Called by the writer after the frame is filled and before the semaphore is taken.
+static inline void IpcFrame_Seal(volatile IpcFrame_t *f, uint8_t sequence)
+{
+    f->_reserved[0] = sequence;
+    const uint16_t crc = IpcFrame_Crc(f);
+    f->_reserved[1] = (uint8_t)(crc >> 8);
+    f->_reserved[2] = (uint8_t)(crc & 0xFFu);
+    f->_reserved[3] = (uint8_t)IPC_FRAME_MARKER;
+}
+
+// Called by the reader before the semaphore is released. 1: use the frame; 0: it was damaged (or unsealed and the build refuses that).
+static inline uint8_t IpcFrame_Valid(const volatile IpcFrame_t *f)
+{
+    if (f->_reserved[3] != IPC_FRAME_MARKER) return HYDRA_IPC_REQUIRE_CRC ? 0u : 1u;
+    const uint16_t stored = (uint16_t)(((uint16_t)f->_reserved[1] << 8) | f->_reserved[2]);
+    return IpcFrame_Crc(f) == stored ? 1u : 0u;
+}
+
 #endif // IPC_MAILBOX_H

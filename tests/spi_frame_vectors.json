@@ -1,0 +1,23 @@
+{
+ "crc16_ccitt_false_check": {
+  "input_ascii": "123456789",
+  "crc": "0x29B1"
+ },
+ "frames": [
+  {
+   "name": "sealed_data_frame",
+   "wire_hex": "000005080102030405060708a1078d74",
+   "crc": "0x8d74"
+  },
+  {
+   "name": "sealed_empty_sequence_zero",
+   "wire_hex": "020310000000000000000000a1008912",
+   "crc": "0x8912"
+  },
+  {
+   "name": "sealed_sequence_255",
+   "wire_hex": "01000202dead000000000000a1ff39dc",
+   "crc": "0x39dc"
+  }
+ ]
+}

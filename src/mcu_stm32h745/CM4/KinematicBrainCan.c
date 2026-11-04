@@ -22,6 +22,21 @@
 
 static FDCAN_HandleTypeDef hfdcan1_app;
 
+/* A set-up call that fails leaves the brain unable to talk to the slots: stop here with the interrupts off. Nothing refreshes the watchdog any more, it
+ * resets the chip into the bootloader, whose boot-attempt count decides whether this application is tried again. */
+static void BrainHalRequire(HAL_StatusTypeDef status)
+{
+    if (status != HAL_OK) {
+        __disable_irq();
+        for (;;) { }
+    }
+}
+
+/* All 8 STACK A slots (0x600 .. 0x6FF, mask 0x700) and the emergency stop (0x001). */
+#define BRAIN_STACKA_FILTER_ID   0x600u
+#define BRAIN_STACKA_FILTER_MASK 0x700u
+#define BRAIN_ESTOP_CAN_ID       0x001u
+
 /* +0x10/+0x11 - new application-level offsets, architecture.md section 4's
  * own reserved range for this (the bootloader-era offsets +0x00..+0x0F/
  * +0x12..+0x14 are all already spoken for by the real bootloader protocol
@@ -74,7 +89,7 @@ void KinematicBrainCan_Init(void)
     hfdcan1_app.Init.DataTimeSeg1 = 13;
     hfdcan1_app.Init.DataTimeSeg2 = 2;
     hfdcan1_app.Init.MessageRAMOffset = 0;
-    hfdcan1_app.Init.StdFiltersNbr = 1;
+    hfdcan1_app.Init.StdFiltersNbr = 2;
     hfdcan1_app.Init.ExtFiltersNbr = 0;
     hfdcan1_app.Init.RxFifo0ElmtsNbr = 8;
     hfdcan1_app.Init.RxFifo0ElmtSize = FDCAN_DATA_BYTES_8;
@@ -85,19 +100,23 @@ void KinematicBrainCan_Init(void)
     hfdcan1_app.Init.TxFifoQueueElmtsNbr = 8;
     hfdcan1_app.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
     hfdcan1_app.Init.TxElmtSize = FDCAN_DATA_BYTES_8;
-    HAL_FDCAN_Init(&hfdcan1_app);
+    BrainHalRequire(HAL_FDCAN_Init(&hfdcan1_app));
 
     FDCAN_FilterTypeDef sf;
     sf.IdType = FDCAN_STANDARD_ID;
     sf.FilterIndex = 0;
     sf.FilterType = FDCAN_FILTER_MASK;
     sf.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-    sf.FilterID1 = 0x000;
-    sf.FilterID2 = 0x000; /* wide open - this core sees traffic from all 8 STACK A slots, same reasoning as the bootloader's own identical filter */
-    HAL_FDCAN_ConfigFilter(&hfdcan1_app, &sf);
-    HAL_FDCAN_ConfigGlobalFilter(&hfdcan1_app, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE);
+    sf.FilterID1 = BRAIN_STACKA_FILTER_ID; /* same two filters as the bootloader: the window of all 8 slots and the emergency stop, everything else rejected by the peripheral */
+    sf.FilterID2 = BRAIN_STACKA_FILTER_MASK;
+    BrainHalRequire(HAL_FDCAN_ConfigFilter(&hfdcan1_app, &sf));
+    sf.FilterIndex = 1;
+    sf.FilterID1 = BRAIN_ESTOP_CAN_ID;
+    sf.FilterID2 = 0x7FF; /* exact match */
+    BrainHalRequire(HAL_FDCAN_ConfigFilter(&hfdcan1_app, &sf));
+    BrainHalRequire(HAL_FDCAN_ConfigGlobalFilter(&hfdcan1_app, FDCAN_REJECT, FDCAN_REJECT, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE));
 
-    HAL_FDCAN_Start(&hfdcan1_app);
+    BrainHalRequire(HAL_FDCAN_Start(&hfdcan1_app));
 }
 
 /* DLC 0-8 map directly onto FDCAN_DLC_BYTES_0..8 for Classic CAN (no
