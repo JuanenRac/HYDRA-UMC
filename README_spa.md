@@ -314,6 +314,7 @@ HYDRA-UMC/
 │   ├── mcu_stm32h745/               Firmware del Kinematic Brain (Nivel 0) - doble núcleo
 │   └── mcu_stm32g474/               Firmware de la Robot Controller Board (Nivel 1) - un solo núcleo, + su propio boot/
 ├── .vscode/                         Extensiones recomendadas + tareas de build - ver "Entorno de Desarrollo" abajo
+├── config/                          configuración de la máquina de la placa controladora (categoría de paro, entrada de paro de emergencia, programación de producción)
 ├── docs/                            arquitectura, referencias de compilación, asignación de pines, protocolo CAN, hojas de datos
 ├── hardware/                        los dos diseños de placa; aún sin esquema
 ├── tests/                           Pruebas en el ordenador: la lógica en C de los bootloaders y del relé (stubs/ sustituye al HAL, image_header_vectors.h guarda los vectores de referencia) y pruebas en Python de las herramientas

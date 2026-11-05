@@ -315,6 +315,7 @@ HYDRA-UMC/
 │   ├── mcu_stm32h745/               Kinematic-Brain-Firmware (Ebene 0) - Dual-Core
 │   └── mcu_stm32g474/               Robot-Controller-Board-Firmware (Ebene 1) - Single-Core, + eigene boot/
 ├── .vscode/                         Empfohlene Erweiterungen + Build-Tasks - siehe "Entwicklungsumgebung" unten
+├── config/                          Maschinenkonfiguration der Steuerplatine (Stoppkategorie, Not-Halt-Eingang, Produktionsflash)
 ├── docs/                            Architektur, Build-Referenzen, Pinbelegungen, CAN-Protokoll, Datenblätter
 ├── hardware/                        die beiden Platinenentwürfe; noch kein Schaltplan
 ├── tests/                           Host-Tests: die C-Logik der Bootloader und des Relays (stubs/ ersetzt das HAL, image_header_vectors.h enthält die Referenzvektoren) und Python-Tests der Werkzeuge

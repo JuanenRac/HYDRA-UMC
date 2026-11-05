@@ -252,6 +252,7 @@ HYDRA-UMC/
 │   ├── mcu_stm32h745/               Firmware do Cérebro Cinemático (nível 0) - dois núcleos
 │   └── mcu_stm32g474/               Firmware da placa controladora de robô (nível 1) - um só núcleo, + o seu próprio boot/
 ├── .vscode/                         Extensões recomendadas + tarefas de build - ver "Ambiente de desenvolvimento" abaixo
+├── config/                          configuração da máquina da placa controladora (categoria de paragem, entrada de paragem de emergência, gravação de produção)
 ├── docs/                            arquitetura, referências de compilação, atribuição de pinos, protocolo CAN, folhas de dados
 ├── hardware/                        os dois desenhos de placa; ainda sem esquema
 ├── tests/                           Testes no computador: a lógica em C dos bootloaders e do relé (stubs/ substitui o HAL, image_header_vectors.h guarda os vetores de referência) e testes em Python das ferramentas

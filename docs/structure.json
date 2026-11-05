@@ -139,6 +139,29 @@
           }
         },
         {
+          "name": "config/",
+          "desc": {
+            "en": "machine configuration of the board",
+            "es": "configuración de la máquina de la placa",
+            "de": "Maschinenkonfiguration der Platine",
+            "fr": "configuration de la machine de la carte",
+            "it": "configurazione della macchina della scheda",
+            "ja": "基板のマシン設定",
+            "zh": "板卡的机器配置",
+            "pt": "configuração da máquina da placa"
+          },
+          "tree_desc": {
+            "en": "machine configuration of the controller board (stop category, emergency stop input, production flash)",
+            "es": "configuración de la máquina de la placa controladora (categoría de paro, entrada de paro de emergencia, programación de producción)",
+            "de": "Maschinenkonfiguration der Steuerplatine (Stoppkategorie, Not-Halt-Eingang, Produktionsflash)",
+            "fr": "configuration de la machine de la carte contrôleur (catégorie d'arrêt, entrée d'arrêt d'urgence, programmation de production)",
+            "it": "configurazione della macchina della scheda controller (categoria di arresto, ingresso di arresto di emergenza, programmazione di produzione)",
+            "ja": "コントローラー基板のマシン設定（停止カテゴリー、非常停止入力、量産書き込み）",
+            "zh": "控制板的机器配置（停止类别、急停输入、量产烧录）",
+            "pt": "configuração da máquina da placa controladora (categoria de paragem, entrada de paragem de emergência, gravação de produção)"
+          }
+        },
+        {
           "name": "docs/",
           "desc": {
             "en": "architecture, build references, pin",

@@ -304,6 +304,7 @@ HYDRA-UMC/
 │   ├── mcu_stm32h745/               Kinematic Brain firmware (Tier 0) - dual-core
 │   └── mcu_stm32g474/               Robot Controller Board firmware (Tier 1) - single-core, + its own boot/
 ├── .vscode/                         Recommended extensions + build tasks - see "Development Environment" below
+├── config/                          machine configuration of the controller board (stop category, emergency stop input, production flash)
 ├── docs/                            architecture, build references, pin allocations, CAN protocol, datasheets
 ├── hardware/                        the two board designs; no schematic yet
 ├── tests/                           Host tests: C logic of the bootloaders and the relay (stubs/ stands in for the HAL, image_header_vectors.h holds the reference vectors) and Python tests of the tools
