@@ -238,7 +238,9 @@ the eventual real spec has somewhere to land.
 
     PA7   PA12  - free, general-purpose
     PB4         - free, general-purpose
-    PC5 PC8 PC9 - free, general-purpose
+    PC5 PC8     - free, general-purpose (proposed for the CAN standby lines, section 1d)
+    PC9         - default pin of the physical emergency stop input (normally closed loop; the pin
+                  is set in config/machine.cfg and may be moved to PA7, PA12 or PB4)
 
     6 pins total. This is the margin available if the eventual Micro-Fit
     3.0 connector spec (section 5) turns out to need MCU-side signals

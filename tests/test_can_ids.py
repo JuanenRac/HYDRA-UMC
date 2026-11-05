@@ -87,8 +87,9 @@ class CanIdTableTests(unittest.TestCase):
         for sent in re.findall(r"SendClassicFrame\(&hfdcan1_app, ([^,]+),", text):
             # the answers to the requests of the brain have their own identifiers; the error counters keep the one of the bootloader (the application
             # and the bootloader never run at the same time, and the host asks both with the same query)
+            # the stop frame of the physical input goes out on the stop identifier 0x001 (any node may send a TRIP, docs/ESTOP_CAN.md)
             # the state of the emergency stop and the reply to the slot scan are messages of the board itself (one emitter each, see tools/can_ids.py)
-            self.assertTrue("RelayAnswerOffset" in sent or any(name in sent for name in ("OFS_ERROR_COUNTERS_RESPONSE", "OFS_ESTOP_STATE", "OFS_SLOT_SCAN_REPLY")), sent)
+            self.assertTrue("RelayAnswerOffset" in sent or any(name in sent for name in ("OFS_ERROR_COUNTERS_RESPONSE", "OFS_ESTOP_STATE", "OFS_SLOT_SCAN_REPLY", "RELAY_ESTOP_CAN_ID")), sent)
         brain = (root / "src/mcu_stm32h745/CM4/KinematicBrainCan.c").read_text(encoding="utf-8")
         self.assertNotIn("WaitForResponse(base + OFS_AXIS_STATUS,", brain)
         self.assertNotIn("WaitForResponse(relay_recv_id,", brain)

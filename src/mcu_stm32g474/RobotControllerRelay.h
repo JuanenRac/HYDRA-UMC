@@ -72,6 +72,9 @@ void RobotControllerRelay_Poll(void);
  * fault; defined in STM32G474RE_main.c. */
 void MotionOutputs_ForceDisabled(void);
 
+/* The same, for the axes whose bit is set in axis_mask (bit n-1 = axis n): the stop category of each axis (config/machine.cfg) decides which are cut at once. */
+void MotionOutputs_ForceDisabledMask(uint8_t axis_mask);
+
 /* Emergency stop on identifier 0x001 (docs/ESTOP_CAN.md). The board starts LATCHED with the driver enables off; a TRIP, a malformed frame, a bus-off or
  * the silence of the kinematic brain latch it again, and only a RELEASE for the current stop after a live ALIVE makes it READY. READY enables nothing:
  * the normal enable command has to ask RobotControllerRelay_RequestDriversEnable(), which is refused while LATCHED. Not a certified safety function. */

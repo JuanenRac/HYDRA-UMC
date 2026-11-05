@@ -8,7 +8,7 @@ The bootloaders hold only public keys and a plain SHA-256 of the installed appli
 * **Level 1** (any other value, `0xBB` is the one programmer tools write): the flash cannot be read through the debug port while the chip runs. Reversible, but going back to level 0 **erases the whole flash**, the bootloader included, so a board that leaves level 1 is flashed again from the start.
 * **Level 2** (`0xCC`): permanent. It is **not offered** by the tool of this repository and the bootloaders do not need it.
 
-`python tools/rdp_plan.py decode 0xAA` reads an option byte; `python tools/rdp_plan.py command --level 1` prints the programmer command; the tool never talks to a board. Whether a production flash sets level 1 is meant to be a setting of the production configuration (`production.rdp_level`, 0 or 1, default 0, so nothing is protected unless it is asked for); no flashing tool reads it yet and the switch in STUDIO is still to be made. The procedure is tried on a sacrificial board first (row 16 of `docs/BENCH_TESTS.md`).
+`python tools/rdp_plan.py decode 0xAA` reads an option byte; `python tools/rdp_plan.py command --level 1` prints the programmer command; the tool never talks to a board. Whether a production flash sets level 1 is meant to be a setting of the production configuration (`production.rdp_level`, 0 or 1, default 0, so nothing is protected unless it is asked for); it is kept in `config/machine.cfg` (section `production`, `rdp_level = 0`, checked by `tools/machine_cfg.py`) and there is a switch for it in STUDIO; no flashing tool reads it yet, so setting it changes nothing on a board until one does. The procedure is tried on a sacrificial board first (row 16 of `docs/BENCH_TESTS.md`).
 
 ## Identity of one chip
 

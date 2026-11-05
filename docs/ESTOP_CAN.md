@@ -104,11 +104,11 @@ Two states: **LATCHED** (drivers off) and **READY** (drivers may be enabled by t
 
 These need a person to decide or hardware that does not exist yet; none is guessed here.
 
-1. **Stop category per axis.** Category 0 (drivers off at once) is the default and what the bench row asks for. An arm carrying a load can
-   fall when its drivers are cut. Question for the owner: should some axes brake or ramp down first (category 1) and which, and is there a
-   holding brake output on the boards?
-2. **Physical emergency stop input.** No document of this repository describes one on the carrier or on the STACK A connector. Question for
-   the owner: is there a physical emergency stop input, where does it connect, and does it cut the driver enable directly?
+1. **Stop category per axis.** Decided: category 0 (drivers off at once) is the default for every axis, and an axis can be set to category 1
+   (decelerate, then cut after a time limit) in `config/machine.cfg`; see Stop category and Physical input below. Still open: the motion layer
+   that performs the deceleration does not exist in this firmware yet, and whether the boards have a holding brake output.
+2. **Physical emergency stop input.** Decided and written (see Physical input below). Still open: the real wiring of the loop on the carrier, and
+   the choice of the pin on the final board (the default is a free pin of the pinout; it is set in `config/machine.cfg`).
 3. **Tool heads.** Honouring 0x001 is a change to the head firmware of URTC. Question for the owner: should the URTC heads adopt it?
 4. **Timing.** The values above are proposals; the bench rows 17, 18, 20 and 21 of `docs/BENCH_TESTS.md` measure them.
 5. **The SPI command.** The brain has the calls that stop the stack and start a release (`KinematicBrainCan_EstopTrip`,
@@ -130,6 +130,33 @@ These need a person to decide or hardware that does not exist yet; none is guess
 - Kinematic brain (`KinematicBrainCan.c`): starts stopped and repeats TRIP; the STACK A task runs every millisecond (the slot queries wait at most
   20 ms and keep sending the stop frames while they wait).
 - Tool heads (URTC) do not honour 0x001 yet: that is the head firmware of another repository.
+
+## Stop category per axis
+
+`config/machine.cfg`, section `stop`: `default_category` (0 unless the file says otherwise) and `axis1_category` .. `axis6_category`.
+
+- **Category 0** (the default of every axis): the driver enable of the axis is cut in the same pass in which the stop is known.
+- **Category 1**: the axis is listed for the motion layer to decelerate, and its driver enable is cut after `ramp_max_ms` at the latest (a time
+  limit that always ends in a cut, whatever the motion layer does).
+
+`tools/machine_cfg.py generate` turns the file into `src/mcu_stm32g474/machine_config.h` (a test fails when the header is stale), so no tuned
+value is written in the source. `estop_input.h` holds the policy (`StopPolicy_*`); `tests/test_estop_input.c` runs it on the host.
+
+## Physical input
+
+The controller board reads a normally closed emergency stop loop on one pin. The pin, the port and the level read while the loop is closed
+(`healthy_level`) come from `config/machine.cfg`, section `estop_input`; the internal pull is the opposite of the healthy level, so a cut wire,
+an opened contact or a failed pull reads as the stop level.
+
+- **Fail safe at start:** the input starts tripped and clears only after the healthy level has stayed for `clear_debounce_ms`.
+- **Debounce:** a stop is accepted after `trip_debounce_ms` (short), the return to healthy after `clear_debounce_ms` (long). A bounce restarts the time.
+- **Joins the bus stop:** a tripped input latches the board through the same decision as a TRIP heard on the bus, whichever comes first, and
+  sends a TRIP with reason `0x03` (hardware input) on STACK A and to the tool head, repeated every `trip_repeat_ms`. It shows in `ESTOP_STATE`
+  as LATCHED.
+- **A RELEASE cannot unlatch the board while the loop is open.** With the loop closed again, the usual acknowledged release applies.
+- `enabled = 0` ignores the input (a board with no loop); the default is on, so a board without a loop or a jumper stays latched.
+
+Nothing of this has run on a board; the debounce and the decision are checked on the host (`tests/test_estop_input.c`).
 
 ## Related
 

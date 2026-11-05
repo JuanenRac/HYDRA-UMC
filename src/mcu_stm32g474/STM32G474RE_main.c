@@ -78,21 +78,31 @@
 
 /* Register writes only, no HAL, no clock tree: the level is written to the output data register before the pins become outputs, so a pin that
  * was an input (pulled up or down) never glitches the wrong way. Safe to call from a fault handler. */
-void MotionOutputs_ForceDisabled(void)
+void MotionOutputs_ForceDisabledMask(uint8_t axis_mask)
 {
+  static const uint8_t pins[6] = {0, 1, 3, 4, 5, 15};
+  uint32_t pin_mask = 0;
+  for (unsigned i = 0; i < 6; i++) {
+    if (axis_mask & (1u << i)) pin_mask |= 1u << pins[i];
+  }
+  if (pin_mask == 0) return;
   RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN;
   (void)RCC->AHB2ENR; /* read back: the clock is on before the port is touched */
 #if MOTION_DISABLE_LEVEL_HIGH
-  GPIOA->BSRR = MOTION_ENABLE_PINS_MASK;
+  GPIOA->BSRR = pin_mask;
 #else
-  GPIOA->BSRR = MOTION_ENABLE_PINS_MASK << 16;
+  GPIOA->BSRR = pin_mask << 16;
 #endif
   uint32_t moder = GPIOA->MODER;
-  const uint32_t pins[6] = {0, 1, 3, 4, 5, 15};
   for (unsigned i = 0; i < 6; i++) {
-    moder = (moder & ~(3u << (pins[i] * 2u))) | (1u << (pins[i] * 2u)); /* 01 = general purpose output */
+    if (axis_mask & (1u << i)) moder = (moder & ~(3u << (pins[i] * 2u))) | (1u << (pins[i] * 2u)); /* 01 = general purpose output */
   }
   GPIOA->MODER = moder;
+}
+
+void MotionOutputs_ForceDisabled(void)
+{
+  MotionOutputs_ForceDisabledMask(0x3Fu);
 }
 
 static void Error_Handler(void)

@@ -238,6 +238,15 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # estop_input.h: the physical stop input (debounce, fail safe, polarity) and the stop category of each axis.
+    ESTOP_INPUT_HOST_BIN="$ROOT/build/host_tests_estop_input"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32g474" -o "$ESTOP_INPUT_HOST_BIN" "$ROOT/tests/test_estop_input.c" && "$ESTOP_INPUT_HOST_BIN" >/dev/null; then
+        pass "estop_input host logic tests passed"
+    else
+        fail "estop_input host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # The bootloaders' own SHA-256, Ed25519 check, CRC32 and flash erase/program/copy/metadata
     # routines, compiled as they are against a stand-in HAL header (tests/stubs):
     # the G474 one by bank and page, the two H745 ones by 128 KB sector. They map

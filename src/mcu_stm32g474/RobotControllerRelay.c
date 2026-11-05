@@ -28,6 +28,8 @@
 #include "boot/bootloader_common.h" /* shared CAN_ID_STACKA_BASE/STACKA_SLOT_WINDOW/OFS_* */
 #include "boot/slot_scan_node.h"     /* the answer to the slot scan probe (docs/SLOT_SCAN.md) */
 #include "estop_can.h"               /* the emergency stop on identifier 0x001 (docs/ESTOP_CAN.md) */
+#include "estop_input.h"             /* the physical stop input and the stop category of each axis */
+#include "machine_config.h"          /* generated from config/machine.cfg */
 #include <string.h>
 
 static FDCAN_HandleTypeDef hfdcan1_app; /* uplink - STACK A, shared with the Kinematic Brain and every other slot */
@@ -41,6 +43,12 @@ static uint8_t estop_state_due;       /* an ESTOP_STATE answer is owed to the ki
 static uint8_t estop_last_latched = 1;
 static uint32_t estop_state_last_ms;
 #define ESTOP_STATE_HEARTBEAT_MS 100u
+static void EstopInputGpio_Init(void);
+static EstopInput_t estop_input;      /* the physical stop loop, normally closed; starts tripped */
+static StopPolicy_t stop_policy;      /* which axes are cut at once and which decelerate first */
+static uint16_t estop_local_seq;      /* sequence of the stop frames this board sends from its own input */
+static uint32_t estop_local_sent_ms;
+static uint8_t estop_local_sent_once;
 
 /* Application-level offsets - architecture.md section 4's own reserved
  * range, mirrors KinematicBrainCan.c's identical #defines on the Tier 0
@@ -359,7 +367,11 @@ void RobotControllerRelay_Init(void)
     chip_uid32 = SlotScan_FoldUid(HAL_GetUIDw0(), HAL_GetUIDw1(), HAL_GetUIDw2());
     SlotScanNode_Reset(&slot_scan_node);
     EstopNode_Reset(&estop_node);
+    EstopInputGpio_Init();
+    StopPolicy_Init(&stop_policy, (uint8_t)MACHINE_STOP_CATEGORY1_MASK, MACHINE_STOP_RAMP_MAX_MS);
     MotionOutputs_ForceDisabled(); /* power-up is LATCHED: the driver enables are off until a release and the normal enable command */
+    (void)StopPolicy_Trip(&stop_policy, HAL_GetTick());
+    stop_policy.cut_mask = (uint8_t)((1u << STOP_AXES) - 1u); /* everything is already off at power-up */
     estop_state_due = 1;
     MX_FDCAN1_App_Init();
     MX_FDCAN2_Init();
@@ -368,13 +380,74 @@ void RobotControllerRelay_Init(void)
 
 /* Answers one message of this board's own slot window on FDCAN1 (uplink). Every other slot's own traffic (and every other board's STACK A heartbeats) is silently ignored,
  * same "wide-open hardware filter, check in software" reasoning as the bootloader. */
+/* The physical stop input (machine.cfg, section estop_input): the pull is opposite to the healthy level, so a cut wire reads as the stop level. */
+static GPIO_TypeDef *EstopInputPort(void)
+{
+    switch (MACHINE_ESTOP_INPUT_PORT) {
+    case 'A': return GPIOA;
+    case 'B': return GPIOB;
+    default:  return GPIOC;
+    }
+}
+
+static void EstopInputGpio_Init(void)
+{
+    const EstopInputConfig_t cfg = {
+        MACHINE_ESTOP_INPUT_ENABLED, MACHINE_ESTOP_INPUT_HEALTHY_LEVEL,
+        MACHINE_ESTOP_INPUT_TRIP_DEBOUNCE_MS, MACHINE_ESTOP_INPUT_CLEAR_DEBOUNCE_MS,
+    };
+    EstopInput_Init(&estop_input, &cfg);
+    if (!cfg.enabled) return;
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    GPIO_InitTypeDef gi = {0};
+    gi.Pin = (uint16_t)(1u << MACHINE_ESTOP_INPUT_PIN);
+    gi.Mode = GPIO_MODE_INPUT;
+    gi.Pull = EstopInput_PullUp(&cfg) ? GPIO_PULLUP : GPIO_PULLDOWN;
+    gi.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(EstopInputPort(), &gi);
+}
+
+/* Applies the stop category of each axis while the node is latched: the category 0 axes are cut at once, the category 1 axes after their ramp at the
+ * latest. The cuts are written again every pass. A READY node forgets the stop. */
+static void EstopApplyOutputs(uint32_t now)
+{
+    if (!estop_node.latched) {
+        StopPolicy_Clear(&stop_policy);
+        return;
+    }
+    (void)StopPolicy_Trip(&stop_policy, now);
+    (void)StopPolicy_Tick(&stop_policy, now);
+    MotionOutputs_ForceDisabledMask(stop_policy.cut_mask);
+}
+
+/* The loop is open: the stop frame goes out as a TRIP (reason hardware input) on the stack bus and to the tool head, and the node is latched through the
+ * same decision as a stop heard on the bus, so whichever fires first latches. Repeated every MACHINE_ESTOP_INPUT_TRIP_REPEAT_MS. */
+static void EstopLocalTrip(uint32_t now, uint8_t announce)
+{
+    uint8_t frame[8];
+    Estop_Encode(frame, ESTOP_KIND_TRIP, ESTOP_REASON_HARDWARE, (uint8_t)(ESTOP_SOURCE_SLOT_FIRST + slot_board_id), estop_node.epoch, estop_local_seq);
+    EstopNode_OnFrame(&estop_node, now, frame, 8);
+    EstopApplyOutputs(now); /* the drivers go off before anything is transmitted */
+    if (!announce) return;
+    if (estop_local_sent_once && (uint32_t)(now - estop_local_sent_ms) < MACHINE_ESTOP_INPUT_TRIP_REPEAT_MS) return;
+    estop_local_sent_ms = now;
+    estop_local_sent_once = 1;
+    estop_local_seq++;
+    SendClassicFrame(&hfdcan1_app, RELAY_ESTOP_CAN_ID, frame, 8);
+    SendClassicFrame(&hfdcan2_app, RELAY_ESTOP_CAN_ID, frame, 8);
+}
+
 /* A frame on the emergency stop identifier: the node state machine decides, the drivers go off at once when it is latched, and the frame is passed
  * on unchanged to the tool head on the downlink (one frame in, one frame out, never inside the relay tunnel). */
 static void ServiceEstopFrame(const uint8_t data[8], uint8_t dlc)
 {
     const uint8_t length = dlc > 8u ? 8u : dlc;
-    EstopNode_OnFrame(&estop_node, HAL_GetTick(), data, length);
-    if (estop_node.latched) MotionOutputs_ForceDisabled();
+    const uint32_t now = HAL_GetTick();
+    EstopNode_OnFrame(&estop_node, now, data, length);
+    if (estop_input.tripped) EstopLocalTrip(now, 0); /* a RELEASE cannot unlatch the board while the loop is open */
+    EstopApplyOutputs(now);
     SendClassicFrame(&hfdcan2_app, RELAY_ESTOP_CAN_ID, data, length);
     if (length == 8u && data[0] == ESTOP_KIND_RELEASE) estop_state_due = 1; /* the brain waits for this answer to every RELEASE */
 }
@@ -385,12 +458,17 @@ static void EstopHousekeeping(void)
 {
     const uint32_t now = HAL_GetTick();
     EstopNode_Tick(&estop_node, now);
+    if (MACHINE_ESTOP_INPUT_ENABLED) {
+        const uint8_t raw = (uint8_t)(HAL_GPIO_ReadPin(EstopInputPort(), (uint16_t)(1u << MACHINE_ESTOP_INPUT_PIN)) == GPIO_PIN_SET);
+        if (EstopInput_Sample(&estop_input, now, raw)) EstopLocalTrip(now, 1);
+        else estop_local_sent_once = 0;
+    }
     FDCAN_ProtocolStatusTypeDef protocol;
     if (HAL_FDCAN_GetProtocolStatus(&hfdcan1_app, &protocol) == HAL_OK && protocol.BusOff) {
         EstopNode_OnBusOff(&estop_node);
         CLEAR_BIT(hfdcan1_app.Instance->CCCR, FDCAN_CCCR_INIT); /* start the recovery; the bus coming back releases nothing */
     }
-    if (estop_node.latched) MotionOutputs_ForceDisabled();
+    EstopApplyOutputs(now);
     if (estop_node.latched != estop_last_latched) {
         estop_last_latched = estop_node.latched;
         estop_state_due = 1;
