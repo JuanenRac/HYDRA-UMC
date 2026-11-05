@@ -156,6 +156,10 @@ uint32_t ReadSlotBaseId(void);
 #define OFS_DOWNGRADE_NONCE_REQUEST        0x1A // host -> bootloader, DLC=1: which half (0 or 1) of the 16-byte nonce of this session it wants
 #define OFS_DOWNGRADE_TOKEN                0x1B // host -> bootloader, DLC=8 x 8 frames, optional: the Ed25519 signature that allows exactly one downgrade (see update_verify.h)
 #define OFS_DOWNGRADE_NONCE_RESPONSE       0x1C // sent BY this bootloader, DLC=8: the half that was asked for
+// Emergency stop state and slot scan (docs/ESTOP_CAN.md, docs/SLOT_SCAN.md). The stop itself is the identifier 0x001, outside the slot window.
+#define OFS_ESTOP_STATE                    0x1D // sent BY the application of a controller board, DLC=4: latched or ready, epoch, last accepted sequence
+#define OFS_SLOT_SCAN_PROBE                0x1E // host -> every board of the slot window, DLC=8: who is there? (slot_scan_node.h)
+#define OFS_SLOT_SCAN_REPLY                0x1F // sent BY the bootloader or the application after a delay taken from its unique identifier, DLC=8
 
 // Status/verify-fail codes - identical values to URTC's own, so a shared
 // host-side decoder (HYDRA-UMC-STUDIO's canOta.ts) can use one status enum

@@ -1,9 +1,10 @@
 # Emergency stop on the stack bus: identifier 0x001
 
-Status: **contract and host reference only.** No firmware sends or honours these frames yet and nothing in this page has run on a board.
-`docs/bus_contract.json` (section `emergency_stop`) holds the numbers, `tools/estop_can.py` is the reference of the frame and of the
-state machine, `tests/estop_vectors.json` holds the frames and the scenarios that the firmware has to reproduce, and
-`tests/test_estop_contract.py` keeps all of them consistent. This page is the one place where the contract is written; the other
+Status: **firmware written and tested on the host; nothing in this page has run on a board.** The controller board and the kinematic brain
+implement it (see Firmware below). `docs/bus_contract.json` (section `emergency_stop`) holds the numbers, `tools/estop_can.py` is the
+reference of the frame and of the state machine, `tests/estop_vectors.json` holds the frames and the scenarios that the firmware reproduces
+(`tests/test_estop_can.c` replays all of them against `estop_can.h`), and `tests/test_estop_contract.py` and
+`tests/test_node_headers_parity.py` keep all of them consistent. This page is the one place where the contract is written; the other
 repositories of the family link here instead of copying it.
 
 This is **not a certified safety function.** It is an additional, fast, software path. It never replaces a hardware emergency stop
@@ -110,8 +111,25 @@ These need a person to decide or hardware that does not exist yet; none is guess
    the owner: is there a physical emergency stop input, where does it connect, and does it cut the driver enable directly?
 3. **Tool heads.** Honouring 0x001 is a change to the head firmware of URTC. Question for the owner: should the URTC heads adopt it?
 4. **Timing.** The values above are proposals; the bench rows 17, 18, 20 and 21 of `docs/BENCH_TESTS.md` measure them.
-5. **Firmware.** The sender, the receiver, the forwarding to the downlink, the hardware filter entry for 0x001 (the application filters are
-   wide open today) and the SPI command that asks the brain for a stop or a release are not written. They need a build and the bench.
+5. **The SPI command.** The brain has the calls that stop the stack and start a release (`KinematicBrainCan_EstopTrip`,
+   `KinematicBrainCan_EstopRequestRelease`), but the SPI command that asks for them from the CM5 is not defined: it changes the protocol between
+   the CM5 and the CM4 and goes with a coordinated update of both. Until then nothing but the firmware itself (a TRIP heard on the bus) stops the
+   stack, and a release is only started by code.
+6. **The bench.** None of the firmware below has run on a board: rows 17, 18, 20 and 21 of `docs/BENCH_TESTS.md` measure it.
+
+## Firmware
+
+- `estop_can.h` (the same file in `src/mcu_stm32g474/` and `src/mcu_stm32h745/CM4/`): the frame, the decision and the node state machine.
+  `estop_brain.h` (CM4): what the master sends and when. Neither touches the hardware; `tests/test_estop_can.c` runs the vectors and a bus with
+  a brain and several nodes (power-up, release, a stop, a release that one board does not confirm, a stop during a release, wrap of the clock).
+- Controller board (`RobotControllerRelay.c`): the node starts LATCHED with the driver enable outputs forced off; a frame on 0x001 (accepted by
+  the hardware filter) goes to the state machine, the outputs are forced off in the same pass when it is latched and the frame is passed on
+  unchanged to the tool head on FDCAN2. A bus-off latches the node and restarts the controller; the silence of the master latches a READY node.
+  `ESTOP_STATE` is sent on a change, after every RELEASE and every 100 ms. The normal enable command has to ask
+  `RobotControllerRelay_RequestDriversEnable()`, which refuses while LATCHED.
+- Kinematic brain (`KinematicBrainCan.c`): starts stopped and repeats TRIP; the STACK A task runs every millisecond (the slot queries wait at most
+  20 ms and keep sending the stop frames while they wait).
+- Tool heads (URTC) do not honour 0x001 yet: that is the head firmware of another repository.
 
 ## Related
 

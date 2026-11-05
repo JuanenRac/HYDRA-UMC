@@ -6,7 +6,15 @@
 import unittest
 
 from spi_bridge.protocol import SPI_FRAME_SIZE, SpiOtaFrame
-from spi_bridge.transport import RealSpiOtaTransport, _parse_spidev_path, open_spi_transport
+from spi_bridge.transport import (
+    SEAL_OFFSET_SEQUENCE,
+    RealSpiOtaTransport,
+    _parse_spidev_path,
+    crc16_ccitt_false,
+    frame_seal_state,
+    open_spi_transport,
+    seal_frame,
+)
 
 
 def _spidev_and_gpiod_installed() -> bool:
@@ -38,6 +46,73 @@ class OpenSpiTransportTests(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             open_spi_transport("/dev/spidev0.0", "/dev/gpiochip0", 3)
         self.assertIn("spidev/gpiod are not installed", str(context.exception))
+
+
+class _RecordingSpi:
+    def __init__(self, reply):
+        self._reply = reply
+        self.sent = []
+
+    def xfer2(self, request):
+        self.sent.append(bytes(request))
+        return list(self._reply)
+
+    def close(self):
+        pass
+
+
+class SealedFrameTests(unittest.TestCase):
+    def test_the_crc_of_the_check_text_is_the_standard_value(self):
+        self.assertEqual(crc16_ccitt_false(b"123456789"), 0x29B1)
+
+    def test_a_sealed_request_matches_the_reference_of_the_repository(self):
+        import sys
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[4]
+        sys.path.insert(0, str(root / "tools"))
+        import spi_frame  # the reference that also gives the vectors of the firmware test
+
+        frame = SpiOtaFrame(1, 3, 0x08, 0, b"")
+        sealed = seal_frame(frame.to_bytes(), 7)
+        reference = spi_frame.build(1, 3, 0x08, b"", 7)
+        self.assertEqual(sealed, reference)
+        self.assertEqual(frame_seal_state(sealed), "ok")
+
+    def test_the_transport_seals_every_request_with_a_new_sequence(self):
+        spi = _RecordingSpi(SpiOtaFrame(1, 3, 0x05, 1, b"\x01").to_bytes())
+        transport = RealSpiOtaTransport(spi, _Line())
+        frame = SpiOtaFrame(1, 3, 0x08, 0, b"")
+        transport.transceive(frame)
+        transport.transceive(frame)
+        self.assertEqual([frame_seal_state(raw) for raw in spi.sent], ["ok", "ok"])
+        self.assertEqual([raw[SEAL_OFFSET_SEQUENCE] for raw in spi.sent], [1, 2])
+        self.assertEqual(spi.sent[0][:12], frame.to_bytes()[:12])
+
+    def test_the_sequence_wraps_after_255(self):
+        spi = _RecordingSpi(SpiOtaFrame(1, 3, 0x05, 1, b"\x01").to_bytes())
+        transport = RealSpiOtaTransport(spi, _Line())
+        for _ in range(257):
+            transport.transceive(SpiOtaFrame(1, 3, 0x08, 0, b""))
+        self.assertEqual(spi.sent[255][SEAL_OFFSET_SEQUENCE], 0)
+        self.assertEqual(spi.sent[256][SEAL_OFFSET_SEQUENCE], 1)
+
+    def test_sealing_can_be_switched_off(self):
+        spi = _RecordingSpi(SpiOtaFrame(1, 3, 0x05, 1, b"\x01").to_bytes())
+        transport = RealSpiOtaTransport(spi, _Line(), seal_requests=False)
+        transport.transceive(SpiOtaFrame(1, 3, 0x08, 0, b""))
+        self.assertEqual(frame_seal_state(spi.sent[0]), "unsealed")
+
+    def test_a_response_with_a_bad_crc_is_a_failed_transfer_and_an_unsealed_one_is_accepted(self):
+        good = SpiOtaFrame(1, 3, 0x05, 1, b"\x01").to_bytes()
+        damaged = bytearray(seal_frame(good, 9))
+        damaged[4] ^= 0x01
+        with self.assertRaises(OSError):
+            RealSpiOtaTransport(_RecordingSpi(bytes(damaged)), _Line()).transceive(SpiOtaFrame(1, 3, 0x08, 0, b""))
+        answer = RealSpiOtaTransport(_RecordingSpi(good), _Line()).transceive(SpiOtaFrame(1, 3, 0x08, 0, b""))
+        self.assertEqual(answer.frame_type, 0x05)
+        sealed = RealSpiOtaTransport(_RecordingSpi(seal_frame(good, 9)), _Line()).transceive(SpiOtaFrame(1, 3, 0x08, 0, b""))
+        self.assertEqual(sealed.frame_type, 0x05)
 
 
 if __name__ == "__main__":

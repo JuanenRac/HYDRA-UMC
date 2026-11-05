@@ -48,6 +48,19 @@
  * this prescaler assumes may shift with it). Call once from main(). */
 void KinematicBrainCan_Init(void);
 
+/* Emergency stop on identifier 0x001 (docs/ESTOP_CAN.md), the master side. The brain starts stopped and announces it; it repeats TRIP while stopped,
+ * sends ALIVE while running, and ends a stop only after KinematicBrainCan_EstopRequestRelease() (which has to be called after an authenticated
+ * administrative action of a person) and an ESTOP_STATE of READY from every expected board. All of these are called from the STACK A task only.
+ * Not a certified safety function and never a replacement for a hardware emergency stop.
+ *  - KinematicBrainCan_EstopPoll(): call every millisecond or so; reads the stop frames and the board states, sends the frames that are due.
+ *  - KinematicBrainCan_EstopTrip(reason): stops the stack (reason codes ESTOP_REASON_* in estop_can.h).
+ *  - KinematicBrainCan_EstopRequestRelease(mask): bit n = the board of slot n has to confirm; 1 when the release started.
+ *  - KinematicBrainCan_EstopStatus(): returns 1 while stopped; the release state (ESTOP_RELEASE_*) and the boards that did not confirm. */
+void KinematicBrainCan_EstopPoll(void);
+void KinematicBrainCan_EstopTrip(uint8_t reason);
+uint8_t KinematicBrainCan_EstopRequestRelease(uint8_t expected_slots_mask);
+uint8_t KinematicBrainCan_EstopStatus(uint8_t *release_state, uint8_t *missing_slots_mask);
+
 /* Real slot-addressed AXIS_STATUS query (+0x10) - sends a real Classic CAN
  * frame to CAN_ID_STACKA_BASE + slot*STACKA_SLOT_WINDOW + 0x10 and waits
  * (bounded, non-blocking-forever) for a real response. Returns 1 and

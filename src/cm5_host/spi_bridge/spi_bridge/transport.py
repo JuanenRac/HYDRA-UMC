@@ -31,6 +31,44 @@ from typing import Protocol
 from .protocol import SPI_FRAME_SIZE, SpiOtaFrame
 
 
+# The 128-byte frame carries 12 meaningful bytes; the first four bytes of the padding seal it (docs/SPI_FRAME_INTEGRITY.md, spi_frame_crc.h on the
+# firmware side, tools/spi_frame.py as the reference): a marker, a sequence and a CRC-16/CCITT-FALSE of bytes 0 to 13, high byte first.
+SEAL_MARKER = 0xA1
+SEAL_OFFSET_MARKER = 12
+SEAL_OFFSET_SEQUENCE = 13
+SEAL_OFFSET_CRC = 14
+SEAL_SPAN = 14
+
+
+def crc16_ccitt_false(data: bytes) -> int:
+    crc = 0xFFFF
+    for byte in data:
+        crc ^= byte << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF
+    return crc
+
+
+def seal_frame(raw: bytes, sequence: int) -> bytes:
+    """The frame with the marker, the sequence and the CRC-16 written into the padding."""
+    if len(raw) != SPI_FRAME_SIZE:
+        raise ValueError(f"SPI frame must be exactly {SPI_FRAME_SIZE} bytes, got {len(raw)}")
+    sealed = bytearray(raw)
+    sealed[SEAL_OFFSET_MARKER] = SEAL_MARKER
+    sealed[SEAL_OFFSET_SEQUENCE] = sequence & 0xFF
+    crc = crc16_ccitt_false(bytes(sealed[:SEAL_SPAN]))
+    sealed[SEAL_OFFSET_CRC], sealed[SEAL_OFFSET_CRC + 1] = crc >> 8, crc & 0xFF
+    return bytes(sealed)
+
+
+def frame_seal_state(raw: bytes) -> str:
+    """'unsealed' (the older padding), 'ok' or 'bad_crc'."""
+    if raw[SEAL_OFFSET_MARKER] != SEAL_MARKER:
+        return "unsealed"
+    expected = (raw[SEAL_OFFSET_CRC] << 8) | raw[SEAL_OFFSET_CRC + 1]
+    return "ok" if crc16_ccitt_false(bytes(raw[:SEAL_SPAN])) == expected else "bad_crc"
+
+
 class SpiOtaTransport(Protocol):
     """The minimal real interface bootloader_client.py depends on."""
 
@@ -50,15 +88,24 @@ class RealSpiOtaTransport:
     STM32H745 clocked back.
     """
 
-    def __init__(self, spi_device: object, data_ready_line: object):
+    def __init__(self, spi_device: object, data_ready_line: object, *, seal_requests: bool = True):
         self._spi = spi_device
         self._data_ready_line = data_ready_line
+        self._seal_requests = seal_requests
+        self._sequence = 0
 
     def transceive(self, frame: SpiOtaFrame) -> SpiOtaFrame:
         raw_request = frame.to_bytes()
+        if self._seal_requests:
+            # every request is new for the firmware: the sequence moves on, so a retry by the caller is a new request, never a replay
+            self._sequence = (self._sequence + 1) & 0xFF
+            raw_request = seal_frame(raw_request, self._sequence)
         raw_response = bytes(self._spi.xfer2(list(raw_request)))
         if len(raw_response) != SPI_FRAME_SIZE:
             raise OSError(f"SPI transfer returned {len(raw_response)} bytes, expected {SPI_FRAME_SIZE}")
+        if frame_seal_state(raw_response) == "bad_crc":
+            # the gateway seals what it sends; a sealed frame whose CRC does not match was damaged on the link
+            raise OSError("SPI transfer returned a frame whose CRC does not match")
         try:
             return SpiOtaFrame.from_bytes(raw_response)
         except ValueError as error:

@@ -35,6 +35,7 @@
 #include "bootloader_protocol.h"
 #include "boot_decision.h"
 #include "dlc_to_fdcan_data_length.h"
+#include "slot_scan_node.h"
 
 FDCAN_HandleTypeDef hfdcan1;
 IWDG_HandleTypeDef  hiwdg;
@@ -191,6 +192,19 @@ static void MX_FDCAN1_Init(uint32_t slot_base) {
 
 static uint32_t last_heartbeat_tick = 0 - 1000; // forces an immediate heartbeat on the first check
 
+// The slot scan (docs/SLOT_SCAN.md): the answer to a probe leaves after a delay taken from the unique identifier of the chip, so two boards set to the
+// same slot answer one after the other and the host can tell that there are two.
+static SlotScanNode_t boot_scan;
+static uint32_t boot_uid32;
+static uint8_t boot_board_id;
+
+static void BootScanPoll(void) {
+    uint8_t reply[8];
+    if (SlotScanNode_Due(&boot_scan, HAL_GetTick(), boot_board_id, SLOT_SCAN_ROLE_BOOTLOADER, boot_uid32, reply)) {
+        CAN_SendSlotScanReply(reply);
+    }
+}
+
 int main(void) {
     // IWDG armed as the very first action in main(), before HAL_Init() -
     // if HAL_Init()/SystemClock_Config() themselves ever got stuck (bad
@@ -225,6 +239,9 @@ int main(void) {
 
     uint32_t slot_base = ReadSlotBaseId();
     Protocol_Init(slot_base);
+    boot_board_id = (uint8_t)((slot_base - CAN_ID_STACKA_BASE) / STACKA_SLOT_WINDOW);
+    boot_uid32 = SlotScan_FoldUid(HAL_GetUIDw0(), HAL_GetUIDw1(), HAL_GetUIDw2());
+    SlotScanNode_Reset(&boot_scan);
 
     MX_FDCAN1_Init(slot_base);
     const uint8_t link_ok = (boot_hal_fault & BOOT_FAULT_LINK_MASK) == 0; // false: the bus is not usable, a valid application still starts but no update can come in
@@ -236,6 +253,7 @@ int main(void) {
 
     while (link_ok && (HAL_GetTick() - listen_start) < 600) {
         HAL_IWDG_Refresh(&hiwdg);
+        BootScanPoll();
         if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) > 0) {
             FDCAN_RxHeaderTypeDef rxHeader;
             uint8_t rxData[8];
@@ -255,6 +273,8 @@ int main(void) {
                     }
                 } else if (ofs == OFS_QUERY_VERSION) {
                     HandleVersionQuery();
+                } else if (ofs == OFS_SLOT_SCAN_PROBE) {
+                    (void)SlotScanNode_OnProbe(&boot_scan, HAL_GetTick(), rxData, (uint8_t)dlc, boot_uid32);
                 } else if (ofs == OFS_QUERY_ERROR_COUNTERS) {
                     HandleErrorCounterQuery();
                 } else if (ofs == OFS_BACKUP_READ_REQUEST) {
@@ -313,6 +333,7 @@ int main(void) {
     CAN_SendStatus(STATUS_LISTENING);
     while (1) {
         HAL_IWDG_Refresh(&hiwdg);
+        BootScanPoll();
         if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) > 0) {
             FDCAN_RxHeaderTypeDef rxHeader;
             uint8_t rxData[8];
@@ -338,6 +359,8 @@ int main(void) {
                     HandleEndUpdate(rxData);
                 } else if (ofs == OFS_QUERY_VERSION) {
                     HandleVersionQuery();
+                } else if (ofs == OFS_SLOT_SCAN_PROBE) {
+                    (void)SlotScanNode_OnProbe(&boot_scan, HAL_GetTick(), rxData, (uint8_t)dlc, boot_uid32);
                 } else if (ofs == OFS_QUERY_ERROR_COUNTERS) {
                     HandleErrorCounterQuery();
                 } else if (ofs == OFS_AUTHORIZE_DOWNGRADE && dlc == 4) {

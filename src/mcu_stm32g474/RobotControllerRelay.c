@@ -26,11 +26,21 @@
 #include "dlc_to_fdcan_data_length.h"
 #include "stm32g4xx_hal.h"
 #include "boot/bootloader_common.h" /* shared CAN_ID_STACKA_BASE/STACKA_SLOT_WINDOW/OFS_* */
+#include "boot/slot_scan_node.h"     /* the answer to the slot scan probe (docs/SLOT_SCAN.md) */
+#include "estop_can.h"               /* the emergency stop on identifier 0x001 (docs/ESTOP_CAN.md) */
 #include <string.h>
 
 static FDCAN_HandleTypeDef hfdcan1_app; /* uplink - STACK A, shared with the Kinematic Brain and every other slot */
 static FDCAN_HandleTypeDef hfdcan2_app; /* downlink - this robot's own URTC Tool Head, Tier 2 */
 static uint32_t slot_base;
+static uint8_t slot_board_id;         /* BOARD_ID[2:0], the slot this board answers for */
+static uint32_t chip_uid32;           /* the 96-bit unique identifier of the chip folded to 32 bits, what the slot scan reply carries */
+static SlotScanNode_t slot_scan_node; /* the reply to a probe, waiting for its turn */
+static EstopNode_t estop_node;        /* LATCHED at power-up; READY only after a release the brain confirmed */
+static uint8_t estop_state_due;       /* an ESTOP_STATE answer is owed to the kinematic brain */
+static uint8_t estop_last_latched = 1;
+static uint32_t estop_state_last_ms;
+#define ESTOP_STATE_HEARTBEAT_MS 100u
 
 /* Application-level offsets - architecture.md section 4's own reserved
  * range, mirrors KinematicBrainCan.c's identical #defines on the Tier 0
@@ -345,6 +355,12 @@ void RobotControllerRelay_Init(void)
     RelayRxQueue_Reset(&relay_rx_queue);
     RelaySendReassembly_Reset(&relay_send_reassembly);
     slot_base = ReadSlotBaseId_App();
+    slot_board_id = (uint8_t)((slot_base - CAN_ID_STACKA_BASE) / STACKA_SLOT_WINDOW);
+    chip_uid32 = SlotScan_FoldUid(HAL_GetUIDw0(), HAL_GetUIDw1(), HAL_GetUIDw2());
+    SlotScanNode_Reset(&slot_scan_node);
+    EstopNode_Reset(&estop_node);
+    MotionOutputs_ForceDisabled(); /* power-up is LATCHED: the driver enables are off until a release and the normal enable command */
+    estop_state_due = 1;
     MX_FDCAN1_App_Init();
     MX_FDCAN2_Init();
     AxisStatusGpio_Init();
@@ -352,8 +368,65 @@ void RobotControllerRelay_Init(void)
 
 /* Answers one message of this board's own slot window on FDCAN1 (uplink). Every other slot's own traffic (and every other board's STACK A heartbeats) is silently ignored,
  * same "wide-open hardware filter, check in software" reasoning as the bootloader. */
+/* A frame on the emergency stop identifier: the node state machine decides, the drivers go off at once when it is latched, and the frame is passed
+ * on unchanged to the tool head on the downlink (one frame in, one frame out, never inside the relay tunnel). */
+static void ServiceEstopFrame(const uint8_t data[8], uint8_t dlc)
+{
+    const uint8_t length = dlc > 8u ? 8u : dlc;
+    EstopNode_OnFrame(&estop_node, HAL_GetTick(), data, length);
+    if (estop_node.latched) MotionOutputs_ForceDisabled();
+    SendClassicFrame(&hfdcan2_app, RELAY_ESTOP_CAN_ID, data, length);
+    if (length == 8u && data[0] == ESTOP_KIND_RELEASE) estop_state_due = 1; /* the brain waits for this answer to every RELEASE */
+}
+
+/* Once per pass: the silence of the master latches a READY node, a bus-off latches it and restarts the controller, a latched node keeps the drivers
+ * off, and the ESTOP_STATE answer goes out on a change, after a RELEASE and every ESTOP_STATE_HEARTBEAT_MS. */
+static void EstopHousekeeping(void)
+{
+    const uint32_t now = HAL_GetTick();
+    EstopNode_Tick(&estop_node, now);
+    FDCAN_ProtocolStatusTypeDef protocol;
+    if (HAL_FDCAN_GetProtocolStatus(&hfdcan1_app, &protocol) == HAL_OK && protocol.BusOff) {
+        EstopNode_OnBusOff(&estop_node);
+        CLEAR_BIT(hfdcan1_app.Instance->CCCR, FDCAN_CCCR_INIT); /* start the recovery; the bus coming back releases nothing */
+    }
+    if (estop_node.latched) MotionOutputs_ForceDisabled();
+    if (estop_node.latched != estop_last_latched) {
+        estop_last_latched = estop_node.latched;
+        estop_state_due = 1;
+    }
+    if ((uint32_t)(now - estop_state_last_ms) >= ESTOP_STATE_HEARTBEAT_MS) estop_state_due = 1;
+    if (estop_state_due) {
+        uint8_t state[4];
+        EstopNode_BuildState(&estop_node, state);
+        if (SendClassicFrame(&hfdcan1_app, slot_base + OFS_ESTOP_STATE, state, 4)) {
+            estop_state_due = 0;
+            estop_state_last_ms = now;
+        }
+    }
+}
+
+uint8_t RobotControllerRelay_EstopReady(void)
+{
+    return (uint8_t)!estop_node.latched;
+}
+
+uint8_t RobotControllerRelay_RequestDriversEnable(void)
+{
+    return EstopNode_Enable(&estop_node);
+}
+
+uint8_t RobotControllerRelay_ScanReplyPending(void)
+{
+    return slot_scan_node.pending;
+}
+
 static void ServiceUplinkMessage(uint32_t rx_id, const uint8_t rx_data[8], uint8_t rx_dlc)
 {
+    if (rx_id == RELAY_ESTOP_CAN_ID) {
+        ServiceEstopFrame(rx_data, rx_dlc);
+        return;
+    }
     if (rx_id < slot_base || rx_id > slot_base + 0x1F) return;
     uint32_t offset = rx_id - slot_base;
 
@@ -361,6 +434,12 @@ static void ServiceUplinkMessage(uint32_t rx_id, const uint8_t rx_data[8], uint8
         uint8_t out[8];
         uint8_t dlc = ReadAxisStatusFrame(out);
         SendClassicFrame(&hfdcan1_app, slot_base + RelayAnswerOffset(OFS_AXIS_STATUS), out, dlc); /* its own identifier: the request is the brain's */
+        return;
+    }
+
+    if (offset == OFS_SLOT_SCAN_PROBE) {
+        /* who is in this slot: the answer leaves after a delay taken from the unique identifier of the chip, see RobotControllerRelay_Poll */
+        (void)SlotScanNode_OnProbe(&slot_scan_node, HAL_GetTick(), rx_data, rx_dlc, chip_uid32);
         return;
     }
 
@@ -446,5 +525,12 @@ void RobotControllerRelay_Poll(void)
         uint8_t rx_dlc;
         if (!TryGetMessage(&hfdcan1_app, &rx_id, rx_data, &rx_dlc)) break;
         ServiceUplinkMessage(rx_id, rx_data, rx_dlc);
+    }
+
+    /* 3. The emergency stop bookkeeping and the reply to the slot scan probe once its time has come. */
+    EstopHousekeeping();
+    uint8_t scan_reply[8];
+    if (SlotScanNode_Due(&slot_scan_node, HAL_GetTick(), slot_board_id, SLOT_SCAN_ROLE_APPLICATION, chip_uid32, scan_reply)) {
+        SendClassicFrame(&hfdcan1_app, slot_base + OFS_SLOT_SCAN_REPLY, scan_reply, 8);
     }
 }

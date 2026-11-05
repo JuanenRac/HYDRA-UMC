@@ -72,4 +72,13 @@ void RobotControllerRelay_Poll(void);
  * fault; defined in STM32G474RE_main.c. */
 void MotionOutputs_ForceDisabled(void);
 
+/* Emergency stop on identifier 0x001 (docs/ESTOP_CAN.md). The board starts LATCHED with the driver enables off; a TRIP, a malformed frame, a bus-off or
+ * the silence of the kinematic brain latch it again, and only a RELEASE for the current stop after a live ALIVE makes it READY. READY enables nothing:
+ * the normal enable command has to ask RobotControllerRelay_RequestDriversEnable(), which is refused while LATCHED. Not a certified safety function. */
+uint8_t RobotControllerRelay_EstopReady(void);
+uint8_t RobotControllerRelay_RequestDriversEnable(void);
+
+/* 1 while a reply to a slot scan probe is waiting for its turn: the relay task then polls every millisecond (the step of the delay) instead of every 5. */
+uint8_t RobotControllerRelay_ScanReplyPending(void);
+
 #endif /* ROBOT_CONTROLLER_RELAY_H */

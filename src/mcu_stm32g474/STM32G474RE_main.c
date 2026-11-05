@@ -148,7 +148,7 @@ static void vRelayTask(void *pvParameters)
   for (;;) {
     RobotControllerRelay_Poll();
     relay_task_alive++;
-    vTaskDelay(pdMS_TO_TICKS(5));
+    vTaskDelay(pdMS_TO_TICKS(RobotControllerRelay_ScanReplyPending() ? 1 : 5)); /* 1 ms while a slot scan reply waits: the delay step is 1 ms */
   }
 }
 

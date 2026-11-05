@@ -63,7 +63,7 @@
     "contract": "docs/ESTOP_CAN.md",
     "vectors": "tests/estop_vectors.json",
     "reference": "tools/estop_can.py",
-    "status": "contract and host reference only: no firmware sends or honours it yet and nothing has run on a board",
+    "status": "firmware written and tested on the host (estop_can.h, estop_brain.h, relay of the controller board, STACK A task of the brain); nothing has run on a board",
     "can_id": "0x001",
     "buses": [
       "stack_a",
@@ -103,7 +103,7 @@
     "contract": "docs/SLOT_SCAN.md",
     "vectors": "tests/slot_scan_vectors.json",
     "reference": "tools/slot_scan.py",
-    "status": "contract and host reference only: no firmware answers the probe yet and nothing has run on a board",
+    "status": "firmware of the controller board answers the probe (bootloader and application, slot_scan_node.h) and is tested on the host; the host client that sends it is not written and nothing has run on a board",
     "probe_offset": "0x1E",
     "reply_offset": "0x1F",
     "probe_magic": "0x5C",

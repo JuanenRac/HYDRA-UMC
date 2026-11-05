@@ -175,13 +175,20 @@ static void vStackATask(void *pvParameters)
   (void)pvParameters;
   KinematicBrainCan_Init();
   uint8_t slot = 0;
+  uint32_t passes = 0;
   for (;;) {
-    uint8_t status[8];
-    uint8_t dlc = 0;
-    (void)KinematicBrainCan_QueryAxisStatus(slot, status, &dlc, 50);
-    slot = (uint8_t)((slot + 1) % 8);
+    /* The emergency stop frames are due every few milliseconds (TRIP every 5 ms while stopped, ALIVE every 20 ms), so this task runs every millisecond
+     * and asks one slot for its AXIS_STATUS every 100th pass. A wait for a slot that does not answer is short (20 ms) and keeps sending the stop frames. */
+    KinematicBrainCan_EstopPoll();
+    if (++passes >= 100u) {
+      passes = 0;
+      uint8_t status[8];
+      uint8_t dlc = 0;
+      (void)KinematicBrainCan_QueryAxisStatus(slot, status, &dlc, 20);
+      slot = (uint8_t)((slot + 1) % 8);
+    }
     stacka_task_alive++;
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(1));
   }
 }
 

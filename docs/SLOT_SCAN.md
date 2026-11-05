@@ -1,9 +1,9 @@
 # Slot scan on the stack bus: who is in each slot, and are two boards set to the same one
 
-Status: **contract and host reference only.** No firmware answers the probe yet and nothing in this page has run on a board.
-`docs/bus_contract.json` (section `slot_scan`) holds the numbers, `tools/slot_scan.py` is the reference of the frames and of the
-verdict, `tests/slot_scan_vectors.json` holds the frames and the scenarios that the firmware has to reproduce, and
-`tests/test_slot_scan.py` keeps all of them consistent.
+Status: **the controller board answers the probe, tested on the host; the host client that sends it is not written and nothing in this page
+has run on a board.** `docs/bus_contract.json` (section `slot_scan`) holds the numbers, `tools/slot_scan.py` is the reference of the frames
+and of the verdict, `tests/slot_scan_vectors.json` holds the frames and the scenarios, `tests/test_slot_scan.py` keeps the reference
+consistent and `tests/test_slot_scan_node.c` replays the frames and the delays against `slot_scan_node.h`, the file the firmware uses.
 
 ## The problem
 
@@ -57,10 +57,11 @@ the firmware reads them.
 
 ## Pending
 
-- The firmware does not answer the probe, and the host client does not send it yet: implementing both needs the firmware build and a
-  board.
-- The delay needs the unique identifier of the chip (96 bits on both families; the reference uses 32 of them); the read of that
-  register is part of the firmware work.
+- The host client does not send the probe yet: it has to go through the kinematic brain (a command of the SPI link between the CM5 and the CM4,
+  which changes that protocol and goes with a coordinated update of both) and then scan before every update.
+- The unique identifier of the chip is 96 bits; the reply carries 32: the XOR of the three words (`HAL_GetUIDw0..2`, `SlotScan_FoldUid`).
+- The application answers from the relay task, which polls every 5 ms and every millisecond while a reply is waiting (the delay step is 1 ms);
+  the bootloader answers from its receive loops.
 - Bench: `docs/BENCH_TESTS.md` row 15 (two boards with the same board identifier).
 
 See also `docs/bus_contract.json`, `tools/can_ids.py`, `tools/slot_scan.py`, `tests/slot_scan_vectors.json` and `tests/test_slot_scan.py`.

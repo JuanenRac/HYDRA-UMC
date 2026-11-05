@@ -219,6 +219,25 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # estop_can.h / estop_brain.h: the emergency stop frame on identifier 0x001, the state machine of a node and the master side of the brain (vectors of tests/estop_vectors.json).
+    ESTOP_HOST_BIN="$ROOT/build/host_tests_estop_can"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32g474" -o "$ESTOP_HOST_BIN" "$ROOT/tests/test_estop_can.c" && "$ESTOP_HOST_BIN" >/dev/null && \
+       "$HOST_CC" -std=c11 -Wall -Wextra -DESTOP_TEST_BRAIN -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32h745/CM4" -o "$ESTOP_HOST_BIN" "$ROOT/tests/test_estop_can.c" && "$ESTOP_HOST_BIN" >/dev/null; then
+        pass "estop_can host logic tests passed (controller board node, kinematic brain)"
+    else
+        fail "estop_can host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
+    # slot_scan_node.h: how a controller board answers the slot scan probe (vectors of tests/slot_scan_vectors.json).
+    SLOT_SCAN_HOST_BIN="$ROOT/build/host_tests_slot_scan_node"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32g474/boot" -o "$SLOT_SCAN_HOST_BIN" "$ROOT/tests/test_slot_scan_node.c" && "$SLOT_SCAN_HOST_BIN" >/dev/null; then
+        pass "slot_scan_node host logic tests passed"
+    else
+        fail "slot_scan_node host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # The bootloaders' own SHA-256, Ed25519 check, CRC32 and flash erase/program/copy/metadata
     # routines, compiled as they are against a stand-in HAL header (tests/stubs):
     # the G474 one by bank and page, the two H745 ones by 128 KB sector. They map

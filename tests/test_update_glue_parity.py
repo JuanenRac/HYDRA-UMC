@@ -4,14 +4,21 @@
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
 """The three bootloaders (G474 over CAN, H745 CM4 over SPI, H745 CM7 over the mailbox) each carry the glue between the frames and the
-decision of update_verify.h. The decision itself is one file with host tests; the glue is checked end to end on the G474
-(tests/test_bootloader_g474_update_host.c) and only syntax-checked for the two H745 cores, so this test keeps the three copies identical
-except for the few lines that are the core's own (how a frame is sent, its RAM range, what happens after success)."""
+decision of update_verify.h. The decision itself is one file with host tests. The part of the glue that is the same in the three lives once, in
+boot_update_glue.h (one text, three copies because each target builds from its own folder, included by each bootloader_protocol.c); this test
+keeps the three copies identical, checks that no protocol file defines those functions a second time, and keeps the few lines that are the
+core's own (how a frame is sent, its RAM range, what happens after success) apart. The glue is checked end to end on the G474
+(tests/test_bootloader_g474_update_host.c) and only syntax-checked for the two H745 cores."""
 import re
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+GLUE_HEADERS = {
+    "g474": ROOT / "src/mcu_stm32g474/boot/boot_update_glue.h",
+    "cm4": ROOT / "src/mcu_stm32h745/CM4/boot/boot_update_glue.h",
+    "cm7": ROOT / "src/mcu_stm32h745/CM7/boot/boot_update_glue.h",
+}
 CORES = {
     "g474": ROOT / "src/mcu_stm32g474/boot/bootloader_protocol.c",
     "cm4": ROOT / "src/mcu_stm32h745/CM4/boot/bootloader_protocol.c",
@@ -52,12 +59,22 @@ def end_update_common_part(text: str) -> str:
 
 
 class GlueParityTests(unittest.TestCase):
-    def test_the_shared_functions_are_the_same_in_the_three_bootloaders(self):
-        texts = {name: read(path) for name, path in CORES.items()}
+    def test_the_shared_functions_are_one_text_in_three_copies(self):
+        headers = {name: read(path) for name, path in GLUE_HEADERS.items()}
+        self.assertEqual(headers["cm4"], headers["g474"], "boot_update_glue.h differs in cm4")
+        self.assertEqual(headers["cm7"], headers["g474"], "boot_update_glue.h differs in cm7")
         for function in SAME_FUNCTIONS:
-            reference = function_body(texts["g474"], function)
-            for core in ("cm4", "cm7"):
-                self.assertEqual(function_body(texts[core], function), reference, f"{function} differs in {core}")
+            function_body(headers["g474"], function)  # defined in the header
+
+    def test_no_bootloader_defines_a_shared_function_a_second_time(self):
+        texts = {name: read(path) for name, path in CORES.items()}
+        for core, text in texts.items():
+            self.assertIn('#include "boot_update_glue.h"', text, core)
+            for function in SAME_FUNCTIONS:
+                self.assertIsNone(re.search(rf"^(?:static |__attribute__\(\(weak\)\) )?[A-Za-z_][\w \*]*{re.escape(function)}\(", text, re.M), f"{core} defines {function} itself")
+            # the include comes after the sender of the nonce and the state, before the first function that uses them
+            self.assertLess(text.index("static void SendNonceHalf"), text.index('#include "boot_update_glue.h"'), core)
+            self.assertLess(text.index('#include "boot_update_glue.h"'), text.index("uint8_t HandleStartUpdate("), core)
 
     def test_the_end_of_an_update_is_the_same_up_to_the_success_status(self):
         texts = {name: read(path) for name, path in CORES.items()}

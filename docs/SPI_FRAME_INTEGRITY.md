@@ -17,7 +17,7 @@ Check value: the CRC16 of the ASCII text `123456789` is `0x29B1`.
 * A jump of the sequence is accepted, because frames can be lost, and counted (`spi_seq_gaps`).
 * A frame without the marker is accepted as before and counted (`spi_unsealed`), unless the build sets `HYDRA_SPI_REQUIRE_CRC=1`. That setting is the switch for the day every sender seals its frames; it is `0` by default so a CM5 side that does not seal yet keeps working.
 
-Every frame the bootloader of the CM4 sends is sealed. The sender (the CM5 side) raises the sequence for each new request and repeats it to retry.
+Every frame the bootloader of the CM4 sends is sealed. The CM5 side seals its requests too: the Python bridge (`src/cm5_host/spi_bridge/spi_bridge/transport.py`) writes the marker, a sequence that moves on with every request and the CRC16 into the padding of each frame it sends (a retry by the caller is a new request, never a replay), and treats a sealed answer whose CRC does not match as a failed transfer; an answer without the marker is still accepted. `HYDRA_SPI_REQUIRE_CRC` stays `0` until bench row 13 has run with sealed requests.
 
 ## The mailbox between the two cores
 

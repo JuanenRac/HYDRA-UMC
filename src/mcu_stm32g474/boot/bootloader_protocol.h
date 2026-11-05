@@ -32,6 +32,7 @@ extern uint8_t  update_failed;
 
 void CAN_SendStatus(uint8_t status);
 void CAN_SendHeartbeat(uint8_t status, uint8_t progress_percent);
+void CAN_SendSlotScanReply(const uint8_t data[8]); // the answer to a slot scan probe, role bootloader (docs/SLOT_SCAN.md)
 
 void HandleVersionQuery(void);
 void HandleErrorCounterQuery(void);

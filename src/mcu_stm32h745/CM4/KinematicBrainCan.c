@@ -16,11 +16,13 @@
  */
 #include "KinematicBrainCan.h"
 #include "dlc_to_fdcan_data_length.h"
+#include "estop_brain.h"
 #include "stm32h7xx_hal.h"
 #include "bootloader_common.h" /* shared CAN_ID_STACKA_BASE/STACKA_SLOT_WINDOW/OFS_* - see that header's own comment on why this application reuses it, not a copy */
 #include <string.h>
 
 static FDCAN_HandleTypeDef hfdcan1_app;
+static EstopBrain_t estop_brain; /* the master side of the emergency stop on identifier 0x001 (docs/ESTOP_CAN.md); LATCHED at power-up */
 
 /* A set-up call that fails leaves the brain unable to talk to the slots: stop here with the interrupts off. Nothing refreshes the watchdog any more, it
  * resets the chip into the bootloader, whose boot-attempt count decides whether this application is tried again. */
@@ -117,6 +119,7 @@ void KinematicBrainCan_Init(void)
     BrainHalRequire(HAL_FDCAN_ConfigGlobalFilter(&hfdcan1_app, FDCAN_REJECT, FDCAN_REJECT, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE));
 
     BrainHalRequire(HAL_FDCAN_Start(&hfdcan1_app));
+    EstopBrain_Reset(&estop_brain, HAL_GetTick());
 }
 
 /* DLC 0-8 map directly onto FDCAN_DLC_BYTES_0..8 for Classic CAN (no
@@ -146,6 +149,27 @@ static uint8_t SendClassicFrame(uint32_t can_id, const uint8_t *data, uint8_t dl
     return HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1_app, &tx, padded) == HAL_OK;
 }
 
+/* Sends the frames of the emergency stop that are due (TRIP repeats, ALIVE, RELEASE). Called from every wait loop too, so that a slow slot never stretches
+ * the gap between two ALIVE frames beyond what the boards tolerate. A full transmit queue only delays the frame to the next call. */
+static void EstopSendDue(void)
+{
+    uint8_t frame[8];
+    for (int sent = 0; sent < 4; sent++) {
+        if (!EstopBrain_Tick(&estop_brain, HAL_GetTick(), frame)) break;
+        (void)SendClassicFrame(BRAIN_ESTOP_CAN_ID, frame, 8);
+    }
+}
+
+/* What the brain does with a frame that is not the answer it was waiting for: a stop frame on 0x001, or the ESTOP_STATE of a controller board. */
+static void ObserveFrame(uint32_t id, const uint8_t *data, uint8_t dlc)
+{
+    if (id == BRAIN_ESTOP_CAN_ID) {
+        EstopBrain_OnFrame(&estop_brain, HAL_GetTick(), data, dlc);
+    } else if (id >= CAN_ID_STACKA_BASE && id < CAN_ID_STACKA_BASE + 8u * STACKA_SLOT_WINDOW && ((id - CAN_ID_STACKA_BASE) % STACKA_SLOT_WINDOW) == OFS_ESTOP_STATE) {
+        EstopBrain_OnSlotState(&estop_brain, (uint8_t)((id - CAN_ID_STACKA_BASE) / STACKA_SLOT_WINDOW), data, dlc);
+    }
+}
+
 /* Polls RxFifo0 for a real matching-ID response within timeout_ms - a
  * bounded busy-wait (this application has no RTOS task/queue plumbing
  * for FDCAN RX yet, matching the bootloader's own polling-not-interrupt
@@ -157,21 +181,55 @@ static uint8_t WaitForResponse(uint32_t expected_can_id, uint8_t *out_data, uint
 {
     uint32_t start = HAL_GetTick();
     while ((HAL_GetTick() - start) < timeout_ms) { /* elapsed-time form: still right when the 32-bit tick wraps */
+        EstopSendDue();
         if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1_app, FDCAN_RX_FIFO0) > 0) {
             FDCAN_RxHeaderTypeDef rx;
             uint8_t rx_data[8];
             if (HAL_FDCAN_GetRxMessage(&hfdcan1_app, FDCAN_RX_FIFO0, &rx, rx_data) == HAL_OK) {
+                uint8_t dlc = (uint8_t)FdcanDataLengthToDlc(rx.DataLength); /* the HAL already shifted the DLC field down: DataLength is the plain 0..15 code */
+                if (dlc > 8u) dlc = 8u;
                 if (rx.Identifier == expected_can_id) {
-                    uint8_t dlc = (uint8_t)FdcanDataLengthToDlc(rx.DataLength); /* the HAL already shifted the DLC field down: DataLength is the plain 0..15 code */
                     memcpy(out_data, rx_data, dlc);
                     *out_dlc = dlc;
                     return 1;
                 }
-                /* not ours - a different slot's own traffic, keep waiting */
+                /* not ours - a stop frame or the state of a board is acted on, a different slot's own traffic is skipped; keep waiting */
+                ObserveFrame(rx.Identifier, rx_data, dlc);
             }
         }
     }
     return 0;
+}
+
+void KinematicBrainCan_EstopPoll(void)
+{
+    for (int taken = 0; taken < 8; taken++) {
+        if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1_app, FDCAN_RX_FIFO0) == 0) break;
+        FDCAN_RxHeaderTypeDef rx;
+        uint8_t rx_data[8];
+        if (HAL_FDCAN_GetRxMessage(&hfdcan1_app, FDCAN_RX_FIFO0, &rx, rx_data) != HAL_OK) break;
+        uint8_t dlc = (uint8_t)FdcanDataLengthToDlc(rx.DataLength);
+        if (dlc > 8u) dlc = 8u;
+        ObserveFrame(rx.Identifier, rx_data, dlc);
+    }
+    EstopSendDue();
+}
+
+void KinematicBrainCan_EstopTrip(uint8_t reason)
+{
+    EstopBrain_Trip(&estop_brain, HAL_GetTick(), reason);
+}
+
+uint8_t KinematicBrainCan_EstopRequestRelease(uint8_t expected_slots_mask)
+{
+    return EstopBrain_RequestRelease(&estop_brain, HAL_GetTick(), expected_slots_mask);
+}
+
+uint8_t KinematicBrainCan_EstopStatus(uint8_t *release_state, uint8_t *missing_slots_mask)
+{
+    if (release_state != NULL) *release_state = estop_brain.release_state;
+    if (missing_slots_mask != NULL) *missing_slots_mask = estop_brain.missing_mask;
+    return estop_brain.tripped;
 }
 
 uint8_t KinematicBrainCan_QueryAxisStatus(uint8_t slot, uint8_t out_status[8], uint8_t *out_dlc, uint32_t timeout_ms)
