@@ -20,7 +20,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="Platform">
   <img src="https://img.shields.io/badge/Tests-268%20passing-2ea44f.svg" alt="Tests">
-  <img src="https://img.shields.io/badge/Version-0.2.6-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.2.7-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
 
@@ -34,7 +34,7 @@ GPL-3.0-or-later - see LICENSE
 
 | | |
 |---|---|
-| バージョン | `0.2.6` |
+| バージョン | `0.2.7` |
 | 成熟度 | 足場段階 |
 | テスト | 268 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | 技術 | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
@@ -195,7 +195,7 @@ python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the f
 
 ## 🧪 テスト
 
-`python -m unittest discover -s tests -p 'test_*.py'` で自動テスト 268 件を実行します。 CM5 の SPI ブリッジのテスト 93 件と、ファームウェアのソース、署名付きイメージヘッダー、CAN 識別子のテスト 91 件です（SPI ブリッジ側は `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` と `-s src/cm5_host/spi_bridge/tests` で実行します）。ブートローダーとリレーの C ロジックは、`build_firmware.sh` のステップ 1b で通常のホスト C コンパイラーでビルドする 23 本のプログラムがさらに検査します。どれも基板を必要としません。
+`python -m unittest discover -s tests -p 'test_*.py'` で自動テスト 268 件を実行します。 CM5 の SPI ブリッジのテスト 87 件と、ファームウェアのソース、署名付きイメージヘッダー、CAN 識別子のテスト 71 件です（SPI ブリッジ側は `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` と `-s src/cm5_host/spi_bridge/tests` で実行します）。ブートローダーとリレーの C ロジックは、`build_firmware.sh` のステップ 1b で通常のホスト C コンパイラーでビルドする 19 本のプログラムがさらに検査します。どれも基板を必要としません。
 
 CI は `HYDRA_UMC_CI=1 python tools/ci_validate.py` を実行し、マニフェスト、文書、8 つの README、図を検査します。
 

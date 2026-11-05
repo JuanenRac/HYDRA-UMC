@@ -20,7 +20,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="Platform">
   <img src="https://img.shields.io/badge/Tests-268%20passing-2ea44f.svg" alt="Tests">
-  <img src="https://img.shields.io/badge/Version-0.2.6-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.2.7-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
 
@@ -34,7 +34,7 @@ GPL-3.0-or-later - see LICENSE
 
 | | |
 |---|---|
-| Version | `0.2.6` |
+| Version | `0.2.7` |
 | Reifegrad | Gerüst |
 | Tests | 268 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | Technik | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
@@ -218,7 +218,7 @@ Fehler) - keine theoretische Liste:
 
 ## 🧪 Tests
 
-268 automatische Tests laufen mit `python -m unittest discover -s tests -p 'test_*.py'`. Es sind 93 Tests der SPI-Brücke der CM5 plus 91 der Firmware-Quellen, des signierten Image-Headers und der CAN-Kennungen (die der SPI-Brücke laufen mit `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` und `-s src/cm5_host/spi_bridge/tests`). Die C-Logik der Bootloader und des Relays prüfen 23 weitere Programme, mit einem gewöhnlichen Host-C-Compiler im Schritt 1b von `build_firmware.sh` gebaut. Keiner braucht eine Platine.
+268 automatische Tests laufen mit `python -m unittest discover -s tests -p 'test_*.py'`. Es sind 87 Tests der SPI-Brücke der CM5 plus 71 der Firmware-Quellen, des signierten Image-Headers und der CAN-Kennungen (die der SPI-Brücke laufen mit `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` und `-s src/cm5_host/spi_bridge/tests`). Die C-Logik der Bootloader und des Relays prüfen 19 weitere Programme, mit einem gewöhnlichen Host-C-Compiler im Schritt 1b von `build_firmware.sh` gebaut. Keiner braucht eine Platine.
 
 Die CI führt `HYDRA_UMC_CI=1 python tools/ci_validate.py` aus; das prüft das Manifest, die Dokumente, die acht READMEs und die Bilder.
 

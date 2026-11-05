@@ -20,7 +20,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="Platform">
   <img src="https://img.shields.io/badge/Tests-268%20passing-2ea44f.svg" alt="Tests">
-  <img src="https://img.shields.io/badge/Version-0.2.6-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.2.7-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
 
@@ -34,7 +34,7 @@ GPL-3.0-or-later - see LICENSE
 
 | | |
 |---|---|
-| 版本 | `0.2.6` |
+| 版本 | `0.2.7` |
 | 成熟度 | 雏形 |
 | 测试 | 268 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | 技术栈 | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
@@ -195,7 +195,7 @@ python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the f
 
 ## 🧪 测试
 
-运行 `python -m unittest discover -s tests -p 'test_*.py'` 会执行 268 个自动测试。 其中 93 个是 CM5 SPI 桥的测试，91 个是固件源码、签名镜像头和 CAN 标识符的测试（SPI 桥的测试用 `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` 和 `-s src/cm5_host/spi_bridge/tests` 运行）。引导程序和中继的 C 逻辑还由另外 23 个程序检查，它们在 `build_firmware.sh` 的 1b 步骤中用普通的主机 C 编译器编译。它们都不需要电路板。
+运行 `python -m unittest discover -s tests -p 'test_*.py'` 会执行 268 个自动测试。 其中 87 个是 CM5 SPI 桥的测试，71 个是固件源码、签名镜像头和 CAN 标识符的测试（SPI 桥的测试用 `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` 和 `-s src/cm5_host/spi_bridge/tests` 运行）。引导程序和中继的 C 逻辑还由另外 19 个程序检查，它们在 `build_firmware.sh` 的 1b 步骤中用普通的主机 C 编译器编译。它们都不需要电路板。
 
 CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档、八个 README 和图片。
 

@@ -20,7 +20,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="Platform">
   <img src="https://img.shields.io/badge/Tests-268%20passing-2ea44f.svg" alt="Tests">
-  <img src="https://img.shields.io/badge/Version-0.2.6-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.2.7-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
 
@@ -34,7 +34,7 @@ GPL-3.0-or-later - see LICENSE
 
 | | |
 |---|---|
-| Versión | `0.2.6` |
+| Versión | `0.2.7` |
 | Madurez | Andamiaje |
 | Tests | 268 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | Tecnología | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
@@ -217,7 +217,7 @@ objetivos `g474`/`h745`/por defecto, 0 errores) - no una lista teórica:
 
 ## 🧪 Pruebas
 
-268 pruebas automáticas se ejecutan con `python -m unittest discover -s tests -p 'test_*.py'`. Son 93 pruebas del puente SPI de la CM5 más 91 de las fuentes del firmware, la cabecera de imagen firmada y los identificadores CAN (las del puente SPI se ejecutan con `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` y `-s src/cm5_host/spi_bridge/tests`). La lógica en C de los cargadores de arranque y del relé la comprueban otros 23 programas compilados con un compilador de C normal del anfitrión, en el paso 1b de `build_firmware.sh`. Ninguna necesita una placa.
+268 pruebas automáticas se ejecutan con `python -m unittest discover -s tests -p 'test_*.py'`. Son 87 pruebas del puente SPI de la CM5 más 71 de las fuentes del firmware, la cabecera de imagen firmada y los identificadores CAN (las del puente SPI se ejecutan con `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` y `-s src/cm5_host/spi_bridge/tests`). La lógica en C de los cargadores de arranque y del relé la comprueban otros 19 programas compilados con un compilador de C normal del anfitrión, en el paso 1b de `build_firmware.sh`. Ninguna necesita una placa.
 
 El CI ejecuta `HYDRA_UMC_CI=1 python tools/ci_validate.py`, que comprueba el manifiesto, los documentos, los ocho README y las imágenes.
 
