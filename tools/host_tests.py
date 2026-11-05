@@ -25,6 +25,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from local_build import local_build_refusal  # noqa: E402  (the lock on builds that compile on this PC)
 OUT = ROOT / "build" / "host_tests"
 G4 = "src/mcu_stm32g474"
 H7 = "src/mcu_stm32h745"
@@ -82,7 +84,9 @@ def table() -> list[HostTest]:
 
 
 def find_compiler() -> str | None:
-    """HOST_CC, or the first of cc, gcc, clang that is on the PATH (None when there is none)."""
+    """HOST_CC, or the first of cc, gcc, clang that is on the PATH (None when there is none, or when compiling on this PC is locked: see local_build.py)."""
+    if local_build_refusal() is not None:
+        return None
     wanted = os.environ.get("HOST_CC")
     for candidate in ([wanted] if wanted else []) + ["cc", "gcc", "clang"]:
         found = shutil.which(candidate)
@@ -145,7 +149,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     compiler = find_compiler()
     if compiler is None:
-        print("HOST_TESTS=SKIPPED no host C compiler (cc/gcc/clang) found; set HOST_CC")
+        print("HOST_TESTS=SKIPPED " + (local_build_refusal() or "no host C compiler (cc/gcc/clang) found; set HOST_CC"))
         return 1 if options.require else 0
     return run_all(compiler)
 

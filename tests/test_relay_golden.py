@@ -73,7 +73,7 @@ class RelayGoldenTests(unittest.TestCase):
         for entry in GOLDEN["counters"]:
             self.assertEqual(entry["bytes"], f"{entry['ecr'] & 0xFF:02x}{(entry['ecr'] >> 8) & 0x7F:02x}")
 
-    @unittest.skipIf(host_tests.find_compiler() is None, "no host C compiler (cc/gcc/clang)")
+    @unittest.skipIf(host_tests.find_compiler() is None, "no host C compiler (cc/gcc/clang), or local builds are off (ALLOW_LOCAL_BUILD=1 allows them)")
     def test_the_file_is_what_the_firmware_makes_today(self):
         compiler = host_tests.find_compiler()
         assert compiler is not None
