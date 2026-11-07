@@ -13,6 +13,7 @@ Every switch below is `0` in a build as it ships, so the binary does not change 
 | `HYDRA_FLASH_LAYER` | `bootloader_flash.c` of the G474, the CM4 and the CM7 bootloaders | the erase, write and copy routines of the bootloader go through `flash_layer.h`: range, alignment, blank-before-write checks and a read-back of every double-word, with the three hardware calls left to the chip | 22 to 25 |
 | `HYDRA_QUIET_TICK_BEFORE_SCHEDULER` | `src/mcu_stm32g474/STM32G474RE_main.c` | `1`: the tick interrupt is off from the end of the set-up until the scheduler starts; `2`: off right after `HAL_Init()` | 12 |
 | `HYDRA_SPI_SYSTEM`, `HYDRA_SPI_STOP_COMMAND` | `src/mcu_stm32h745/CM4/spi_system.h` | the telemetry and probe, and then the stop and release, commands of the SPI link (`docs/SPI_SYSTEM.md`) | 13, 19 |
+| `HYDRA_SPI_APP`, `HYDRA_SPI_REQUIRE_CRC` | `src/mcu_stm32h745/CM4/spi_app.h`, `SpiApp.c` | the application of the CM4 starts the SPI slave service (SPI1 and one task) that answers the commands above; `HYDRA_SPI_REQUIRE_CRC` refuses frames without the seal | 13 |
 | `HYDRA_RCC_HSEM_HANDSHAKE` | `src/mcu_stm32h745/CM4/rcc_owner.h` | one core of the H745 sets the clock tree up, chosen with a hardware semaphore; the other waits a bounded time or leaves it | 8 |
 
 `src/*/boot/flash_layer.h` (the same file in the three boot directories) is the common erase, program and read-back layer; the three bootloaders call it behind `HYDRA_FLASH_LAYER` (off). It is switched in chip by chip after rows 22 to 25 pass.

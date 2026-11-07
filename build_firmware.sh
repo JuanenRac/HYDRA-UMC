@@ -254,6 +254,17 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # spi_app.h: the SPI slave service of the application of the CM4, a CM5 played by the test, with the switches off and on.
+    for SPI_APP_ON in 0 1; do
+        SPI_APP_BIN="$ROOT/build/host_tests_spi_app_$SPI_APP_ON"
+        if "$HOST_CC" -std=c11 -Wall -Wextra -DSPI_APP_TEST_SWITCHES=$SPI_APP_ON -I"$ROOT/src/mcu_stm32h745/CM4" -I"$ROOT/src/mcu_stm32h745/CM4/boot" -o "$SPI_APP_BIN" "$ROOT/tests/test_spi_app.c" && "$SPI_APP_BIN" >/dev/null; then
+            pass "spi_app host logic tests passed (switches on: $SPI_APP_ON)"
+        else
+            fail "spi_app host logic tests FAILED (switches on: $SPI_APP_ON)"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+    done
+
     # rcc_owner.h: which core of the H745 sets the clock tree up, in every interleaving of the two cores.
     RCC_OWNER_BIN="$ROOT/build/host_tests_rcc_owner"
     if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h745/CM4" -o "$RCC_OWNER_BIN" "$ROOT/tests/test_rcc_owner.c" && "$RCC_OWNER_BIN" >/dev/null; then
@@ -874,13 +885,15 @@ cp "$H7/cm4_boot_obj/$CM4_BOOT_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$CM4_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_boot_obj/$CM4_BOOT_NAME.elf" | tail -1 | awk '{print $1}') bytes text)"
 
 component_version "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM4 application"
-arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -x c -c "$SRC/STM32H745ZI_CM4_main.c" -o "$H7/cm4_app_obj/STM32H745ZI_CM4_main.o"
+arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/STM32H745ZI_CM4_main.c" -o "$H7/cm4_app_obj/STM32H745ZI_CM4_main.o"
 # KinematicBrainCan.c: real FDCAN1 "STACK A" master + Tier 2/3 relay tunnel -
 # needs bootloader_common.h for the shared CAN_ID_STACKA_BASE/OFS_* constants
 # (see that file's own header on why this application reuses it rather than
 # duplicating it), so it's the one CM4 app source that also needs $SRC/boot
 # on its include path.
 arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/KinematicBrainCan.c" -o "$H7/cm4_app_obj/KinematicBrainCan.o"
+# SpiApp.c: the SPI slave service for the CM5 (an empty unit unless the build sets HYDRA_SPI_APP=1; needs spi_frame_crc.h from $SRC/boot)
+arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/SpiApp.c" -o "$H7/cm4_app_obj/SpiApp.o"
 CM4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_PATCH)"
 CM4_APP_NAME="HYDRA_KB_CM4_APP_${CM4_APP_VER}"
 if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/STM32H745ZITx_CM4_APP.ld" \

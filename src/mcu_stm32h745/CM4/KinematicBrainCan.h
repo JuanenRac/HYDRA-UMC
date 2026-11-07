@@ -61,6 +61,9 @@ void KinematicBrainCan_EstopTrip(uint8_t reason);
 uint8_t KinematicBrainCan_EstopRequestRelease(uint8_t expected_slots_mask);
 uint8_t KinematicBrainCan_EstopStatus(uint8_t *release_state, uint8_t *missing_slots_mask);
 
+/* The transmit and receive error counters of FDCAN1 (0 to 255 and 0 to 127; the bus is error passive from 128), for the telemetry of the SPI link. */
+void KinematicBrainCan_ErrorCounters(uint8_t *tx_errors, uint8_t *rx_errors);
+
 /* Real slot-addressed AXIS_STATUS query (+0x10) - sends a real Classic CAN
  * frame to CAN_ID_STACKA_BASE + slot*STACKA_SLOT_WINDOW + 0x10 and waits
  * (bounded, non-blocking-forever) for a real response. Returns 1 and

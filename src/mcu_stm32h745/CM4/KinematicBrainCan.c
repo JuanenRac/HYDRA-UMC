@@ -232,6 +232,13 @@ uint8_t KinematicBrainCan_EstopStatus(uint8_t *release_state, uint8_t *missing_s
     return estop_brain.tripped;
 }
 
+void KinematicBrainCan_ErrorCounters(uint8_t *tx_errors, uint8_t *rx_errors)
+{
+    const uint32_t ecr = hfdcan1_app.Instance->ECR;
+    if (tx_errors != NULL) *tx_errors = (uint8_t)(ecr & 0xFFu);
+    if (rx_errors != NULL) *rx_errors = (uint8_t)((ecr >> 8) & 0x7Fu);
+}
+
 uint8_t KinematicBrainCan_QueryAxisStatus(uint8_t slot, uint8_t out_status[8], uint8_t *out_dlc, uint32_t timeout_ms)
 {
     uint32_t base = StackASlotBaseId(slot);

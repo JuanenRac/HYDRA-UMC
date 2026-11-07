@@ -59,6 +59,7 @@
 #include "task.h"
 #include "stm32h7xx_hal.h"
 #include "KinematicBrainCan.h"
+#include "SpiApp.h"          /* the SPI service for the CM5 (off by default: HYDRA_SPI_APP) */
 
 static IWDG_HandleTypeDef hiwdg;
 
@@ -175,12 +176,18 @@ static void vStackATask(void *pvParameters)
 {
   (void)pvParameters;
   KinematicBrainCan_Init();
+#if HYDRA_SPI_APP
+  SpiApp_Start(); /* after the bus is up: the first telemetry already has the counters of FDCAN1 */
+#endif
   uint8_t slot = 0;
   uint32_t passes = 0;
   for (;;) {
     /* The emergency stop frames are due every few milliseconds (TRIP every 5 ms while stopped, ALIVE every 20 ms), so this task runs every millisecond
      * and asks one slot for its AXIS_STATUS every 100th pass. A wait for a slot that does not answer is short (20 ms) and keeps sending the stop frames. */
     KinematicBrainCan_EstopPoll();
+#if HYDRA_SPI_APP
+    SpiApp_Pump(); /* hands the state of the brain to the SPI task and runs the stop, release and scan it asked for */
+#endif
     if (++passes >= 100u) {
       passes = 0;
       uint8_t status[8];

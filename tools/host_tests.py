@@ -65,6 +65,8 @@ def table() -> list[HostTest]:
         HostTest("app_support_switches_on", "tests/test_app_support.c", (G4,),
                  defines=("HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT=1", "HYDRA_APP_ENTER_BOOTLOADER=1", "HYDRA_HEALTH_FRAME=1", "HYDRA_BOOT_REPORT=1", "HYDRA_INIT_FAULT_LATCH=1")),
         HostTest("spi_system", "tests/test_spi_system.c", (f"{H7}/CM4",)),
+        HostTest("spi_app@off", "tests/test_spi_app.c", (f"{H7}/CM4", f"{H7}/CM4/boot"), defines=("SPI_APP_TEST_SWITCHES=0",)),
+        HostTest("spi_app@on", "tests/test_spi_app.c", (f"{H7}/CM4", f"{H7}/CM4/boot"), defines=("SPI_APP_TEST_SWITCHES=1",)),
         HostTest("rcc_owner", "tests/test_rcc_owner.c", (f"{H7}/CM4",)),
         HostTest("flash_layer@g474", "tests/test_flash_layer.c", (f"{G4}/boot",), defines=("HYDRA_TEST_ADOPTION",)),
         HostTest("flash_layer@cm4", "tests/test_flash_layer.c", (f"{H7}/CM4/boot",)),
