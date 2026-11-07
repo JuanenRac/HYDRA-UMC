@@ -36,6 +36,8 @@
 #include "boot_decision.h"
 #include "dlc_to_fdcan_data_length.h"
 #include "slot_scan_node.h"
+#include "fdcan_clock.h"        // the explicit kernel clock of the FDCAN (off by default)
+#include "app_boot_request.h"  // an application asking to be updated (off by default)
 
 FDCAN_HandleTypeDef hfdcan1;
 IWDG_HandleTypeDef  hiwdg;
@@ -120,6 +122,16 @@ uint32_t ReadSlotBaseId(void) {
 static void MX_FDCAN1_Init(uint32_t slot_base) {
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOG_CLK_ENABLE();
+#if HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT
+    // The selector of the FDCAN kernel clock resets to the HSE, which is not running here: take the APB1 clock (the HSI at divider 1, 16 MHz), the
+    // clock the bit timing below assumes (fdcan_clock.h). Off by default; turn it on after bench row 10.
+    {
+        RCC_PeriphCLKInitTypeDef fdcan_clock = {0};
+        fdcan_clock.PeriphClockSelection = RCC_PERIPHCLK_FDCAN;
+        fdcan_clock.FdcanClockSelection = RCC_FDCANCLKSOURCE_PCLK1;
+        BOOT_HAL_NOTE(HAL_RCCEx_PeriphCLKConfig(&fdcan_clock), BOOT_FAULT_CLOCK);
+    }
+#endif
     __HAL_RCC_FDCAN_CLK_ENABLE();
 
     GPIO_InitTypeDef gi = {0};
@@ -250,8 +262,18 @@ int main(void) {
 
     uint32_t listen_start = HAL_GetTick();
     uint8_t enter_update_mode = 0;
+    uint32_t listen_window_ms = 600;
+#if HYDRA_APP_ENTER_BOOTLOADER
+    // The application asked to be updated (app_boot_request.h): stay in the update window longer than the usual start-up window, once.
+    {
+        __HAL_RCC_PWR_CLK_ENABLE();
+        __HAL_RCC_RTCAPB_CLK_ENABLE();
+        HAL_PWR_EnableBkUpAccess();
+        if (AppBoot_TakeRequest(&TAMP->BKP0R)) listen_window_ms = 10000;   // BKP0R and BKP1R are consecutive registers
+    }
+#endif
 
-    while (link_ok && (HAL_GetTick() - listen_start) < 600) {
+    while (link_ok && (HAL_GetTick() - listen_start) < listen_window_ms) {
         HAL_IWDG_Refresh(&hiwdg);
         BootScanPoll();
         if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) > 0) {

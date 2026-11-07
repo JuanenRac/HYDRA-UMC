@@ -68,6 +68,13 @@
 #include "stm32g4xx_hal.h"
 #include "RobotControllerRelay.h"
 
+/* The SysTick interrupt that HAL_Init() starts is the FreeRTOS tick handler, so it runs before the scheduler does. 0 (default): left as it is, the binary does
+ * not change. 1: switched off after the set-up calls, which use HAL_GetTick() for their time-outs. 2: switched off right after HAL_Init(); the HAL time-outs
+ * then rely on the independent watchdog, which is armed first and resets the board if a set-up call hangs. Bench row 12 decides which one is used. */
+#ifndef HYDRA_QUIET_TICK_BEFORE_SCHEDULER
+#define HYDRA_QUIET_TICK_BEFORE_SCHEDULER 0
+#endif
+
 /* The six driver ENABLE outputs (PA0, PA1, PA3, PA4, PA5, PA15 - pinout section 2d). The TMC5160 input is ENN, active low: driving it HIGH
  * switches the driver off. The level the outputs are forced to is a build setting, MOTION_DISABLE_LEVEL_HIGH (1 by default, for ENN). The board
  * also needs a pull-up on every ENN line so the drivers stay off while this chip is in reset or in the bootloader (docs/BENCH_TESTS.md). */
@@ -188,8 +195,17 @@ int main(void)
    * crystal/oscillator choice is known - see this file's own header, and
    * update FreeRTOSConfig.h's own configCPU_CLOCK_HZ in the same commit. */
 
+#if HYDRA_QUIET_TICK_BEFORE_SCHEDULER == 2
+  SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;
+#endif
+
   GPIO_Init();
   RobotControllerRelay_Init();
+
+#if HYDRA_QUIET_TICK_BEFORE_SCHEDULER == 1
+  /* vTaskStartScheduler() sets SysTick up again with the interrupt on. */
+  SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;
+#endif
 
   xTaskCreate(vBlinkTask, "blink", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
   xTaskCreate(vRelayTask, "relay", configMINIMAL_STACK_SIZE * 2, NULL, tskIDLE_PRIORITY + 2, NULL);

@@ -46,6 +46,10 @@ static void StashResponse(uint8_t frame_type, const uint8_t *data, uint8_t dlc) 
     g_pending_response_dirty = 1;
 }
 
+void Protocol_StageSelfReply(uint8_t frame_type, const uint8_t *data, uint8_t dlc) {
+    StashResponse(frame_type, data, dlc);
+}
+
 uint8_t Protocol_TakePendingResponse(SpiOtaFrame_t *out) {
     if (!g_pending_response_dirty) return 0;
     memcpy(out, &g_pending_response, sizeof(*out));

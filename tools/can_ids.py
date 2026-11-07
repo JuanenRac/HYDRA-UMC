@@ -57,6 +57,8 @@ MESSAGES: tuple[CanMessage, ...] = (
     # slot scan (docs/SLOT_SCAN.md): the host asks every slot window who is there; each board answers on its own window, so two boards with the same board identifier are seen
     CanMessage("SLOT_SCAN_PROBE", 0x1E, HOST),
     CanMessage("SLOT_SCAN_REPLY", 0x1F, BOOTLOADER),
+    # health frame (tools/health_frame.py, src/mcu_stm32g474/health_frame.h): the application of a controller board says once a second how it is doing; off until the build asks for it
+    CanMessage("HEALTH_FRAME", 0x11, CONTROLLER_BOARD),
 )
 
 # The emergency stop itself is not inside a slot window: one identifier for the whole stack, below every slot (docs/ESTOP_CAN.md).

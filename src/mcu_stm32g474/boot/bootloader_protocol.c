@@ -26,6 +26,7 @@
 #include "update_signature.h"
 #include "update_verify.h"
 #include "bootloader_trust.h"
+#include "adoption_guard.h" // read-out protection gate for the read-back and the check of the adoption (off by default)
 
 // Classic-frame DLC (0-8) <-> FDCAN HAL's DataLength encoding: the HAL's
 // FDCAN_DLC_BYTES_n constants are the plain DLC code (n for n = 0..8), and
@@ -167,7 +168,19 @@ uint8_t ApplicationIsValid(void) {
         adopted.crc32 = CRC32_Finalize(crc);
         adopted.counter = Trust_MinCounter();
         sha256_prefixed_flash_region(NULL, 0, MAIN_APP_ADDR, APP_MAX_SIZE, adopted.sha256);
+#if HYDRA_READBACK_GATE
+        // Adopt only a record that reads back as it was computed (adoption_guard.h): a write that did not take is a refusal, not a start from other metadata.
+        if (!Metadata_EraseAndWrite(&adopted)) return 0;
+        FirmwareMetadata_t stored;
+        if (!Metadata_Read(&stored)) return 0;
+        AdoptRecord_t wanted_record = {adopted.size, adopted.hardware_id, adopted.crc32, {0}};
+        AdoptRecord_t stored_record = {stored.size, stored.hardware_id, stored.crc32, {0}};
+        memcpy(wanted_record.sha256, adopted.sha256, 32);
+        memcpy(stored_record.sha256, stored.sha256, 32);
+        return Adopt_RecordMatches(&wanted_record, &stored_record) ? 1 : 0;
+#else
         return Metadata_EraseAndWrite(&adopted) ? 1 : 0;
+#endif
     }
 
     if (meta.hardware_id != THIS_HARDWARE_ID) return 0;
@@ -367,6 +380,14 @@ static uint8_t WaitForReadbackPageAck(uint32_t page_index) {
 
 void HandleReadbackStart(void) {
     if (update_in_progress) return;
+#if HYDRA_READBACK_GATE
+    // On a board with the read-out protection on, the bootloader does not serve the application to the bus (adoption_guard.h): the answer is a length of 0.
+    if (!Adopt_ReadbackAllowed(FLASH->OPTR, 1)) {
+        uint8_t refused[4] = {0, 0, 0, 0};
+        FDCAN_Send(g_slot_base + OFS_BACKUP_READ_RESPONSE, refused, 4);
+        return;
+    }
+#endif
 
     FirmwareMetadata_t meta;
     uint32_t total_size = 0;

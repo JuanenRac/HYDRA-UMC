@@ -54,6 +54,7 @@
  * =============================================================================
  */
 
+#include "rcc_owner.h"   /* which core sets the clock tree up (off by default) */
 #include "FreeRTOS.h"
 #include "task.h"
 #include "stm32h7xx_hal.h"
@@ -212,7 +213,24 @@ int main(void)
     __disable_irq();
     for (;;) { }
   }
+#if HYDRA_RCC_HSEM_HANDSHAKE
+  /* One core sets the clock tree up (rcc_owner.h): the one that takes the semaphore first and finds the clock not yet on the PLL. */
+  {
+    __HAL_RCC_HSEM_CLK_ENABLE();
+    const uint8_t mine = (uint8_t)(HAL_HSEM_FastTake(HYDRA_HSEM_RCC) == HAL_OK);
+    const uint8_t on_pll = (uint8_t)(__HAL_RCC_GET_SYSCLK_SOURCE() == RCC_CFGR_SWS_PLL1);
+    const RccOwnerDecision decision = RccOwner_Decide(mine, on_pll);
+    if (decision == RCC_OWNER_CONFIGURE) {
+      SystemClock_Config();
+    } else if (decision == RCC_OWNER_WAIT_FOR_OTHER_CORE) {
+      const uint32_t wait_start = HAL_GetTick();
+      while (RccOwner_WaitStep(HAL_GetTick() - wait_start, (uint8_t)(__HAL_RCC_GET_SYSCLK_SOURCE() == RCC_CFGR_SWS_PLL1)) == RCC_WAIT_KEEP_WAITING) { }
+      /* on a time-out this core carries on with the clock it has (the reset default) */
+    }
+  }
+#else
   SystemClock_Config();
+#endif
   GPIO_Init();
 
   xTaskCreate(vBlinkTask, "blink", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);

@@ -230,6 +230,53 @@ else
         fi
     done
 
+    # fdcan_clock.h, app_boot_request.h and health_frame.h of the controller board: once with their switches at the default (0) and once with all three at 1.
+    APP_SUPPORT_FLAGS_0=""
+    APP_SUPPORT_FLAGS_1="-DHYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT=1 -DHYDRA_APP_ENTER_BOOTLOADER=1 -DHYDRA_HEALTH_FRAME=1"
+    for APP_SUPPORT_ON in 0 1; do
+        APP_SUPPORT_BIN="$ROOT/build/host_tests_app_support_$APP_SUPPORT_ON"
+        APP_SUPPORT_FLAGS_VAR="APP_SUPPORT_FLAGS_$APP_SUPPORT_ON"
+        # shellcheck disable=SC2086
+        if "$HOST_CC" -std=c11 -Wall -Wextra ${!APP_SUPPORT_FLAGS_VAR} -I"$ROOT/src/mcu_stm32g474" -o "$APP_SUPPORT_BIN" "$ROOT/tests/test_app_support.c" && "$APP_SUPPORT_BIN" >/dev/null; then
+            pass "test_app_support host logic tests passed (switches on: $APP_SUPPORT_ON)"
+        else
+            fail "test_app_support host logic tests FAILED (switches on: $APP_SUPPORT_ON)"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+    done
+
+    # spi_system.h: stop, release, telemetry and probe over the SPI link, against the real state machine of the brain.
+    SPI_SYSTEM_BIN="$ROOT/build/host_tests_spi_system"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h745/CM4" -o "$SPI_SYSTEM_BIN" "$ROOT/tests/test_spi_system.c" && "$SPI_SYSTEM_BIN" >/dev/null; then
+        pass "spi_system host logic tests passed"
+    else
+        fail "spi_system host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
+    # rcc_owner.h: which core of the H745 sets the clock tree up, in every interleaving of the two cores.
+    RCC_OWNER_BIN="$ROOT/build/host_tests_rcc_owner"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h745/CM4" -o "$RCC_OWNER_BIN" "$ROOT/tests/test_rcc_owner.c" && "$RCC_OWNER_BIN" >/dev/null; then
+        pass "rcc_owner host logic tests passed"
+    else
+        fail "rcc_owner host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
+    # flash_layer.h in the three boot directories (and adoption_guard.h, which only the controller board has).
+    for FLASH_LAYER_DIR in src/mcu_stm32g474/boot src/mcu_stm32h745/CM4/boot src/mcu_stm32h745/CM7/boot; do
+        FLASH_LAYER_BIN="$ROOT/build/host_tests_flash_layer_$(echo "$FLASH_LAYER_DIR" | tr '/' '_')"
+        FLASH_LAYER_DEFINE=""
+        if [ "$FLASH_LAYER_DIR" = "src/mcu_stm32g474/boot" ]; then FLASH_LAYER_DEFINE="-DHYDRA_TEST_ADOPTION"; fi
+        # shellcheck disable=SC2086
+        if "$HOST_CC" -std=c11 -Wall -Wextra $FLASH_LAYER_DEFINE -I"$ROOT/$FLASH_LAYER_DIR" -o "$FLASH_LAYER_BIN" "$ROOT/tests/test_flash_layer.c" && "$FLASH_LAYER_BIN" >/dev/null; then
+            pass "flash_layer host logic tests passed ($FLASH_LAYER_DIR)"
+        else
+            fail "flash_layer host logic tests FAILED ($FLASH_LAYER_DIR)"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+    done
+
     # estop_can.h / estop_brain.h: the emergency stop frame on identifier 0x001, the state machine of a node and the master side of the brain (vectors of tests/estop_vectors.json).
     ESTOP_HOST_BIN="$ROOT/build/host_tests_estop_can"
     if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32g474" -o "$ESTOP_HOST_BIN" "$ROOT/tests/test_estop_can.c" && "$ESTOP_HOST_BIN" >/dev/null && \

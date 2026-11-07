@@ -51,6 +51,9 @@ void HandleEndUpdate(uint8_t *data);
 // every transaction regardless).
 uint8_t Protocol_TakePendingResponse(SpiOtaFrame_t *out);
 
+// Stages a reply of a given frame type for the next transaction (the commands of spi_system.h, which are not part of the update protocol).
+void Protocol_StageSelfReply(uint8_t frame_type, const uint8_t *data, uint8_t dlc);
+
 // -----------------------------------------------------------------------
 // Relay helpers - bootloader_main.c's own SPI1 loop calls exactly one of
 // these per received frame whose target_tier isn't SPI_TARGET_SELF. Each

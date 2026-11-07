@@ -1,0 +1,31 @@
+{
+  "note": "Parameters of the time models in tests/sim_timing_models.py. They are assumptions of the models, not measurements: the bench rows named in each section replace them with measured numbers.",
+  "g474_start": {
+    "bench_row": 12,
+    "bus_bit_rate_bps": 1000000,
+    "worst_frame_bits": 130,
+    "rx_fifo_depth": 3,
+    "set_up_ms": 9,
+    "task_creation_ms": 1,
+    "first_poll_after_scheduler_ms": 5,
+    "reset_cycles": 100
+  },
+  "spi_link": {
+    "bench_row": 13,
+    "clock_hz": 10000000,
+    "frame_bytes": 128,
+    "cm4_service_us": 150,
+    "frames_to_send": 2000,
+    "damage_every_frames": 7,
+    "require_crc": false
+  },
+  "stack_a_relay": {
+    "bench_row": 19,
+    "bus_bit_rate_bps": 1000000,
+    "worst_frame_bits": 130,
+    "relay_task_period_ms": 5,
+    "relay_task_period_while_scan_ms": 1,
+    "boards": 8,
+    "frames_per_status_read": 2
+  }
+}

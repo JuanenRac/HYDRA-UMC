@@ -1,0 +1,48 @@
+# =============================================================================
+# HYDRA-UMC - virtual CAN interface check (manual)
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Started by hand only. It brings up a virtual CAN interface of the Linux kernel (vcan0) on the runner and runs tests/vcan_check.py over it: the frames
+# of the emergency stop, the slot scan and the health frame travel through real kernel sockets, and the node state machine of the reference reads
+# them back from the socket. It checks the identifier table and the frame layouts with a real CAN stack; it does not model arbitration or bit timing
+# and it says nothing about a board. If the runner cannot load the vcan module the job says so and fails.
+
+name: Virtual CAN check (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vcan:
+    name: Run the bus contract over vcan0
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Bring up vcan0
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq linux-modules-extra-"$(uname -r)"
+          sudo modprobe vcan
+          sudo ip link add dev vcan0 type vcan
+          sudo ip link set up vcan0
+          ip -details link show vcan0
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Run the contract over vcan0
+        shell: bash
+        run: python3 tests/vcan_check.py vcan0

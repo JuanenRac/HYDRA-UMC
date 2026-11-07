@@ -30,6 +30,9 @@
 #include "estop_can.h"               /* the emergency stop on identifier 0x001 (docs/ESTOP_CAN.md) */
 #include "estop_input.h"             /* the physical stop input and the stop category of each axis */
 #include "machine_config.h"          /* generated from config/machine.cfg */
+#include "fdcan_clock.h"            /* the explicit kernel clock of the FDCAN (off by default) */
+#include "app_boot_request.h"      /* ENTER_BOOTLOADER answered by the application (off by default) */
+#include "health_frame.h"           /* the once-a-second health frame (off by default) */
 #include <string.h>
 
 static FDCAN_HandleTypeDef hfdcan1_app; /* uplink - STACK A, shared with the Kinematic Brain and every other slot */
@@ -49,6 +52,7 @@ static StopPolicy_t stop_policy;      /* which axes are cut at once and which de
 static uint16_t estop_local_seq;      /* sequence of the stop frames this board sends from its own input */
 static uint32_t estop_local_sent_ms;
 static uint8_t estop_local_sent_once;
+static HealthFrame_t health;          /* what the health frame reports (health_frame.h) */
 
 /* Application-level offsets - architecture.md section 4's own reserved
  * range, mirrors KinematicBrainCan.c's identical #defines on the Tier 0
@@ -100,6 +104,14 @@ static void MX_FDCAN1_App_Init(void)
 {
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOG_CLK_ENABLE();
+#if HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT
+    {   /* the selector resets to the HSE, which does not run: take the APB1 clock the bit timing assumes (fdcan_clock.h) */
+        RCC_PeriphCLKInitTypeDef fdcan_clock = {0};
+        fdcan_clock.PeriphClockSelection = RCC_PERIPHCLK_FDCAN;
+        fdcan_clock.FdcanClockSelection = RCC_FDCANCLKSOURCE_PCLK1;
+        RelayHalRequire(HAL_RCCEx_PeriphCLKConfig(&fdcan_clock));
+    }
+#endif
     __HAL_RCC_FDCAN_CLK_ENABLE();
 
     GPIO_InitTypeDef gi = {0};
@@ -366,6 +378,7 @@ void RobotControllerRelay_Init(void)
     slot_board_id = (uint8_t)((slot_base - CAN_ID_STACKA_BASE) / STACKA_SLOT_WINDOW);
     chip_uid32 = SlotScan_FoldUid(HAL_GetUIDw0(), HAL_GetUIDw1(), HAL_GetUIDw2());
     SlotScanNode_Reset(&slot_scan_node);
+    HealthFrame_Reset(&health);
     EstopNode_Reset(&estop_node);
     EstopInputGpio_Init();
     StopPolicy_Init(&stop_policy, (uint8_t)MACHINE_STOP_CATEGORY1_MASK, MACHINE_STOP_RAMP_MAX_MS);
@@ -574,10 +587,19 @@ static void ServiceUplinkMessage(uint32_t rx_id, const uint8_t rx_data[8], uint8
         return;
     }
 
-    /* offset == OFS_ENTER_BOOTLOADER, or any other in-range-but-unhandled
-     * offset: intentionally ignored - see this module's own .h header on
-     * why ENTER_BOOTLOADER is a real, named, not-yet-implemented gap
-     * rather than silently pretended-working. */
+#if HYDRA_APP_ENTER_BOOTLOADER
+    if (offset == OFS_ENTER_BOOTLOADER) {
+        /* Hand the board over to its bootloader (app_boot_request.h): only with the exact magic and only while the drivers are off. */
+        __HAL_RCC_PWR_CLK_ENABLE();
+        __HAL_RCC_RTCAPB_CLK_ENABLE();
+        HAL_PWR_EnableBkUpAccess();
+        if (AppBoot_OnEnterBootloader(&TAMP->BKP0R, rx_data, rx_dlc, estop_node.latched) == APP_BOOT_ACCEPTED) {
+            HAL_NVIC_SystemReset();   /* the bootloader reads the request and stays in its update window */
+        }
+        return;
+    }
+#endif
+    /* Any other in-range-but-unhandled offset is ignored. ENTER_BOOTLOADER is ignored too unless the build sets HYDRA_APP_ENTER_BOOTLOADER. */
 }
 
 /* How many messages one pass takes out of each FDCAN receive FIFO. The hardware FIFO of the STM32G4's FDCAN holds only 3 frames and the task sleeps between passes, so
@@ -607,6 +629,19 @@ void RobotControllerRelay_Poll(void)
 
     /* 3. The emergency stop bookkeeping and the reply to the slot scan probe once its time has come. */
     EstopHousekeeping();
+#if HYDRA_HEALTH_FRAME
+    {
+        uint8_t health_bytes[8];
+        uint8_t counters[2];
+        health.flags = (uint8_t)((health.flags & ~(HEALTH_FLAG_ESTOP | HEALTH_FLAG_ENABLED)) | (estop_node.latched ? HEALTH_FLAG_ESTOP : HEALTH_FLAG_ENABLED));
+        RelayErrorCounters(hfdcan1_app.Instance->ECR, counters);
+        health.tx_errors = counters[0];
+        health.rx_errors = counters[1];
+        if (HealthFrame_Due(&health, HAL_GetTick(), health_bytes)) {
+            SendClassicFrame(&hfdcan1_app, slot_base + HEALTH_OFFSET, health_bytes, 8);
+        }
+    }
+#endif
     uint8_t scan_reply[8];
     if (SlotScanNode_Due(&slot_scan_node, HAL_GetTick(), slot_board_id, SLOT_SCAN_ROLE_APPLICATION, chip_uid32, scan_reply)) {
         SendClassicFrame(&hfdcan1_app, slot_base + OFS_SLOT_SCAN_REPLY, scan_reply, 8);

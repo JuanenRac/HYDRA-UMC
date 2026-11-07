@@ -27,6 +27,7 @@
 #include "ipc_mailbox.h"
 #include "boot_decision.h"
 #include "spi_frame_crc.h"
+#include "spi_system.h"   // telemetry and probe commands of the SPI link (off by default)
 
 SPI_HandleTypeDef   hspi1;
 FDCAN_HandleTypeDef hfdcan1;
@@ -281,6 +282,26 @@ static uint8_t DispatchFrame(SpiOtaFrame_t *in, uint8_t tx_wire[SPI_FRAME_SIZE])
         } else if (in->frame_type == OFS_CONFIRM_HEALTHY) {
             HandleConfirmHealthy();
         }
+#if HYDRA_SPI_SYSTEM
+        else if (SpiSys_IsCommand(in->frame_type)) {
+            // The read-only commands of spi_system.h. The bootloader has no emergency stop and no slot scan of its own, so stop, release and probe do nothing here.
+            const SpiSysConfig_t config = SpiSys_ConfigFromBuild();
+            SpiSysSnapshot_t snap = {0};
+            snap.crc_errors = spi_crc_errors;
+            snap.retries = spi_retries;
+            snap.seq_gaps = spi_seq_gaps;
+            snap.can_tx_errors = (uint8_t)(hfdcan1.Instance->ECR & 0xFFu);
+            snap.can_rx_errors = (uint8_t)((hfdcan1.Instance->ECR >> 8) & 0x7Fu);
+            snap.state = SPI_SYS_STATE_BOOTLOADER;
+            snap.link_ok = (boot_hal_fault & BOOT_FAULT_LINK_MASK) == 0;
+            uint8_t reply_type;
+            uint8_t reply[8];
+            uint8_t reply_dlc;
+            if (SpiSys_Handle(&config, &snap, in->frame_type, in->payload, in->dlc, &reply_type, reply, &reply_dlc) == SPI_SYS_ACT_REPLY) {
+                Protocol_StageSelfReply(reply_type, reply, reply_dlc);
+            }
+        }
+#endif
     }
     return 0;
 }
