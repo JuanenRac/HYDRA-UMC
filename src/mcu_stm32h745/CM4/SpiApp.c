@@ -93,6 +93,23 @@ void SpiApp_Start(void)
 /* The slots that answer the probe: the same AXIS_STATUS query as the round robin of the STACK A task, which tells an answering board (1) from a
  * silent one (0). The duplicate, misplaced and noisy verdicts of docs/SLOT_SCAN.md need the identification frames of the full scan and are not
  * produced here; the CM5 sees only absent and ok from this application. */
+#if HYDRA_SPI_SLOT_SCAN
+#include "slot_scan_sweep.h"
+
+static void SpiApp_BusWindow(void *context, uint8_t slot, uint8_t scan_id, SlotScanMaster *window)
+{
+    (void)context;
+    KinematicBrainCan_ScanWindow(slot, scan_id, (uint32_t)HYDRA_SPI_SLOT_SCAN_WINDOW_MS, window);
+}
+
+/* The full scan of docs/SLOT_SCAN.md: eight windows, each with the probe, the replies and the error frames, and the five verdicts. */
+static void SpiApp_RunScan(uint8_t scan_id)
+{
+    uint8_t verdicts[SLOT_SCAN_MASTER_SLOTS];
+    SlotScanSweep_Run(SpiApp_BusWindow, NULL, scan_id, verdicts);
+    SpiApp_ScanDone(&g_spi_app, scan_id, verdicts);
+}
+#else
 static void SpiApp_RunScan(uint8_t scan_id)
 {
     uint8_t verdicts[8];
@@ -104,6 +121,7 @@ static void SpiApp_RunScan(uint8_t scan_id)
     }
     SpiApp_ScanDone(&g_spi_app, scan_id, verdicts);
 }
+#endif /* HYDRA_SPI_SLOT_SCAN */
 
 void SpiApp_Pump(void)
 {

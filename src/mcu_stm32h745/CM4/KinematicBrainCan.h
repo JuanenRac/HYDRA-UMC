@@ -72,6 +72,12 @@ void KinematicBrainCan_ErrorCounters(uint8_t *tx_errors, uint8_t *rx_errors);
  * error condition to alarm on by itself. */
 uint8_t KinematicBrainCan_QueryAxisStatus(uint8_t slot, uint8_t out_status[8], uint8_t *out_dlc, uint32_t timeout_ms);
 
+/* One window of the slot scan (docs/SLOT_SCAN.md): sends the probe of scan_id to the slot and, for window_ms, hands every reply heard on the reply identifier of
+ * the slot to SlotScanMaster_OnFrame and counts a bus error for every rise of the error counters of FDCAN1. The stop frames keep being read and sent the whole
+ * time. The verdict is read from the window afterwards (slot_scan_master.h). */
+#include "slot_scan_master.h"
+void KinematicBrainCan_ScanWindow(uint8_t slot, uint8_t scan_id, uint32_t window_ms, SlotScanMaster *window);
+
 /* Real, tunneled request/response through a real RELAY_SEND/RELAY_RECV
  * round trip to Tier 2 (the URTC Tool Head on the given slot's own second
  * CAN controller) - `real_can_id` is a real URTC bootloader/telemetry ID

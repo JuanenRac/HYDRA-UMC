@@ -316,6 +316,15 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # slot_scan_sweep.h: one full slot scan, the eight windows (the bus is a stand-in that replays tests/slot_scan_vectors.json).
+    SLOT_SCAN_SWEEP_HOST_BIN="$ROOT/build/host_tests_slot_scan_sweep"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32h745/CM4" -o "$SLOT_SCAN_SWEEP_HOST_BIN" "$ROOT/tests/test_slot_scan_sweep.c" && "$SLOT_SCAN_SWEEP_HOST_BIN" >/dev/null; then
+        pass "slot_scan_sweep host logic tests passed"
+    else
+        fail "slot_scan_sweep host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # estop_input.h: the physical stop input (debounce, fail safe, polarity) and the stop category of each axis.
     ESTOP_INPUT_HOST_BIN="$ROOT/build/host_tests_estop_input"
     if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32g474" -o "$ESTOP_INPUT_HOST_BIN" "$ROOT/tests/test_estop_input.c" && "$ESTOP_INPUT_HOST_BIN" >/dev/null; then
@@ -903,6 +912,14 @@ arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/STM32H745
 arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/KinematicBrainCan.c" -o "$H7/cm4_app_obj/KinematicBrainCan.o"
 # SpiApp.c: the SPI slave service for the CM5 (an empty unit unless the build sets HYDRA_SPI_APP=1; needs spi_frame_crc.h from $SRC/boot)
 arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/SpiApp.c" -o "$H7/cm4_app_obj/SpiApp.o"
+# The same unit with every switch of the SPI service on (including the full slot scan), only to prove that it compiles; the object is not linked.
+mkdir -p "$H7/cm4_app_check"
+if arm-none-eabi-gcc $CFLAGS_CM4_APP -DHYDRA_SPI_SYSTEM=1 -DHYDRA_SPI_STOP_COMMAND=1 -DHYDRA_SPI_APP=1 -DHYDRA_SPI_REQUIRE_CRC=1 -DHYDRA_SPI_ZONES_HEARTBEAT=1 -DHYDRA_SPI_SLOT_SCAN=1     -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/SpiApp.c" -o "$H7/cm4_app_check/SpiApp_all_switches.o"; then
+    pass "SpiApp.c compiles with every switch on (SPI service, stop command, seal, zones heartbeat, full slot scan)"
+else
+    fail "SpiApp.c does not compile with every switch on"
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
 CM4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_PATCH)"
 CM4_APP_NAME="HYDRA_KB_CM4_APP_${CM4_APP_VER}"
 if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/STM32H745ZITx_CM4_APP.ld" \

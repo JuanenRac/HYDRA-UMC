@@ -38,6 +38,15 @@
 #ifndef HYDRA_SPI_REQUIRE_CRC
 #define HYDRA_SPI_REQUIRE_CRC 0
 #endif
+/* The full slot scan (probe, replies, duplicate / misplaced / noisy verdicts: slot_scan_sweep.h) instead of the query of AXIS_STATUS that only tells present from
+ * absent. Off by default: the window of each slot is 100 ms, so a scan takes about a second, during which the stop frames keep being sent but no other query runs. */
+#ifndef HYDRA_SPI_SLOT_SCAN
+#define HYDRA_SPI_SLOT_SCAN 0
+#endif
+#ifndef HYDRA_SPI_SLOT_SCAN_WINDOW_MS
+#define HYDRA_SPI_SLOT_SCAN_WINDOW_MS 100u /* docs/bus_contract.json, slot_scan.timing_ms.scan_window: a proposal until the bench row 15 confirms it */
+#endif
+
 #ifndef HYDRA_SPI_ZONES_HEARTBEAT
 #define HYDRA_SPI_ZONES_HEARTBEAT 0
 #endif

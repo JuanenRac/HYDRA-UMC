@@ -247,6 +247,42 @@ uint8_t KinematicBrainCan_QueryAxisStatus(uint8_t slot, uint8_t out_status[8], u
     return WaitForResponse(base + OFS_AXIS_STATUS_RESPONSE, out_status, out_dlc, timeout_ms);
 }
 
+#define OFS_SLOT_SCAN_PROBE      0x1E
+#define OFS_SLOT_SCAN_REPLY      0x1F
+
+void KinematicBrainCan_ScanWindow(uint8_t slot, uint8_t scan_id, uint32_t window_ms, SlotScanMaster *window)
+{
+    const uint32_t base = StackASlotBaseId(slot);
+    uint8_t probe[8];
+    SlotScanMaster_EncodeProbe(scan_id, probe);
+    uint8_t tx_before = 0, rx_before = 0;
+    KinematicBrainCan_ErrorCounters(&tx_before, &rx_before);
+    if (!SendClassicFrame(base + OFS_SLOT_SCAN_PROBE, probe, 8)) {
+        SlotScanMaster_OnBusError(window); /* the probe could not even be queued: the window is not a clean "nobody answered" */
+    }
+    uint32_t start = HAL_GetTick();
+    while ((HAL_GetTick() - start) < window_ms) { /* elapsed-time form: still right when the 32-bit tick wraps */
+        EstopSendDue();
+        if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1_app, FDCAN_RX_FIFO0) > 0) {
+            FDCAN_RxHeaderTypeDef rx;
+            uint8_t rx_data[8];
+            if (HAL_FDCAN_GetRxMessage(&hfdcan1_app, FDCAN_RX_FIFO0, &rx, rx_data) == HAL_OK) {
+                uint8_t dlc = (uint8_t)FdcanDataLengthToDlc(rx.DataLength);
+                if (dlc > 8u) dlc = 8u;
+                if (rx.Identifier == base + OFS_SLOT_SCAN_REPLY) {
+                    (void)SlotScanMaster_OnFrame(window, rx_data, dlc);
+                } else {
+                    ObserveFrame(rx.Identifier, rx_data, dlc); /* a stop frame or the state of a board is acted on while the window is open */
+                }
+            }
+        }
+    }
+    uint8_t tx_after = 0, rx_after = 0;
+    KinematicBrainCan_ErrorCounters(&tx_after, &rx_after);
+    /* collisions of two boards of one slot show as error frames: the counters of the controller rose during the window */
+    if (tx_after > tx_before || rx_after > rx_before) SlotScanMaster_OnBusError(window);
+}
+
 /* Real RELAY_SEND fragmentation - matches spi_bridge/relay_tunnel.py's own
  * build_relay_send_fragments() byte-for-byte: payload[0:2] = real target
  * CAN id (BE), payload[2] = real total dlc, payload[3:8] = up to 5 real
