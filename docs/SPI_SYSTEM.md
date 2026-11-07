@@ -38,7 +38,7 @@ What the service does with a frame: it checks the seal, drops a damaged frame an
 
 The SPI task never calls the emergency stop. It leaves the request (stop with its reason, release, slot scan) and the STACK A task, the only one that calls `KinematicBrainCan_Estop*`, takes it; that task in turn publishes whether the stop is latched, the error counters of the bus and the verdicts of a scan. The scan of this application asks every slot for its `AXIS_STATUS`: it tells an answering board (`ok`) from a silent one (`absent`); the `duplicate`, `misplaced` and `noisy` verdicts of `docs/SLOT_SCAN.md` need the full scan and are not produced by it.
 
-On the CM5 the bridge (`src/cm5_host/spi_bridge`, module `system_client`) sends these frames: `read_telemetry`, `probe_slots`, `request_stop` and `request_release`. A stop or a release answers only that the frame was sent; the telemetry flags say whether the brain acted.
+On the CM5 the bridge (`src/cm5_host/spi_bridge`, module `system_client`) sends these frames: `read_telemetry`, `probe_slots`, `request_stop` and `request_release`. A stop or a release answers only that the frame was sent; the telemetry flags say whether the brain acted. With `--zones-state-url` the bridge also sends the heartbeat (`send_zones_heartbeat`) every 100 ms, and only while `GET /state` of the safety-zones service says READY and is not older than a second.
 
 ## References and tests
 

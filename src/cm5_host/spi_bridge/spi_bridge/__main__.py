@@ -9,6 +9,10 @@ The HMAC key of the firmware images comes from a file (32 bytes, raw or 64 hexad
 `--collector-url` and at least one `--counter-target tier:slot[:relay]` the service also reads the error counters of those boards every
 `--counter-interval` seconds and sends them to HYDRA-UMC-TELEMETRY-COLLECTOR; the collector token comes from `--collector-token-file`
 or `HYDRA_UMC_SPI_BRIDGE_COLLECTOR_TOKEN`.
+
+With `--zones-state-url` (the safety zones service, off by default) the service also sends the heartbeat of the safety-zones chain to the brain every
+`--zones-period` seconds, and only while the verdict of `GET /state` is READY and not older than `--zones-max-age` seconds (see `zones_heartbeat.py`); the token of
+that service comes from `--zones-token-file` or `HYDRA_UMC_SPI_BRIDGE_ZONES_TOKEN`.
 """
 
 from __future__ import annotations
@@ -22,8 +26,10 @@ from pathlib import Path
 from .http_service import serve
 from .telemetry_publisher import CounterPublisher, parse_target
 from .transport import open_spi_transport
+from .zones_heartbeat import ZonesHeartbeat, fetch_state
 
 COLLECTOR_TOKEN_ENV = "HYDRA_UMC_SPI_BRIDGE_COLLECTOR_TOKEN"
+ZONES_TOKEN_ENV = "HYDRA_UMC_SPI_BRIDGE_ZONES_TOKEN"
 
 
 def read_hmac_key(path: str) -> bytes:
@@ -66,6 +72,25 @@ def build_publisher(args: argparse.Namespace, transport, bus_lock: threading.Loc
     )
 
 
+def build_zones_heartbeat(args: argparse.Namespace, transport, bus_lock: threading.Lock, environ: dict[str, str]) -> ZonesHeartbeat | None:
+    """The sender of the heartbeat the arguments ask for, or None when they ask for none."""
+
+    if not args.zones_state_url:
+        return None
+    if args.zones_token_file:
+        token = Path(args.zones_token_file).read_text(encoding="utf-8").strip() or None
+    else:
+        token = environ.get(ZONES_TOKEN_ENV, "").strip() or None
+    url = args.zones_state_url
+    return ZonesHeartbeat(
+        transport,
+        bus_lock,
+        lambda: fetch_state(url, token, timeout_seconds=max(args.zones_period, 0.5)),
+        period_seconds=args.zones_period,
+        max_age_seconds=args.zones_max_age,
+    )
+
+
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m spi_bridge")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -81,6 +106,10 @@ def make_parser() -> argparse.ArgumentParser:
     run.add_argument("--collector-token-file")
     run.add_argument("--counter-target", action="append", default=[], help="tier:slot or tier:slot:relay; repeat for each board")
     run.add_argument("--counter-interval", type=float, default=10.0)
+    run.add_argument("--zones-state-url", help="base address of the safety zones service; turns on the heartbeat of the chain to the brain (off by default)")
+    run.add_argument("--zones-token-file")
+    run.add_argument("--zones-period", type=float, default=0.1, help="seconds between two heartbeats (the brain tolerates HYDRA_SPI_ZONES_MAX_AGE_MS)")
+    run.add_argument("--zones-max-age", type=float, default=1.0, help="the oldest verdict of the service that still counts as healthy, in seconds")
     return parser
 
 
@@ -91,6 +120,7 @@ def main(argv: list[str] | None = None) -> int:
         transport = open_spi_transport(args.spi_device, args.gpio_chip, args.gpio_line, spi_speed_hz=args.spi_speed_hz)
         bus_lock = threading.Lock()
         publisher = build_publisher(args, transport, bus_lock, dict(os.environ))
+        heartbeat = build_zones_heartbeat(args, transport, bus_lock, dict(os.environ))
     except (ValueError, OSError, RuntimeError) as error:
         print(f"[spi-bridge] {error}", file=sys.stderr)
         return 2
@@ -99,6 +129,10 @@ def main(argv: list[str] | None = None) -> int:
     if publisher is not None:
         _, stop = publisher.start()
         print(f"[spi-bridge] sending the CAN error counters of {len(args.counter_target)} board(s) to {args.collector_url}")
+    stop_heartbeat = None
+    if heartbeat is not None:
+        _, stop_heartbeat = heartbeat.start()
+        print(f"[spi-bridge] sending the heartbeat of the safety zones to the brain while {args.zones_state_url} says READY")
     print(f"[spi-bridge] HTTP service on {args.host}:{args.port}")
     try:
         server.serve_forever()
@@ -107,6 +141,8 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         if stop is not None:
             stop.set()
+        if stop_heartbeat is not None:
+            stop_heartbeat.set()
         server.server_close()
         transport.close()
     return 0

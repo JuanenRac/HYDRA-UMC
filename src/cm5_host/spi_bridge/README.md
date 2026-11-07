@@ -52,7 +52,9 @@ framing to this project's real SPI framing.
   of those boards (`GET /counters` gives the same reading on demand) and sends one `can_error_counters` sample per board and round to the
   telemetry collector (`POST /ingest/ws`). The token comes from `--collector-token-file` or `HYDRA_UMC_SPI_BRIDGE_COLLECTOR_TOKEN`, the HMAC key
   of the images for the URTC bootloaders from `--hmac-key-file`; neither is ever a command-line value. A board that does not answer produces no sample.
-- `tests/` — 79 deterministic tests against in-memory fake transports
+- `spi_bridge/system_client.py` — the commands of the SPI link that the CM4 answers itself (`docs/SPI_SYSTEM.md`): `read_telemetry`, `probe_slots`, `request_stop`, `request_release` and `send_zones_heartbeat`. The firmware answers them only when it is built with the switches on, so every call reports "no answer" instead of inventing a value.
+- `spi_bridge/zones_heartbeat.py` — with `--zones-state-url` (off by default) the service sends the heartbeat of the safety-zones chain to the brain every `--zones-period` seconds (default 0.1), and only while `GET /state` of that service says READY and is not older than `--zones-max-age` seconds (default 1): a service that is down, frozen, inhibited or in a safe stop is a heartbeat that does not come. A brain built with `HYDRA_SPI_ZONES_HEARTBEAT=1` stops the stack when a heartbeat that had come stops coming. The token of the service comes from `--zones-token-file` or `HYDRA_UMC_SPI_BRIDGE_ZONES_TOKEN`.
+- `tests/` — 138 deterministic tests against in-memory fake transports
   (including a faithful fake Tier 1-relaying-to-Tier-2 stand-in) and real
   local HTTP servers (only the SPI transport underneath is faked) — see
   `../../tools/build_test.py`'s own `firmware-c` branch for how this is
