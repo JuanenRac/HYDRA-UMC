@@ -324,6 +324,15 @@ else
         fail "G474 bootloader SHA-256, Ed25519, CRC32, flash and metadata log host logic tests FAILED"
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
+    # The same test again with the common flash layer under the flash routines (HYDRA_FLASH_LAYER=1, off in a build as it ships).
+    BOOTLOADER_G474_LAYER_BIN="$ROOT/build/host_tests_bootloader_g474_flash_layer"
+    if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -DHYDRA_FLASH_LAYER=1 -I"$ROOT/tests/stubs" -I"$ROOT/src/mcu_stm32g474/boot" -I"$ROOT/tests" -o "$BOOTLOADER_G474_LAYER_BIN" "$ROOT/tests/test_bootloader_g474_host.c" "$TWEETNACL_HOST_OBJ" "$ROOT/src/mcu_stm32g474/boot/update_signature.c" && "$BOOTLOADER_G474_LAYER_BIN" >/dev/null; then
+        pass "G474 bootloader flash and metadata log host logic tests passed with the common flash layer (HYDRA_FLASH_LAYER=1)"
+    else
+        "$BOOTLOADER_G474_LAYER_BIN" || true
+        fail "G474 bootloader flash host logic tests FAILED with the common flash layer (HYDRA_FLASH_LAYER=1)"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
     for H745_CORE in CM4 CM7; do
         BOOTLOADER_H745_HOST_BIN="$ROOT/build/host_tests_bootloader_h745_$H745_CORE"
         if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -DHYDRA_TEST_$H745_CORE -I"$ROOT/tests/stubs" -I"$ROOT/src/mcu_stm32h745/$H745_CORE/boot" -o "$BOOTLOADER_H745_HOST_BIN" "$ROOT/tests/test_bootloader_h745_host.c" && "$BOOTLOADER_H745_HOST_BIN" >/dev/null; then
@@ -375,6 +384,14 @@ else
     else
         "$BOOTLOADER_G474_UPDATE_BIN" || true
         fail "G474 bootloader whole-update host tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+    BOOTLOADER_G474_UPDATE_LAYER_BIN="$ROOT/build/host_tests_bootloader_g474_update_flash_layer"
+    if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -DHYDRA_FLASH_LAYER=1 -I"$ROOT/tests/stubs/protocol" -I"$ROOT/src/mcu_stm32g474" -I"$ROOT/src/mcu_stm32g474/boot" -I"$ROOT/tests" -o "$BOOTLOADER_G474_UPDATE_LAYER_BIN" "$ROOT/tests/test_bootloader_g474_update_host.c" "$TWEETNACL_HOST_OBJ" "$ROOT/src/mcu_stm32g474/boot/update_signature.c" && "$BOOTLOADER_G474_UPDATE_LAYER_BIN" >/dev/null; then
+        pass "G474 bootloader whole-update host tests passed with the common flash layer (HYDRA_FLASH_LAYER=1)"
+    else
+        "$BOOTLOADER_G474_UPDATE_LAYER_BIN" || true
+        fail "G474 bootloader whole-update host tests FAILED with the common flash layer (HYDRA_FLASH_LAYER=1)"
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
     for H745_CORE in CM4 CM7; do

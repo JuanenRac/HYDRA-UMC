@@ -75,6 +75,8 @@ def table() -> list[HostTest]:
         HostTest("slot_scan_node", "tests/test_slot_scan_node.c", ("tests", f"{G4}/boot")),
         HostTest("bootloader_g474", "tests/test_bootloader_g474_host.c", ("tests/stubs", f"{G4}/boot", "tests"), GNU,
                  (f"{G4}/boot/update_signature.c",), needs_tweetnacl=True),
+        HostTest("bootloader_g474_flash_layer", "tests/test_bootloader_g474_host.c", ("tests/stubs", f"{G4}/boot", "tests"), GNU,
+                 (f"{G4}/boot/update_signature.c",), defines=("HYDRA_FLASH_LAYER=1",), needs_tweetnacl=True),
     ]
     for core in ("CM4", "CM7"):
         tests.append(HostTest(f"bootloader_h745_{core}", "tests/test_bootloader_h745_host.c", ("tests/stubs", f"{H7}/{core}/boot"), GNU,
@@ -90,6 +92,9 @@ def table() -> list[HostTest]:
     tests.append(HostTest("bootloader_g474_update", "tests/test_bootloader_g474_update_host.c",
                           ("tests/stubs/protocol", G4, f"{G4}/boot", "tests"), GNU, (f"{G4}/boot/update_signature.c",),
                           needs_tweetnacl=True))
+    tests.append(HostTest("bootloader_g474_update_flash_layer", "tests/test_bootloader_g474_update_host.c",
+                          ("tests/stubs/protocol", G4, f"{G4}/boot", "tests"), GNU, (f"{G4}/boot/update_signature.c",),
+                          defines=("HYDRA_FLASH_LAYER=1",), needs_tweetnacl=True))
     for core in ("CM4", "CM7"):
         tests.append(HostTest(f"bootloader_h745_{core}_protocol", f"{H7}/{core}/boot/bootloader_protocol.c",
                               ("tests/stubs/h7protocol", f"{H7}/{core}/boot", f"{H7}/Common", f"{H7}/{core}", H7, "tests"),

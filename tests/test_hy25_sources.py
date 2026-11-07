@@ -40,6 +40,7 @@ class SwitchesShipOff(unittest.TestCase):
             (G4 / "health_frame.h", "HYDRA_HEALTH_FRAME"),
             (G4 / "boot_report.h", "HYDRA_BOOT_REPORT"),
             (G4 / "init_fault.h", "HYDRA_INIT_FAULT_LATCH"),
+            (G4 / "boot" / "bootloader_flash.c", "HYDRA_FLASH_LAYER"),
             (G4 / "boot" / "adoption_guard.h", "HYDRA_READBACK_GATE"),
             (G4 / "STM32G474RE_main.c", "HYDRA_QUIET_TICK_BEFORE_SCHEDULER"),
             (H7 / "CM4" / "spi_system.h", "HYDRA_SPI_SYSTEM"),
@@ -81,6 +82,17 @@ class SwitchesShipOff(unittest.TestCase):
         self.assertIn("#if HYDRA_BOOT_REPORT", relay)
         self.assertIn("BootReport_TakeHealthFlags(&TAMP->BKP2R)", relay)
         self.assertLess(relay.index("HealthFrame_Reset(&health);"), relay.index("BootReport_TakeHealthFlags"))
+
+    def test_the_g474_flash_routines_go_through_the_common_layer_only_where_the_switch_says(self):
+        flash = text(G4 / "boot" / "bootloader_flash.c")
+        self.assertIn('#include "flash_layer.h"', flash)
+        self.assertEqual(flash.count("#if HYDRA_FLASH_LAYER"), 3)
+        for call in ("FlashLayer_Erase(", "FlashLayer_Write(", "FlashLayer_GeometryG474()"):
+            self.assertIn(call, flash)
+        # the legacy path stays in the #else branch: a build without the switch is the code that shipped
+        legacy = flash.split("#else", 1)[1]
+        self.assertIn("HAL_FLASHEx_Erase(&eraseInit", flash)
+        self.assertIn("FLASH_TYPEPROGRAM_DOUBLEWORD", legacy)
 
     def test_a_failed_setup_of_the_application_resets_once_then_keeps_the_watchdog_in_the_safe_state(self):
         relay = text(G4 / "RobotControllerRelay.c")

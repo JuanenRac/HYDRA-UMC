@@ -24,6 +24,11 @@
 #include "bootloader_common.h"
 #include "bootloader_flash.h"
 #include "flash_geometry.h"
+#include "flash_layer.h"      // the common checks of the three bootloaders (behind HYDRA_FLASH_LAYER, off by default)
+
+#ifndef HYDRA_FLASH_LAYER
+#define HYDRA_FLASH_LAYER 0
+#endif
 
 static uint32_t crc32_table[256];
 static uint8_t crc32_table_built = 0;
@@ -85,6 +90,54 @@ static uint8_t ErasePageAt(uint32_t addr) {
     return res == HAL_OK && pageError == 0xFFFFFFFF;
 }
 
+#if HYDRA_FLASH_LAYER
+// The three hardware calls under flash_layer.h: erase pages, program double-words, read. The range, alignment and blank checks and the read-back
+// compare are the layer's.
+static int g4_layer_erase(void *context, uint32_t address, uint32_t length) {
+    (void)context;
+    for (uint32_t done = 0; done < length; done += FLASH_PAGE_SIZE) {
+        if (!ErasePageAt(address + done)) return 1;
+        HAL_IWDG_Refresh(&hiwdg);
+    }
+    return 0;
+}
+
+static int g4_layer_program(void *context, uint32_t address, const uint8_t *data, uint32_t length) {
+    (void)context;
+    for (uint32_t i = 0; i < length; i += 8) {
+        uint64_t dword;
+        memcpy(&dword, &data[i], 8);
+        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, address + i, dword) != HAL_OK) return 1;
+    }
+    __DSB(); // the last flash write is complete before the read-back trusts it
+    if ((address & 0x3FF) == 0) HAL_IWDG_Refresh(&hiwdg);
+    return 0;
+}
+
+static int g4_layer_read(void *context, uint32_t address, uint8_t *out, uint32_t length) {
+    (void)context;
+    const volatile uint8_t *from = (const volatile uint8_t*)(uintptr_t)address;
+    for (uint32_t i = 0; i < length; i++) out[i] = from[i];
+    if ((address & 0x3FF) == 0) HAL_IWDG_Refresh(&hiwdg);
+    return 0;
+}
+
+static const FlashLayerOps_t *g4_layer_ops(void) {
+    static FlashLayerOps_t ops;
+    ops.geometry = FlashLayer_GeometryG474();
+    ops.context = 0;
+    ops.erase = g4_layer_erase;
+    ops.program = g4_layer_program;
+    ops.read = g4_layer_read;
+    return &ops;
+}
+
+uint8_t Flash_ErasePages(uint32_t start_addr, uint32_t num_pages) {
+    if (num_pages == 0) return 1;
+    if ((FLASH->OPTR & FLASH_OPTR_DBANK) == 0U) return 0; // single-bank mode: the page numbering of flash_geometry.h does not apply
+    return FlashLayer_Erase(g4_layer_ops(), start_addr, num_pages * FLASH_PAGE_SIZE) == FLASH_LAYER_OK;
+}
+#else
 uint8_t Flash_ErasePages(uint32_t start_addr, uint32_t num_pages) {
     // One page at a time with an IWDG refresh between each - same reasoning
     // as URTC's own bootloader: a single HAL_FLASHEx_Erase call spanning
@@ -98,12 +151,24 @@ uint8_t Flash_ErasePages(uint32_t start_addr, uint32_t num_pages) {
     return 1;
 }
 
+#endif
+
 // Writes len bytes (rounded up to a double-word, i.e. 8 bytes) starting at
 // addr, then reads every double-word back and compares it against the
 // source buffer before reporting success - same "catch a stuck flash cell
 // at write time" reasoning as URTC's own Flash_WriteVerified, just 8 bytes
 // at a time instead of 2 since this chip's flash controller only accepts
 // FLASH_TYPEPROGRAM_DOUBLEWORD.
+#if HYDRA_FLASH_LAYER
+uint8_t Flash_WriteVerified(uint32_t addr, const uint8_t *buf, uint32_t len) {
+    if (len == 0) return 1;
+    HAL_FLASH_Unlock();
+    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
+    const FlashLayerStatus status = FlashLayer_Write(g4_layer_ops(), addr, buf, len);
+    HAL_FLASH_Lock();
+    return status == FLASH_LAYER_OK;
+}
+#else
 uint8_t Flash_WriteVerified(uint32_t addr, const uint8_t *buf, uint32_t len) {
     HAL_FLASH_Unlock();
     __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
@@ -130,6 +195,7 @@ uint8_t Flash_WriteVerified(uint32_t addr, const uint8_t *buf, uint32_t len) {
     }
     return 1;
 }
+#endif
 
 // Copies one flash region into another, page by page: erase destination
 // page, write+verify from source, refresh IWDG, repeat. Used for the
@@ -146,7 +212,11 @@ uint8_t Flash_CopyRegion(uint32_t dest_addr, uint32_t src_addr, uint32_t total_l
             this_page_len = total_len - (p * FLASH_PAGE_SIZE);
         }
 
+#if HYDRA_FLASH_LAYER
+        if (!Flash_ErasePages(page_dest, 1)) return 0;
+#else
         if (!ErasePageAt(page_dest)) return 0;
+#endif
 
         if (!Flash_WriteVerified(page_dest, (const uint8_t*)page_src, this_page_len)) return 0;
         HAL_IWDG_Refresh(&hiwdg);

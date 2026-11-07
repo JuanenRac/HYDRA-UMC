@@ -483,7 +483,11 @@ static void test_write_over_a_page_that_was_not_erased_is_refused(void)
     memset(flash_mem + (MAIN_APP_ADDR - FLASH_BASE_ADDR), 0xAA, 16);
     uint8_t source[8] = {1, 2, 3, 4, 5, 6, 7, 8};
     CHECK(Flash_WriteVerified(MAIN_APP_ADDR, source, 8) == 0, "the controller refuses it and so does the routine");
+#if HYDRA_FLASH_LAYER
+    CHECK(program_error_not_erased == 0 && program_calls == 0, "the flash layer refuses it before the controller is asked");
+#else
     CHECK(program_error_not_erased == 1, "it was refused for that reason");
+#endif
     CHECK(unlocks == locks && !is_unlocked, "the flash is locked again");
 }
 
