@@ -36,7 +36,6 @@ def default_of(path: Path, name: str) -> int:
 class SwitchesShipOff(unittest.TestCase):
     def test_every_switch_defaults_to_zero(self):
         cases = (
-            (G4 / "fdcan_clock.h", "HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT"),
             (G4 / "app_boot_request.h", "HYDRA_APP_ENTER_BOOTLOADER"),
             (G4 / "health_frame.h", "HYDRA_HEALTH_FRAME"),
             (G4 / "boot" / "adoption_guard.h", "HYDRA_READBACK_GATE"),
@@ -47,6 +46,10 @@ class SwitchesShipOff(unittest.TestCase):
         )
         for path, name in cases:
             self.assertEqual(default_of(path, name), 0, f"{name} must ship off")
+
+    def test_the_fdcan_clock_switch_ships_on_by_decision_of_the_maintainer(self):
+        self.assertEqual(default_of(G4 / "fdcan_clock.h", "HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT"), 1)
+        self.assertIn("not been validated on a board", text(G4 / "fdcan_clock.h"))
 
     def test_the_sources_use_the_switches_and_the_headers(self):
         boot = text(G4 / "boot" / "bootloader_main.c")

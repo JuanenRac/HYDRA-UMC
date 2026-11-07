@@ -1,6 +1,6 @@
 # Build switches of the firmware that ship off
 
-Every switch below is `0` in a build as it ships, so the binary does not change until a build sets it (`-DNAME=1`). Each one has a host test that runs it on and off, and a row of `docs/BENCH_TESTS.md` that has to be run on a board before it is turned on in a release.
+Every switch below is `0` in a build as it ships, so the binary does not change until a build sets it (`-DNAME=1`), except `HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT`, which the maintainer decided to ship on (`1`; build with `-DHYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT=0` for the old behaviour). That one is not validated on a board: row 10 is still open. Each one has a host test that runs it on and off, and a row of `docs/BENCH_TESTS.md` that has to be run on a board before it is turned on in a release.
 
 | Switch | File | What it does when on | Bench row to pass first |
 |---|---|---|---|

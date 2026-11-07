@@ -121,6 +121,7 @@ typedef struct {
     uint16_t last_seq;
     uint8_t have_alive;
     uint32_t last_alive_ms;
+    uint8_t busoff_wait;      /* set by a bus-off: a RELEASE is refused until a new ALIVE arrives (a master that is heard again) */
 } EstopNode_t;
 
 static inline void EstopNode_Reset(EstopNode_t *n)
@@ -173,10 +174,11 @@ static inline void EstopNode_OnFrame(EstopNode_t *n, uint32_t now_ms, const uint
         n->last_seq = f.seq;
         n->have_alive = 1u;
         n->last_alive_ms = now_ms;
+        n->busoff_wait = 0u; /* a new heartbeat after a bus-off: the master is heard again */
         return;
     }
-    /* RELEASE: only from a latched node that heard a live master, for the epoch it knows, with a newer sequence. It never enables anything. */
-    if (n->latched && newer && n->have_epoch && f.epoch == n->epoch && EstopNode_Alive_(n, now_ms)) {
+    /* RELEASE: only from a latched node that heard a live master (and, after a bus-off, a new heartbeat), for the epoch it knows, with a newer sequence. It never enables anything. */
+    if (n->latched && !n->busoff_wait && newer && n->have_epoch && f.epoch == n->epoch && EstopNode_Alive_(n, now_ms)) {
         n->have_seq = 1u;
         n->last_seq = f.seq;
         n->latched = 0u;
@@ -186,6 +188,7 @@ static inline void EstopNode_OnFrame(EstopNode_t *n, uint32_t now_ms, const uint
 static inline void EstopNode_OnBusOff(EstopNode_t *n)
 {
     EstopNode_Latch_(n); /* the bus coming back never releases anything */
+    n->busoff_wait = 1u; /* and a RELEASE is refused until a new ALIVE arrives */
 }
 
 /* Call every pass: a READY node that has not heard the master within the timeout becomes LATCHED. */

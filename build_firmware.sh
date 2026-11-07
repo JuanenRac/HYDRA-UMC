@@ -230,8 +230,8 @@ else
         fi
     done
 
-    # fdcan_clock.h, app_boot_request.h and health_frame.h of the controller board: once with their switches at the default (0) and once with all three at 1.
-    APP_SUPPORT_FLAGS_0=""
+    # fdcan_clock.h, app_boot_request.h and health_frame.h of the controller board: once with the switches off (the FDCAN clock switch defaults to 1, so it is set to 0 here) and once with all three at 1.
+    APP_SUPPORT_FLAGS_0="-DHYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT=0"
     APP_SUPPORT_FLAGS_1="-DHYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT=1 -DHYDRA_APP_ENTER_BOOTLOADER=1 -DHYDRA_HEALTH_FRAME=1"
     for APP_SUPPORT_ON in 0 1; do
         APP_SUPPORT_BIN="$ROOT/build/host_tests_app_support_$APP_SUPPORT_ON"

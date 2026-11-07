@@ -10,8 +10,9 @@
  * clock (RCC_CCIPR, FDCANSEL, RM0440) resets to 00 = HSE, and no HSE is running: left alone, the peripheral may be fed by a clock that does not
  * exist. Choosing PCLK1 (which is the HSI at divider 1) states the assumption of the bit timing in the code instead of in a comment.
  *
- * The firmware does this only when the build sets HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT to 1 (default 0: the binary does not change). Turn it on
- * after row 10 of docs/BENCH_TESTS.md measured the clock of a cold power-up on a board.
+ * The firmware does this only when the build sets HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT to 1 (default 1, chosen by the maintainer; build with
+ * -DHYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT=0 to leave the selector alone). It has not been validated on a board: row 10 of docs/BENCH_TESTS.md
+ * (the clock of a cold power-up) is still open.
  * ========================================================================== */
 #ifndef HYDRA_UMC_FDCAN_CLOCK_H
 #define HYDRA_UMC_FDCAN_CLOCK_H
@@ -19,7 +20,7 @@
 #include <stdint.h>
 
 #ifndef HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT
-#define HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT 0
+#define HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT 1
 #endif
 
 /* The three sources of RCC_CCIPR.FDCANSEL. */

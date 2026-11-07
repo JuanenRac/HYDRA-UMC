@@ -150,6 +150,18 @@ class EmergencyStopOnTheBus(unittest.TestCase):
         self.bus.run(2)
         self.assertEqual(self.listener.node.state, estop_can.LATCHED)
 
+    def test_after_a_bus_off_a_release_waits_for_a_new_heartbeat_of_the_brain(self):
+        self.make_ready()
+        self.listener.go_bus_off()
+        self.listener.bus_off = False
+        self.send(estop_can.KIND_RELEASE)  # the last heartbeat is recent, but the bus went off: refused
+        self.bus.run(2)
+        self.assertEqual(self.listener.node.state, estop_can.LATCHED)
+        self.alive_for(TIMING["alive_period"] + 1)  # the brain is heard again
+        self.send(estop_can.KIND_RELEASE)
+        self.bus.run(2)
+        self.assertEqual(self.listener.node.state, estop_can.READY)
+
     def test_a_malformed_frame_on_the_stop_identifier_is_a_trip(self):
         self.make_ready()
         self.brain.send(estop_can.ESTOP_CAN_ID, b"\x02\x00\x00")

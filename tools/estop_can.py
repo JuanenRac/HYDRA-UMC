@@ -107,6 +107,7 @@ class Node:
     last_seq: int | None = None
     last_alive_ms: int | None = None
     drivers_enabled: bool = False
+    busoff_wait: bool = False  # after a bus-off a RELEASE is refused until a new ALIVE arrives
 
     def _latch(self) -> None:
         self.state = LATCHED
@@ -132,9 +133,10 @@ class Node:
                 return
             self.last_seq = frame.seq
             self.last_alive_ms = now_ms
+            self.busoff_wait = False  # a new heartbeat after a bus-off: the master is heard again
             return
         # RELEASE: only from a latched node that heard a live master, for the epoch it knows, and with a newer sequence
-        if self.state == LATCHED and newer and frame.epoch == self.epoch and self._alive(now_ms):
+        if self.state == LATCHED and not self.busoff_wait and newer and frame.epoch == self.epoch and self._alive(now_ms):
             self.last_seq = frame.seq
             self.state = READY  # the drivers stay off: a person enables them with the normal command
 
@@ -143,6 +145,7 @@ class Node:
 
     def on_bus_off(self) -> None:
         self._latch()
+        self.busoff_wait = True
 
     def tick(self, now_ms: int) -> None:
         if self.state == READY and not self._alive(now_ms):

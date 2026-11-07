@@ -502,6 +502,17 @@
      }
     }
    ]
+  },
+  {
+   "name": "after a bus-off a release waits for a new heartbeat of the brain",
+   "steps": [
+    {"t": 0, "frame": "030100010a00fcfe"},
+    {"t": 10, "frame": "020000010b00fdff", "expect": {"state": "READY", "drivers_enabled": false}},
+    {"t": 20, "do": "bus_off", "expect": {"state": "LATCHED", "drivers_enabled": false}},
+    {"t": 30, "frame": "020000010c00fdff", "expect": {"state": "LATCHED", "drivers_enabled": false}, "note": "the last heartbeat is still inside the timeout, but the bus went off: refused"},
+    {"t": 40, "frame": "030000010d00fcff", "expect": {"state": "LATCHED", "drivers_enabled": false}},
+    {"t": 50, "frame": "020000010e00fdff", "expect": {"state": "READY", "drivers_enabled": false}, "note": "a heartbeat was heard after the bus-off"}
+   ]
   }
  ],
  "notes": "A scenario starts from a node that has just powered up. A step with 'frame' delivers it at time t; 'do' is tick, bus_off or enable. 'expect' is checked after the step."
