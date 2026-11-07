@@ -1,6 +1,6 @@
 # Renode platform of the STM32G474
 
-Renode ships no platform description for the STM32G4 family, so `tools/renode/stm32g474.repl` is written by hand for the controller board, with the addresses of the reference manual RM0440. `tools/renode/stm32g474.resc` loads it (and a firmware image when `$bin` is set). The manual workflow `renode-g474.yml` downloads the pinned Renode release, checks its SHA-256 and loads the platform; it fails when Renode reports an error. Nothing of the firmware runs there yet.
+Renode ships no platform description for the STM32G4 family, so `tools/renode/stm32g474.repl` is written by hand for the controller board, with the addresses of the reference manual RM0440. `tools/renode/stm32g474.resc` loads it (and a firmware image when `$bin` is set). The manual workflow `renode-g474.yml` downloads the pinned Renode release, checks its SHA-256 and loads the platform; it fails when Renode reports an error. A second job of the same workflow loads the committed ELF of the bootloader (`tools/renode/run_bootloader.resc`), lets it run for one virtual second and fails when the run does not finish or the program counter ends outside the flash; the accesses to the peripherals that are not declared are counted in the job summary. That shows the code executes from the reset vector, nothing more.
 
 | Declared | Address |
 |---|---|

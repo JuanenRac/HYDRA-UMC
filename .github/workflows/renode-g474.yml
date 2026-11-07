@@ -56,3 +56,53 @@ jobs:
             echo "Renode reported an error while loading the platform" >&2
             exit 1
           fi
+
+  run-bootloader:
+    name: Run the committed bootloader ELF
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RENODE_VERSION: "1.16.0"
+      RENODE_SHA256: "99e43ad40d07be7a81835b5b95897619997d32da9998634730c0aec5486736f6"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Download the pinned Renode release and check its hash
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/renode"
+          curl --fail --location --silent --show-error --output "$RUNNER_TEMP/renode.tar.gz" \
+            "https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode-${RENODE_VERSION}.linux-portable.tar.gz"
+          echo "${RENODE_SHA256}  $RUNNER_TEMP/renode.tar.gz" | sha256sum --check -
+          tar -xzf "$RUNNER_TEMP/renode.tar.gz" -C "$RUNNER_TEMP/renode" --strip-components=1
+
+      - name: Run the bootloader of the controller board for one virtual second
+        shell: bash
+        run: |
+          set -uo pipefail
+          elf=$(ls firmware/HYDRA_RCB_BOOTLOADER_v*.elf | sort -V | tail -n 1)
+          echo "ELF: $elf"
+          "$RUNNER_TEMP/renode/renode" --disable-xwt --plain --console \
+            -e "\$bin=@${elf}; include @tools/renode/run_bootloader.resc; quit" 2>&1 | tee "$RUNNER_TEMP/run.log"
+          {
+            echo "## Bootloader run (STM32G474 platform)"
+            echo
+            echo '```'
+            grep -E "HYDRA_RENODE|^0x[0-9A-Fa-f]+" "$RUNNER_TEMP/run.log" | tail -n 20
+            echo '```'
+            echo
+            echo "Accesses to peripherals the platform does not declare: $(grep -ci 'non existing peripheral' "$RUNNER_TEMP/run.log" || true)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          grep -q HYDRA_RENODE_END "$RUNNER_TEMP/run.log" || { echo "the run script did not finish" >&2; exit 1; }
+          if grep -Ei "could not|unable|error:" "$RUNNER_TEMP/run.log" | grep -vi "non existing"; then
+            echo "Renode reported an error" >&2
+            exit 1
+          fi
+          # The program counter after the run must be inside the flash of the chip.
+          pc=$(grep -A4 HYDRA_RENODE_AFTER_ONE_SECOND "$RUNNER_TEMP/run.log" | grep -oE "0x[0-9A-Fa-f]+" | head -n 1)
+          echo "PC after the run: ${pc:-none}"
+          [ -n "$pc" ] && [ $((pc)) -ge $((0x08000000)) ] && [ $((pc)) -lt $((0x08080000)) ]

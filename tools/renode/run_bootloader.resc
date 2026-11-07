@@ -1,0 +1,16 @@
+# HYDRA-UMC - tools/renode/run_bootloader.resc
+# Loads the hand-written STM32G474 platform, loads the ELF of the bootloader of the controller board and lets it run for one virtual second.
+#   renode --disable-xwt --plain --console -e "$bin=@firmware/HYDRA_RCB_BOOTLOADER_v0.1.8.elf; include @tools/renode/run_bootloader.resc; quit"
+# It prints the program counter and the stack pointer before and after the run, so the workflow can check that the reset vector was taken and that the
+# code executed from the flash. The clock tree, the flash controller and the FDCAN engine are not modelled (docs/RENODE.md): a loop that waits on them
+# keeps running, which is all this run shows. Evidence: simulator.
+include @tools/renode/stm32g474.resc
+sysbus LoadELF $bin
+echo "HYDRA_RENODE_START"
+cpu PC
+cpu SP
+emulation RunFor "0:0:1"
+echo "HYDRA_RENODE_AFTER_ONE_SECOND"
+cpu PC
+cpu SP
+echo "HYDRA_RENODE_END"
