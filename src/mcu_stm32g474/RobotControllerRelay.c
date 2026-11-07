@@ -34,6 +34,7 @@
 #include "app_boot_request.h"      /* ENTER_BOOTLOADER answered by the application (off by default) */
 #include "health_frame.h"           /* the once-a-second health frame (off by default) */
 #include "boot_report.h"            /* what the bootloader found at this start, for the health flags (off by default) */
+#include "init_fault.h"             /* what a failed set-up call of this application does: one reset, then the safe state (off by default) */
 #include <string.h>
 
 static FDCAN_HandleTypeDef hfdcan1_app; /* uplink - STACK A, shared with the Kinematic Brain and every other slot */
@@ -86,14 +87,27 @@ static uint32_t ReadSlotBaseId_App(void)
 
 /* Real FDCAN1 init - PB8=RX/PB9=TX (AF9), PG7=CAN1_STBY - byte-for-byte
  * the bootloader's own MX_FDCAN1_Init() (see this file's own header). */
-/* A set-up call of the peripherals that fails leaves the board unable to answer the brain: stop here with the interrupts off. Nothing refreshes the
- * watchdog any more, it resets the chip into the bootloader, whose boot-attempt count decides whether this application is tried again. */
+static uint8_t init_fault_prior;      /* failed set-ups recorded before this start (init_fault.h) */
+
+/* A set-up call of the peripherals that fails leaves the board unable to answer the brain. With HYDRA_INIT_FAULT_LATCH off: stop here with the interrupts off, nothing
+ * refreshes the watchdog any more, it resets the chip into the bootloader, whose boot-attempt count decides whether this application is tried again. With it on: the
+ * first failure asks for one reset, the second leaves the drivers off and refreshes the watchdog for ever (init_fault.h). */
 static void RelayHalRequire(HAL_StatusTypeDef status)
 {
     if (status != HAL_OK) {
         MotionOutputs_ForceDisabled();
-        __disable_irq();
-        for (;;) { }
+        switch (InitFault_OnFailure(&TAMP->BKP4R, init_fault_prior)) {
+        case INIT_FAULT_RESET:
+            __disable_irq();
+            NVIC_SystemReset();
+            for (;;) { }
+        case INIT_FAULT_SAFE_STATE:
+            __disable_irq();
+            for (;;) { AppWatchdog_Refresh(); }
+        default:
+            __disable_irq();
+            for (;;) { }
+        }
     }
 }
 
@@ -380,6 +394,13 @@ void RobotControllerRelay_Init(void)
     chip_uid32 = SlotScan_FoldUid(HAL_GetUIDw0(), HAL_GetUIDw1(), HAL_GetUIDw2());
     SlotScanNode_Reset(&slot_scan_node);
     HealthFrame_Reset(&health);
+#if HYDRA_INIT_FAULT_LATCH
+    __HAL_RCC_PWR_CLK_ENABLE();
+    __HAL_RCC_RTCAPB_CLK_ENABLE();
+    HAL_PWR_EnableBkUpAccess();
+#endif
+    init_fault_prior = InitFault_Begin(&TAMP->BKP4R);
+    health.flags = (uint8_t)(health.flags | InitFault_HealthFlags(init_fault_prior));
 #if HYDRA_BOOT_REPORT
     __HAL_RCC_PWR_CLK_ENABLE();
     __HAL_RCC_RTCAPB_CLK_ENABLE();
@@ -396,6 +417,7 @@ void RobotControllerRelay_Init(void)
     MX_FDCAN1_App_Init();
     MX_FDCAN2_Init();
     AxisStatusGpio_Init();
+    InitFault_Clear(&TAMP->BKP4R); /* the set-up finished: forget the failed starts (the health flag of this start stays) */
 }
 
 /* Answers one message of this board's own slot window on FDCAN1 (uplink). Every other slot's own traffic (and every other board's STACK A heartbeats) is silently ignored,

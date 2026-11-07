@@ -14,6 +14,7 @@
 #include "app_boot_request.h"
 #include "health_frame.h"
 #include "boot_report.h"
+#include "init_fault.h"
 
 #define TEST_ASSERT(cond, msg) \
     do { \
@@ -158,14 +159,61 @@ static void test_boot_report(void)
 #endif
 }
 
+static void test_init_fault(void)
+{
+    volatile uint32_t regs[2] = {0u, 0u};
+#if HYDRA_INIT_FAULT_LATCH
+    TEST_ASSERT(InitFault_Begin(regs) == 0u, "a clean start has no failed start before it");
+    TEST_ASSERT(InitFault_OnFailure(regs, 0u) == INIT_FAULT_RESET, "the first failure asks for one reset");
+    TEST_ASSERT(InitFault_Begin(regs) == 1u, "the counter survives the reset");
+    TEST_ASSERT(InitFault_HealthFlags(1u) == HEALTH_FLAG_INIT_BAD, "a start after a failed one reports INIT_BAD");
+    TEST_ASSERT(InitFault_HealthFlags(0u) == 0u, "a clean start reports nothing");
+    TEST_ASSERT(InitFault_OnFailure(regs, 1u) == INIT_FAULT_SAFE_STATE, "the second failure asks for the safe state, not a second reset");
+    TEST_ASSERT(InitFault_OnFailure(regs, 200u) == INIT_FAULT_SAFE_STATE, "any higher count is the safe state");
+    InitFault_Clear(regs);
+    TEST_ASSERT(InitFault_Begin(regs) == 0u && regs[0] == 0u && regs[1] == 0u, "a finished set-up forgets the failed starts");
+    /* a failure after a recovery gets its one reset again */
+    TEST_ASSERT(InitFault_OnFailure(regs, InitFault_Begin(regs)) == INIT_FAULT_RESET, "a new failure after a recovery asks for a reset again");
+    /* random bits after a power-up are not a counter */
+    regs[0] = 0xDEADBEEFu; regs[1] = 0x12345678u;
+    TEST_ASSERT(InitFault_Begin(regs) == 0u, "random bits are not a counter");
+    regs[0] = INIT_FAULT_MAGIC | 1u; regs[1] = ~regs[0];
+    TEST_ASSERT(InitFault_Begin(regs) == 1u, "a valid word is a counter");
+    regs[1] ^= 0x00000100u;
+    TEST_ASSERT(InitFault_Begin(regs) == 0u, "a damaged complement is not a counter");
+    for (unsigned bit = 0u; bit < 32u; bit++) {
+        regs[0] = INIT_FAULT_MAGIC | 1u; regs[1] = ~regs[0];
+        regs[0] ^= (1u << bit);
+        if (bit < 8u) continue; /* a flipped bit of the count is caught by the complement */
+        TEST_ASSERT(InitFault_Begin(regs) == 0u, "a flipped bit of the magic is not a counter");
+    }
+    for (unsigned bit = 0u; bit < 8u; bit++) {
+        regs[0] = INIT_FAULT_MAGIC | 1u; regs[1] = ~regs[0];
+        regs[0] ^= (1u << bit);
+        TEST_ASSERT(InitFault_Begin(regs) == 0u, "a flipped bit of the count breaks the complement");
+    }
+    TEST_ASSERT((INIT_FAULT_MAGIC & ~INIT_FAULT_MAGIC_MASK) == 0u, "the magic leaves the low byte for the count");
+    TEST_ASSERT(INIT_FAULT_MAGIC != BOOT_REPORT_MAGIC && INIT_FAULT_MAGIC != APP_BOOT_REQUEST_WORD, "the word cannot be mistaken for the other two reports");
+#else
+    TEST_ASSERT(InitFault_OnFailure(regs, 0u) == INIT_FAULT_LEGACY_STOP, "with the switch off a failure stops as before");
+    TEST_ASSERT(regs[0] == 0u && regs[1] == 0u, "and writes nothing");
+    regs[0] = INIT_FAULT_MAGIC | 1u; regs[1] = ~regs[0];
+    TEST_ASSERT(InitFault_Begin(regs) == 0u, "with the switch off the application reads nothing");
+    InitFault_Clear(regs);
+    TEST_ASSERT(regs[0] != 0u, "and leaves the registers alone");
+    TEST_ASSERT(InitFault_HealthFlags(1u) == 0u, "and sets no health flag");
+#endif
+}
+
 int main(void)
 {
-    printf("HYDRA-UMC host logic tests - fdcan_clock.h, app_boot_request.h, health_frame.h (switches %d%d%d%d)\n",
-           HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT, HYDRA_APP_ENTER_BOOTLOADER, HYDRA_HEALTH_FRAME, HYDRA_BOOT_REPORT);
+    printf("HYDRA-UMC host logic tests - fdcan_clock.h, app_boot_request.h, health_frame.h (switches %d%d%d%d%d)\n",
+           HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT, HYDRA_APP_ENTER_BOOTLOADER, HYDRA_HEALTH_FRAME, HYDRA_BOOT_REPORT, HYDRA_INIT_FAULT_LATCH);
     test_fdcan_clock();
     test_app_boot_request();
     test_health_frame();
     test_boot_report();
+    test_init_fault();
     if (failures) printf("%d FAILED\n", failures);
     else printf("ok\n");
     return failures ? 1 : 0;

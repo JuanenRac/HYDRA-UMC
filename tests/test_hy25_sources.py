@@ -39,6 +39,7 @@ class SwitchesShipOff(unittest.TestCase):
             (G4 / "app_boot_request.h", "HYDRA_APP_ENTER_BOOTLOADER"),
             (G4 / "health_frame.h", "HYDRA_HEALTH_FRAME"),
             (G4 / "boot_report.h", "HYDRA_BOOT_REPORT"),
+            (G4 / "init_fault.h", "HYDRA_INIT_FAULT_LATCH"),
             (G4 / "boot" / "adoption_guard.h", "HYDRA_READBACK_GATE"),
             (G4 / "STM32G474RE_main.c", "HYDRA_QUIET_TICK_BEFORE_SCHEDULER"),
             (H7 / "CM4" / "spi_system.h", "HYDRA_SPI_SYSTEM"),
@@ -80,6 +81,23 @@ class SwitchesShipOff(unittest.TestCase):
         self.assertIn("#if HYDRA_BOOT_REPORT", relay)
         self.assertIn("BootReport_TakeHealthFlags(&TAMP->BKP2R)", relay)
         self.assertLess(relay.index("HealthFrame_Reset(&health);"), relay.index("BootReport_TakeHealthFlags"))
+
+    def test_a_failed_setup_of_the_application_resets_once_then_keeps_the_watchdog_in_the_safe_state(self):
+        relay = text(G4 / "RobotControllerRelay.c")
+        main = text(G4 / "STM32G474RE_main.c")
+        self.assertIn("InitFault_OnFailure(&TAMP->BKP4R", relay)
+        self.assertIn("InitFault_Begin(&TAMP->BKP4R)", relay)
+        self.assertIn("InitFault_Clear(&TAMP->BKP4R)", relay)
+        self.assertIn("AppWatchdog_Refresh();", relay)
+        self.assertIn("void AppWatchdog_Refresh(void)", main)
+        self.assertLess(relay.index("MotionOutputs_ForceDisabled();"), relay.index("InitFault_OnFailure("), "the drivers go off before anything else")
+        self.assertLess(relay.index("HealthFrame_Reset(&health);"), relay.index("InitFault_HealthFlags("))
+        self.assertLess(relay.index("AxisStatusGpio_Init();"), relay.index("InitFault_Clear("), "the counter is cleared only after the whole set-up")
+
+    def test_the_init_fault_registers_do_not_overlap_the_other_reports(self):
+        self.assertIn("BKP4R and BKP5R", text(G4 / "init_fault.h"))
+        for other in ("BKP0R", "BKP1R", "BKP2R", "BKP3R"):
+            self.assertNotIn(other, text(G4 / "init_fault.h").split("BKP4R and BKP5R")[1], other)
 
     def test_the_boot_report_registers_do_not_overlap_the_enter_bootloader_request(self):
         self.assertIn("&TAMP->BKP0R", text(G4 / "RobotControllerRelay.c"))

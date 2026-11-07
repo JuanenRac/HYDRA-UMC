@@ -72,6 +72,9 @@ void RobotControllerRelay_Poll(void);
  * fault; defined in STM32G474RE_main.c. */
 void MotionOutputs_ForceDisabled(void);
 
+/* Refreshes the independent watchdog that STM32G474RE_main.c keeps; the safe state of init_fault.h calls it from a loop with the interrupts off. */
+void AppWatchdog_Refresh(void);
+
 /* The same, for the axes whose bit is set in axis_mask (bit n-1 = axis n): the stop category of each axis (config/machine.cfg) decides which are cut at once. */
 void MotionOutputs_ForceDisabledMask(uint8_t axis_mask);
 

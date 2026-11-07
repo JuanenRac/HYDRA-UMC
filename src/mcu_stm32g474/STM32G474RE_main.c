@@ -125,6 +125,11 @@ static volatile uint32_t relay_task_alive;
 
 static IWDG_HandleTypeDef hiwdg;
 
+void AppWatchdog_Refresh(void)
+{
+  HAL_IWDG_Refresh(&hiwdg);
+}
+
 static void GPIO_Init(void)
 {
   __HAL_RCC_GPIOC_CLK_ENABLE();
