@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="Platform">
-  <img src="https://img.shields.io/badge/Tests-423%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-472%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | バージョン | `0.2.8` |
 | 成熟度 | 足場段階 |
-| テスト | 423 (`python -m unittest discover -s tests -p 'test_*.py'`) |
+| テスト | 472 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | 技術 | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | 対象 | マイコン基板（ファームウェア）。ビルドは PC で行います |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
@@ -52,7 +52,7 @@ GPL-3.0-or-later - see LICENSE
 | 領域 | 状態 | ここでの意味 |
 |---|---|---|
 | ソフトウェア | 🟠 | 構造と最初の部品のみで、作業の大部分はこれからです |
-| テスト | 🟡 | 自動テスト 423 件。変更のたびに実行されます |
+| テスト | 🟡 | 自動テスト 472 件。変更のたびに実行されます |
 | 実機 | 🔴 | まだです：このバージョンについて実機での動作記録はありません |
 | ドキュメント | 🟡 | 8 言語の README。変更のたびにマニフェストと照合されます |
 
@@ -195,7 +195,7 @@ python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the f
 
 ## 🧪 テスト
 
-`python -m unittest discover -s tests -p 'test_*.py'` で自動テスト 423 件を実行します。 CM5 の SPI ブリッジのテスト 87 件と、ファームウェアのソース、署名付きイメージヘッダー、CAN 識別子のテスト 71 件です（SPI ブリッジ側は `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` と `-s src/cm5_host/spi_bridge/tests` で実行します）。ブートローダーとリレーの C ロジックは、`build_firmware.sh` のステップ 1b で通常のホスト C コンパイラーでビルドする 19 本のプログラムがさらに検査します。どれも基板を必要としません。
+`python -m unittest discover -s tests -p 'test_*.py'` で自動テスト 472 件を実行します。 CM5 の SPI ブリッジのテスト 119 件と、ファームウェアのソース、署名付きイメージヘッダー、CAN 識別子のテスト 353 件です（SPI ブリッジ側は `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` と `-s src/cm5_host/spi_bridge/tests` で実行します）。ブートローダーとリレーの C ロジックは、`build_firmware.sh` のステップ 1b で通常のホスト C コンパイラーでビルドする 47 本のプログラムがさらに検査します。どれも基板を必要としません。
 
 CI は `HYDRA_UMC_CI=1 python tools/ci_validate.py` を実行し、マニフェスト、文書、8 つの README、図を検査します。
 
@@ -260,6 +260,7 @@ HYDRA-UMC/
 ├── images/                          README バナー + アイコン + スプラッシュスクリーン（SVG）
 ├── tools/                           プロジェクトのツールと CI の検査
 ├── firmware/                        コミット済みのビルド成果物（.bin/.hex/.elf + マニフェスト）— gitignore 対象外、URTC 自身の出力フォルダと同じ規約、下記「ファームウェアのビルド」参照
+├── firmware_base/                   3つの STM32 ブートローダーで同一のファイル。tools/sync_firmware_base.py がコピーとの一致を保つ
 ├── .github/                         CI ワークフローと Issue テンプレート
 ├── build_firmware.sh                クリーンなチェックアウトから、上記の全 MCU ファームウェアターゲットを一括ビルド（Linux/Mac）
 ├── build_firmware.bat               同じビルド、Windows 版（下記「ファームウェアのビルド」参照）

@@ -323,6 +323,29 @@
           }
         },
         {
+          "name": "firmware_base/",
+          "desc": {
+            "en": "Shared bootloader code",
+            "es": "Código común de los bootloaders",
+            "de": "Gemeinsamer Bootloader-Code",
+            "fr": "Code commun des bootloaders",
+            "it": "Codice comune dei bootloader",
+            "ja": "ブートローダー共通コード",
+            "zh": "引导程序共享代码",
+            "pt": "Código comum dos bootloaders"
+          },
+          "tree_desc": {
+            "en": "The files that are the same in the three STM32 bootloaders, kept equal to their copies by tools/sync_firmware_base.py",
+            "es": "Los ficheros iguales en los tres bootloaders STM32, que tools/sync_firmware_base.py mantiene iguales a sus copias",
+            "de": "Die Dateien, die in den drei STM32-Bootloadern gleich sind; tools/sync_firmware_base.py hält ihre Kopien identisch",
+            "fr": "Les fichiers identiques dans les trois bootloaders STM32, que tools/sync_firmware_base.py garde égaux à leurs copies",
+            "it": "I file uguali nei tre bootloader STM32, che tools/sync_firmware_base.py mantiene uguali alle loro copie",
+            "ja": "3つの STM32 ブートローダーで同一のファイル。tools/sync_firmware_base.py がコピーとの一致を保つ",
+            "zh": "三个 STM32 引导程序中相同的文件，由 tools/sync_firmware_base.py 保持与各自副本一致",
+            "pt": "Os ficheiros iguais nos três bootloaders STM32, que o tools/sync_firmware_base.py mantém iguais às suas cópias"
+          }
+        },
+        {
           "name": ".github/",
           "desc": {
             "en": "CI workflow and issue templates",
