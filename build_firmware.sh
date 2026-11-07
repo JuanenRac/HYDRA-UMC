@@ -307,6 +307,15 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # slot_scan_master.h: the full verdict of the slot scan on the master side (every scenario of tests/slot_scan_vectors.json, a seeded fuzz).
+    SLOT_SCAN_MASTER_HOST_BIN="$ROOT/build/host_tests_slot_scan_master"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32g474/boot" -I"$ROOT/src/mcu_stm32h745/CM4" -o "$SLOT_SCAN_MASTER_HOST_BIN" "$ROOT/tests/test_slot_scan_master.c" && "$SLOT_SCAN_MASTER_HOST_BIN" >/dev/null; then
+        pass "slot_scan_master host logic tests passed"
+    else
+        fail "slot_scan_master host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # estop_input.h: the physical stop input (debounce, fail safe, polarity) and the stop category of each axis.
     ESTOP_INPUT_HOST_BIN="$ROOT/build/host_tests_estop_input"
     if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32g474" -o "$ESTOP_INPUT_HOST_BIN" "$ROOT/tests/test_estop_input.c" && "$ESTOP_INPUT_HOST_BIN" >/dev/null; then
