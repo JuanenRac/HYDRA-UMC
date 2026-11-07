@@ -35,7 +35,7 @@ class PlatformMemoryMap(unittest.TestCase):
             item = block(name)
             spans.append((item["base"], item["base"] + item["size"], name))
         spans.sort()
-        for (_, end, first), (start, _, second) in zip(spans, spans[1:]):
+        for (_, end, first), (start, _, second) in zip(spans, spans[1:], strict=False):
             self.assertLessEqual(end, start, f"{first} overlaps {second}")
         self.assertEqual(block("ccm_sram")["size"], block("ccm_sram_alias")["size"])
 

@@ -77,6 +77,20 @@ class SpiOtaTransport(Protocol):
     def close(self) -> None: ...
 
 
+class _SpiDevice(Protocol):
+    """What the transport asks of a spidev device (and of the fakes of the tests)."""
+
+    def xfer2(self, data: list[int]) -> list[int]: ...
+    def close(self) -> None: ...
+
+
+class _ReadyLine(Protocol):
+    """What the transport asks of the line that the board raises when it has an answer."""
+
+    def event_wait(self, timeout: float) -> bool: ...
+    def release(self) -> None: ...
+
+
 class RealSpiOtaTransport:
     """Talks to a real STM32H745 over a real spidev + gpiod link.
 
@@ -88,7 +102,7 @@ class RealSpiOtaTransport:
     STM32H745 clocked back.
     """
 
-    def __init__(self, spi_device: object, data_ready_line: object, *, seal_requests: bool = True):
+    def __init__(self, spi_device: _SpiDevice, data_ready_line: _ReadyLine, *, seal_requests: bool = True):
         self._spi = spi_device
         self._data_ready_line = data_ready_line
         self._seal_requests = seal_requests

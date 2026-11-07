@@ -1,0 +1,21 @@
+# =============================================================================
+# HYDRA-UMC - pyproject.toml
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Only the settings of the checks (ruff and mypy) that the repositories of the family share; the repository is firmware and tools, not a Python package.
+# The rule set is the one of the other Python repositories of the family: the pyflakes errors (unused names, undefined names), the syntax errors of
+# pycodestyle and the likely bugs of flake8-bugbear. Style rules are not selected, so a `noqa` that silences one of them is not needed here.
+# mypy: the tools and the bridge import each other through the path set by the tests, and the optional packages of the CM5 (spidev, gpiod) are not
+# installed on a developer machine, so a missing module is not an error; every other kind of error is still reported.
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["F", "E9", "B"]
+
+[tool.mypy]
+ignore_missing_imports = true
+explicit_package_bases = true
+mypy_path = "src/cm5_host/spi_bridge"

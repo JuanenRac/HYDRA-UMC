@@ -182,7 +182,7 @@ def flash_batch(bench: Bench, plan: dict[int, str], *, enter_wait_ms: int = 3 * 
     cuts = cuts or {}
     results: dict[int, BatchResult] = {}
     first = bench.scan()
-    for slot, new_version in plan.items():
+    for slot in plan:
         boards = bench.boards_in(slot)
         before = boards[0].version if boards else ""
         if first[slot] != slot_scan.OK:
