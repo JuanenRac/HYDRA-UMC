@@ -22,6 +22,7 @@ FLAG_WATCHDOG_RESET = 0x04
 FLAG_INIT_FAILED = 0x08
 FLAG_CONFIRMED = 0x10
 FLAG_DRIVERS_ENABLED = 0x20
+FLAG_INIT_SAFE_STATE = 0x40
 FLAG_NAMES = {
     FLAG_ESTOP: "estop_latched",
     FLAG_BUSOFF: "bus_off_seen",
@@ -29,6 +30,7 @@ FLAG_NAMES = {
     FLAG_INIT_FAILED: "setup_failed_at_start",
     FLAG_CONFIRMED: "application_confirmed",
     FLAG_DRIVERS_ENABLED: "drivers_enabled",
+    FLAG_INIT_SAFE_STATE: "setup_failed_safe_state",
 }
 
 

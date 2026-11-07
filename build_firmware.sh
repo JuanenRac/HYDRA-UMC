@@ -714,6 +714,14 @@ arm-none-eabi-gcc $CFLAGS_G4_APP -I"$SRC" -x c -c "$SRC/STM32G474RE_main.c" -o "
 # linking the bootloader's own compiled object), so it's the one G474 app
 # source that also needs $SRC/boot on its include path.
 arm-none-eabi-gcc $CFLAGS_G4_APP -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/RobotControllerRelay.c" -o "$G4/app_obj/RobotControllerRelay.o"
+# The same unit with the health frame, the init fault latch and the boot report on, only to prove that it compiles (the object is not linked).
+mkdir -p "$G4/app_check"
+if arm-none-eabi-gcc $CFLAGS_G4_APP -DHYDRA_HEALTH_FRAME=1 -DHYDRA_INIT_FAULT_LATCH=1 -DHYDRA_BOOT_REPORT=1 -DHYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT=1     -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/RobotControllerRelay.c" -o "$G4/app_check/RobotControllerRelay_all_switches.o"; then
+    pass "RobotControllerRelay.c compiles with the health frame, the init fault latch, the boot report and the explicit FDCAN clock on"
+else
+    fail "RobotControllerRelay.c does not compile with those switches on"
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
 G4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_PATCH)"
 G4_APP_NAME="HYDRA_RCB_APP_${G4_APP_VER}"
 if ! link_filtered arm-none-eabi-gcc $LDCOMMON_G4 -T"$SRC/STM32G474RETx_APP.ld" \

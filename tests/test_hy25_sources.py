@@ -176,7 +176,7 @@ class HealthFrameReference(unittest.TestCase):
     def test_the_flag_bits_of_the_header_are_the_ones_of_the_reference(self):
         header = text(G4 / "health_frame.h")
         for name, value in (("ESTOP", health_frame.FLAG_ESTOP), ("BUSOFF", health_frame.FLAG_BUSOFF), ("WDG_RST", health_frame.FLAG_WATCHDOG_RESET),
-                            ("INIT_BAD", health_frame.FLAG_INIT_FAILED), ("CONFIRMED", health_frame.FLAG_CONFIRMED), ("ENABLED", health_frame.FLAG_DRIVERS_ENABLED)):
+                            ("INIT_BAD", health_frame.FLAG_INIT_FAILED), ("CONFIRMED", health_frame.FLAG_CONFIRMED), ("ENABLED", health_frame.FLAG_DRIVERS_ENABLED), ("INIT_SAFE", health_frame.FLAG_INIT_SAFE_STATE)):
             self.assertEqual(int(re.search(rf"#define HEALTH_FLAG_{name}\s+(0x[0-9A-Fa-f]+)u", header).group(1), 16), value, name)
 
     def test_the_vector_of_the_c_test_is_what_the_reference_builds(self):

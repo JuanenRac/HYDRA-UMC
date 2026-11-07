@@ -88,6 +88,8 @@ static uint32_t ReadSlotBaseId_App(void)
 /* Real FDCAN1 init - PB8=RX/PB9=TX (AF9), PG7=CAN1_STBY - byte-for-byte
  * the bootloader's own MX_FDCAN1_Init() (see this file's own header). */
 static uint8_t init_fault_prior;      /* failed set-ups recorded before this start (init_fault.h) */
+static uint8_t uplink_ready;          /* FDCAN1 is started: a frame can still leave if a later set-up call fails */
+static uint8_t SendClassicFrame(FDCAN_HandleTypeDef *hfdcan, uint32_t can_id, const uint8_t *data, uint8_t dlc);
 
 /* A set-up call of the peripherals that fails leaves the board unable to answer the brain. With HYDRA_INIT_FAULT_LATCH off: stop here with the interrupts off, nothing
  * refreshes the watchdog any more, it resets the chip into the bootloader, whose boot-attempt count decides whether this application is tried again. With it on: the
@@ -102,6 +104,15 @@ static void RelayHalRequire(HAL_StatusTypeDef status)
             NVIC_SystemReset();
             for (;;) { }
         case INIT_FAULT_SAFE_STATE:
+#if HYDRA_HEALTH_FRAME
+            if (uplink_ready) {
+                /* the uplink works and a later call failed: say so once, then hold still (the frame is the only thing sent from here on) */
+                uint8_t health_bytes[8];
+                health.flags = (uint8_t)(health.flags | InitFault_SafeStateFlags());
+                HealthFrame_Build(&health, health_bytes);
+                (void)SendClassicFrame(&hfdcan1_app, slot_base + HEALTH_OFFSET, health_bytes, 8);
+            }
+#endif
             __disable_irq();
             for (;;) { AppWatchdog_Refresh(); }
         default:
@@ -415,6 +426,7 @@ void RobotControllerRelay_Init(void)
     stop_policy.cut_mask = (uint8_t)((1u << STOP_AXES) - 1u); /* everything is already off at power-up */
     estop_state_due = 1;
     MX_FDCAN1_App_Init();
+    uplink_ready = 1; /* from here a failed set-up call can still be announced to the brain */
     MX_FDCAN2_Init();
     AxisStatusGpio_Init();
     InitFault_Clear(&TAMP->BKP4R); /* the set-up finished: forget the failed starts (the health flag of this start stays) */

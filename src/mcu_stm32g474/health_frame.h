@@ -9,7 +9,8 @@
  *   byte 0  marker      0x48 ('H')
  *   byte 1  sequence    +1 for every frame sent
  *   byte 2  flags       bit 0 emergency stop latched, bit 1 bus-off seen since the last frame, bit 2 watchdog reset at start,
- *                       bit 3 a set-up call failed at start, bit 4 application confirmed healthy, bit 5 drivers enabled
+ *                       bit 3 a set-up call failed at start, bit 4 application confirmed healthy, bit 5 drivers enabled,
+ *                       bit 6 a set-up call failed again and the board is going to the safe state (sent once, while the uplink still works)
  *   byte 3  tx errors   transmit error counter of the uplink controller
  *   byte 4  rx errors   receive error counter of the uplink controller
  *   byte 5  stalls      passes of the relay task that did not move the watchdog counter (saturates at 255)
@@ -37,6 +38,7 @@
 #define HEALTH_FLAG_INIT_BAD 0x08u
 #define HEALTH_FLAG_CONFIRMED 0x10u
 #define HEALTH_FLAG_ENABLED  0x20u
+#define HEALTH_FLAG_INIT_SAFE 0x40u
 
 typedef struct {
     uint8_t flags;

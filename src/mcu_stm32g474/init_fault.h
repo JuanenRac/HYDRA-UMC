@@ -88,4 +88,16 @@ static inline uint8_t InitFault_HealthFlags(uint8_t prior)
 #endif
 }
 
+/* The flags of the one health frame a board sends before it goes to the safe state, when the uplink already works (a set-up call after the uplink failed again):
+ * a set-up failed (INIT_BAD) and the board is now holding still (INIT_SAFE). When the uplink itself is what failed, nothing can be sent and the brain sees the board
+ * fall silent, which is what the safe state has always looked like from outside. */
+static inline uint8_t InitFault_SafeStateFlags(void)
+{
+#if !HYDRA_INIT_FAULT_LATCH
+    return 0u;
+#else
+    return (uint8_t)(HEALTH_FLAG_INIT_BAD | HEALTH_FLAG_INIT_SAFE);
+#endif
+}
+
 #endif /* HYDRA_UMC_INIT_FAULT_H */

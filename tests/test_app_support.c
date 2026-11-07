@@ -168,6 +168,8 @@ static void test_init_fault(void)
     TEST_ASSERT(InitFault_Begin(regs) == 1u, "the counter survives the reset");
     TEST_ASSERT(InitFault_HealthFlags(1u) == HEALTH_FLAG_INIT_BAD, "a start after a failed one reports INIT_BAD");
     TEST_ASSERT(InitFault_HealthFlags(0u) == 0u, "a clean start reports nothing");
+    TEST_ASSERT(InitFault_SafeStateFlags() == (HEALTH_FLAG_INIT_BAD | HEALTH_FLAG_INIT_SAFE), "the frame before the safe state says a set-up failed and the board holds still");
+    TEST_ASSERT((HEALTH_FLAG_INIT_SAFE & (HEALTH_FLAG_ESTOP | HEALTH_FLAG_BUSOFF | HEALTH_FLAG_WDG_RST | HEALTH_FLAG_INIT_BAD | HEALTH_FLAG_CONFIRMED | HEALTH_FLAG_ENABLED)) == 0u, "its bit is one of its own");
     TEST_ASSERT(InitFault_OnFailure(regs, 1u) == INIT_FAULT_SAFE_STATE, "the second failure asks for the safe state, not a second reset");
     TEST_ASSERT(InitFault_OnFailure(regs, 200u) == INIT_FAULT_SAFE_STATE, "any higher count is the safe state");
     InitFault_Clear(regs);
