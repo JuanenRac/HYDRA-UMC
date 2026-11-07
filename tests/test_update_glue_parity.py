@@ -74,7 +74,17 @@ class GlueParityTests(unittest.TestCase):
                 self.assertIsNone(re.search(rf"^(?:static |__attribute__\(\(weak\)\) )?[A-Za-z_][\w \*]*{re.escape(function)}\(", text, re.M), f"{core} defines {function} itself")
             # the include comes after the sender of the nonce and the state, before the first function that uses them
             self.assertLess(text.index("static void SendNonceHalf"), text.index('#include "boot_update_glue.h"'), core)
-            self.assertLess(text.index('#include "boot_update_glue.h"'), text.index("uint8_t HandleStartUpdate("), core)
+            # the update core (page buffer, start of an update, healthy start, data frames) is included right after it, and no bootloader defines those again
+            self.assertLess(text.index('#include "boot_update_glue.h"'), text.index('#include "boot_update_core_impl.h"'), core)
+            for function in ("FlushPageBuffer", "HandleStartUpdate", "HandleConfirmHealthy", "HandleData"):
+                self.assertIsNone(re.search(rf"^(?:static )?[A-Za-z_][\w \*]*{function}\(", text, re.M), f"{core} defines {function} itself")
+
+    def test_the_update_core_is_one_text_in_three_copies(self):
+        copies = {name: (path.parent / "boot_update_core_impl.h").read_text(encoding="utf-8") for name, path in CORES.items()}
+        self.assertEqual(copies["cm4"], copies["g474"])
+        self.assertEqual(copies["cm7"], copies["g474"])
+        for function in ("FlushPageBuffer", "HandleStartUpdate", "HandleConfirmHealthy", "HandleData"):
+            self.assertIn(function + "(", copies["g474"])
 
     def test_the_end_of_an_update_is_the_same_up_to_the_success_status(self):
         texts = {name: read(path) for name, path in CORES.items()}
