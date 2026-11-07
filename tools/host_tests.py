@@ -59,6 +59,8 @@ def table() -> list[HostTest]:
         HostTest("relay_send_reassembly", "tests/test_relay_send_reassembly.c", (G4,)),
         HostTest("relay_ids", "tests/test_relay_ids.c", (G4,)),
         HostTest("spi_frame_crc", "tests/test_spi_frame_crc.c", (f"{H7}/CM4/boot",)),
+        HostTest("ipc_mailbox", "tests/test_ipc_mailbox.c", (f"{H7}/Common", f"{H7}/CM4/boot")),
+        HostTest("ipc_mailbox_require_crc", "tests/test_ipc_mailbox.c", (f"{H7}/Common", f"{H7}/CM4/boot"), defines=("HYDRA_IPC_REQUIRE_CRC=1",)),
         HostTest("estop_can@g474", "tests/test_estop_can.c", ("tests", G4)),
         HostTest("estop_can@cm4_brain", "tests/test_estop_can.c", ("tests", f"{H7}/CM4"), STRICT, defines=("ESTOP_TEST_BRAIN",)),
         HostTest("estop_input", "tests/test_estop_input.c", (G4,)),

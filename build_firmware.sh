@@ -219,6 +219,17 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # ipc_mailbox.h: seal of the frame between the two cores, with the switch HYDRA_IPC_REQUIRE_CRC off and on, and the two semaphore channels modelled on the host.
+    for IPC_REQUIRE in 0 1; do
+        IPC_HOST_BIN="$ROOT/build/host_tests_ipc_mailbox_$IPC_REQUIRE"
+        if "$HOST_CC" -std=c11 -Wall -Wextra -DHYDRA_IPC_REQUIRE_CRC=$IPC_REQUIRE -I"$ROOT/src/mcu_stm32h745/Common" -I"$ROOT/src/mcu_stm32h745/CM4/boot" -o "$IPC_HOST_BIN" "$ROOT/tests/test_ipc_mailbox.c" && "$IPC_HOST_BIN" >/dev/null; then
+            pass "test_ipc_mailbox host logic tests passed (HYDRA_IPC_REQUIRE_CRC=$IPC_REQUIRE)"
+        else
+            fail "test_ipc_mailbox host logic tests FAILED (HYDRA_IPC_REQUIRE_CRC=$IPC_REQUIRE)"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+    done
+
     # estop_can.h / estop_brain.h: the emergency stop frame on identifier 0x001, the state machine of a node and the master side of the brain (vectors of tests/estop_vectors.json).
     ESTOP_HOST_BIN="$ROOT/build/host_tests_estop_can"
     if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32g474" -o "$ESTOP_HOST_BIN" "$ROOT/tests/test_estop_can.c" && "$ESTOP_HOST_BIN" >/dev/null && \

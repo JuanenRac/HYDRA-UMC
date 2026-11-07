@@ -7,6 +7,8 @@ Every test below is **not executed**. The tunnel between the Robot Controller an
 - `python tools/host_tests.py` builds and runs the C host tests with the compiler that is installed.
 - The simulated URTC head in HYDRA-UMC-DOCS (`fake_urtc.py`) answers the identification request and the bootloader identification frames with the bytes of the shared vectors, over a simulated bus and over a SocketCAN socket; it has not been run over a real `vcan` on Linux.
 
+- `tests/test_ipc_mailbox.c` seals, damages and replays the frame of the mailbox between the two cores of the H745 with the switch `HYDRA_IPC_REQUIRE_CRC` off and on, and models the two semaphore channels; `tests/test_fdcan_timing.py` checks that every FDCAN set-up of the firmware uses the same bit timing and that it gives 1 Mbit/s at the clock the bootloaders assume. The clock itself and the real semaphore timing are rows 10 and 8 of the table below.
+
 ## Setup
 
 - The Robot Controller board (STM32G474) on its CAN connector, a URTC head board with the matching firmware, a 24 V supply with a current limit and both ends of the bus terminated with 120 ohm.
