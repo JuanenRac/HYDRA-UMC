@@ -10,6 +10,7 @@ Commands of the SPI link between the CM5 and the H745 that the CM4 answers itsel
 | `0x23` | `TELEMETRY_RESPONSE` | 8 | selector, flags, CRC errors, retries, sequence gaps, CAN tx errors, CAN rx errors, state | the answer; counters saturate at 255 |
 | `0x24` | `PROBE_REQUEST` | 1 | scan id | runs the slot scan of `docs/SLOT_SCAN.md` before an update |
 | `0x25` | `PROBE_RESPONSE` | 5 | scan id, then the verdict of the slots 0 to 7, a nibble each | `0` absent, `1` ok, `2` duplicate, `3` misplaced, `4` noisy |
+| `0x26` | `ZONES_HEARTBEAT` | 4 | `Z` `O` `N` `E` | the CM5 says the safety-zones chain is healthy; not answered. Needs the stop switch, because what it protects is the stack |
 
 Flags of the telemetry: bit 0 the link is usable, bit 1 the emergency stop is latched, bit 2 the stop commands are enabled in this build. State: `1` bootloader, `2` application.
 
@@ -29,6 +30,7 @@ The bootloader of the CM4 answers the telemetry only: it has no emergency stop a
 Once the application runs, the SPI link is served by `src/mcu_stm32h745/CM4/spi_app.h` (the logic, without any HAL) and `SpiApp.c` (the driver: SPI1 in slave mode on the pins of the bootloader and one task). A third switch starts it:
 
 * `HYDRA_SPI_APP=1` starts the service and the task. It needs `HYDRA_SPI_SYSTEM=1`, and `HYDRA_SPI_STOP_COMMAND=1` for stop and release. With the switch at `0` (as it ships) `SpiApp.c` compiles to an empty unit.
+* `HYDRA_SPI_ZONES_HEARTBEAT=1` makes the application stop the stack, with the reason `safety-zone` (`0x04`), when the heartbeat of the safety-zones chain has come and then does not come for `HYDRA_SPI_ZONES_MAX_AGE_MS` (default 1000 ms; the service sends one every 100 ms). It never trips before the first heartbeat, so a machine without that service is not affected, and it is armed again by the next heartbeat after a loss. The CM5 sends the heartbeat only while the last verdict of the service is `READY` and fresh (`docs/CAN_ESTOP.md` of the safety-zones repository), so a crashed, frozen or inhibited service is a lost heartbeat.
 * `HYDRA_SPI_REQUIRE_CRC=1` refuses the frames that come without the seal of `docs/SPI_FRAME_INTEGRITY.md`.
 * `HYDRA_SPI_RELEASE_EXPECTED_MASK` (default `0xFF`) lists the slots that have to answer READY before a release ends the stop; with all eight expected, a stack with an empty slot stays stopped until a build names the slots it has.
 

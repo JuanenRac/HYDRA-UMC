@@ -1,12 +1,11 @@
 // =============================================================================
-// HYDRA-UMC Kinematic Brain Bootloader (CM4) - SHA-256
+// HYDRA-UMC STM32 Bootloader - SHA-256 (the same file in the three bootloaders: firmware_base/boot)
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 // GPL-3.0-or-later - see repo root LICENSE
 //
 // A from-scratch SHA-256 (not a library). There is no key in this file: the digest of an image is what the Ed25519 signature covers, and the digest
 // of the installed application is what the metadata keeps to notice a damaged flash.
 // =============================================================================
-#include "stm32h7xx_hal.h"
 #include <string.h>
 #include "bootloader_common.h"
 #include "bootloader_crypto.h"
@@ -69,6 +68,10 @@ static void sha256_update(SHA256_CTX *ctx, const uint8_t data[], uint32_t len) {
             ctx->bitlen += 512;
             ctx->datalen = 0;
         }
+        // A single call here can span the full 236KB backup slot (via
+        // sha256_prefixed_flash_region) - every 4096 bytes keeps the IWDG
+        // refresh frequent without adding meaningful overhead to the hot
+        // loop, same reasoning/interval as URTC's own bootloader.
         if ((i & 0xFFF) == 0) {
             HAL_IWDG_Refresh(&hiwdg);
         }

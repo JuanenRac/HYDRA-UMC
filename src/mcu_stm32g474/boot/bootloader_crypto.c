@@ -1,12 +1,11 @@
 // =============================================================================
-// HYDRA-UMC Robot Controller Board Bootloader - SHA-256
+// HYDRA-UMC STM32 Bootloader - SHA-256 (the same file in the three bootloaders: firmware_base/boot)
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 // GPL-3.0-or-later - see repo root LICENSE
 //
 // A from-scratch SHA-256 (not a library). There is no key in this file: the digest of an image is what the Ed25519 signature covers, and the digest
 // of the installed application is what the metadata keeps to notice a damaged flash.
 // =============================================================================
-#include "stm32g4xx_hal.h"
 #include <string.h>
 #include "bootloader_common.h"
 #include "bootloader_crypto.h"

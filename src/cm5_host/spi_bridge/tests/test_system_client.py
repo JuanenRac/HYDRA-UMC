@@ -55,6 +55,7 @@ class Brain:
 
     def __init__(self, app: spi_app.SpiApp, scan_after_pumps: int = 1):
         self.app = app
+        self.now = 0
         self.tripped = True
         self.trips: list[int] = []
         self.releases = 0
@@ -63,6 +64,10 @@ class Brain:
         self._scan_id: int | None = None
 
     def pump(self) -> None:
+        self.now += 1
+        if self.app.zones_tick(self.now, 1000):
+            self.tripped = True
+            self.trips.append(0x04)
         reason = self.app.take_trip()
         if reason is not None:
             self.tripped = True
@@ -149,6 +154,37 @@ class StopAndReleaseTests(unittest.TestCase):
         self.assertEqual((transport.sent[0].frame_type, transport.sent[0].dlc, transport.sent[0].payload), (0x20, 5, b"STOP\xff"))
         self.assertEqual((transport.sent[1].frame_type, transport.sent[1].dlc, transport.sent[1].payload), (0x21, 4, b"RELS"))
         self.assertTrue(all(frame.target_tier == 0 for frame in transport.sent))
+
+
+class ZonesHeartbeatTests(unittest.TestCase):
+    def test_the_heartbeat_frame_is_the_one_of_the_contract_and_is_not_answered(self):
+        _app, _brain, transport = make()
+        self.assertTrue(system_client.send_zones_heartbeat(transport))
+        sent = transport.sent[0]
+        self.assertEqual((sent.target_tier, sent.frame_type, sent.dlc, sent.payload), (0, 0x26, 4, b"ZONE"))
+
+    def test_the_brain_stops_the_stack_when_the_beats_stop_after_having_come(self):
+        _app, brain, transport = make()
+        brain.tripped = False
+        for _ in range(5):
+            self.assertTrue(system_client.send_zones_heartbeat(transport))
+        self.assertEqual(brain.trips, [])
+        brain.now += 1500  # the chain went silent
+        brain.pump()
+        self.assertEqual(brain.trips, [0x04])
+        self.assertTrue(brain.tripped)
+
+    def test_without_any_heartbeat_the_brain_is_never_stopped_by_silence(self):
+        _app, brain, _transport = make()
+        brain.tripped = False
+        brain.now += 100000
+        brain.pump()
+        self.assertEqual(brain.trips, [])
+
+    def test_a_link_failure_is_reported(self):
+        _app, _brain, transport = make()
+        transport.fail = OSError("no device")
+        self.assertFalse(system_client.send_zones_heartbeat(transport))
 
 
 class ProbeTests(unittest.TestCase):

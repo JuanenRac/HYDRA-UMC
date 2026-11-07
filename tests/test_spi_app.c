@@ -83,6 +83,7 @@ static void run_with_switches_on(void)
     const uint8_t stop[5] = {'S', 'T', 'O', 'P', 9u};
     const uint8_t release[4] = {'R', 'E', 'L', 'S'};
     const uint8_t scan[1] = {0x2Au};
+    const uint8_t zone[4] = {'Z', 'O', 'N', 'E'};
 
     /* power-up: the idle frame is sealed, of the type the master ignores, and the sequence has moved on */
     {
@@ -166,7 +167,7 @@ static void run_with_switches_on(void)
         TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u, "an update frame (a type of the CAN window) is not run by the application");
         make_wire(wire, 0u, SPI_SYS_TELEMETRY_RESPONSE, query, 1u, 1, ++seq);
         TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u, "a response type is not a command");
-        make_wire(wire, 0u, 0x26u, query, 1u, 1, ++seq);
+        make_wire(wire, 0u, 0x27u, query, 1u, 1, ++seq);
         TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u, "a type above the table is not a command");
         make_wire(wire, 0u, SPI_SYS_TELEMETRY_QUERY, query, 9u, 1, ++seq);
         TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u, "a length above 8 is not a frame");
@@ -265,6 +266,60 @@ static void run_with_switches_on(void)
         TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 1u && (app.tx_wire[5] & SPI_SYS_FLAG_STOP_ENABLED) == 0u, "read only: the telemetry says the stop commands are off");
     }
 
+    /* the heartbeat of the safety-zones chain: counted by the SPI task, timed by the STACK A task, never before the first one */
+    {
+        SpiApp_t app = make_app(1u, 1u, 0u);
+        uint8_t keep[SPI_APP_FRAME_SIZE];
+        memcpy(keep, app.tx_wire, sizeof keep);
+        TEST_ASSERT(SpiApp_ZonesTick(&app, 5000u, 1000u) == 0u, "no heartbeat has come: the watchdog is not armed and never trips");
+        TEST_ASSERT(SpiApp_ZonesTick(&app, 90000u, 1000u) == 0u, "however long it takes");
+        make_wire(wire, 0u, SPI_SYS_ZONES_HEARTBEAT, zone, 4u, 1, 1u);
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 1u && app.zones_beat == 1u, "a heartbeat is a command that ran and was counted");
+        TEST_ASSERT(memcmp(keep, app.tx_wire, sizeof keep) == 0, "it is not answered");
+        TEST_ASSERT(SpiApp_ZonesTick(&app, 100000u, 1000u) == 0u && app.zones_armed == 1u, "the STACK A task notes the time and arms the watchdog");
+        TEST_ASSERT(SpiApp_ZonesTick(&app, 101000u, 1000u) == 0u, "exactly the maximum age still counts");
+        TEST_ASSERT(SpiApp_ZonesTick(&app, 101001u, 1000u) == 1u, "one millisecond more: the heartbeat was lost");
+        TEST_ASSERT(SpiApp_ZonesTick(&app, 102000u, 1000u) == 0u && app.zones_armed == 0u, "a loss is reported once");
+        make_wire(wire, 0u, SPI_SYS_ZONES_HEARTBEAT, zone, 4u, 1, 2u);
+        (void)SpiApp_OnReceive(&app, wire);
+        TEST_ASSERT(SpiApp_ZonesTick(&app, 103000u, 1000u) == 0u && app.zones_armed == 1u, "the next heartbeat arms it again");
+        TEST_ASSERT(SpiApp_ZonesTick(&app, 104001u, 1000u) == 1u, "and the next loss is reported");
+        /* the clock wraps */
+        make_wire(wire, 0u, SPI_SYS_ZONES_HEARTBEAT, zone, 4u, 1, 3u);
+        (void)SpiApp_OnReceive(&app, wire);
+        TEST_ASSERT(SpiApp_ZonesTick(&app, 0xFFFFFF00u, 1000u) == 0u, "heartbeat noted just before the wrap");
+        TEST_ASSERT(SpiApp_ZonesTick(&app, 0x00000100u, 1000u) == 0u, "512 ms later across the wrap: still healthy");
+        TEST_ASSERT(SpiApp_ZonesTick(&app, 0x00000500u, 1000u) == 1u, "1.5 s later across the wrap: lost");
+        /* malformed heartbeats do nothing */
+        const uint8_t wrong[4] = {'Z', 'O', 'N', 'X'};
+        make_wire(wire, 0u, SPI_SYS_ZONES_HEARTBEAT, wrong, 4u, 1, 4u);
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u, "a heartbeat with a wrong magic does nothing");
+        make_wire(wire, 0u, SPI_SYS_ZONES_HEARTBEAT, zone, 3u, 1, 5u);
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u, "a short heartbeat does nothing");
+        TEST_ASSERT(app.zones_beat == 3u, "and neither was counted");
+        /* against the real brain: running, the lost heartbeat stops it with the reason of the safety zones */
+        Rig_t rig;
+        memset(&rig, 0, sizeof rig);
+        EstopBrain_Reset(&rig.brain, 0u);
+        (void)EstopBrain_RequestRelease(&rig.brain, 1u, 0u);
+        uint8_t frame[8];
+        (void)EstopBrain_Tick(&rig.brain, 2u, frame);
+        TEST_ASSERT(rig.brain.tripped == 0u, "the brain runs");
+        make_wire(wire, 0u, SPI_SYS_ZONES_HEARTBEAT, zone, 4u, 1, 6u);
+        (void)SpiApp_OnReceive(&app, wire);
+        (void)SpiApp_ZonesTick(&app, 1000u, 1000u);
+        if (SpiApp_ZonesTick(&app, 2001u, 1000u)) EstopBrain_Trip(&rig.brain, 2001u, SPI_APP_ZONES_REASON);
+        TEST_ASSERT(rig.brain.tripped == 1u && rig.brain.reason == ESTOP_REASON_SAFETY_ZONE && SPI_APP_ZONES_REASON == ESTOP_REASON_SAFETY_ZONE,
+                    "the stack stopped with the reason safety zone");
+    }
+
+    /* read only: the heartbeat is refused because acting on the stack needs the stop switch */
+    {
+        SpiApp_t app = make_app(1u, 0u, 0u);
+        make_wire(wire, 0u, SPI_SYS_ZONES_HEARTBEAT, zone, 4u, 1, 1u);
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u && app.zones_beat == 0u, "read only: a heartbeat is not counted");
+    }
+
     /* the sequence of the frames the service sends wraps around without breaking the seal */
     {
         SpiApp_t app = make_app(1u, 1u, 0u);
@@ -294,6 +349,7 @@ static void run_with_switches_off(void)
     const uint8_t stop[5] = {'S', 'T', 'O', 'P', 9u};
     const uint8_t release[4] = {'R', 'E', 'L', 'S'};
     const uint8_t scan[1] = {0x2Au};
+    const uint8_t zone[4] = {'Z', 'O', 'N', 'E'};
     const SpiSysConfig_t build = SpiSys_ConfigFromBuild();
     TEST_ASSERT(build.telemetry_enabled == 0u && build.stop_enabled == 0u, "the build as it ships has both switches off");
     TEST_ASSERT(HYDRA_SPI_APP == 0 && HYDRA_SPI_REQUIRE_CRC == 0, "and the service and the seal requirement are off");
@@ -310,7 +366,9 @@ static void run_with_switches_off(void)
     TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u && app.release_pending == 0u, "off: a release leaves no request");
     make_wire(wire, 0u, SPI_SYS_PROBE_REQUEST, scan, 1u, 1, ++seq);
     TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u && app.scan_pending == 0u, "off: a probe starts no scan");
-    TEST_ASSERT(memcmp(keep, app.tx_wire, sizeof keep) == 0 && app.commands_run == 0u && app.frames_ignored == 4u, "off: nothing staged, nothing run, four ignored");
+    make_wire(wire, 0u, SPI_SYS_ZONES_HEARTBEAT, zone, 4u, 1, ++seq);
+    TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u && app.zones_beat == 0u, "off: a heartbeat is not counted");
+    TEST_ASSERT(memcmp(keep, app.tx_wire, sizeof keep) == 0 && app.commands_run == 0u && app.frames_ignored == 5u, "off: nothing staged, nothing run, five ignored");
     SpiApp_Service(&app);
     TEST_ASSERT(memcmp(keep, app.tx_wire, sizeof keep) == 0, "off: the service stages nothing between transactions");
 }

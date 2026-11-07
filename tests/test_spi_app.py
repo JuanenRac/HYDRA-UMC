@@ -91,7 +91,7 @@ class TwinFollowsTheContract(unittest.TestCase):
             spi_frame.build(1, 0, spi_system.STOP_REQUEST, spi_system.stop_payload(1), 2),  # for the CM7
             spi_frame.build(0, 0, 0x03, b"\x00", 3),  # an update frame
             spi_frame.build(0, 0, spi_system.TELEMETRY_RESPONSE, b"\x00", 4),
-            spi_frame.build(0, 0, 0x26, b"\x00", 5),
+            spi_frame.build(0, 0, 0x27, b"\x00", 5),
             spi_frame.build(0, 0, spi_system.STOP_REQUEST, b"STOP", 6),  # too short
             spi_frame.build(0, 0, spi_app.IDLE_TYPE, b"", 7),
         ]
@@ -99,6 +99,43 @@ class TwinFollowsTheContract(unittest.TestCase):
             self.assertFalse(app.on_receive(wire))
         self.assertEqual((app.tx_wire, app.frames_ignored, app.commands_run), (before, 7, 0))
         self.assertIsNone(app.take_trip())
+
+    def test_the_heartbeat_of_the_safety_zones_is_timed_and_never_trips_before_the_first_one(self):
+        app = self.full()
+        self.assertFalse(app.zones_tick(90_000))
+        self.assertTrue(app.on_receive(spi_frame.build(0, 0, spi_system.ZONES_HEARTBEAT, spi_system.zones_heartbeat_payload(), 1)))
+        self.assertFalse(app.zones_tick(100_000))
+        self.assertFalse(app.zones_tick(101_000), "exactly the maximum age still counts")
+        self.assertTrue(app.zones_tick(101_001))
+        self.assertFalse(app.zones_tick(102_000), "a loss is reported once")
+        app.on_receive(spi_frame.build(0, 0, spi_system.ZONES_HEARTBEAT, b"ZONE", 2))
+        self.assertFalse(app.zones_tick(103_000))
+        self.assertTrue(app.zones_tick(104_001))
+
+    def test_the_clock_of_the_heartbeat_wraps(self):
+        app = self.full()
+        app.on_receive(spi_frame.build(0, 0, spi_system.ZONES_HEARTBEAT, b"ZONE", 1))
+        self.assertFalse(app.zones_tick(0xFFFFFF00))
+        self.assertFalse(app.zones_tick(0x100))
+        self.assertTrue(app.zones_tick(0x500))
+
+    def test_a_malformed_heartbeat_and_a_read_only_build_do_not_count(self):
+        app = self.full()
+        for payload in (b"ZONX", b"ZON", b"ZONEE"):
+            self.assertFalse(app.on_receive(spi_frame.build(0, 0, spi_system.ZONES_HEARTBEAT, payload, 1 + len(payload))))
+        self.assertEqual(app.zones_beat, 0)
+        read_only = spi_app.SpiApp(spi_system.Config(True, False))
+        self.assertFalse(read_only.on_receive(spi_frame.build(0, 0, spi_system.ZONES_HEARTBEAT, b"ZONE", 1)))
+        self.assertEqual(read_only.zones_beat, 0)
+
+    def test_the_reason_of_the_lost_heartbeat_is_the_safety_zone_of_the_emergency_stop(self):
+        self.assertIn("#define SPI_APP_ZONES_REASON 0x04u", text(CM4 / "spi_app.h"))
+        self.assertIn("#define ESTOP_REASON_SAFETY_ZONE  0x04u", text(CM4 / "estop_can.h"))
+
+    def test_the_watchdog_runs_in_the_driver_only_behind_its_own_switch(self):
+        driver = text(CM4 / "SpiApp.c")
+        self.assertIn("#if HYDRA_SPI_ZONES_HEARTBEAT", driver)
+        self.assertRegex(text(CM4 / "spi_app.h"), r"#ifndef HYDRA_SPI_ZONES_HEARTBEAT\s*\n#define HYDRA_SPI_ZONES_HEARTBEAT\s+0")
 
     def test_the_seal_can_be_required_or_not(self):
         lenient, strict = self.full(), spi_app.SpiApp(spi_system.Config(True, True), require_crc=True)

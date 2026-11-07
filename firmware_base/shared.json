@@ -1,0 +1,19 @@
+{
+  "shared": [
+    "boot_decision.h",
+    "boot_update_glue.h",
+    "bootloader_crypto.c",
+    "bootloader_crypto.h",
+    "bootloader_trust.c",
+    "bootloader_trust.h",
+    "flash_layer.h",
+    "hydra_trust_dev.h",
+    "hydra_trust_release.h",
+    "image_header.h",
+    "tweetnacl.c",
+    "tweetnacl.h",
+    "update_signature.c",
+    "update_signature.h",
+    "update_verify.h"
+  ]
+}

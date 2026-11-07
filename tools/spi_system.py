@@ -12,6 +12,7 @@
     0x23 TELEMETRY_RESPONSE selector, flags, crc errors, retries, sequence gaps, tx errors, rx errors, state
     0x24 PROBE_REQUEST      scan id                          scan the slots before an update
     0x25 PROBE_RESPONSE     scan id, then the verdicts of slots 0..7 in a nibble each
+    0x26 ZONES_HEARTBEAT    'Z' 'O' 'N' 'E'                  the safety-zones chain is healthy; the application stops the stack when it stops coming
 
 None of these frames is a CAN message: the types are above the 32 identifiers of a slot window. The firmware answers them only when it is built
 with HYDRA_SPI_SYSTEM=1 (telemetry and probe) and HYDRA_SPI_STOP_COMMAND=1 (stop and release). Evidence of anything built on this file: simulator."""
@@ -25,6 +26,7 @@ TELEMETRY_QUERY = 0x22
 TELEMETRY_RESPONSE = 0x23
 PROBE_REQUEST = 0x24
 PROBE_RESPONSE = 0x25
+ZONES_HEARTBEAT = 0x26
 
 STATE_BOOTLOADER = 0x01
 STATE_APPLICATION = 0x02
@@ -67,6 +69,10 @@ def release_payload() -> bytes:
     return b"RELS"
 
 
+def zones_heartbeat_payload() -> bytes:
+    return b"ZONE"
+
+
 def telemetry(config: Config, snap: Snapshot, selector: int = 0) -> bytes:
     flags = (FLAG_LINK_OK if snap.link_ok else 0) | (FLAG_ESTOP_LATCHED if snap.estop_latched else 0) | (FLAG_STOP_ENABLED if config.stop_enabled else 0)
     return bytes((selector, flags, saturate(snap.crc_errors), saturate(snap.retries), saturate(snap.seq_gaps), snap.can_tx_errors, snap.can_rx_errors, snap.state))
@@ -79,7 +85,7 @@ def probe_response(snap: Snapshot, scan_id: int) -> bytes:
 
 
 def handle(config: Config, snap: Snapshot, frame_type: int, payload: bytes) -> tuple[str, bytes]:
-    """The action the firmware takes for one frame of the tier SELF: ('none'|'reply'|'trip'|'release'|'scan', bytes). A reply carries the answer
+    """The action the firmware takes for one frame of the tier SELF: ('none'|'reply'|'trip'|'release'|'scan'|'heartbeat', bytes). A reply carries the answer
     (the type is TELEMETRY_RESPONSE); trip carries the reason; scan carries the scan id."""
     if not config.telemetry_enabled:
         return "none", b""
@@ -93,6 +99,8 @@ def handle(config: Config, snap: Snapshot, frame_type: int, payload: bytes) -> t
         return "none", b""
     if frame_type == RELEASE_REQUEST:
         return ("release", b"") if config.stop_enabled and payload == b"RELS" else ("none", b"")
+    if frame_type == ZONES_HEARTBEAT:
+        return ("heartbeat", b"") if config.stop_enabled and payload == b"ZONE" else ("none", b"")
     return "none", b""
 
 
@@ -145,3 +153,6 @@ class Client:
 
     def release(self) -> None:
         self._exchange(RELEASE_REQUEST, release_payload())
+
+    def zones_heartbeat(self) -> None:
+        self._exchange(ZONES_HEARTBEAT, zones_heartbeat_payload())

@@ -23,6 +23,7 @@ TELEMETRY_QUERY = 0x22
 TELEMETRY_RESPONSE = 0x23
 PROBE_REQUEST = 0x24
 PROBE_RESPONSE = 0x25
+ZONES_HEARTBEAT = 0x26
 IDLE_FRAME = 0xFF  # the frame that asks for nothing: the firmware ignores it and the transaction brings the staged answer
 
 STATE_BOOTLOADER = 0x01
@@ -117,6 +118,16 @@ def request_stop(transport: SpiOtaTransport, reason: int) -> bool:
     acted (the firmware ignores it unless it was built with the stop commands on)."""
     try:
         transport.transceive(SpiOtaFrame(SPI_TARGET_SELF, 0, STOP_REQUEST, 5, b"STOP" + bytes((reason & 0xFF,))))
+    except (OSError, ValueError):
+        return False
+    return True
+
+
+def send_zones_heartbeat(transport: SpiOtaTransport) -> bool:
+    """Says to the brain that the safety-zones chain is healthy. Send it every 100 ms, and only while the last verdict of the service is READY and fresh: a brain
+    built with the heartbeat watchdog stops the stack when it stops coming. True only says that the frame was sent; the brain does not answer it."""
+    try:
+        transport.transceive(SpiOtaFrame(SPI_TARGET_SELF, 0, ZONES_HEARTBEAT, 4, b"ZONE"))
     except (OSError, ValueError):
         return False
     return True

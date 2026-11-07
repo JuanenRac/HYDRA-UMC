@@ -111,6 +111,9 @@ void SpiApp_Pump(void)
     if (SpiApp_TakeTrip(&g_spi_app, &reason)) KinematicBrainCan_EstopTrip(reason);
     if (SpiApp_TakeRelease(&g_spi_app)) (void)KinematicBrainCan_EstopRequestRelease((uint8_t)HYDRA_SPI_RELEASE_EXPECTED_MASK);
     if (SpiApp_TakeScan(&g_spi_app, &scan_id)) SpiApp_RunScan(scan_id);
+#if HYDRA_SPI_ZONES_HEARTBEAT
+    if (SpiApp_ZonesTick(&g_spi_app, HAL_GetTick(), (uint32_t)HYDRA_SPI_ZONES_MAX_AGE_MS)) KinematicBrainCan_EstopTrip((uint8_t)SPI_APP_ZONES_REASON);
+#endif
 
     /* published after the requests ran, so the telemetry that follows a stop already says the stop is latched */
     uint8_t release_state = 0, missing = 0;

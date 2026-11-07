@@ -89,6 +89,19 @@ int main(void)
     TEST_ASSERT(run(&full, SPI_SYS_STOP_REQUEST, stop, 5u, &out_type, out, &out_dlc) == SPI_SYS_ACT_TRIP && out[0] == 7u, "full: stop asks for a trip with the reason");
     TEST_ASSERT(run(&full, SPI_SYS_RELEASE_REQUEST, release, 4u, &out_type, out, &out_dlc) == SPI_SYS_ACT_REQUEST_RELEASE, "full: release asks for the procedure");
 
+    /* the heartbeat of the safety-zones chain: it acts on the stack, so it needs the stop switch, and the exact magic */
+    {
+        const uint8_t zone[4] = {'Z', 'O', 'N', 'E'};
+        const uint8_t wrong[4] = {'Z', 'O', 'N', 'X'};
+        TEST_ASSERT(SpiSys_IsCommand(SPI_SYS_ZONES_HEARTBEAT) && !SpiSys_IsCommand(0x27u), "the heartbeat is a command, the type above it is not");
+        TEST_ASSERT(run(&full, SPI_SYS_ZONES_HEARTBEAT, zone, 4u, &out_type, out, &out_dlc) == SPI_SYS_ACT_ZONES_HEARTBEAT && out_dlc == 0u, "full: the heartbeat is noted and not answered");
+        TEST_ASSERT(run(&read_only, SPI_SYS_ZONES_HEARTBEAT, zone, 4u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "read only: the heartbeat is ignored");
+        TEST_ASSERT(run(&off, SPI_SYS_ZONES_HEARTBEAT, zone, 4u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "off: the heartbeat is ignored");
+        TEST_ASSERT(run(&full, SPI_SYS_ZONES_HEARTBEAT, wrong, 4u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "a wrong magic does nothing");
+        TEST_ASSERT(run(&full, SPI_SYS_ZONES_HEARTBEAT, zone, 3u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "a short heartbeat does nothing");
+        TEST_ASSERT(run(&full, SPI_SYS_ZONES_HEARTBEAT, zone, 5u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "a long heartbeat does nothing");
+    }
+
     /* the probe answer: the verdicts of the eight slots in nibbles */
     {
         const SpiSysSnapshot_t snap = snapshot();

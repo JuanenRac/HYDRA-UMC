@@ -13,6 +13,7 @@
  *   0x23 TELEMETRY_RESPONSE dlc 8   selector, flags, crc errors, retries, sequence gaps, CAN tx errors, CAN rx errors, state (counters saturate at 255)
  *   0x24 PROBE_REQUEST      dlc 1   scan id: scan the slots before an update
  *   0x25 PROBE_RESPONSE     dlc 5   scan id, then the verdict of the slots 0 to 7 in a nibble each
+ *   0x26 ZONES_HEARTBEAT    dlc 4   'Z' 'O' 'N' 'E'            the CM5 says the safety-zones chain is healthy; the application stops the stack when it stops coming
  *
  * Two switches, both 0 by default, so the firmware answers none of these until a build asks for them:
  *   HYDRA_SPI_SYSTEM        telemetry and probe (read only)
@@ -38,6 +39,7 @@
 #define SPI_SYS_TELEMETRY_RESPONSE 0x23u
 #define SPI_SYS_PROBE_REQUEST      0x24u
 #define SPI_SYS_PROBE_RESPONSE     0x25u
+#define SPI_SYS_ZONES_HEARTBEAT    0x26u
 
 #define SPI_SYS_STATE_BOOTLOADER   0x01u
 #define SPI_SYS_STATE_APPLICATION  0x02u
@@ -68,7 +70,8 @@ typedef enum {
     SPI_SYS_ACT_REPLY,            /* send `out` back to the CM5 */
     SPI_SYS_ACT_TRIP,             /* the caller puts the stack in the emergency stop with the reason in out[0] */
     SPI_SYS_ACT_REQUEST_RELEASE,  /* the caller starts the release procedure of the emergency stop (EstopBrain_RequestRelease) */
-    SPI_SYS_ACT_START_SCAN        /* the caller runs the slot scan with the id in out[0] and answers with the verdicts */
+    SPI_SYS_ACT_START_SCAN,       /* the caller runs the slot scan with the id in out[0] and answers with the verdicts */
+    SPI_SYS_ACT_ZONES_HEARTBEAT   /* the caller notes the time of the heartbeat of the safety-zones chain */
 } SpiSysAction;
 
 static inline SpiSysConfig_t SpiSys_ConfigFromBuild(void)
@@ -84,7 +87,7 @@ static inline uint8_t SpiSys_Saturate(uint32_t value)
 
 static inline uint8_t SpiSys_IsCommand(uint8_t frame_type)
 {
-    return (uint8_t)(frame_type >= SPI_SYS_STOP_REQUEST && frame_type <= SPI_SYS_PROBE_REQUEST && frame_type != SPI_SYS_TELEMETRY_RESPONSE);
+    return (uint8_t)(frame_type >= SPI_SYS_STOP_REQUEST && (frame_type <= SPI_SYS_PROBE_REQUEST || frame_type == SPI_SYS_ZONES_HEARTBEAT) && frame_type != SPI_SYS_TELEMETRY_RESPONSE);
 }
 
 /* Fills the telemetry answer (8 bytes). */
@@ -138,6 +141,9 @@ static inline SpiSysAction SpiSys_Handle(const SpiSysConfig_t *config, const Spi
     case SPI_SYS_RELEASE_REQUEST:
         if (!config->stop_enabled || dlc != 4u || payload[0] != 'R' || payload[1] != 'E' || payload[2] != 'L' || payload[3] != 'S') return SPI_SYS_ACT_NONE;
         return SPI_SYS_ACT_REQUEST_RELEASE;
+    case SPI_SYS_ZONES_HEARTBEAT:
+        if (!config->stop_enabled || dlc != 4u || payload[0] != 'Z' || payload[1] != 'O' || payload[2] != 'N' || payload[3] != 'E') return SPI_SYS_ACT_NONE;
+        return SPI_SYS_ACT_ZONES_HEARTBEAT;
     default:
         return SPI_SYS_ACT_NONE;
     }

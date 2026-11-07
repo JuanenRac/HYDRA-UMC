@@ -18,8 +18,10 @@
  * every call of KinematicBrainCan_Estop* is made from that task only; the STACK A task in turn hands over the state of the stop and the counters of
  * the bus, and the verdicts of a scan. Each of those fields has one writer. Bytes only, so a read in the middle of a write is harmless.
  *
- * Switch (0 by default, so the firmware does not start the service until a build asks for it): HYDRA_SPI_APP. It also needs HYDRA_SPI_SYSTEM
- * (telemetry and probe) and, for stop and release, HYDRA_SPI_STOP_COMMAND. docs/SPI_SYSTEM.md is the contract.
+ * Switches (0 by default, so the firmware does not start the service until a build asks for it): HYDRA_SPI_APP. It also needs HYDRA_SPI_SYSTEM
+ * (telemetry and probe) and, for stop and release, HYDRA_SPI_STOP_COMMAND. HYDRA_SPI_ZONES_HEARTBEAT makes the application stop the stack when the
+ * heartbeat of the safety-zones chain (type 0x26, sent by the CM5 only while the chain is healthy) has come and then stops coming; it never trips
+ * before the first heartbeat, so a machine without that service is not affected. docs/SPI_SYSTEM.md is the contract.
  * ========================================================================== */
 #ifndef HYDRA_UMC_SPI_APP_H
 #define HYDRA_UMC_SPI_APP_H
@@ -36,6 +38,13 @@
 #ifndef HYDRA_SPI_REQUIRE_CRC
 #define HYDRA_SPI_REQUIRE_CRC 0
 #endif
+#ifndef HYDRA_SPI_ZONES_HEARTBEAT
+#define HYDRA_SPI_ZONES_HEARTBEAT 0
+#endif
+#ifndef HYDRA_SPI_ZONES_MAX_AGE_MS
+#define HYDRA_SPI_ZONES_MAX_AGE_MS 1000u /* the oldest heartbeat that still counts; the safety-zones service sends one every 100 ms */
+#endif
+#define SPI_APP_ZONES_REASON 0x04u /* ESTOP_REASON_SAFETY_ZONE of estop_can.h (tests/test_spi_app.py compares the two) */
 
 #define SPI_APP_FRAME_SIZE 128u
 #define SPI_APP_TARGET_SELF 0u
@@ -71,6 +80,11 @@ typedef struct {
     volatile uint8_t scan_done;
     volatile uint8_t scan_done_id;
     volatile uint8_t scan_verdicts[8];
+    /* the heartbeat of the safety-zones chain: the SPI task counts them, the STACK A task times them (it owns the clock) */
+    volatile uint32_t zones_beat;
+    uint32_t zones_beat_seen;
+    uint32_t zones_last_ms;
+    uint8_t zones_armed;
 } SpiApp_t;
 
 static inline void SpiApp_SealIdle(SpiApp_t *app)
@@ -170,6 +184,9 @@ static inline uint8_t SpiApp_OnReceive(SpiApp_t *app, const uint8_t rx_wire[SPI_
         app->scan_done = 0u;
         app->scan_pending = 1u;
         break;
+    case SPI_SYS_ACT_ZONES_HEARTBEAT:
+        app->zones_beat = app->zones_beat + 1u;
+        break;
     default:
         app->frames_ignored++;
         return 0u;
@@ -212,6 +229,25 @@ static inline uint8_t SpiApp_TakeScan(SpiApp_t *app, uint8_t *scan_id)
     *scan_id = app->scan_id;
     app->scan_pending = 0u;
     return 1u;
+}
+
+/* The heartbeat watchdog, from the STACK A task with its clock in milliseconds: 1 when a heartbeat came before and none has come for more than max_age_ms,
+ * once per loss (the watchdog is armed again by the next heartbeat). The caller stops the stack with SPI_APP_ZONES_REASON. Never 1 before the first heartbeat. */
+static inline uint8_t SpiApp_ZonesTick(SpiApp_t *app, uint32_t now_ms, uint32_t max_age_ms)
+{
+    const uint32_t beat = app->zones_beat;
+    if (beat != app->zones_beat_seen) {
+        app->zones_beat_seen = beat;
+        app->zones_last_ms = now_ms;
+        app->zones_armed = 1u;
+        return 0u;
+    }
+    if (!app->zones_armed) return 0u;
+    if ((uint32_t)(now_ms - app->zones_last_ms) > max_age_ms) {
+        app->zones_armed = 0u;
+        return 1u;
+    }
+    return 0u;
 }
 
 static inline void SpiApp_ScanDone(SpiApp_t *app, uint8_t scan_id, const uint8_t verdicts[8])

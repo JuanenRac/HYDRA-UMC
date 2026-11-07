@@ -47,6 +47,10 @@ class SpiApp:
     scan_done: bool = False
     scan_done_id: int = 0
     scan_verdicts: list[int] = field(default_factory=lambda: [0] * 8)
+    zones_beat: int = 0
+    zones_beat_seen: int = 0
+    zones_last_ms: int = 0
+    zones_armed: bool = False
 
     def __post_init__(self) -> None:
         self._seal(IDLE_TYPE, b"", 0)
@@ -95,7 +99,7 @@ class SpiApp:
                 self.seq_gaps += 1
             self.rx_last = sequence
         tier, frame_type, dlc = wire[0], wire[2], wire[3]
-        is_command = spi_system.STOP_REQUEST <= frame_type <= spi_system.PROBE_REQUEST and frame_type != spi_system.TELEMETRY_RESPONSE
+        is_command = (spi_system.STOP_REQUEST <= frame_type <= spi_system.PROBE_REQUEST or frame_type == spi_system.ZONES_HEARTBEAT) and frame_type != spi_system.TELEMETRY_RESPONSE
         if tier != TARGET_SELF or not is_command or dlc > 8:
             self.frames_ignored += 1
             return False
@@ -108,6 +112,8 @@ class SpiApp:
             self.release_pending = True
         elif action == "scan":
             self.scan_id, self.scan_done, self.scan_pending = data[0], False, True
+        elif action == "heartbeat":
+            self.zones_beat = (self.zones_beat + 1) & 0xFFFFFFFF
         else:
             self.frames_ignored += 1
             return False
@@ -137,6 +143,16 @@ class SpiApp:
             return None
         self.scan_pending = False
         return self.scan_id
+
+    def zones_tick(self, now_ms: int, max_age_ms: int = 1000) -> bool:
+        """The heartbeat watchdog of the STACK A task: True once per loss, never before the first heartbeat."""
+        if self.zones_beat != self.zones_beat_seen:
+            self.zones_beat_seen, self.zones_last_ms, self.zones_armed = self.zones_beat, now_ms, True
+            return False
+        if self.zones_armed and ((now_ms - self.zones_last_ms) & 0xFFFFFFFF) > max_age_ms:
+            self.zones_armed = False
+            return True
+        return False
 
     def scan_finished(self, scan_id: int, verdicts: list[int]) -> None:
         self.scan_verdicts = list(verdicts)
