@@ -986,6 +986,76 @@ static void test_the_metadata_after_an_update_and_a_cut_during_it(void)
 }
 
 
+/* The transport of this test is the bus as a fake: it cuts or fragments the data of an update at any byte. */
+static void send_data_in_pieces(Update *u, uint32_t bytes, uint32_t piece)
+{
+    for (uint32_t at = 0; at < bytes; at += piece) {
+        uint32_t n = bytes - at < piece ? bytes - at : piece;
+        HandleData(u->image + at, n);
+    }
+}
+
+static void test_a_cut_at_every_byte_of_the_data_never_touches_the_installed_application(void)
+{
+    printf("  the data of an update cut at every byte, with and without the end of the update\n");
+    ImageVersion_t none = {0, 0, 0};
+    static const uint32_t sizes[2] = {512, 2064};   /* one small image, one that crosses a flash page */
+    for (int s = 0; s < 2; s++) {
+        uint32_t size = sizes[s];
+        int refused = 0, kept = 0, untouched_after_end = 0, installs_afterwards = 0;
+        for (uint32_t cut = 0; cut < size; cut++) {
+            reset_world();
+            install(0, 2, 2);
+            Update u = make_update((ImageVersion_t){0, 2, 3}, 5, size);
+            start(&u);
+            for (int i = 0; i < u.signature_chunks; i++) HandleHmacChunk(u.signature + 8 * i);
+            for (int i = 0; i < u.header_chunks; i++) HandleImageHeaderChunk(u.header + 8 * i);
+            send_data_in_pieces(&u, cut, 8);
+            /* power lost here: nothing more arrives */
+            FirmwareMetadata_t m = metadata();
+            if (main_slot_untouched() && m.state == META_STATE_APP_VALID && m.version_minor == 2 && m.version_patch == 2) kept++;
+            /* the host sends the end of the update although the data is short */
+            finish(&u);
+            if (last_verdict() != 0) refused++;
+            if (main_slot_untouched() && resets == 0) untouched_after_end++;
+            /* a new session over the same board installs the whole update */
+            start(&u);
+            for (int i = 0; i < u.signature_chunks; i++) HandleHmacChunk(u.signature + 8 * i);
+            for (int i = 0; i < u.header_chunks; i++) HandleImageHeaderChunk(u.header + 8 * i);
+            send_data_in_pieces(&u, size, 8);
+            finish(&u);
+            if (last_verdict() == 0 && main_slot_holds(&u)) installs_afterwards++;
+            else printf("    second session after a cut of %u of %u bytes: verdict %d, holds %d, resets %d\n", (unsigned)cut, (unsigned)size, last_verdict(), main_slot_holds(&u), resets);
+            free_update(&u);
+        }
+        CHECK(kept == (int)size, "a cut at any byte leaves the main slot and the installed metadata as they were");
+        CHECK(refused == (int)size, "the end of the update after a short transfer is refused at every cut");
+        CHECK(untouched_after_end == (int)size, "and the main slot is still untouched and the board does not reset");
+        CHECK(installs_afterwards == (int)size, "a new session after any cut installs the whole update");
+    }
+    (void)none;
+}
+
+static void test_the_pieces_the_data_arrives_in_do_not_change_the_result(void)
+{
+    printf("  the same update fragmented in pieces of 1 to 8 bytes\n");
+    ImageVersion_t none = {0, 0, 0};
+    for (uint32_t piece = 1; piece <= 8; piece++) {
+        reset_world();
+        install(0, 2, 2);
+        Update u = make_update((ImageVersion_t){0, 2, 3}, 7, 2064);
+        start(&u);
+        for (int i = 0; i < u.signature_chunks; i++) HandleHmacChunk(u.signature + 8 * i);
+        for (int i = 0; i < u.header_chunks; i++) HandleImageHeaderChunk(u.header + 8 * i);
+        send_data_in_pieces(&u, u.size, piece);
+        finish(&u);
+        CHECK(last_verdict() == 0, "any fragmentation of the data verifies");
+        CHECK(main_slot_holds(&u), "and the image is in the main slot");
+        free_update(&u);
+    }
+    (void)none;
+}
+
 int main(void)
 {
     printf("HYDRA-UMC host tests - G474 bootloader, the whole update\n");
@@ -1012,6 +1082,8 @@ int main(void)
     test_the_metadata_after_an_update_and_a_cut_during_it();
     test_a_flash_that_changed_after_the_transfer_breaks_the_signature();
     test_an_update_over_nothing_installed();
+    test_a_cut_at_every_byte_of_the_data_never_touches_the_installed_application();
+    test_the_pieces_the_data_arrives_in_do_not_change_the_result();
 
     if (failures) {
         printf("%d failure(s)\n", failures);
