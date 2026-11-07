@@ -1,0 +1,48 @@
+# =============================================================================
+# HYDRA-UMC - Renode platform check (manual)
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Started by hand only. It downloads one fixed release of Renode (portable, Linux), checks the SHA-256 of the archive against the value written
+# here, unpacks it and lists which platform descriptions exist for the STM32G4 and STM32H7 families and which of the peripherals the
+# bootloaders use (FDCAN, SPI, hardware semaphore, flash controller) they declare. The report goes to the Job Summary. Nothing of the
+# firmware runs: it is the list of gaps to close before a bootloader can start in Renode. A chip without a platform is reported as not supported.
+
+name: Renode platform check (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: List the Renode platforms for the firmware chips
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RENODE_VERSION: "1.16.0"
+      RENODE_SHA256: "99e43ad40d07be7a81835b5b95897619997d32da9998634730c0aec5486736f6"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Download the pinned Renode release and check its hash
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/renode"
+          curl --fail --location --silent --show-error --output "$RUNNER_TEMP/renode.tar.gz" \
+            "https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode-${RENODE_VERSION}.linux-portable.tar.gz"
+          echo "${RENODE_SHA256}  $RUNNER_TEMP/renode.tar.gz" | sha256sum --check -
+          tar -xzf "$RUNNER_TEMP/renode.tar.gz" -C "$RUNNER_TEMP/renode" --strip-components=1
+
+      - name: List the platforms and the gaps
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/renode_gap_report.py "$RUNNER_TEMP/renode" --version "$RENODE_VERSION" --markdown "$RUNNER_TEMP/report.md"
+          cat "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"
