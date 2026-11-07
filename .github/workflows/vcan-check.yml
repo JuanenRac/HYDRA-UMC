@@ -31,9 +31,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq linux-modules-extra-"$(uname -r)"
-          sudo modprobe vcan
+          if ! sudo modprobe vcan; then
+            sudo apt-get update -qq || true
+            sudo apt-get install -y -qq linux-modules-extra-"$(uname -r)" || sudo apt-get install -y -qq linux-modules-extra-azure || true
+            sudo modprobe vcan
+          fi
           sudo ip link add dev vcan0 type vcan
           sudo ip link set up vcan0
           ip -details link show vcan0
