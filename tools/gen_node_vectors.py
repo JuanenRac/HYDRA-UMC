@@ -102,6 +102,21 @@ def slot_scan_header() -> str:
     for d in data["delays"]:
         out.append(f"    {{{d['uid32']}u, {d['delay_ms']}u}},")
     out.append("};\n")
+    # one row per scenario and slot: what was heard in that window and the verdict the master has to give (0 ABSENT, 1 OK, 2 DUPLICATE, 3 MISPLACED, 4 NOISY)
+    verdicts = {"ABSENT": 0, "OK": 1, "DUPLICATE": 2, "MISPLACED": 3, "NOISY": 4}
+    out.append("#define SLOT_SCAN_VECTOR_MAX_FRAMES 4")
+    out.append("typedef struct { const char *name; uint8_t scan_id, slot, nframes; uint8_t dlc[SLOT_SCAN_VECTOR_MAX_FRAMES]; uint8_t frames[SLOT_SCAN_VECTOR_MAX_FRAMES][8]; uint16_t bus_errors; uint8_t expect; } SlotScanVectorWindow;\n")
+    out.append("static const SlotScanVectorWindow slot_scan_vector_windows[] = {")
+    for scenario in data["scenarios"]:
+        for slot in range(8):
+            heard = scenario["heard"].get(str(slot), {"frames": [], "bus_errors": 0})
+            frames = [bytes.fromhex(f) for f in heard["frames"]]
+            if len(frames) > 4 or any(len(f) > 8 for f in frames):
+                raise SystemExit("slot scan scenario with more frames than the header holds")
+            dlcs = ", ".join(str(len(f)) for f in frames + [b""] * (4 - len(frames)))
+            rows = ", ".join("{" + ", ".join(f"0x{b:02x}" for b in (f + bytes(8 - len(f)))) + "}" for f in frames + [b""] * (4 - len(frames)))
+            out.append(f"    {{{c_string(scenario['name'])}, {scenario['scan_id']}, {slot}, {len(frames)}, {{{dlcs}}}, {{{rows}}}, {heard['bus_errors']}, {verdicts[scenario['expect'][str(slot)]]}}},")
+    out.append("};\n")
     return "\n".join(out)
 
 

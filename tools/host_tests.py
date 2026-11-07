@@ -75,6 +75,7 @@ def table() -> list[HostTest]:
         HostTest("estop_can@cm4_brain", "tests/test_estop_can.c", ("tests", f"{H7}/CM4"), STRICT, defines=("ESTOP_TEST_BRAIN",)),
         HostTest("estop_input", "tests/test_estop_input.c", (G4,)),
         HostTest("slot_scan_node", "tests/test_slot_scan_node.c", ("tests", f"{G4}/boot")),
+        HostTest("slot_scan_master", "tests/test_slot_scan_master.c", ("tests", f"{G4}/boot", f"{H7}/CM4"), STRICT),
         HostTest("bootloader_g474", "tests/test_bootloader_g474_host.c", ("tests/stubs", f"{G4}/boot", "tests"), GNU,
                  (f"{G4}/boot/update_signature.c",), needs_tweetnacl=True),
         HostTest("bootloader_g474_flash_layer", "tests/test_bootloader_g474_host.c", ("tests/stubs", f"{G4}/boot", "tests"), GNU,

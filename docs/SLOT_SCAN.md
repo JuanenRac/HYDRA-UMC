@@ -3,7 +3,7 @@
 Status: **the controller board answers the probe, tested on the host; the host client that sends it is not written and nothing in this page
 has run on a board.** `docs/bus_contract.json` (section `slot_scan`) holds the numbers, `tools/slot_scan.py` is the reference of the frames
 and of the verdict, `tests/slot_scan_vectors.json` holds the frames and the scenarios, `tests/test_slot_scan.py` keeps the reference
-consistent and `tests/test_slot_scan_node.c` replays the frames and the delays against `slot_scan_node.h`, the file the firmware uses.
+consistent, `tests/test_slot_scan_master.c` replays every scenario against `slot_scan_master.h` (the verdict of a slot on the master side: absent, ok, duplicate, misplaced or noisy, with a seeded fuzz against an independent model) and `tests/test_slot_scan_node.c` replays the frames and the delays against `slot_scan_node.h`, the file the firmware uses.
 
 ## The problem
 
