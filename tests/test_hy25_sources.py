@@ -38,6 +38,7 @@ class SwitchesShipOff(unittest.TestCase):
         cases = (
             (G4 / "app_boot_request.h", "HYDRA_APP_ENTER_BOOTLOADER"),
             (G4 / "health_frame.h", "HYDRA_HEALTH_FRAME"),
+            (G4 / "boot_report.h", "HYDRA_BOOT_REPORT"),
             (G4 / "boot" / "adoption_guard.h", "HYDRA_READBACK_GATE"),
             (G4 / "STM32G474RE_main.c", "HYDRA_QUIET_TICK_BEFORE_SCHEDULER"),
             (H7 / "CM4" / "spi_system.h", "HYDRA_SPI_SYSTEM"),
@@ -69,6 +70,20 @@ class SwitchesShipOff(unittest.TestCase):
         self.assertIn("Adopt_RecordMatches", protocol)
         self.assertIn("HYDRA_SPI_SYSTEM", text(H7 / "CM4" / "boot" / "bootloader_main.c"))
         self.assertIn("RccOwner_Decide", text(H7 / "CM4" / "STM32H745ZI_CM4_main.c"))
+
+    def test_the_boot_report_travels_from_the_bootloader_to_the_health_flags(self):
+        boot = text(G4 / "boot" / "bootloader_main.c")
+        relay = text(G4 / "RobotControllerRelay.c")
+        self.assertIn("#if HYDRA_BOOT_REPORT", boot)
+        self.assertIn("BootReport_Write(&TAMP->BKP2R", boot)
+        self.assertLess(boot.index("BootReport_Write("), boot.index("JumpToApplication();"))
+        self.assertIn("#if HYDRA_BOOT_REPORT", relay)
+        self.assertIn("BootReport_TakeHealthFlags(&TAMP->BKP2R)", relay)
+        self.assertLess(relay.index("HealthFrame_Reset(&health);"), relay.index("BootReport_TakeHealthFlags"))
+
+    def test_the_boot_report_registers_do_not_overlap_the_enter_bootloader_request(self):
+        self.assertIn("&TAMP->BKP0R", text(G4 / "RobotControllerRelay.c"))
+        self.assertNotIn("BKP2R", text(G4 / "app_boot_request.h"))
 
     def test_the_fdcan_clock_selection_comes_before_the_peripheral_clock_is_enabled(self):
         for path in (G4 / "boot" / "bootloader_main.c", G4 / "RobotControllerRelay.c"):

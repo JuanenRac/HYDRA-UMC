@@ -13,6 +13,7 @@
 #include "fdcan_clock.h"
 #include "app_boot_request.h"
 #include "health_frame.h"
+#include "boot_report.h"
 
 #define TEST_ASSERT(cond, msg) \
     do { \
@@ -120,13 +121,51 @@ static void test_health_frame(void)
 #endif
 }
 
+static void test_boot_report(void)
+{
+    volatile uint32_t regs[2] = {0u, 0u};
+#if HYDRA_BOOT_REPORT
+    BootReport_Write(regs, 1u, 0u);
+    TEST_ASSERT(BootReport_TakeHealthFlags(regs) == HEALTH_FLAG_WDG_RST, "a watchdog reset reaches the health flags");
+    TEST_ASSERT(regs[0] == 0u && regs[1] == 0u, "the report is cleared when it is taken");
+    TEST_ASSERT(BootReport_TakeHealthFlags(regs) == 0u, "and applies once");
+    BootReport_Write(regs, 0u, 0x04u);
+    TEST_ASSERT(BootReport_TakeHealthFlags(regs) == HEALTH_FLAG_INIT_BAD, "a failed set-up call reaches the health flags");
+    BootReport_Write(regs, 1u, 0x02u);
+    TEST_ASSERT(BootReport_TakeHealthFlags(regs) == (HEALTH_FLAG_WDG_RST | HEALTH_FLAG_INIT_BAD), "both facts together");
+    BootReport_Write(regs, 0u, 0u);
+    TEST_ASSERT(BootReport_TakeHealthFlags(regs) == 0u, "a clean start reports nothing");
+    /* random bits after a power-up are not a report */
+    regs[0] = 0xDEADBEEFu; regs[1] = 0x12345678u;
+    TEST_ASSERT(BootReport_TakeHealthFlags(regs) == 0u, "random bits are not a report");
+    BootReport_Write(regs, 1u, 1u);
+    regs[1] ^= 0x00000100u;
+    TEST_ASSERT(BootReport_TakeHealthFlags(regs) == 0u, "a damaged complement is not a report");
+    /* every flipped bit of the first word breaks either the magic or the complement */
+    for (unsigned bit = 0u; bit < 32u; bit++) {
+        BootReport_Write(regs, 1u, 1u);
+        regs[0] ^= (1u << bit);
+        const uint8_t got = BootReport_TakeHealthFlags(regs);
+        TEST_ASSERT(got == 0u, "a flipped bit of the word is never taken for a report");
+    }
+    TEST_ASSERT((BOOT_REPORT_MAGIC & ~BOOT_REPORT_MAGIC_MASK) == 0u, "the magic leaves the low byte for the facts");
+#else
+    BootReport_Write(regs, 1u, 0x04u);
+    TEST_ASSERT(regs[0] == 0u && regs[1] == 0u, "with the switch off the bootloader writes nothing");
+    regs[0] = BOOT_REPORT_MAGIC | BOOT_REPORT_KNOWN; regs[1] = ~regs[0];
+    TEST_ASSERT(BootReport_TakeHealthFlags(regs) == 0u, "with the switch off the application reads nothing");
+    TEST_ASSERT(regs[0] != 0u, "and leaves the registers alone");
+#endif
+}
+
 int main(void)
 {
-    printf("HYDRA-UMC host logic tests - fdcan_clock.h, app_boot_request.h, health_frame.h (switches %d%d%d)\n",
-           HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT, HYDRA_APP_ENTER_BOOTLOADER, HYDRA_HEALTH_FRAME);
+    printf("HYDRA-UMC host logic tests - fdcan_clock.h, app_boot_request.h, health_frame.h (switches %d%d%d%d)\n",
+           HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT, HYDRA_APP_ENTER_BOOTLOADER, HYDRA_HEALTH_FRAME, HYDRA_BOOT_REPORT);
     test_fdcan_clock();
     test_app_boot_request();
     test_health_frame();
+    test_boot_report();
     if (failures) printf("%d FAILED\n", failures);
     else printf("ok\n");
     return failures ? 1 : 0;

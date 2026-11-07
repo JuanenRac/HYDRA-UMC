@@ -63,7 +63,7 @@ def table() -> list[HostTest]:
         HostTest("ipc_mailbox_require_crc", "tests/test_ipc_mailbox.c", (f"{H7}/Common", f"{H7}/CM4/boot"), defines=("HYDRA_IPC_REQUIRE_CRC=1",)),
         HostTest("app_support", "tests/test_app_support.c", (G4,), defines=("HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT=0",)),
         HostTest("app_support_switches_on", "tests/test_app_support.c", (G4,),
-                 defines=("HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT=1", "HYDRA_APP_ENTER_BOOTLOADER=1", "HYDRA_HEALTH_FRAME=1")),
+                 defines=("HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT=1", "HYDRA_APP_ENTER_BOOTLOADER=1", "HYDRA_HEALTH_FRAME=1", "HYDRA_BOOT_REPORT=1")),
         HostTest("spi_system", "tests/test_spi_system.c", (f"{H7}/CM4",)),
         HostTest("rcc_owner", "tests/test_rcc_owner.c", (f"{H7}/CM4",)),
         HostTest("flash_layer@g474", "tests/test_flash_layer.c", (f"{G4}/boot",), defines=("HYDRA_TEST_ADOPTION",)),

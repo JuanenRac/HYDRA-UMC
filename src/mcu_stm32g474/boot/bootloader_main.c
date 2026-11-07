@@ -38,6 +38,7 @@
 #include "slot_scan_node.h"
 #include "fdcan_clock.h"        // the explicit kernel clock of the FDCAN (off by default)
 #include "app_boot_request.h"  // an application asking to be updated (off by default)
+#include "boot_report.h"        // what this start found, handed to the application for its health frame (off by default)
 
 FDCAN_HandleTypeDef hfdcan1;
 IWDG_HandleTypeDef  hiwdg;
@@ -337,6 +338,13 @@ int main(void) {
     }
 
     if (should_jump) {
+#if HYDRA_BOOT_REPORT
+        // Tell the application what this start found (boot_report.h): a watchdog reset and a failed set-up call of the bootloader.
+        __HAL_RCC_PWR_CLK_ENABLE();
+        __HAL_RCC_RTCAPB_CLK_ENABLE();
+        HAL_PWR_EnableBkUpAccess();
+        BootReport_Write(&TAMP->BKP2R, (uint8_t)(reset_kind == BOOT_RESET_WATCHDOG), boot_hal_fault);   // BKP2R and BKP3R are consecutive registers
+#endif
         JumpToApplication();
     } else if (!enter_update_mode && app_valid && link_ok) {
         // Refused only because of the real boot-attempt count above (a

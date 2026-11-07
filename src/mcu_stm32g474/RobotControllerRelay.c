@@ -33,6 +33,7 @@
 #include "fdcan_clock.h"            /* the explicit kernel clock of the FDCAN (off by default) */
 #include "app_boot_request.h"      /* ENTER_BOOTLOADER answered by the application (off by default) */
 #include "health_frame.h"           /* the once-a-second health frame (off by default) */
+#include "boot_report.h"            /* what the bootloader found at this start, for the health flags (off by default) */
 #include <string.h>
 
 static FDCAN_HandleTypeDef hfdcan1_app; /* uplink - STACK A, shared with the Kinematic Brain and every other slot */
@@ -379,6 +380,12 @@ void RobotControllerRelay_Init(void)
     chip_uid32 = SlotScan_FoldUid(HAL_GetUIDw0(), HAL_GetUIDw1(), HAL_GetUIDw2());
     SlotScanNode_Reset(&slot_scan_node);
     HealthFrame_Reset(&health);
+#if HYDRA_BOOT_REPORT
+    __HAL_RCC_PWR_CLK_ENABLE();
+    __HAL_RCC_RTCAPB_CLK_ENABLE();
+    HAL_PWR_EnableBkUpAccess();
+    health.flags = (uint8_t)(health.flags | BootReport_TakeHealthFlags(&TAMP->BKP2R));
+#endif
     EstopNode_Reset(&estop_node);
     EstopInputGpio_Init();
     StopPolicy_Init(&stop_policy, (uint8_t)MACHINE_STOP_CATEGORY1_MASK, MACHINE_STOP_RAMP_MAX_MS);
