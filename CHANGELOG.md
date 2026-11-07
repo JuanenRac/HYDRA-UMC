@@ -4,6 +4,8 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **A virtual CAN bus runs the slot scan and the emergency stop contract on the host:** `tests/sim_can_bus.py` emulates a bus in one process (arbitration by identifier, a capacity that follows the bit rate, error frames when two nodes send the same identifier with different data, lost frames, a node forced bus-off, and a record of every sender that uses an identifier that is not its own); `tests/test_can_bus_sim.py` scans slots with a board alone, absent, doubled, colliding and misplaced, and runs the emergency stop state machine on it under a saturated bus, with a lost frame, silence of the brain and a bus-off node. Simulation only: the timings are those of the model and the bench rows stay open until they are measured on boards.
+
 - **The flash cycle of the CM5 bridge is tested against a simulated A/B bootloader with a fault on every frame:** `tests/sim_board.py` models a bootloader that stages the image in the inactive slot and switches only after the size and the CRC-32 verified; `tests/test_flash_faults.py` cuts the power at each frame of an update, flips a bit of each frame, loses or repeats each answer, fails a flash page and sends a wrong CRC, and checks that the active image is never a mixture, that nothing reports done for an image that was not installed and that a repeated update afterwards succeeds. Simulation only: the same cases on the boards are not done yet.
 
 ## [0.2.8] - An official firmware release is signed on the maintainer's machine and published by a workflow that only verifies: the new workflow .github/workflows/release.yml (started by hand, only from main, behind the release environment...
