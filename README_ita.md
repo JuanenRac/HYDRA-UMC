@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="Platform">
-  <img src="https://img.shields.io/badge/Tests-404%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-411%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versione | `0.2.8` |
 | Maturità | Impalcatura |
-| Test | 404 (`python -m unittest discover -s tests -p 'test_*.py'`) |
+| Test | 411 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | Tecnologia | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | Destinazione | Una scheda con microcontrollore (il firmware); compilato su un PC |
 | Su hardware reale | Non ancora: per questa versione non risulta alcuna esecuzione su hardware reale |
@@ -52,7 +52,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | Area | Stato | Cosa significa qui |
 |---|---|---|
 | Software | 🟠 | Solo struttura e primi pezzi; gran parte del lavoro è ancora da fare |
-| Test | 🟡 | 404 test automatici, eseguiti a ogni modifica |
+| Test | 🟡 | 411 test automatici, eseguiti a ogni modifica |
 | Hardware reale | 🔴 | Non ancora: per questa versione non risulta alcuna esecuzione su hardware reale |
 | Documentazione | 🟡 | README in otto lingue, verificato rispetto al manifesto a ogni modifica |
 
