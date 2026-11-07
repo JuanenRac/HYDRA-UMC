@@ -570,6 +570,7 @@ step "4. Robot Controller Board - common compiler flags and shared HAL objects"
 # A bench build (the default) compiles the development table, whose private seed is published in this repository: anybody can sign an update for it.
 # HYDRA_UMC_RELEASE=1 compiles the release table instead: it is closed (it trusts nobody and installs nothing) until the owner puts the public half of
 # the image-signing key in docs/image_trust.json; the images are signed afterwards, on the owner's machine, never here.
+# HYDRA_EXTRA_CFLAGS adds compiler flags to every chip (for example -DHYDRA_HEALTH_FRAME=1 to compile the switches that ship off).
 if [ "${HYDRA_UMC_RELEASE:-0}" = "1" ]; then
     TRUST_DEFS=""
     pass "bootloaders are built with the release trust table (closed until the image-signing key is in docs/image_trust.json)"
@@ -578,7 +579,7 @@ else
     warn "bootloaders trust the DEVELOPMENT image key, whose seed is public: do not put these images on a board that anybody else can reach"
 fi
 
-CFLAGS_G4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32G474xx -DUSE_HAL_DRIVER -I$G4/common/CMSIS_Include -I$G4/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS"
+CFLAGS_G4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32G474xx -DUSE_HAL_DRIVER -I$G4/common/CMSIS_Include -I$G4/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS ${HYDRA_EXTRA_CFLAGS:-}"
 LDCOMMON_G4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
 # App CFLAGS additionally need this target's own FreeRTOSConfig.h directory
 # plus FreeRTOS's own headers/port headers - the bootloader (bare-metal, no
@@ -731,9 +732,9 @@ step "8. Kinematic Brain - common compiler flags and shared HAL objects (per cor
 HAL_MODULES_H7="stm32h7xx_hal stm32h7xx_hal_cortex stm32h7xx_hal_gpio stm32h7xx_hal_rcc stm32h7xx_hal_rcc_ex stm32h7xx_hal_pwr stm32h7xx_hal_pwr_ex stm32h7xx_hal_flash stm32h7xx_hal_flash_ex stm32h7xx_hal_exti stm32h7xx_hal_mdma stm32h7xx_hal_fdcan stm32h7xx_hal_iwdg stm32h7xx_hal_spi stm32h7xx_hal_hsem"
 
 for CORE in CM7 CM4; do
-    CFLAGS_H7="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS"
+    CFLAGS_H7="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS ${HYDRA_EXTRA_CFLAGS:-}"
     if [ "$CORE" = "CM7" ]; then
-        CFLAGS_H7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS"
+        CFLAGS_H7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS ${HYDRA_EXTRA_CFLAGS:-}"
     fi
     LOWER=$(echo "$CORE" | tr 'A-Z' 'a-z')
     OBJDIR="$H7/hal_obj_$LOWER"
@@ -760,9 +761,9 @@ for CORE in CM7 CM4; do
     pass "$CORE: startup + system files compiled"
 done
 
-CFLAGS_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS"
+CFLAGS_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS ${HYDRA_EXTRA_CFLAGS:-}"
 LDCOMMON_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
-CFLAGS_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS"
+CFLAGS_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS ${HYDRA_EXTRA_CFLAGS:-}"
 LDCOMMON_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
 # App CFLAGS additionally need each core's own FreeRTOSConfig.h directory
 # plus FreeRTOS's own headers/port headers - each core's bootloader

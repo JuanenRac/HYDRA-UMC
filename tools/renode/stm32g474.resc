@@ -1,0 +1,7 @@
+# HYDRA-UMC - tools/renode/stm32g474.resc
+# Loads the hand-written STM32G474 platform and, when $bin is set, a firmware image (an ELF) before running.
+#   renode --disable-xwt --console -e "$bin=@path/to/image.elf; i @tools/renode/stm32g474.resc"
+using sysbus
+mach create "stm32g474"
+machine LoadPlatformDescription @tools/renode/stm32g474.repl
+showAnalyzer usart1

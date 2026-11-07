@@ -1,0 +1,58 @@
+# =============================================================================
+# HYDRA-UMC - Renode STM32G474 platform load (manual)
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Started by hand only. It downloads the same pinned Renode release as renode-check.yml, checks the SHA-256 of the archive, and loads the hand-written
+# platform tools/renode/stm32g474.repl into a machine. The job fails when Renode reports an error while it reads the description. No firmware runs.
+# Evidence: simulator.
+
+name: Renode STM32G474 platform (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  load:
+    name: Load the STM32G474 platform description
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RENODE_VERSION: "1.16.0"
+      RENODE_SHA256: "99e43ad40d07be7a81835b5b95897619997d32da9998634730c0aec5486736f6"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Download the pinned Renode release and check its hash
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/renode"
+          curl --fail --location --silent --show-error --output "$RUNNER_TEMP/renode.tar.gz" \
+            "https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode-${RENODE_VERSION}.linux-portable.tar.gz"
+          echo "${RENODE_SHA256}  $RUNNER_TEMP/renode.tar.gz" | sha256sum --check -
+          tar -xzf "$RUNNER_TEMP/renode.tar.gz" -C "$RUNNER_TEMP/renode" --strip-components=1
+
+      - name: Load the platform
+        shell: bash
+        run: |
+          set -uo pipefail
+          "$RUNNER_TEMP/renode/renode" --disable-xwt --plain --console \
+            -e "include @tools/renode/stm32g474.resc; peripherals; quit" 2>&1 | tee "$RUNNER_TEMP/renode.log"
+          {
+            echo "## STM32G474 platform load"
+            echo
+            echo '```'
+            tail -n 60 "$RUNNER_TEMP/renode.log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if grep -Ei "error|exception|could not|unable" "$RUNNER_TEMP/renode.log"; then
+            echo "Renode reported an error while loading the platform" >&2
+            exit 1
+          fi

@@ -1,0 +1,58 @@
+// HYDRA-UMC - tools/renode/stm32g474.repl
+// Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+// GPL-3.0-or-later - see LICENSE
+//
+// Hand-written Renode platform of the STM32G474RE (controller board). Renode ships no platform for the STM32G4 family, so this one declares what
+// the bootloader and the application of the board touch, with the addresses of the reference manual RM0440:
+//   - Cortex-M4F with its NVIC;
+//   - 512 KB of flash at 0x08000000, 80 KB of SRAM1 + 16 KB of SRAM2 at 0x20000000 and 32 KB of CCM SRAM at 0x20018000 (alias 0x10000000);
+//   - the FDCAN message RAM, the three FDCAN units, SPI1/SPI2, USART1, the independent watchdog and the GPIO ports.
+// What it does NOT model is listed in docs/RENODE.md (the clock tree RCC, the flash controller registers and the FDCAN protocol engine are
+// not behind a Renode model that matches the register layout of this chip): code that waits on them sees a peripheral that never answers.
+// Evidence: simulator. Nothing here has run on a board.
+
+cpu: CPU.CortexM @ sysbus
+    cpuType: "cortex-m4f"
+    nvic: nvic
+
+nvic: IRQControllers.NVIC @ sysbus 0xE000E000
+    priorityMask: 0xF0
+    systickFrequency: 16000000
+    IRQ -> cpu@0
+
+flash: Memory.MappedMemory @ sysbus 0x08000000
+    size: 0x80000
+
+sram: Memory.MappedMemory @ sysbus 0x20000000
+    size: 0x18000
+
+ccm_sram: Memory.MappedMemory @ sysbus 0x20018000
+    size: 0x8000
+
+ccm_sram_alias: Memory.MappedMemory @ sysbus 0x10000000
+    size: 0x8000
+
+fdcan_message_ram: Memory.MappedMemory @ sysbus 0x4000A400
+    size: 0xC00
+
+usart1: UART.STM32_UART @ sysbus <0x40013800, +0x100>
+    -> nvic@37
+
+spi1: SPI.STM32SPI @ sysbus 0x40013000
+    IRQ -> nvic@35
+
+spi2: SPI.STM32SPI @ sysbus 0x40003800
+    IRQ -> nvic@36
+
+iwdg: Timers.STM32_IndependentWatchdog @ sysbus 0x40003000
+    frequency: 32000
+    windowOption: true
+    defaultPrescaler: 0x4
+
+gpioPortA: GPIOPort.STM32_GPIOPort @ sysbus <0x48000000, +0x400>
+gpioPortB: GPIOPort.STM32_GPIOPort @ sysbus <0x48000400, +0x400>
+gpioPortC: GPIOPort.STM32_GPIOPort @ sysbus <0x48000800, +0x400>
+gpioPortD: GPIOPort.STM32_GPIOPort @ sysbus <0x48000C00, +0x400>
+gpioPortE: GPIOPort.STM32_GPIOPort @ sysbus <0x48001000, +0x400>
+gpioPortF: GPIOPort.STM32_GPIOPort @ sysbus <0x48001400, +0x400>
+gpioPortG: GPIOPort.STM32_GPIOPort @ sysbus <0x48001800, +0x400>
