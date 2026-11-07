@@ -38,31 +38,7 @@
 #define HYDRA_FLASH_LAYER 0
 #endif
 
-static uint32_t crc32_table[256];
-static uint8_t crc32_table_built = 0;
-
-static void CRC32_BuildTable(void) {
-    for (uint32_t i = 0; i < 256; i++) {
-        uint32_t c = i;
-        for (uint8_t k = 0; k < 8; k++) {
-            c = (c & 1) ? (0xEDB88320UL ^ (c >> 1)) : (c >> 1);
-        }
-        crc32_table[i] = c;
-    }
-    crc32_table_built = 1;
-}
-
-uint32_t CRC32_Update(uint32_t crc, const uint8_t *data, uint32_t len) {
-    if (!crc32_table_built) CRC32_BuildTable();
-    for (uint32_t i = 0; i < len; i++) {
-        crc = crc32_table[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);
-    }
-    return crc;
-}
-
-uint32_t CRC32_Finalize(uint32_t crc) {
-    return crc ^ 0xFFFFFFFFUL;
-}
+#include "boot_crc32_impl.h"
 
 // -----------------------------------------------------------------------
 // Sector-aware erase - the real difference from every other bootloader in
@@ -254,21 +230,7 @@ uint8_t Flash_CopyRegion(uint32_t dest_addr, uint32_t src_addr, uint32_t total_l
 // ---- metadata: an append-only log (see MetaRecord_t in bootloader_common.h) ------------------------------------------------------------------
 _Static_assert(sizeof(MetaRecord_t) == META_RECORD_SIZE, "a metadata record has the size the layout was made for");
 
-static uint32_t meta_record_crc(const MetaRecord_t *record) {
-    return CRC32_Finalize(CRC32_Update(0xFFFFFFFFUL, (const uint8_t*)record, META_RECORD_SIZE - 4u));
-}
-
-static uint8_t meta_slot_blank(const MetaRecord_t *record) {
-    const uint8_t *bytes = (const uint8_t*)record;
-    for (uint32_t i = 0; i < META_RECORD_SIZE; i++) {
-        if (bytes[i] != 0xFF) return 0;
-    }
-    return 1;
-}
-
-static uint8_t meta_slot_valid(const MetaRecord_t *record) {
-    return record->meta.magic == METADATA_MAGIC_VALID && record->generation != 0xFFFFFFFFUL && meta_record_crc(record) == record->crc;
-}
+#include "boot_meta_record_impl.h"
 
 static const MetaRecord_t *meta_slot(uint32_t index) {
     return (const MetaRecord_t*)(METADATA_ADDR + index * META_RECORD_SIZE);

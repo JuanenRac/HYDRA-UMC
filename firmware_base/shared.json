@@ -1,6 +1,8 @@
 {
   "shared": [
+    "boot_crc32_impl.h",
     "boot_decision.h",
+    "boot_meta_record_impl.h",
     "boot_update_glue.h",
     "bootloader_crypto.c",
     "bootloader_crypto.h",
