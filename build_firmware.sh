@@ -343,6 +343,17 @@ else
             echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
         fi
     done
+    # The same again with the common flash layer under the erase and write routines (off in a build as it ships).
+    for H745_CORE in CM4 CM7; do
+        BOOTLOADER_H745_HOST_BIN="$ROOT/build/host_tests_bootloader_h745_${H745_CORE}_flash_layer"
+        if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -DHYDRA_TEST_$H745_CORE -DHYDRA_FLASH_LAYER=1 -I"$ROOT/tests/stubs" -I"$ROOT/src/mcu_stm32h745/$H745_CORE/boot" -o "$BOOTLOADER_H745_HOST_BIN" "$ROOT/tests/test_bootloader_h745_host.c" && "$BOOTLOADER_H745_HOST_BIN" >/dev/null; then
+            pass "H745 $H745_CORE bootloader sector erase through the common flash layer (HYDRA_FLASH_LAYER=1), CRC32 and SHA-256 host logic tests passed"
+        else
+            "$BOOTLOADER_H745_HOST_BIN" || true
+            fail "H745 $H745_CORE bootloader sector erase through the common flash layer (HYDRA_FLASH_LAYER=1), CRC32 and SHA-256 host logic tests FAILED"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+    done
 
     # The signed image header, the anti-rollback rule and the decision at the end of an update (image_header.h, update_verify.h) exist as a real
     # per-target copy in all three bootloaders: the same test sources are compiled and run once per target's own include path. The bytes come

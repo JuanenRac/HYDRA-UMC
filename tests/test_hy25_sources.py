@@ -41,6 +41,8 @@ class SwitchesShipOff(unittest.TestCase):
             (G4 / "boot_report.h", "HYDRA_BOOT_REPORT"),
             (G4 / "init_fault.h", "HYDRA_INIT_FAULT_LATCH"),
             (G4 / "boot" / "bootloader_flash.c", "HYDRA_FLASH_LAYER"),
+            (H7 / "CM4" / "boot" / "bootloader_flash.c", "HYDRA_FLASH_LAYER"),
+            (H7 / "CM7" / "boot" / "bootloader_flash.c", "HYDRA_FLASH_LAYER"),
             (G4 / "boot" / "adoption_guard.h", "HYDRA_READBACK_GATE"),
             (G4 / "STM32G474RE_main.c", "HYDRA_QUIET_TICK_BEFORE_SCHEDULER"),
             (H7 / "CM4" / "spi_system.h", "HYDRA_SPI_SYSTEM"),
@@ -93,6 +95,14 @@ class SwitchesShipOff(unittest.TestCase):
         legacy = flash.split("#else", 1)[1]
         self.assertIn("HAL_FLASHEx_Erase(&eraseInit", flash)
         self.assertIn("FLASH_TYPEPROGRAM_DOUBLEWORD", legacy)
+
+    def test_the_h745_flash_routines_stay_inside_their_own_bank_under_the_layer(self):
+        for core, base in (("CM4", "BANK2_BASE"), ("CM7", "BANK1_BASE")):
+            flash = text(H7 / core / "boot" / "bootloader_flash.c")
+            self.assertEqual(flash.count("#if HYDRA_FLASH_LAYER"), 2, core)
+            self.assertIn("FlashLayer_InRange(this_bank_geometry()", flash, core)
+            self.assertIn(f"{{{base}, 0x00100000UL, FLASH_SECTOR_SIZE, 32u}}", flash, core)
+            self.assertIn("FlashLayer_Write(h7_layer_ops()", flash, core)
 
     def test_a_failed_setup_of_the_application_resets_once_then_keeps_the_watchdog_in_the_safe_state(self):
         relay = text(G4 / "RobotControllerRelay.c")

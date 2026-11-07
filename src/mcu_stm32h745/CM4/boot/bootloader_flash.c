@@ -15,6 +15,11 @@
 #include <string.h>
 #include "bootloader_common.h"
 #include "bootloader_flash.h"
+#include "flash_layer.h"      // the common checks of the three bootloaders (behind HYDRA_FLASH_LAYER, off by default)
+
+#ifndef HYDRA_FLASH_LAYER
+#define HYDRA_FLASH_LAYER 0
+#endif
 
 static uint32_t crc32_table[256];
 static uint8_t crc32_table_built = 0;
@@ -42,6 +47,72 @@ uint32_t CRC32_Finalize(uint32_t crc) {
     return crc ^ 0xFFFFFFFFUL;
 }
 
+#if HYDRA_FLASH_LAYER
+// The geometry of this core's bank under flash_layer.h: 1 MB, sectors of 128 KB, flash words of 32 bytes. The erase unit of the layer is the sector.
+static const FlashLayerGeometry_t *this_bank_geometry(void) {
+    static const FlashLayerGeometry_t g = {BANK2_BASE, 0x00100000UL, FLASH_SECTOR_SIZE, 32u};
+    return &g;
+}
+
+// The hardware calls under the layer: erase whole sectors one at a time with a watchdog refresh between each, program flash words, read bytes.
+static int h7_layer_erase(void *context, uint32_t address, uint32_t length) {
+    (void)context;
+    for (uint32_t done = 0; done < length; done += FLASH_SECTOR_SIZE) {
+        FLASH_EraseInitTypeDef eraseInit;
+        uint32_t sectorError;
+        eraseInit.TypeErase = FLASH_TYPEERASE_SECTORS;
+        eraseInit.Banks = FLASH_BANK_2;
+        eraseInit.Sector = (address + done - BANK2_BASE) / FLASH_SECTOR_SIZE;
+        eraseInit.NbSectors = 1;
+        eraseInit.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+        HAL_FLASH_Unlock();
+        HAL_StatusTypeDef res = HAL_FLASHEx_Erase(&eraseInit, &sectorError);
+        HAL_FLASH_Lock();
+        if (res != HAL_OK || sectorError != 0xFFFFFFFF) return 1;
+        HAL_IWDG_Refresh(&hiwdg);
+    }
+    return 0;
+}
+
+static int h7_layer_program(void *context, uint32_t address, const uint8_t *data, uint32_t length) {
+    (void)context;
+    for (uint32_t i = 0; i < length; i += 32) {
+        uint32_t word[8]; // the HAL takes the address of 8 source words
+        memcpy(word, &data[i], 32);
+        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD, address + i, (uint32_t)(uintptr_t)word) != HAL_OK) return 1;
+    }
+    __DSB(); // the last flash write is complete before the read-back trusts it
+    if ((address & 0xFFF) == 0) HAL_IWDG_Refresh(&hiwdg);
+    return 0;
+}
+
+static int h7_layer_read(void *context, uint32_t address, uint8_t *out, uint32_t length) {
+    (void)context;
+    const volatile uint8_t *from = (const volatile uint8_t*)(uintptr_t)address;
+    for (uint32_t i = 0; i < length; i++) out[i] = from[i];
+    if ((address & 0xFFF) == 0) HAL_IWDG_Refresh(&hiwdg);
+    return 0;
+}
+
+static const FlashLayerOps_t *h7_layer_ops(void) {
+    static FlashLayerOps_t ops;
+    ops.geometry = this_bank_geometry();
+    ops.context = 0;
+    ops.erase = h7_layer_erase;
+    ops.program = h7_layer_program;
+    ops.read = h7_layer_read;
+    return &ops;
+}
+
+// Erases every sector touched by [start_addr, start_addr + total_len), inside this core's bank only (a range outside it is refused).
+static uint8_t EraseSectorsForRange(uint32_t start_addr, uint32_t total_len) {
+    if (total_len == 0) return 1;
+    if (!FlashLayer_InRange(this_bank_geometry(), start_addr, total_len)) return 0;
+    const uint32_t first_sector = (start_addr - BANK2_BASE) / FLASH_SECTOR_SIZE;
+    const uint32_t last_sector = (start_addr + total_len - 1 - BANK2_BASE) / FLASH_SECTOR_SIZE;
+    return FlashLayer_Erase(h7_layer_ops(), BANK2_BASE + first_sector * FLASH_SECTOR_SIZE, (last_sector - first_sector + 1) * FLASH_SECTOR_SIZE) == FLASH_LAYER_OK;
+}
+#else
 static uint8_t EraseSectorsForRange(uint32_t start_addr, uint32_t total_len) {
     uint32_t end_addr = start_addr + total_len;
     uint32_t first_sector = (start_addr - BANK2_BASE) / FLASH_SECTOR_SIZE;
@@ -64,11 +135,21 @@ static uint8_t EraseSectorsForRange(uint32_t start_addr, uint32_t total_len) {
     }
     return 1;
 }
+#endif
 
 uint8_t Flash_ErasePages(uint32_t start_addr, uint32_t num_pages) {
     return EraseSectorsForRange(start_addr, num_pages * FLASH_PAGE_SIZE);
 }
 
+#if HYDRA_FLASH_LAYER
+uint8_t Flash_WriteVerified(uint32_t addr, const uint8_t *buf, uint32_t len) {
+    if (len == 0) return 1;
+    HAL_FLASH_Unlock();
+    const FlashLayerStatus status = FlashLayer_Write(h7_layer_ops(), addr, buf, len);
+    HAL_FLASH_Lock();
+    return status == FLASH_LAYER_OK;
+}
+#else
 uint8_t Flash_WriteVerified(uint32_t addr, const uint8_t *buf, uint32_t len) {
     HAL_FLASH_Unlock();
     for (uint32_t i = 0; i < len; i += 32) {
@@ -98,6 +179,7 @@ uint8_t Flash_WriteVerified(uint32_t addr, const uint8_t *buf, uint32_t len) {
     }
     return 1;
 }
+#endif
 
 uint8_t Flash_CopyRegion(uint32_t dest_addr, uint32_t src_addr, uint32_t total_len) {
     if (!EraseSectorsForRange(dest_addr, total_len)) return 0;
