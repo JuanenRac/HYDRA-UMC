@@ -375,6 +375,16 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # zones_frame.h: the filter of the brain for the frame of the safety-zones service on identifier 0x002 (vectors of tests/zones_frame_vectors.h), with the switch on and off.
+    ZONES_HOST_BIN="$ROOT/build/host_tests_zones_frame"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -DHYDRA_ZONES_CAN_FILTER=1 -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32h757/CM4" -o "$ZONES_HOST_BIN" "$ROOT/tests/test_zones_frame.c" && "$ZONES_HOST_BIN" >/dev/null && \
+       "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32h757/CM4" -o "$ZONES_HOST_BIN" "$ROOT/tests/test_zones_frame.c" && "$ZONES_HOST_BIN" >/dev/null; then
+        pass "zones_frame host logic tests passed (switch on and off)"
+    else
+        fail "zones_frame host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # slot_scan_node.h: how a controller board answers the slot scan probe (vectors of tests/slot_scan_vectors.json).
     SLOT_SCAN_HOST_BIN="$ROOT/build/host_tests_slot_scan_node"
     if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32g474/boot" -o "$SLOT_SCAN_HOST_BIN" "$ROOT/tests/test_slot_scan_node.c" && "$SLOT_SCAN_HOST_BIN" >/dev/null; then
