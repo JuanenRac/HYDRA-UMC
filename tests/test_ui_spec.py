@@ -99,11 +99,14 @@ class SpecTests(unittest.TestCase):
         next(x for x in spec["signals"] if x["id"] == "estop.latched")["contract_ref"] = "can_message:NO_SUCH_MESSAGE"
         self.assertTrue(any("not in the contract" in p for p in self.problems(spec)))
         spec = copy.deepcopy(self.spec)
-        del spec["pending_contracts"]["jetson_status"]
+        next(x for x in spec["signals"] if x["id"] == "robot.x_mm")["contract_ref"] = "pending:no_such_contract"
         self.assertTrue(any("not declared" in p for p in self.problems(spec)))
         spec = copy.deepcopy(self.spec)
+        next(x for x in spec["signals"] if x["id"] == "jetson.safety_level")["contract_ref"] = "link:NO_SUCH_FRAME"
+        self.assertTrue(any("not in the contract" in p for p in self.problems(spec)))
+        spec = copy.deepcopy(self.spec)
         next(x for x in spec["signals"] if x["id"] == "jetson.cpu_load_pct")["contract_ref"] = "local"
-        self.assertTrue(any("must be pending" in p for p in self.problems(spec)))
+        self.assertTrue(any("must point at a frame of the Jetson link" in p for p in self.problems(spec)))
 
     def test_the_bound_messages_are_those_of_the_contract(self):
         names = s.contract_names()
@@ -174,8 +177,7 @@ class SpecTests(unittest.TestCase):
         image = next(w for w in camera["widgets"] if w["kind"] == "image")
         self.assertEqual(image["signal"], "jetson.camera_snapshot")
         sig = next(x for x in self.spec["signals"] if x["id"] == "jetson.camera_snapshot")
-        self.assertEqual((sig["type"], sig["needs_jetson"], sig["contract_ref"]), ("image", True, "pending:jetson_snapshot"))
-        self.assertIn("shows it", self.spec["pending_contracts"]["jetson_snapshot"])
+        self.assertEqual((sig["type"], sig["needs_jetson"], sig["contract_ref"]), ("image", True, "link:SNAPSHOT"))
 
     def test_the_holds_of_the_actions_match_the_configuration(self):
         cfg = m.load_config()
