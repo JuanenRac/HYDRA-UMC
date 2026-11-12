@@ -1,18 +1,18 @@
 /*
  * =============================================================================
- * STM32H745ZITx_CM7_BOOTLOADER.ld - Kinematic Brain, Cortex-M7 bootloader linker script
+ * STM32H757XIHx_CM7_BOOTLOADER.ld - Kinematic Brain, Cortex-M7 bootloader linker script
  * PROJECT: HYDRA-UMC (Kinematic Brain firmware, Tier 0 - STM32H745ZIT6)
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
  * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
- * See ../STM32H745ZITx_CM7_APP.ld's own header comment for the full Bank 1
+ * See ../STM32H757XIHx_CM7_APP.ld's own header comment for the full Bank 1
  * flash partitioning this bootloader slot is one piece of.
  *
  * CORRECTED during CAN-OTA bootloader implementation: STM32H7 erases flash
  * in 128KB SECTORS (FLASH_TYPEERASE_SECTORS), not 2KB pages like the F3/G4
  * this project's OTHER two chips use - the previous 64K bootloader region
  * didn't align to that at all. This slot is now sector 0 of Bank 1's 8
- * sectors (128KB each, 1MB total) - see ../STM32H745ZITx_CM7_APP.ld's own
+ * sectors (128KB each, 1MB total) - see ../STM32H757XIHx_CM7_APP.ld's own
  * header for the full 8-sector layout this is one piece of. Bootloader
  * code itself is nowhere near 128KB; the metadata page lives in the same
  * sector, at a fixed offset near its end (../boot/bootloader_common.h).

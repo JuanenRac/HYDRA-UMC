@@ -21,8 +21,8 @@
       "slot_window": 64,
       "slots": 8,
       "sources": [
-        "src/mcu_stm32h745/CM4/boot/bootloader_main.c",
-        "src/mcu_stm32h745/CM4/KinematicBrainCan.c",
+        "src/mcu_stm32h757/CM4/boot/bootloader_main.c",
+        "src/mcu_stm32h757/CM4/KinematicBrainCan.c",
         "src/mcu_stm32g474/boot/bootloader_main.c",
         "src/mcu_stm32g474/RobotControllerRelay.c"
       ]

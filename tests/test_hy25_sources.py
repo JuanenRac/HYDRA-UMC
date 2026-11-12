@@ -20,7 +20,7 @@ import slot_scan  # noqa: E402
 import spi_system  # noqa: E402
 
 G4 = ROOT / "src" / "mcu_stm32g474"
-H7 = ROOT / "src" / "mcu_stm32h745"
+H7 = ROOT / "src" / "mcu_stm32h757"
 
 
 def text(path: Path) -> str:
@@ -73,7 +73,7 @@ class SwitchesShipOff(unittest.TestCase):
         self.assertIn("Adopt_ReadbackAllowed", protocol)
         self.assertIn("Adopt_RecordMatches", protocol)
         self.assertIn("HYDRA_SPI_SYSTEM", text(H7 / "CM4" / "boot" / "bootloader_main.c"))
-        self.assertIn("RccOwner_Decide", text(H7 / "CM4" / "STM32H745ZI_CM4_main.c"))
+        self.assertIn("RccOwner_Decide", text(H7 / "CM4" / "STM32H757XI_CM4_main.c"))
 
     def test_the_boot_report_travels_from_the_bootloader_to_the_health_flags(self):
         boot = text(G4 / "boot" / "bootloader_main.c")

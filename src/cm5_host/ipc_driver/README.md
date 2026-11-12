@@ -13,7 +13,7 @@ state-machine logic, rather than re-deriving it in C). See
 vs. TODO.
 
 Linux-side counterpart to the STM32H745's own SPI1 slave-mode IPC
-(`../../mcu_stm32h745/`, README.md section 10): a full-duplex SPI1 link,
+(`../../mcu_stm32h757/`, README.md section 10): a full-duplex SPI1 link,
 designed for up to 50 MHz (this driver defaults to a conservative 10 MHz
 today, until the STM32H745 SPI1 slave-side config it needs to match has
 been verified against real hardware), with a `HYDRA_DATA_READY` handshake
@@ -37,7 +37,7 @@ driver needs to speak once real firmware exists on the STM32H745 side).
 
 - Real 128-byte telemetry frame parsing (format not finalized — needs to be
   defined alongside the STM32H745-side firmware that produces it, see
-  `../../mcu_stm32h745/README.md`)
+  `../../mcu_stm32h757/README.md`)
 - The Tier-0 SPI-OTA bootloader client (uploading firmware to the
   STM32H745 itself — `docs/architecture.md` section 2)
 

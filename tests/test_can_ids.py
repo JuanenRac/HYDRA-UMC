@@ -119,7 +119,7 @@ class CanIdTableTests(unittest.TestCase):
         import re
 
         root = Path(__file__).resolve().parents[1]
-        headers = [root / "src/mcu_stm32g474/boot/bootloader_common.h", root / "src/mcu_stm32h745/CM4/boot/bootloader_common.h", root / "src/mcu_stm32h745/CM7/boot/bootloader_common.h"]
+        headers = [root / "src/mcu_stm32g474/boot/bootloader_common.h", root / "src/mcu_stm32h757/CM4/boot/bootloader_common.h", root / "src/mcu_stm32h757/CM7/boot/bootloader_common.h"]
         names = {
             "BOOT_IMAGE_HEADER": ("OFS_IMAGE_HEADER", can_ids.HOST),
             "BOOT_DOWNGRADE_NONCE_REQUEST": ("OFS_DOWNGRADE_NONCE_REQUEST", can_ids.HOST),
@@ -143,7 +143,7 @@ class CanIdTableTests(unittest.TestCase):
             "POLL_STATUS": ("OFS_POLL_STATUS", can_ids.HOST),
             "RELAY_RESPONSE_EXTRA": ("OFS_RELAY_RECV_RESPONSE", can_ids.CONTROLLER_BOARD),
         }
-        headers = [root / "src/mcu_stm32g474/boot/bootloader_common.h", root / "src/mcu_stm32h745/CM4/boot/bootloader_common.h"]
+        headers = [root / "src/mcu_stm32g474/boot/bootloader_common.h", root / "src/mcu_stm32h757/CM4/boot/bootloader_common.h"]
         protocol = (root / "src/cm5_host/spi_bridge/spi_bridge/protocol.py").read_text(encoding="utf-8")
         for table_name, (define, emitter) in expected.items():
             message = can_ids.by_name(table_name)
@@ -168,7 +168,7 @@ class CanIdTableTests(unittest.TestCase):
             # the stop frame of the physical input goes out on the stop identifier 0x001 (any node may send a TRIP, docs/ESTOP_CAN.md)
             # the state of the emergency stop and the reply to the slot scan are messages of the board itself (one emitter each, see tools/can_ids.py)
             self.assertTrue("RelayAnswerOffset" in sent or any(name in sent for name in ("OFS_ERROR_COUNTERS_RESPONSE", "OFS_ESTOP_STATE", "OFS_SLOT_SCAN_REPLY", "RELAY_ESTOP_CAN_ID", "HEALTH_OFFSET")), sent)
-        brain = (root / "src/mcu_stm32h745/CM4/KinematicBrainCan.c").read_text(encoding="utf-8")
+        brain = (root / "src/mcu_stm32h757/CM4/KinematicBrainCan.c").read_text(encoding="utf-8")
         self.assertNotIn("WaitForResponse(base + OFS_AXIS_STATUS,", brain)
         self.assertNotIn("WaitForResponse(relay_recv_id,", brain)
         self.assertIn("OFS_AXIS_STATUS_RESPONSE", brain)
@@ -176,7 +176,7 @@ class CanIdTableTests(unittest.TestCase):
 
     def test_the_gateway_does_not_transmit_what_a_board_transmits(self):
         root = Path(__file__).resolve().parents[1]
-        text = (root / "src/mcu_stm32h745/CM4/boot/bootloader_protocol.c").read_text(encoding="utf-8")
+        text = (root / "src/mcu_stm32h757/CM4/boot/bootloader_protocol.c").read_text(encoding="utf-8")
         start = text.index("void Relay_ToStackA")
         body = text[start : text.index("Relay_ToCM7", start)]
         self.assertIn("listen_only", body)

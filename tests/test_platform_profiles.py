@@ -31,7 +31,7 @@ class PlatformProfileTests(unittest.TestCase):
     def test_the_default_profile_exists_and_is_the_one_of_today(self):
         self.assertEqual(self.document["default_profile"], "h745_current")
         self.assertIn(self.document["default_profile"], self.document["profiles"])
-        self.assertIn("mcu_stm32h745", pp.profile()["source"])
+        self.assertIn("mcu_stm32h757", pp.profile()["source"])
         self.assertTrue((ROOT / pp.profile()["source"]).is_dir())
 
     def test_every_platform_gives_one_megabit_on_the_stack_bus(self):
@@ -43,7 +43,7 @@ class PlatformProfileTests(unittest.TestCase):
             self.assertTrue(0.75 <= pp.sample_point(p["stack_bus"]) <= 0.90, name)
 
     def test_the_timing_of_today_is_the_one_of_the_sources(self):
-        text = (ROOT / "src/mcu_stm32h745/CM4/KinematicBrainCan.c").read_text(encoding="utf-8")
+        text = (ROOT / "src/mcu_stm32h757/CM4/KinematicBrainCan.c").read_text(encoding="utf-8")
         bus = pp.profile("h745_current")["stack_bus"]
         for field, key in (("NominalPrescaler", "prescaler"), ("NominalSyncJumpWidth", "sync_jump_width"), ("NominalTimeSeg1", "time_segment_1"), ("NominalTimeSeg2", "time_segment_2")):
             found = {int(v) for v in re.findall(rf"\.Init\.{field}\s*=\s*(\d+)\s*;", text)}
@@ -125,12 +125,12 @@ class PlatformProfileTests(unittest.TestCase):
             self.assertEqual(pp.memory_problems(name, p), [], name)
 
     def test_the_current_memory_map_is_what_the_linker_scripts_of_the_repository_say(self):
-        base = ROOT / "src" / "mcu_stm32h745"
+        base = ROOT / "src" / "mcu_stm32h757"
         files = {
-            ("CM7", "FLASH_APP"): base / "CM7" / "STM32H745ZITx_CM7_APP.ld",
-            ("CM4", "FLASH_APP"): base / "CM4" / "STM32H745ZITx_CM4_APP.ld",
-            ("CM7", "FLASH_BOOT"): base / "CM7" / "boot" / "STM32H745ZITx_CM7_BOOTLOADER.ld",
-            ("CM4", "FLASH_BOOT"): base / "CM4" / "boot" / "STM32H745ZITx_CM4_BOOTLOADER.ld",
+            ("CM7", "FLASH_APP"): base / "CM7" / "STM32H757XIHx_CM7_APP.ld",
+            ("CM4", "FLASH_APP"): base / "CM4" / "STM32H757XIHx_CM4_APP.ld",
+            ("CM7", "FLASH_BOOT"): base / "CM7" / "boot" / "STM32H757XIHx_CM7_BOOTLOADER.ld",
+            ("CM4", "FLASH_BOOT"): base / "CM4" / "boot" / "STM32H757XIHx_CM4_BOOTLOADER.ld",
         }
         regions = {r["name"]: r for r in self.document["profiles"]["h745_current"]["memory_map"]["regions"]}
         checked = 0
@@ -144,7 +144,7 @@ class PlatformProfileTests(unittest.TestCase):
 
     def test_the_linker_block_is_generated_from_the_profile_and_agrees_with_the_script_of_today(self):
         generated = pp.linker_memory("h745_current", "CM7")
-        text = (ROOT / "src/mcu_stm32h745/CM7/STM32H745ZITx_CM7_APP.ld").read_text(encoding="utf-8")
+        text = (ROOT / "src/mcu_stm32h757/CM7/STM32H757XIHx_CM7_APP.ld").read_text(encoding="utf-8")
         for line in generated.splitlines()[2:-1]:
             self.assertIn(re.sub(r"\s+", " ", line.strip()), re.sub(r"\s+", " ", text), line)
         self.assertEqual(pp.linker_memory("h757_target", "CM7").count("ORIGIN"), 2)

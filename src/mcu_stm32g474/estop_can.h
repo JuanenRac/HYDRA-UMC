@@ -7,7 +7,7 @@
  *
  * C twin of tools/estop_can.py. docs/ESTOP_CAN.md is the contract, tests/estop_vectors.json holds the frames and the scenarios, and
  * tests/test_estop_can.c replays all of them against this file. The same text is kept in src/mcu_stm32g474/ (controller board) and in
- * src/mcu_stm32h745/CM4/ (kinematic brain), because each target builds from its own folder; tests/test_node_headers_parity.py keeps the two
+ * src/mcu_stm32h757/CM4/ (kinematic brain), because each target builds from its own folder; tests/test_node_headers_parity.py keeps the two
  * copies identical.
  *
  * The rule that shapes everything: a stop must never be refused. Any frame on 0x001 that is not a well-formed RELEASE or ALIVE is treated as

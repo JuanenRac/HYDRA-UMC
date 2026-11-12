@@ -112,24 +112,24 @@ the 4 `system_stm32h7xx*.c` boot-strategy variants was picked and why).
 
 | Path | Purpose |
 |---|---|
-| `CM7/STM32H745ZI_CM7_main.c` | CM7 application entry point — FreeRTOS GPIO-toggle smoke test only |
-| `CM7/STM32H745ZITx_CM7_APP.ld` | CM7 application linker script (Bank 1 main slot, sectors 2-4) |
+| `CM7/STM32H757XI_CM7_main.c` | CM7 application entry point — FreeRTOS GPIO-toggle smoke test only |
+| `CM7/STM32H757XIHx_CM7_APP.ld` | CM7 application linker script (Bank 1 main slot, sectors 2-4) |
 | `CM7/FreeRTOSConfig.h` | FreeRTOS kernel config for CM7's own application (bootloader never includes this) |
 | `CM7/boot/bootloader_main.c` | CM7 bootloader (bare-metal) — mailbox polling main loop |
 | `CM7/boot/bootloader_common.h` | Shared types/defines: flash layout (Bank 1, sector-aligned), OFS_* offset table, HMAC key |
 | `CM7/boot/bootloader_crypto.c/h` | SHA-256 / HMAC-SHA256 (ported verbatim from URTC's own) |
 | `CM7/boot/bootloader_flash.c/h` | CRC32, sector-aware erase, FLASHWORD program, metadata persistence |
 | `CM7/boot/bootloader_protocol.c/h` | Mailbox-relayed protocol handlers, app validation, jump-to-application |
-| `CM7/boot/STM32H745ZITx_CM7_BOOTLOADER.ld` | CM7 bootloader linker script (sector 0, 128 KB) |
-| `CM4/STM32H745ZI_CM4_main.c` | CM4 application entry point — FreeRTOS GPIO-toggle smoke test only |
-| `CM4/STM32H745ZITx_CM4_APP.ld` | CM4 application linker script (Bank 2 main slot, sectors 2-4) |
+| `CM7/boot/STM32H757XIHx_CM7_BOOTLOADER.ld` | CM7 bootloader linker script (sector 0, 128 KB) |
+| `CM4/STM32H757XI_CM4_main.c` | CM4 application entry point — FreeRTOS GPIO-toggle smoke test only |
+| `CM4/STM32H757XIHx_CM4_APP.ld` | CM4 application linker script (Bank 2 main slot, sectors 2-4) |
 | `CM4/FreeRTOSConfig.h` | FreeRTOS kernel config for CM4's own application (bootloader never includes this) |
 | `CM4/boot/bootloader_main.c` | CM4 bootloader (bare-metal) — SPI1 + FDCAN1 init, the 3-way gateway main loop |
 | `CM4/boot/bootloader_common.h` | Shared types/defines incl. `SpiOtaFrame_t` (the SPI1 wire format) and STACK A slot-addressing constants |
 | `CM4/boot/bootloader_crypto.c/h` | SHA-256 / HMAC-SHA256 (own key, separate trust domain from CM7/G474) |
 | `CM4/boot/bootloader_flash.c/h` | CRC32, sector-aware erase, FLASHWORD program, metadata persistence (Bank 2) |
 | `CM4/boot/bootloader_protocol.c/h` | Self-update handlers + `Relay_ToStackA`/`Relay_ToCM7` |
-| `CM4/boot/STM32H745ZITx_CM4_BOOTLOADER.ld` | CM4 bootloader linker script (sector 0, 128 KB) |
+| `CM4/boot/STM32H757XIHx_CM4_BOOTLOADER.ld` | CM4 bootloader linker script (sector 0, 128 KB) |
 | `Common/ipc_mailbox.h` | CM7↔CM4 shared-SRAM4 IPC mailbox (2 HSEM channels) — now implemented and used by both bootloaders, not just reserved |
 
 HAL/CMSIS headers are NOT vendored here — `build_firmware.sh` fetches them

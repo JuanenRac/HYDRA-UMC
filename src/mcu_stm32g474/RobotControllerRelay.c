@@ -10,7 +10,7 @@
  * own already-proven MX_FDCAN1_Init() (boot/bootloader_main.c) - same real
  * init, reused rather than re-derived, since this application and that
  * bootloader never run at the same time (this project's own established
- * precedent - src/mcu_stm32h745/CM4/KinematicBrainCan.c does the exact
+ * precedent - src/mcu_stm32h757/CM4/KinematicBrainCan.c does the exact
  * same thing for Tier 0's own FDCAN1). ReadSlotBaseId() below is likewise
  * a real, intentional duplicate of the bootloader's own function of the
  * same name - not an extern reference to it, since the bootloader and

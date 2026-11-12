@@ -1,56 +1,55 @@
 // =============================================================================
-// HYDRA-UMC Kinematic Brain Bootloader (CM7) - shared types/defines/externs
+// HYDRA-UMC Kinematic Brain Bootloader (CM4) - shared types/defines/externs
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 // GPL-3.0-or-later - see repo root LICENSE
 //
-// Ported from URTC's own proven bootloader (sibling repo) via HYDRA-UMC's
-// own G474 port (../../../mcu_stm32g474/boot/bootloader_common.h) - same
-// struct layout, same command *offsets*, same status/verify-fail codes,
-// same metadata scheme. Two real differences from the G474 version:
-//   1. This core has NO external bus of its own at all (no SPI1 - that's
-//      CM4's peripheral; no FDCAN - also CM4's). Every command this
-//      bootloader ever sees arrives relayed through the CM7<->CM4 IPC
-//      mailbox (../../Common/ipc_mailbox.h), not a physical bus this file
-//      configures - there is no MX_xxx_Init() in this bootloader's own
-//      main.c the way there is in G474's or CM4's.
-//   2. Flash geometry: STM32H7 erases in 128 KB SECTORS
-//      (FLASH_TYPEERASE_SECTORS), not 2 KB pages - see bootloader_flash.c's
-//      own header for the full consequence of that.
+// This core is the CAN-OTA "gateway" - the only externally-reachable point
+// of the whole 4-tier chain (docs/architecture.md section 1): it owns
+// SPI1 (the physical link to the CM5, README.md section 10) AND FDCAN1
+// ("STACK A", README.md section 6), so every update for every tier passes
+// through here first. Three destinations, one SPI1 frame format:
+//   - TARGET_SELF   (0): this core's own Bank 2 - handled directly,
+//     same self-update state machine as every other bootloader in this
+//     project (see bootloader_protocol.c).
+//   - TARGET_CM7    (1): relayed over the CM7<->CM4 IPC mailbox
+//     (../../Common/ipc_mailbox.h) - this core never touches CM7's own
+//     Bank 1 flash directly, it just forwards frames and relays responses.
+//   - TARGET_STACKA (2): relayed onto FDCAN1 at the target slot's own base
+//     ID (docs/architecture.md section 4) - covers Robot Controller Boards
+//     directly, and (via THEIR own RELAY_SEND/RELAY_RECV tunnel, section 5)
+//     URTC Tool Heads and Advanced Expansion Boards too, with zero
+//     additional logic here: this core doesn't need to know or care that a
+//     RELAY_SEND frame ultimately reaches a 3rd or 4th tier - it just
+//     forwards the same opaque OFS_RELAY_SEND/OFS_RELAY_RECV frame types
+//     like any other STACK A traffic.
 // =============================================================================
 #ifndef BOOTLOADER_COMMON_H
 #define BOOTLOADER_COMMON_H
 
 #include "stm32h7xx_hal.h"
 
-extern IWDG_HandleTypeDef hiwdg;
+extern SPI_HandleTypeDef   hspi1;
+extern FDCAN_HandleTypeDef hfdcan1;
+extern IWDG_HandleTypeDef  hiwdg;
 
 // -----------------------------------------------------------------------
-// Flash layout - Bank 1, 8 sectors x 128 KB (see ../STM32H745ZITx_CM7_
-// BOOTLOADER.ld and ../../STM32H745ZITx_CM7_APP.ld for the full picture).
-// Metadata gets its OWN dedicated sector (sector 1) rather than sharing
-// sector 0 with the bootloader's own code, despite only needing ~40 bytes
-// of it - found during implementation that erasing metadata inside the
-// SAME sector the bootloader is actively executing from is a real hazard
-// on this chip (CPU reading from a sector mid-erase can stall/fault per
-// the datasheet), not just a style preference. F3/G4's much smaller 2KB/
-// 4KB page granularity let metadata share a page without this problem;
-// this chip's 128KB minimum erase unit doesn't allow the same trick
-// safely. Costs one whole spare sector (128KB) that would otherwise have
-// been "reserved" anyway - not a meaningful loss on a 2MB-flash part.
+// Flash layout - Bank 2, same 8-sectors-x-128KB shape and same "metadata
+// gets its own sector" reasoning as CM7's own bootloader_common.h (see
+// that file's own comment) - offset +0x100000 from Bank 1 throughout.
 // -----------------------------------------------------------------------
 // FLASH_SECTOR_SIZE (128 KB) is already defined by CMSIS itself
-// (stm32h745xx.h) - not redefined here, same precedent as FLASH_PAGE_SIZE
+// (stm32h757xx.h) - not redefined here, same precedent as FLASH_PAGE_SIZE
 // in the G474 bootloader's own bootloader_common.h.
-#define BANK1_BASE           0x08000000UL
-#define BOOT_SECTOR_ADDR     0x08000000UL // sector 0
-#define METADATA_ADDR        0x08020000UL // sector 1, own dedicated sector
-#define MAIN_APP_ADDR        0x08040000UL // sectors 2-4
-#define BACKUP_APP_ADDR      0x080A0000UL // sectors 5-7
-#define APP_MAX_SIZE         (384UL * 1024UL) // 3 sectors
-#define METADATA_MAGIC_VALID 0x55415043UL // "CPAU" - CM7, distinct from G474's "UPAU" and CM4's "CPA4" so a metadata page from the wrong core/chip is never mistaken for this one's
-#define FLASH_PAGE_SIZE       0x800UL // 2048 bytes - LOGICAL transfer-chunk size for the OTA protocol/page_buffer (matches every other tier for page-count/PAGE_ACK math), NOT this chip's hardware erase granularity - see bootloader_flash.c
+#define BANK2_BASE           0x08100000UL
+#define BOOT_SECTOR_ADDR     0x08100000UL // sector 0
+#define METADATA_ADDR        0x08120000UL // sector 1, own dedicated sector
+#define MAIN_APP_ADDR        0x08140000UL // sectors 2-4
+#define BACKUP_APP_ADDR      0x081A0000UL // sectors 5-7
+#define APP_MAX_SIZE         (384UL * 1024UL)
+#define METADATA_MAGIC_VALID 0x55415034UL // "4PAU" - CM4, distinct from CM7's "CPAU" and G474's "UPAU"
+#define FLASH_PAGE_SIZE       0x800UL // 2048 bytes - logical OTA transfer-chunk size, not hardware erase granularity (see ../../CM7/boot/bootloader_flash.c's own header, identical reasoning here)
 
-#define THIS_HARDWARE_ID       0x48374337UL // "H7C7" - STM32H745ZIT6 CM7 core, HYDRA-UMC Kinematic Brain revision 1
+#define THIS_HARDWARE_ID       0x48374334UL // "H7C4" - STM32H745ZIT6 CM4 core, HYDRA-UMC Kinematic Brain revision 1
 // FIRMWARE_VERSION_* (this core's application) and BOOTLOADER_VERSION_*
 // (this bootloader) are BOTH incremental - PATCH bumps by 1 on every real
 // build of that component, via bump_version.py, called automatically by
@@ -70,12 +69,23 @@ extern IWDG_HandleTypeDef hiwdg;
 // PUBLIC key of the trust table (bootloader_trust.h); with an empty table nothing installs. What the metadata keeps to notice a damaged flash is a plain
 // SHA-256 of the installed application.
 
-// Same offset table as G474's own bootloader_common.h (docs/architecture.md
-// section 4) - reused here even though this core is never reached over
-// FDCAN directly, because the IPC mailbox frame (../../Common/
-// ipc_mailbox.h) reuses frame_type as this exact OFS_* byte, so the SAME
-// protocol handler function signatures work unmodified regardless of
-// whether the frame arrived over FDCAN1, SPI1, or the mailbox.
+// STACK A slot addressing (docs/architecture.md section 4) - this core
+// (not a Robot Controller Board itself) is the one that OWNS this
+// addressing scheme, computing target slot base IDs to relay to rather
+// than reading its own BOARD_ID the way src/mcu_stm32g474/boot/
+// bootloader_common.h's own copy of these constants does (that board reads
+// a local DIP switch; this core has none to read - the target slot comes
+// from the SPI1 frame's own target_slot field instead, see
+// bootloader_protocol.c's own Relay_ToStackA()).
+#define CAN_ID_STACKA_BASE 0x600UL
+#define STACKA_SLOT_WINDOW 0x40UL
+
+// Same offset table as every other bootloader in this project (docs/
+// architecture.md section 4) - this core uses it 3 ways at once: as SPI1
+// frame_type bytes (talking to the CM5), as FDCAN1 ID offsets (talking to
+// STACK A), and as IpcFrame_t frame_type bytes (talking to CM7) - the
+// whole point of keeping ONE numeric offset space is that this gateway
+// core can translate between all three without a lookup table.
 #define OFS_ENTER_BOOTLOADER  0x00
 #define OFS_START_UPDATE      0x01
 #define OFS_DATA               0x02
@@ -93,11 +103,17 @@ extern IWDG_HandleTypeDef hiwdg;
 #define OFS_BACKUP_READ_REQUEST                       0x0E
 #define OFS_BACKUP_READ_RESPONSE                        0x0F
 #define OFS_BACKUP_READ_PAGE_ACK                          0x14
+#define OFS_RELAY_SEND                                      0x12 // opaque to this core - just forwarded, see this file's own header
+#define OFS_RELAY_RECV                                        0x13 // opaque to this core - just forwarded
+// One emitter per identifier (tools/can_ids.py): the controller board answers on its own identifiers, not on the one the request came in on.
+#define OFS_AXIS_STATUS_RESPONSE                              0x16 // sent BY the controller board's application
+#define OFS_POLL_STATUS                                       0x17 // SPI frame type from the CM5, DLC=1: the frame type to wait for; nothing is transmitted on CAN
+#define OFS_RELAY_RECV_RESPONSE                               0x18 // sent BY the controller board's application
 // see mcu_stm32g474/boot/bootloader_common.h's own comment
-// for the full design - sent BY an external CAN/SPI master (relayed
-// through CM4's own gateway), never by the application itself. Resets
-// FirmwareMetadata_t's own boot_attempts back to 0.
-#define OFS_CONFIRM_HEALTHY                                 0x15
+// for the full design - sent BY an external SPI/CAN master, never by the
+// application itself. Resets FirmwareMetadata_t's own boot_attempts back
+// to 0.
+#define OFS_CONFIRM_HEALTHY                                   0x15
 
 // The signed image header and the downgrade token (image_header.h, update_verify.h). The numbers follow tools/can_ids.py (and the frame types of
 // the SPI-OTA frames are the same offsets); each has ONE emitter.
@@ -171,9 +187,29 @@ typedef struct {
 #define META_RECORD_SIZE   96u
 #define META_RECORD_SLOTS  (0x20000u / META_RECORD_SIZE)   // records in the dedicated 128 KB sector
 
-// Sent by this bootloader as a mailbox response (not a CAN/SPI frame
-// directly - CM4's own gateway logic relays it onward over whichever bus
-// the original request came from).
 void CAN_SendHeartbeat(uint8_t status, uint8_t progress_percent);
+
+// -----------------------------------------------------------------------
+// SPI1 frame format (README.md section 10's own 128-byte frame size,
+// reused here rather than defining a different one for bootloader mode -
+// same DMA/buffer sizing works for both) - see this file's own header for
+// the 3-way routing this enables. Fixed layout, rest of the 128 bytes
+// reserved/padded 0xFF for future growth (matches every other frame format
+// in this project leaving explicit reserved space rather than packing
+// tight).
+// -----------------------------------------------------------------------
+#define SPI_FRAME_SIZE       128
+#define SPI_TARGET_SELF      0
+#define SPI_TARGET_CM7       1
+#define SPI_TARGET_STACKA    2
+
+typedef struct {
+    uint8_t target_tier; // SPI_TARGET_*
+    uint8_t target_slot; // 0-7, meaningful only when target_tier == SPI_TARGET_STACKA
+    uint8_t frame_type;  // OFS_*
+    uint8_t dlc;          // 0-8
+    uint8_t payload[8];
+    uint8_t _reserved[SPI_FRAME_SIZE - 12];
+} SpiOtaFrame_t; // 128 bytes exactly
 
 #endif // BOOTLOADER_COMMON_H

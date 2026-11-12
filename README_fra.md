@@ -315,7 +315,7 @@ Les six composants du firmware (trois chargeurs d'amorçage et trois application
 HYDRA-UMC/
 ├── src/
 │   ├── cm5_host/                    Applications Linux userspace exécutées AU-DESSUS de la propre image de os/
-│   ├── mcu_stm32h745/               Firmware du Kinematic Brain (Niveau 0) - double cœur
+│   ├── mcu_stm32h757/               Firmware du Kinematic Brain (Niveau 0) - double cœur
 │   └── mcu_stm32g474/               Firmware de la Robot Controller Board (Niveau 1) - cœur unique, + son propre boot/
 ├── .vscode/                         Extensions recommandées + tâches de build - voir "Environnement de Développement" ci-dessous
 ├── config/                          configuration de la machine de la carte contrôleur (catégorie d'arrêt, entrée d'arrêt d'urgence, programmation de production)

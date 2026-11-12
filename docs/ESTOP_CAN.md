@@ -119,7 +119,7 @@ These need a person to decide or hardware that does not exist yet; none is guess
 
 ## Firmware
 
-- `estop_can.h` (the same file in `src/mcu_stm32g474/` and `src/mcu_stm32h745/CM4/`): the frame, the decision and the node state machine.
+- `estop_can.h` (the same file in `src/mcu_stm32g474/` and `src/mcu_stm32h757/CM4/`): the frame, the decision and the node state machine.
   `estop_brain.h` (CM4): what the master sends and when. Neither touches the hardware; `tests/test_estop_can.c` runs the vectors and a bus with
   a brain and several nodes (power-up, release, a stop, a release that one board does not confirm, a stop during a release, wrap of the clock).
 - Controller board (`RobotControllerRelay.c`): the node starts LATCHED with the driver enable outputs forced off; a frame on 0x001 (accepted by

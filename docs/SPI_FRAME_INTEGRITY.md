@@ -21,11 +21,11 @@ Every frame the bootloader of the CM4 sends is sealed. The CM5 side seals its re
 
 ## The mailbox between the two cores
 
-The mailbox frame of 16 bytes (`src/mcu_stm32h745/Common/ipc_mailbox.h`) uses its reserved bytes the same way: byte 0 of the reserved area is the sequence, bytes 1 and 2 the CRC16 (same algorithm) over frame type, length, the 8 payload bytes and the sequence, byte 3 the marker `0xA1`. The writer seals the frame before it takes the hardware semaphore; the reader checks it before it releases the semaphore and drops a damaged frame. A frame without the marker is accepted unless the build sets `HYDRA_IPC_REQUIRE_CRC=1`.
+The mailbox frame of 16 bytes (`src/mcu_stm32h757/Common/ipc_mailbox.h`) uses its reserved bytes the same way: byte 0 of the reserved area is the sequence, bytes 1 and 2 the CRC16 (same algorithm) over frame type, length, the 8 payload bytes and the sequence, byte 3 the marker `0xA1`. The writer seals the frame before it takes the hardware semaphore; the reader checks it before it releases the semaphore and drops a damaged frame. A frame without the marker is accepted unless the build sets `HYDRA_IPC_REQUIRE_CRC=1`.
 
 ## Where it lives
 
-* `src/mcu_stm32h745/CM4/boot/spi_frame_crc.h` and `src/cm5_host/ipc_driver/src/spi_frame_crc.h`: the same header-only code for the two ends of the link (a test fails when the copies differ).
+* `src/mcu_stm32h757/CM4/boot/spi_frame_crc.h` and `src/cm5_host/ipc_driver/src/spi_frame_crc.h`: the same header-only code for the two ends of the link (a test fails when the copies differ).
 * `tools/spi_frame.py`: the reference in Python; `tests/spi_frame_vectors.json`: the vectors; `tests/test_spi_frame_crc.c`: the C test on the host.
 
 Not executed on a board: see row 13 of `docs/BENCH_TESTS.md`.

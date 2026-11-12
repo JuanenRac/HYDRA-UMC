@@ -29,8 +29,8 @@ BASE = ROOT / "firmware_base" / "boot"
 LIST = ROOT / "firmware_base" / "shared.json"
 CHIPS = {
     "g474": ROOT / "src" / "mcu_stm32g474" / "boot",
-    "h745_cm4": ROOT / "src" / "mcu_stm32h745" / "CM4" / "boot",
-    "h745_cm7": ROOT / "src" / "mcu_stm32h745" / "CM7" / "boot",
+    "h745_cm4": ROOT / "src" / "mcu_stm32h757" / "CM4" / "boot",
+    "h745_cm7": ROOT / "src" / "mcu_stm32h757" / "CM7" / "boot",
 }
 SOURCE_SUFFIXES = (".c", ".h")
 

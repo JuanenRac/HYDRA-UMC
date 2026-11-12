@@ -4,8 +4,8 @@
  * GPL-3.0-or-later - see LICENSE
  * =============================================================================
  * locks in the pure boot-attempt decision every real
- * bootloader_main.c (src/mcu_stm32g474/, src/mcu_stm32h745/CM4/,
- * src/mcu_stm32h745/CM7/) makes right before jumping to the application -
+ * bootloader_main.c (src/mcu_stm32g474/, src/mcu_stm32h757/CM4/,
+ * src/mcu_stm32h757/CM7/) makes right before jumping to the application -
  * see boot_decision.h's own header comment for the full design. This exact
  * source file is compiled THREE times by build_firmware.sh's own host-tests
  * step, once per target's own include path, proving all three real copies

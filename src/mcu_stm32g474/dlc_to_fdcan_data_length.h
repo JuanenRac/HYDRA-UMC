@@ -10,7 +10,7 @@
  * plain gcc, no G474 board - same real motivation and pattern as
  * relay_rx_queue.h in this same directory.
  *
- * KinematicBrainCan.c (src/mcu_stm32h745/CM4/) carries a byte-identical
+ * KinematicBrainCan.c (src/mcu_stm32h757/CM4/) carries a byte-identical
  * copy of this exact file for the same reason relay_rx_queue.h itself
  * documents at RobotControllerRelay.c's own call site: this project
  * builds each MCU target from its own isolated include path (see

@@ -4,7 +4,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-"""Reference and host client of the commands of the SPI link that the CM4 answers itself (see src/mcu_stm32h745/CM4/spi_system.h, docs/SPI_SYSTEM.md).
+"""Reference and host client of the commands of the SPI link that the CM4 answers itself (see src/mcu_stm32h757/CM4/spi_system.h, docs/SPI_SYSTEM.md).
 
     0x20 STOP_REQUEST       'S' 'T' 'O' 'P' reason           ask the brain to put the stack in the emergency stop
     0x21 RELEASE_REQUEST    'R' 'E' 'L' 'S'                  a person asked to end the stop

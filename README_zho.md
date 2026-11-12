@@ -254,7 +254,7 @@ build_firmware.bat --clean  :: 先清空已缓存的 HAL/CMSIS
 HYDRA-UMC/
 ├── src/
 │   ├── cm5_host/                    运行于 os/ 自身镜像之上的 Linux 用户空间应用
-│   ├── mcu_stm32h745/               运动学大脑固件（第 0 层）—— 双核
+│   ├── mcu_stm32h757/               运动学大脑固件（第 0 层）—— 双核
 │   └── mcu_stm32g474/               机器人控制板固件（第 1 层）—— 单核，+ 自身的 boot/
 ├── .vscode/                         推荐扩展 + 构建任务 —— 见下方“开发环境”
 ├── config/                          控制板的机器配置（停止类别、急停输入、量产烧录）

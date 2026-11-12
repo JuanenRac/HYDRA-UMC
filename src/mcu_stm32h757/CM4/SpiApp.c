@@ -1,5 +1,5 @@
 /* =============================================================================
- * HYDRA-UMC - src/mcu_stm32h745/CM4/SpiApp.c
+ * HYDRA-UMC - src/mcu_stm32h757/CM4/SpiApp.c
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
  * GPL-3.0-or-later - see LICENSE
  * =============================================================================

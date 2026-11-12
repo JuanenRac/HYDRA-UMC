@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import gen_image_header_vectors as gen  # noqa: E402
 import image_header as ih  # noqa: E402
 
-BOOT_DIRECTORIES = ("src/mcu_stm32g474/boot", "src/mcu_stm32h745/CM4/boot", "src/mcu_stm32h745/CM7/boot")
+BOOT_DIRECTORIES = ("src/mcu_stm32g474/boot", "src/mcu_stm32h757/CM4/boot", "src/mcu_stm32h757/CM7/boot")
 SHARED_HEADERS = ("image_header.h", "update_verify.h", "update_signature.h", "update_signature.c", "tweetnacl.c", "tweetnacl.h", "bootloader_trust.h", "bootloader_trust.c",
                   "hydra_trust_dev.h", "hydra_trust_release.h")
 

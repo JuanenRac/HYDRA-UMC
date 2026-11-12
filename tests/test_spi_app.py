@@ -17,7 +17,7 @@ import spi_app  # noqa: E402
 import spi_frame  # noqa: E402
 import spi_system  # noqa: E402
 
-CM4 = ROOT / "src" / "mcu_stm32h745" / "CM4"
+CM4 = ROOT / "src" / "mcu_stm32h757" / "CM4"
 
 
 def text(path: Path) -> str:
@@ -209,7 +209,7 @@ class SourcesOfTheService(unittest.TestCase):
         self.assertEqual(header.count("#if HYDRA_SPI_APP"), 1)
 
     def test_the_application_starts_the_service_and_pumps_it_only_behind_the_switch(self):
-        main = text(CM4 / "STM32H745ZI_CM4_main.c")
+        main = text(CM4 / "STM32H757XI_CM4_main.c")
         self.assertEqual(main.count("#if HYDRA_SPI_APP"), 2)
         self.assertIn("SpiApp_Start();", main)
         self.assertIn("SpiApp_Pump();", main)

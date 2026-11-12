@@ -19,7 +19,7 @@
 # build_firmware.sh calls this same script as its own last step.
 #
 # Same layout as the sibling URTC repo now: `src/` is source
-# (mcu_stm32g474/, mcu_stm32h745/), `firmware/` is build OUTPUT.
+# (mcu_stm32g474/, mcu_stm32h757/), `firmware/` is build OUTPUT.
 # firmware/ is intentionally committed and pushed to this repo (NOT
 # gitignored - it has no entry in .gitignore), so that
 # HYDRA-UMC-STUDIO's own GitHub-download feature has real .bin files to
@@ -177,12 +177,12 @@ def main():
     g4_app_ver = {k: int(read_define(g4_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
     g4_hwid = read_define(g4_h, "THIS_HARDWARE_ID")
 
-    cm7_h = os.path.join(root, "src", "mcu_stm32h745", "CM7", "boot", "bootloader_common.h")
+    cm7_h = os.path.join(root, "src", "mcu_stm32h757", "CM7", "boot", "bootloader_common.h")
     cm7_boot_ver = {k: int(read_define(cm7_h, f"BOOTLOADER_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
     cm7_app_ver = {k: int(read_define(cm7_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
     cm7_hwid = read_define(cm7_h, "THIS_HARDWARE_ID")
 
-    cm4_h = os.path.join(root, "src", "mcu_stm32h745", "CM4", "boot", "bootloader_common.h")
+    cm4_h = os.path.join(root, "src", "mcu_stm32h757", "CM4", "boot", "bootloader_common.h")
     cm4_boot_ver = {k: int(read_define(cm4_h, f"BOOTLOADER_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
     cm4_app_ver = {k: int(read_define(cm4_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
     cm4_hwid = read_define(cm4_h, "THIS_HARDWARE_ID")

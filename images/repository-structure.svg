@@ -33,7 +33,7 @@
 <text x="392" y="280" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">cm5_host/</text>
 <text x="541.86" y="280" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">Linux userspace apps that run ON TOP</text>
 <line x1="392" y1="288" x2="1118" y2="288" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="307" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">mcu_stm32h745/</text>
+<text x="392" y="307" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">mcu_stm32h757/</text>
 <text x="541.86" y="307" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">Kinematic Brain firmware</text>
 <line x1="392" y1="315" x2="1118" y2="315" stroke="#1A2430" stroke-width="1"/>
 <text x="392" y="334" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">mcu_stm32g474/</text>

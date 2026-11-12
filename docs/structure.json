@@ -43,7 +43,7 @@
           }
         },
         {
-          "name": "mcu_stm32h745/",
+          "name": "mcu_stm32h757/",
           "desc": {
             "en": "Kinematic Brain firmware",
             "es": "Firmware del Kinematic Brain",

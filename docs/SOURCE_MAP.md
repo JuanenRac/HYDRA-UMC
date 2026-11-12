@@ -28,7 +28,7 @@ Every file of the repository with a line on what it does: the annotated tree tha
 │   │   ├── ipc_driver/          # CM5 <-> STM32H757 SPI link (userspace) - unfinished C skeleton, kept for reference
 │   │   └── spi_bridge/          # Real CM5<->STM32H757 SPI-OTA bridge (Python) - replaces ipc_driver/,
 │   │                              adapts URTC-FLASHER's own proven CRC32/HMAC bootloader state machine
-│   ├── mcu_stm32h745/           # Kinematic Brain firmware (Tier 0) - dual-core
+│   ├── mcu_stm32h757/           # Kinematic Brain firmware (Tier 0) - dual-core
 │   │   ├── CM7/                 # Motion engine, hardware timers (+ its own boot/)
 │   │   ├── CM4/                 # FDCAN drivers, sensor filtering (+ its own boot/)
 │   │   └── Common/              # CM7<->CM4 shared-memory IPC mailbox (ipc_mailbox.h) - implemented, used by both cores' bootloaders

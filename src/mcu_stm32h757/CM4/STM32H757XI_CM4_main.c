@@ -1,6 +1,6 @@
 /*
  * =============================================================================
- * STM32H745ZI_CM4_main.c - Kinematic Brain, Cortex-M4 application entry point
+ * STM32H757XI_CM4_main.c - Kinematic Brain, Cortex-M4 application entry point
  * PROJECT: HYDRA-UMC (Kinematic Brain firmware, Tier 0 - STM32H745ZIT6)
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
  * LICENSE: GPL-3.0-or-later - see repo root LICENSE

@@ -12,12 +12,12 @@
     },
     "kb_cm7": {
       "table_offset": "0x400",
-      "bootloader": "src/mcu_stm32h745/CM7/boot",
+      "bootloader": "src/mcu_stm32h757/CM7/boot",
       "hardware_id": "0x48374337"
     },
     "kb_cm4": {
       "table_offset": "0x400",
-      "bootloader": "src/mcu_stm32h745/CM4/boot",
+      "bootloader": "src/mcu_stm32h757/CM4/boot",
       "hardware_id": "0x48374334"
     }
   },

@@ -26,7 +26,7 @@ The production board is an **STM32H757** (dual core, Cortex-M7 and Cortex-M4; pa
 
 What the code in this repository does today is different, and this document says so wherever it matters:
 
-- the firmware builds for an STM32H745 development target (the sources and the build target keep the names `mcu_stm32h745` and `h745` until they are renamed); the M4 core owns the SPI link, FDCAN1 and the F-RAM, and talks to the M7 through a mailbox;
+- the firmware builds for an STM32H745 development target (the sources and the build target keep the names `mcu_stm32h757` and `h745` until they are renamed); the M4 core owns the SPI link, FDCAN1 and the F-RAM, and talks to the M7 through a mailbox;
 - the SPI link is written with the board as the **slave** and the CM5 (`src/cm5_host/spi_bridge`) as the master;
 - nothing of the master role towards the Jetson, of the new peripherals of the H757 (external memory, display, USB host, further SPI, CAN and I2C buses, converters) or of the changes of ownership has been written, and nothing has run on a board.
 
@@ -108,8 +108,8 @@ doesn't change.
   moving part that could itself have a bug bricking a board. This mirrors
   URTC's own bootloader, which is bare-metal too.
 
-Implementation status: `../src/mcu_stm32g474/`, `../src/mcu_stm32h745/CM7/`,
-and `../src/mcu_stm32h745/CM4/` each have a real, verified-compiling
+Implementation status: `../src/mcu_stm32g474/`, `../src/mcu_stm32h757/CM7/`,
+and `../src/mcu_stm32h757/CM4/` each have a real, verified-compiling
 FreeRTOS skeleton (one task, GPIO toggle - proves the toolchain+RTOS
 pipeline itself works, not real firmware) - see `docs/COMPILE_STM32G474.md`
 and `docs/COMPILE_STM32H745.md` for exactly what that does and doesn't
@@ -292,18 +292,18 @@ that isn't there.
 | Piece | Status |
 |---|---|
 | CM5 <-> STM32H757 SPI transport | CONFIRMED, documented (README.md §10) |
-| STM32H757's own SPI firmware-update protocol (Tier 0) | **IMPLEMENTED** - `src/mcu_stm32h745/CM4/boot/` is a real bootloader: SPI1 slave, the frame-type-byte scheme this document's §3 describes, CRC-32 + Ed25519 signature verify-into-backup-before-copy-to-main. Compiles clean (`build_firmware.sh h745`). NOT yet verified against real hardware - see that folder's own README.md for the concrete gaps (clock tree, dual-core bring-up). |
+| STM32H757's own SPI firmware-update protocol (Tier 0) | **IMPLEMENTED** - `src/mcu_stm32h757/CM4/boot/` is a real bootloader: SPI1 slave, the frame-type-byte scheme this document's §3 describes, CRC-32 + Ed25519 signature verify-into-backup-before-copy-to-main. Compiles clean (`build_firmware.sh h745`). NOT yet verified against real hardware - see that folder's own README.md for the concrete gaps (clock tree, dual-core bring-up). |
 | STM32H757 <-> Robot Controller Board FDCAN1 bus (electrical) | CONFIRMED, documented (README.md §6) |
-| Robot Controller Board slot addressing on that shared bus | **IMPLEMENTED** - `BOARD_ID[2:0]`, a LOCAL DIP switch on each Robot Controller Board (`docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md` §1c - CONFIRMED design, not derived from the STACK A connector or stack position, see `docs/PINOUT_STACKA_CONNECTOR.md` §1) feeds `ReadSlotBaseId()` in the G474 bootloader - this document's §4 formula is real code now, not just a formula. The CM4 gateway bootloader doesn't read this itself (it's the master, not a stack member) - it takes a target slot number from the SPI1 frame the CM5 sends (`SpiOtaFrame_t.target_slot`, `src/mcu_stm32h745/CM4/boot/bootloader_common.h`) instead. |
+| Robot Controller Board slot addressing on that shared bus | **IMPLEMENTED** - `BOARD_ID[2:0]`, a LOCAL DIP switch on each Robot Controller Board (`docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md` §1c - CONFIRMED design, not derived from the STACK A connector or stack position, see `docs/PINOUT_STACKA_CONNECTOR.md` §1) feeds `ReadSlotBaseId()` in the G474 bootloader - this document's §4 formula is real code now, not just a formula. The CM4 gateway bootloader doesn't read this itself (it's the master, not a stack member) - it takes a target slot number from the SPI1 frame the CM5 sends (`SpiOtaFrame_t.target_slot`, `src/mcu_stm32h757/CM4/boot/bootloader_common.h`) instead. |
 | Robot Controller Board's own MCU identity | **CONFIRMED: STM32G474RET6** (LQFP-64, 512 KB flash, 3x FDCAN - 2 used, see §1). |
 | Robot Controller Board's own bootloader firmware | **IMPLEMENTED** - `src/mcu_stm32g474/boot/` is a real bootloader: FDCAN1, slot-addressed per §4's offset table, same CRC-32 + Ed25519 signature anti-bricking discipline. Compiles clean. NOT yet verified against real hardware. |
-| CM7<->CM4 IPC (needed to flash CM7 itself, since only CM4 owns SPI1/FDCAN1) | **IMPLEMENTED** - `src/mcu_stm32h745/Common/ipc_mailbox.h`, a 2-HSEM-channel shared-SRAM4 mailbox. CM7's own bootloader (`CM7/boot/`) runs the same protocol state machine over this mailbox instead of a bus - the only way to reach CM7 at all, since it has no SPI1/FDCAN1 access of its own. |
+| CM7<->CM4 IPC (needed to flash CM7 itself, since only CM4 owns SPI1/FDCAN1) | **IMPLEMENTED** - `src/mcu_stm32h757/Common/ipc_mailbox.h`, a 2-HSEM-channel shared-SRAM4 mailbox. CM7's own bootloader (`CM7/boot/`) runs the same protocol state machine over this mailbox instead of a bus - the only way to reach CM7 at all, since it has no SPI1/FDCAN1 access of its own. |
 | Robot Controller Board -> URTC Tool Head CAN link (electrical) | Described by the project owner; not yet on a schematic in `hardware/` |
 | Robot Controller Board <-> URTC Tool Head relay tunnel | **IN CODE, NOT WORKING YET** - the frame identifiers have not been agreed with URTC and nothing has run on a real bus, so do not rely on a tunnel to a Tool Head today (STUDIO has no tunnel to the Tool Head or the Expansion Board yet). `src/mcu_stm32g474/RobotControllerRelay.c` is the application-side relay logic this row used to flag as missing: FDCAN2 (downlink) init, a real AXIS_STATUS (+0x10) responder reading this board's own endstop/fault GPIOs, and a real RELAY_SEND/RELAY_RECV tunnel forwarding opaque frames to/from the URTC head - the exact real fragmentation scheme `KinematicBrainCan.c` (Tier 0) and `spi_bridge/relay_tunnel.py` (CM5) both already implement. Compiles and links clean (`build_firmware.sh g474`). `OFS_ENTER_BOOTLOADER` (+0x00) is intentionally still not implemented - see that module's own header for why. NOT yet verified against real hardware. |
 | URTC Tool Head firmware + protocol | CONFIRMED, fully implemented - see the `URTC` repo, `docs/CANBUS.TXT` - bare-metal, no RTOS (§2) |
 | URTC's own Advanced Expansion Board (STM32F303CBT6) + its I2C relay | CONFIRMED, fully implemented - see `URTC/docs/EXPANSION.TXT` and `CANBUS.TXT` §"EXPANSION SLAVE BRIDGE" - bare-metal, no RTOS (§2) |
 | Reaching the Advanced Expansion Board from HYDRA-UMC-STUDIO | PROPOSED, but needs no new protocol beyond §5's tunnel - piggybacks on URTC's own existing relay |
-| FreeRTOS on Tier 0 (both cores) and Tier 1 | CONFIRMED design decision (§2). Implementation: a real, verified-compiling skeleton (one task, GPIO toggle) exists for all 3 - `src/mcu_stm32g474/`, `src/mcu_stm32h745/CM7/`, `src/mcu_stm32h745/CM4/` - not yet the real tasks (motion engine, sensor filtering, etc.) All 3 apps now run on their own board's real pinout (`docs/PINOUT_*.TXT`) rather than a Nucleo-dev-board placeholder pin. |
+| FreeRTOS on Tier 0 (both cores) and Tier 1 | CONFIRMED design decision (§2). Implementation: a real, verified-compiling skeleton (one task, GPIO toggle) exists for all 3 - `src/mcu_stm32g474/`, `src/mcu_stm32h757/CM7/`, `src/mcu_stm32h757/CM4/` - not yet the real tasks (motion engine, sensor filtering, etc.) All 3 apps now run on their own board's real pinout (`docs/PINOUT_*.TXT`) rather than a Nucleo-dev-board placeholder pin. |
 | HYDRA-UMC-STUDIO Flasher/Tester UI | Implemented against a **simulated (mock)** transport that follows this document's addressing scheme for all 4 tiers, including GitHub-release firmware download (currently wired for the `URTC` repo only) - see that repo's own README for current status. No real transport (SPI or CAN) is wired into HYDRA-UMC-STUDIO itself yet - the bootloaders it would talk to now exist and compile, but haven't run on real hardware, and this dashboard doesn't have a native SPI/CAN backend to drive them with regardless (it's a browser/Node app - see `src/lib/canOta.ts`'s own header for why staying simulated is still the right call for now). |
 
 ---
@@ -327,7 +327,7 @@ do not use them as a source of truth for new work.
 ## 8. Known security limitations (accepted risks, pre-hardware)
 
 None of the 3 real bootloaders (`src/mcu_stm32g474/boot/`,
-`src/mcu_stm32h745/CM7/boot/`, `src/mcu_stm32h745/CM4/boot/`)
+`src/mcu_stm32h757/CM7/boot/`, `src/mcu_stm32h757/CM4/boot/`)
 have been run against real hardware yet (§6). The items below are known,
 deliberate gaps in the current design - not oversights caught by review
 after the fact - kept here, in the project's own documentation, so they

@@ -30,7 +30,7 @@ ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "tools"))
 import can_ids  # noqa: E402
 
-FRAM_NODE = (ROOT / "src" / "mcu_stm32h745" / "CM4" / "fram_node.h").read_text(encoding="utf-8")
+FRAM_NODE = (ROOT / "src" / "mcu_stm32h757" / "CM4" / "fram_node.h").read_text(encoding="utf-8")
 
 
 def first_hex(pattern: str, text: str) -> int:
@@ -43,8 +43,8 @@ def define(name: str) -> int:
     return first_hex(rf"#define {name}\s+(0x[0-9A-Fa-f]+)u?", FRAM_NODE)
 
 
-SPI_APP = (ROOT / "src" / "mcu_stm32h745" / "CM4" / "spi_app.h").read_text(encoding="utf-8")
-FRAM_I2C = (ROOT / "src" / "mcu_stm32h745" / "CM4" / "fram_i2c.h").read_text(encoding="utf-8")
+SPI_APP = (ROOT / "src" / "mcu_stm32h757" / "CM4" / "spi_app.h").read_text(encoding="utf-8")
+FRAM_I2C = (ROOT / "src" / "mcu_stm32h757" / "CM4" / "fram_i2c.h").read_text(encoding="utf-8")
 
 
 def read(relative: str) -> str:
@@ -70,7 +70,7 @@ class ConstantsMatchTheFirmware(unittest.TestCase):
     def test_the_chip_is_the_fm24cl64b_on_i2c4_at_0x50(self):
         self.assertEqual(first_hex(r"#define FRAM_I2C_ADDRESS\s+(0x[0-9A-Fa-f]+)u", FRAM_I2C), 0x50)
         self.assertRegex(FRAM_I2C, r"#define FRAM_I2C_SIZE\s+8192u")
-        glue = read("src/mcu_stm32h745/CM4/SpiApp.c")
+        glue = read("src/mcu_stm32h757/CM4/SpiApp.c")
         self.assertIn("GPIO_PIN_12 | GPIO_PIN_13", glue)
         self.assertIn("GPIO_AF4_I2C4", glue)
         self.assertIn("I2C_MEMADD_SIZE_16BIT", glue)
@@ -84,12 +84,12 @@ class ConstantsMatchTheFirmware(unittest.TestCase):
 
     def test_the_window_is_64_wide_in_every_firmware_and_the_filters_follow_it(self):
         self.assertEqual(can_ids.SLOT_WINDOW, 0x40)
-        for relative in ("src/mcu_stm32g474/boot/bootloader_common.h", "src/mcu_stm32h745/CM4/boot/bootloader_common.h"):
+        for relative in ("src/mcu_stm32g474/boot/bootloader_common.h", "src/mcu_stm32h757/CM4/boot/bootloader_common.h"):
             self.assertIn("#define STACKA_SLOT_WINDOW 0x40UL", read(relative), relative)
         for relative in ("src/mcu_stm32g474/boot/bootloader_main.c", "src/mcu_stm32g474/RobotControllerRelay.c"):
             self.assertIn("0x7C0u", read(relative), relative)
             self.assertNotIn("0x7E0u", read(relative), relative)
-        for relative in ("src/mcu_stm32h745/CM4/boot/bootloader_main.c", "src/mcu_stm32h745/CM4/KinematicBrainCan.c"):
+        for relative in ("src/mcu_stm32h757/CM4/boot/bootloader_main.c", "src/mcu_stm32h757/CM4/KinematicBrainCan.c"):
             self.assertRegex(read(relative), r"STACKA_FILTER_MASK 0x600u")
 
     def test_the_last_slot_still_fits_in_eleven_bits(self):
@@ -99,7 +99,7 @@ class ConstantsMatchTheFirmware(unittest.TestCase):
 
     def test_the_switch_of_the_firmware_defaults_to_off(self):
         self.assertRegex(FRAM_NODE, r"#ifndef HYDRA_FRAM_ERASE\s+#define HYDRA_FRAM_ERASE 0")
-        self.assertRegex(read("src/mcu_stm32h745/CM4/SpiApp.c"), r"#ifndef HYDRA_FRAM_I2C_TIMING\s+#define HYDRA_FRAM_I2C_TIMING 0")
+        self.assertRegex(read("src/mcu_stm32h757/CM4/SpiApp.c"), r"#ifndef HYDRA_FRAM_I2C_TIMING\s+#define HYDRA_FRAM_I2C_TIMING 0")
 
 
 class Frames(unittest.TestCase):

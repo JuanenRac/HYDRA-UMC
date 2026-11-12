@@ -4,7 +4,7 @@
 # GPL-3.0-or-later - see repo root LICENSE
 # =============================================================================
 """A host model of the kinematic brain on the SPI link that answers the F-RAM erase and self-test requests like
-src/mcu_stm32h745/CM4/fram_node.h does (evidence: simulator; the chip is the FM24CL64B on I2C4 and nothing has run on a board).
+src/mcu_stm32h757/CM4/fram_node.h does (evidence: simulator; the chip is the FM24CL64B on I2C4 and nothing has run on a board).
 
 The brain stages its answer for the next transaction, so the client polls with idle frames. `answer_after_polls` makes the answer arrive only after that many
 idle frames, as it does when the erase of the chip takes a few seconds."""

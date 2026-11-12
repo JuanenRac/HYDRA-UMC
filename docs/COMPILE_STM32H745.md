@@ -22,10 +22,10 @@ Kinematic Brain (STM32H745ZIT6, LQFP-144, 2 MB flash / 1 MB RAM total,
 Cortex-M7 @ up to 480 MHz + Cortex-M4 @ up to 240 MHz - see
 HYDRA-UMC/docs/architecture.md section 1 and README.md section 5 for this
 board's role):
-    - CM7 bootloader:   src/mcu_stm32h745/CM7/boot/ -> HYDRA_KB_CM7_BOOTLOADER.bin/.hex/.elf  (bare-metal)
-    - CM7 application:  src/mcu_stm32h745/CM7/      -> HYDRA_KB_CM7_APP.bin/.hex/.elf         (FreeRTOS)
-    - CM4 bootloader:   src/mcu_stm32h745/CM4/boot/ -> HYDRA_KB_CM4_BOOTLOADER.bin/.hex/.elf  (bare-metal)
-    - CM4 application:  src/mcu_stm32h745/CM4/      -> HYDRA_KB_CM4_APP.bin/.hex/.elf         (FreeRTOS)
+    - CM7 bootloader:   src/mcu_stm32h757/CM7/boot/ -> HYDRA_KB_CM7_BOOTLOADER.bin/.hex/.elf  (bare-metal)
+    - CM7 application:  src/mcu_stm32h757/CM7/      -> HYDRA_KB_CM7_APP.bin/.hex/.elf         (FreeRTOS)
+    - CM4 bootloader:   src/mcu_stm32h757/CM4/boot/ -> HYDRA_KB_CM4_BOOTLOADER.bin/.hex/.elf  (bare-metal)
+    - CM4 application:  src/mcu_stm32h757/CM4/      -> HYDRA_KB_CM4_APP.bin/.hex/.elf         (FreeRTOS)
 
 Both applications run FreeRTOS (CONFIRMED design decision, docs/
 architecture.md section 2) - as TWO INDEPENDENT instances, one per core
@@ -60,7 +60,7 @@ arm-none-eabi-gcc toolchain builds both cores, just with different
 
 IMPORTANT - the SAME startup file and system file serve BOTH cores, unlike
 a typical single-core chip:
-    Source/Templates/gcc/startup_stm32h745xx.s   - shared, compiled twice
+    Source/Templates/gcc/startup_stm32h757xx.s   - shared, compiled twice
                                                      (once per core, see section 4)
     Source/Templates/system_stm32h7xx_dualcore_boot_cm4_cm7.c
                                                    - the "both cores boot
@@ -131,17 +131,17 @@ CM7 (note the CORE_CM7 define AND the different -mcpu/-mfpu from CM4 - the
 M7 has a double-precision FPU, fpv5-d16, vs. the M4's single-precision
 fpv4-sp-d16):
     CFLAGS_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard \
-                -DSTM32H745xx -DCORE_CM7 \
+                -DSTM32H757xx -DCORE_CM7 \
                 -Ipath/to/CMSIS_Include -Ipath/to/HAL_Include \
                 -O2 -Wall -ffunction-sections -fdata-sections"
 
 CM4:
     CFLAGS_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard \
-                -DSTM32H745xx -DCORE_CM4 \
+                -DSTM32H757xx -DCORE_CM4 \
                 -Ipath/to/CMSIS_Include -Ipath/to/HAL_Include \
                 -O2 -Wall -ffunction-sections -fdata-sections"
 
--DSTM32H745xx is the SAME device define for both cores (this is one chip,
+-DSTM32H757xx is the SAME device define for both cores (this is one chip,
 not two) - CORE_CM7 vs. CORE_CM4 is what actually changes which vector
 table / which of the shared CMSIS device header's core-specific sections
 get compiled. Getting this define wrong (e.g. building CM4 code with
@@ -168,7 +168,7 @@ CM7 (Flash Bank 1, 0x08000000-0x080FFFFF):
     0x080FF000  Reserved           4 KB
 
 CM4 (Flash Bank 2, 0x08100000-0x081FFFFF): identical split, offset by
-+0x100000 (see src/mcu_stm32h745/CM4/STM32H745ZITx_CM4_APP.ld's own
++0x100000 (see src/mcu_stm32h757/CM4/STM32H757XIHx_CM4_APP.ld's own
 header for the exact addresses).
 
 RAM: CM7 uses D1-domain AXI SRAM (512 KB @ 0x24000000); CM4 uses D2-domain

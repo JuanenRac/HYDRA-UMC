@@ -254,7 +254,7 @@ build_firmware.bat --clean  :: ベンダリング済み HAL/CMSIS キャッシ�
 HYDRA-UMC/
 ├── src/
 │   ├── cm5_host/                    os/ 自身のイメージ上で動作する Linux ユーザースペースアプリ
-│   ├── mcu_stm32h745/               Kinematic Brain ファームウェア（第 0 階層）— デュアルコア
+│   ├── mcu_stm32h757/               Kinematic Brain ファームウェア（第 0 階層）— デュアルコア
 │   └── mcu_stm32g474/               ロボットコントローラーボードファームウェア（第 1 階層）— シングルコア、+ 自身の boot/
 ├── .vscode/                         推奨拡張機能 + ビルドタスク — 下記「開発環境」参照
 ├── config/                          コントローラー基板のマシン設定（停止カテゴリー、非常停止入力、量産書き込み）

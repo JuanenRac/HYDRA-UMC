@@ -202,12 +202,12 @@ PC1  | BED_THERM2      | ADC1_INP11 (CONFIRMED pin) - NTC thermistor 2
 9c. FREE / UNASSIGNED - 3 pins, all on Port G:
 
     PG8   - free, general-purpose
-    PG9   - CM7's own FreeRTOS smoke-test blink LED (firmware/mcu_stm32h745/
-            CM7/STM32H745ZI_CM7_main.c) - not a real peripheral signal, just
+    PG9   - CM7's own FreeRTOS smoke-test blink LED (firmware/mcu_stm32h757/
+            CM7/STM32H757XI_CM7_main.c) - not a real peripheral signal, just
             claims a genuinely-spare pin so it doesn't collide with a real
             one (X_DIR is on PB0).
-    PG10  - CM4's own FreeRTOS smoke-test blink LED (firmware/mcu_stm32h745/
-            CM4/STM32H745ZI_CM4_main.c) - same reasoning as PG9 above
+    PG10  - CM4's own FreeRTOS smoke-test blink LED (firmware/mcu_stm32h757/
+            CM4/STM32H757XI_CM4_main.c) - same reasoning as PG9 above
             (PUMP1 is on PE0).
 
     Only PG8 is genuinely uncommitted. Keep it spare rather than pre-

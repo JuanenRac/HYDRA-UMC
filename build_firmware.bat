@@ -421,7 +421,7 @@ echo.
 echo === 8. Kinematic Brain - common compiler flags and shared HAL objects ^(per core^) ===
 REM -----------------------------------------------------------------------
 REM App smoke-test core modules plus FDCAN + IWDG + SPI + HSEM - the real
-REM CAN-OTA bootloaders (src\mcu_stm32h745\CM7\boot\, CM4\boot\): CM7's talks
+REM CAN-OTA bootloaders (src\mcu_stm32h757\CM7\boot\, CM4\boot\): CM7's talks
 REM FDCAN/IWDG/HSEM only (no bus of its own); CM4's is the gateway and needs
 REM all four (SPI1 to the CM5, FDCAN1 to STACK A, IWDG, HSEM for the
 REM CM7<->CM4 mailbox). Compiled for both cores regardless (same shared
@@ -429,13 +429,13 @@ REM module list) - unused object files for one core cost nothing, and
 REM keeping one list avoids the two cores' object sets silently drifting apart.
 set "HAL_MODULES_H7=stm32h7xx_hal stm32h7xx_hal_cortex stm32h7xx_hal_gpio stm32h7xx_hal_rcc stm32h7xx_hal_rcc_ex stm32h7xx_hal_pwr stm32h7xx_hal_pwr_ex stm32h7xx_hal_flash stm32h7xx_hal_flash_ex stm32h7xx_hal_exti stm32h7xx_hal_mdma stm32h7xx_hal_fdcan stm32h7xx_hal_iwdg stm32h7xx_hal_spi stm32h7xx_hal_hsem"
 
-set "CFLAGS_CM7=-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I!H7!\common\CMSIS_Include -I!H7!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections %TRUST_DEFS%"
-set "CFLAGS_CM4=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I!H7!\common\CMSIS_Include -I!H7!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections %TRUST_DEFS%"
+set "CFLAGS_CM7=-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H757xx -DCORE_CM7 -I!H7!\common\CMSIS_Include -I!H7!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections %TRUST_DEFS%"
+set "CFLAGS_CM4=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H757xx -DCORE_CM4 -I!H7!\common\CMSIS_Include -I!H7!\common\HAL_Include -O2 -Wall -ffunction-sections -fdata-sections %TRUST_DEFS%"
 set "LDCOMMON_CM7=-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
 set "LDCOMMON_CM4=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
-set "CFLAGS_CM7_APP=%CFLAGS_CM7% -I%ROOT%\src\mcu_stm32h745\CM7 -I%FREERTOS_SRC%\include -I%FREERTOS_SRC%\portable\GCC\ARM_CM7\r0p1"
-set "CFLAGS_CM4_APP=%CFLAGS_CM4% -I%ROOT%\src\mcu_stm32h745\CM4 -I%FREERTOS_SRC%\include -I%FREERTOS_SRC%\portable\GCC\ARM_CM4F"
-set "COMMON_INC=-I%ROOT%\src\mcu_stm32h745\Common"
+set "CFLAGS_CM7_APP=%CFLAGS_CM7% -I%ROOT%\src\mcu_stm32h757\CM7 -I%FREERTOS_SRC%\include -I%FREERTOS_SRC%\portable\GCC\ARM_CM7\r0p1"
+set "CFLAGS_CM4_APP=%CFLAGS_CM4% -I%ROOT%\src\mcu_stm32h757\CM4 -I%FREERTOS_SRC%\include -I%FREERTOS_SRC%\portable\GCC\ARM_CM4F"
+set "COMMON_INC=-I%ROOT%\src\mcu_stm32h757\Common"
 
 REM ---- CM7 HAL objects + startup/system ----
 set /a HAL_COUNT=0
@@ -451,9 +451,9 @@ if !HAL_COUNT! EQU 15 (
     set /a FAIL+=1
     goto :summary
 )
-copy /y "!H7!\vendor\cmsis_device_h7\Source\Templates\gcc\startup_stm32h745xx.s" "!H7!\cm7\" >nul
+copy /y "!H7!\vendor\cmsis_device_h7\Source\Templates\gcc\startup_stm32h757xx.s" "!H7!\cm7\" >nul
 copy /y "!H7!\vendor\cmsis_device_h7\Source\Templates\system_stm32h7xx_dualcore_boot_cm4_cm7.c" "!H7!\cm7\system_stm32h7xx.c" >nul
-arm-none-eabi-gcc %CFLAGS_CM7% -x assembler-with-cpp -c "!H7!\cm7\startup_stm32h745xx.s" -o "!H7!\cm7\startup.o"
+arm-none-eabi-gcc %CFLAGS_CM7% -x assembler-with-cpp -c "!H7!\cm7\startup_stm32h757xx.s" -o "!H7!\cm7\startup.o"
 arm-none-eabi-gcc %CFLAGS_CM7% -x c -c "!H7!\cm7\system_stm32h7xx.c" -o "!H7!\cm7\system_stm32h7xx.o"
 echo   OK   CM7: startup + system files compiled
 set /a PASS+=1
@@ -472,9 +472,9 @@ if !HAL_COUNT! EQU 15 (
     set /a FAIL+=1
     goto :summary
 )
-copy /y "!H7!\vendor\cmsis_device_h7\Source\Templates\gcc\startup_stm32h745xx.s" "!H7!\cm4\" >nul
+copy /y "!H7!\vendor\cmsis_device_h7\Source\Templates\gcc\startup_stm32h757xx.s" "!H7!\cm4\" >nul
 copy /y "!H7!\vendor\cmsis_device_h7\Source\Templates\system_stm32h7xx_dualcore_boot_cm4_cm7.c" "!H7!\cm4\system_stm32h7xx.c" >nul
-arm-none-eabi-gcc %CFLAGS_CM4% -x assembler-with-cpp -c "!H7!\cm4\startup_stm32h745xx.s" -o "!H7!\cm4\startup.o"
+arm-none-eabi-gcc %CFLAGS_CM4% -x assembler-with-cpp -c "!H7!\cm4\startup_stm32h757xx.s" -o "!H7!\cm4\startup.o"
 arm-none-eabi-gcc %CFLAGS_CM4% -x c -c "!H7!\cm4\system_stm32h7xx.c" -o "!H7!\cm4\system_stm32h7xx.o"
 echo   OK   CM4: startup + system files compiled
 set /a PASS+=1
@@ -521,9 +521,9 @@ if "!SECTION_FAIL!"=="1" (
 
 REM -----------------------------------------------------------------------
 echo.
-echo === 9. Kinematic Brain CM7 bootloader ^(bare-metal CAN-OTA, mailbox-relayed^) + application ^(FreeRTOS^) - src\mcu_stm32h745\CM7\ ===
+echo === 9. Kinematic Brain CM7 bootloader ^(bare-metal CAN-OTA, mailbox-relayed^) + application ^(FreeRTOS^) - src\mcu_stm32h757\CM7\ ===
 REM -----------------------------------------------------------------------
-set "SRC=%ROOT%\src\mcu_stm32h745\CM7"
+set "SRC=%ROOT%\src\mcu_stm32h757\CM7"
 call :ComponentVersion "!SRC!\boot\bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM7 bootloader"
 set "OUT=!H7!\cm7_boot_obj"
 del /q "!OUT!\*.o" 2>nul
@@ -545,7 +545,7 @@ for /f "tokens=3" %%v in ('findstr /c:"#define BOOTLOADER_VERSION_MAJOR" "!SRC!\
 for /f "tokens=3" %%v in ('findstr /c:"#define BOOTLOADER_VERSION_MINOR" "!SRC!\boot\bootloader_common.h"') do set "CM7_BOOT_MINOR=%%v"
 for /f "tokens=3" %%v in ('findstr /c:"#define BOOTLOADER_VERSION_PATCH" "!SRC!\boot\bootloader_common.h"') do set "CM7_BOOT_PATCH=%%v"
 set "CM7_BOOT_NAME=HYDRA_KB_CM7_BOOTLOADER_v!CM7_BOOT_MAJOR!.!CM7_BOOT_MINOR!.!CM7_BOOT_PATCH!"
-arm-none-eabi-gcc %LDCOMMON_CM7% -T"!SRC!\boot\STM32H745ZITx_CM7_BOOTLOADER.ld" "!H7!\cm7\startup.o" "!H7!\cm7\system_stm32h7xx.o" "!OUT!\*.o" "!H7!\hal_obj_cm7\*.o" -o "!OUT!\!CM7_BOOT_NAME!.elf"
+arm-none-eabi-gcc %LDCOMMON_CM7% -T"!SRC!\boot\STM32H757XIHx_CM7_BOOTLOADER.ld" "!H7!\cm7\startup.o" "!H7!\cm7\system_stm32h7xx.o" "!OUT!\*.o" "!H7!\hal_obj_cm7\*.o" -o "!OUT!\!CM7_BOOT_NAME!.elf"
 if errorlevel 1 (
     echo   FAIL CM7 bootloader: link failed
     set /a FAIL+=1
@@ -562,9 +562,9 @@ set /a PASS+=1
 call :ComponentVersion "!SRC!\boot\bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM7 application"
 set "OUT=!H7!\cm7_app_obj"
 del /q "!OUT!\*.o" 2>nul
-arm-none-eabi-gcc %CFLAGS_CM7_APP% -I"!SRC!" -x c -c "!SRC!\STM32H745ZI_CM7_main.c" -o "!OUT!\STM32H745ZI_CM7_main.o"
+arm-none-eabi-gcc %CFLAGS_CM7_APP% -I"!SRC!" -x c -c "!SRC!\STM32H757XI_CM7_main.c" -o "!OUT!\STM32H757XI_CM7_main.o"
 if errorlevel 1 (
-    echo   FAIL STM32H745ZI_CM7_main.c failed to compile
+    echo   FAIL STM32H757XI_CM7_main.c failed to compile
     set /a FAIL+=1
     goto :summary
 )
@@ -573,7 +573,7 @@ for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_MAJOR" "!SRC!\bo
 for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_MINOR" "!SRC!\boot\bootloader_common.h"') do set "CM7_APP_MINOR=%%v"
 for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_PATCH" "!SRC!\boot\bootloader_common.h"') do set "CM7_APP_PATCH=%%v"
 set "CM7_APP_NAME=HYDRA_KB_CM7_APP_v!CM7_APP_MAJOR!.!CM7_APP_MINOR!.!CM7_APP_PATCH!"
-arm-none-eabi-gcc %LDCOMMON_CM7% -T"!SRC!\STM32H745ZITx_CM7_APP.ld" "!H7!\cm7\startup.o" "!H7!\cm7\system_stm32h7xx.o" "!OUT!\*.o" "!H7!\hal_obj_cm7\*.o" "!H7!\cm7_freertos_obj\*.o" -o "!OUT!\!CM7_APP_NAME!.elf"
+arm-none-eabi-gcc %LDCOMMON_CM7% -T"!SRC!\STM32H757XIHx_CM7_APP.ld" "!H7!\cm7\startup.o" "!H7!\cm7\system_stm32h7xx.o" "!OUT!\*.o" "!H7!\hal_obj_cm7\*.o" "!H7!\cm7_freertos_obj\*.o" -o "!OUT!\!CM7_APP_NAME!.elf"
 if errorlevel 1 (
     echo   FAIL CM7 application: link failed
     set /a FAIL+=1
@@ -589,9 +589,9 @@ set /a PASS+=1
 
 REM -----------------------------------------------------------------------
 echo.
-echo === 10. Kinematic Brain CM4 bootloader ^(bare-metal CAN-OTA gateway: SPI1+FDCAN1+mailbox^) + application ^(FreeRTOS^) - src\mcu_stm32h745\CM4\ ===
+echo === 10. Kinematic Brain CM4 bootloader ^(bare-metal CAN-OTA gateway: SPI1+FDCAN1+mailbox^) + application ^(FreeRTOS^) - src\mcu_stm32h757\CM4\ ===
 REM -----------------------------------------------------------------------
-set "SRC=%ROOT%\src\mcu_stm32h745\CM4"
+set "SRC=%ROOT%\src\mcu_stm32h757\CM4"
 call :ComponentVersion "!SRC!\boot\bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM4 bootloader"
 set "OUT=!H7!\cm4_boot_obj"
 del /q "!OUT!\*.o" 2>nul
@@ -613,7 +613,7 @@ for /f "tokens=3" %%v in ('findstr /c:"#define BOOTLOADER_VERSION_MAJOR" "!SRC!\
 for /f "tokens=3" %%v in ('findstr /c:"#define BOOTLOADER_VERSION_MINOR" "!SRC!\boot\bootloader_common.h"') do set "CM4_BOOT_MINOR=%%v"
 for /f "tokens=3" %%v in ('findstr /c:"#define BOOTLOADER_VERSION_PATCH" "!SRC!\boot\bootloader_common.h"') do set "CM4_BOOT_PATCH=%%v"
 set "CM4_BOOT_NAME=HYDRA_KB_CM4_BOOTLOADER_v!CM4_BOOT_MAJOR!.!CM4_BOOT_MINOR!.!CM4_BOOT_PATCH!"
-arm-none-eabi-gcc %LDCOMMON_CM4% -T"!SRC!\boot\STM32H745ZITx_CM4_BOOTLOADER.ld" "!H7!\cm4\startup.o" "!H7!\cm4\system_stm32h7xx.o" "!OUT!\*.o" "!H7!\hal_obj_cm4\*.o" -o "!OUT!\!CM4_BOOT_NAME!.elf"
+arm-none-eabi-gcc %LDCOMMON_CM4% -T"!SRC!\boot\STM32H757XIHx_CM4_BOOTLOADER.ld" "!H7!\cm4\startup.o" "!H7!\cm4\system_stm32h7xx.o" "!OUT!\*.o" "!H7!\hal_obj_cm4\*.o" -o "!OUT!\!CM4_BOOT_NAME!.elf"
 if errorlevel 1 (
     echo   FAIL CM4 bootloader: link failed
     set /a FAIL+=1
@@ -630,9 +630,9 @@ set /a PASS+=1
 call :ComponentVersion "!SRC!\boot\bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM4 application"
 set "OUT=!H7!\cm4_app_obj"
 del /q "!OUT!\*.o" 2>nul
-arm-none-eabi-gcc %CFLAGS_CM4_APP% -I"!SRC!" -x c -c "!SRC!\STM32H745ZI_CM4_main.c" -o "!OUT!\STM32H745ZI_CM4_main.o"
+arm-none-eabi-gcc %CFLAGS_CM4_APP% -I"!SRC!" -x c -c "!SRC!\STM32H757XI_CM4_main.c" -o "!OUT!\STM32H757XI_CM4_main.o"
 if errorlevel 1 (
-    echo   FAIL STM32H745ZI_CM4_main.c failed to compile
+    echo   FAIL STM32H757XI_CM4_main.c failed to compile
     set /a FAIL+=1
     goto :summary
 )
@@ -651,7 +651,7 @@ for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_MAJOR" "!SRC!\bo
 for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_MINOR" "!SRC!\boot\bootloader_common.h"') do set "CM4_APP_MINOR=%%v"
 for /f "tokens=3" %%v in ('findstr /c:"#define FIRMWARE_VERSION_PATCH" "!SRC!\boot\bootloader_common.h"') do set "CM4_APP_PATCH=%%v"
 set "CM4_APP_NAME=HYDRA_KB_CM4_APP_v!CM4_APP_MAJOR!.!CM4_APP_MINOR!.!CM4_APP_PATCH!"
-arm-none-eabi-gcc %LDCOMMON_CM4% -T"!SRC!\STM32H745ZITx_CM4_APP.ld" "!H7!\cm4\startup.o" "!H7!\cm4\system_stm32h7xx.o" "!OUT!\*.o" "!H7!\hal_obj_cm4\*.o" "!H7!\cm4_freertos_obj\*.o" -o "!OUT!\!CM4_APP_NAME!.elf"
+arm-none-eabi-gcc %LDCOMMON_CM4% -T"!SRC!\STM32H757XIHx_CM4_APP.ld" "!H7!\cm4\startup.o" "!H7!\cm4\system_stm32h7xx.o" "!OUT!\*.o" "!H7!\hal_obj_cm4\*.o" "!H7!\cm4_freertos_obj\*.o" -o "!OUT!\!CM4_APP_NAME!.elf"
 if errorlevel 1 (
     echo   FAIL CM4 application: link failed
     set /a FAIL+=1

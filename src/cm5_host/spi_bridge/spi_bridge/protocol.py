@@ -5,7 +5,7 @@
 # =============================================================================
 """The real, exact 128-byte SpiOtaFrame_t wire format and OFS_*/STATUS_*
 constants - a byte-for-byte match of
-src/mcu_stm32h745/CM4/boot/bootloader_common.h's own real C struct and
+src/mcu_stm32h757/CM4/boot/bootloader_common.h's own real C struct and
 #defines, not a re-derived or approximate shape.
 
     typedef struct {

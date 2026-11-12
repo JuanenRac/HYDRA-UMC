@@ -3,7 +3,7 @@
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
  * GPL-3.0-or-later - see LICENSE
  * =============================================================================
- * Built against src/mcu_stm32h745/CM4 so the stop and release actions run the real state machine of the brain (estop_brain.h). The bytes of the
+ * Built against src/mcu_stm32h757/CM4 so the stop and release actions run the real state machine of the brain (estop_brain.h). The bytes of the
  * vectors are the ones tools/spi_system.py builds (tests/test_spi_system.py compares them). Evidence: simulator; the link at full rate is bench
  * row 13 and the telemetry over ten minutes is row 19 of docs/BENCH_TESTS.md.
  */

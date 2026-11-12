@@ -161,7 +161,7 @@ def header_text(doc: dict, flavour: str) -> str:
     )
 
 
-HEADER_DIRS = ("src/mcu_stm32g474/boot", "src/mcu_stm32h745/CM4/boot", "src/mcu_stm32h745/CM7/boot")
+HEADER_DIRS = ("src/mcu_stm32g474/boot", "src/mcu_stm32h757/CM4/boot", "src/mcu_stm32h757/CM7/boot")
 
 
 def header_paths(flavour: str) -> list[Path]:

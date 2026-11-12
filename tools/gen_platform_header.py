@@ -4,7 +4,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-"""Writes src/mcu_stm32h745/Common/platform_profile.h from docs/platform_profiles.json, so the firmware reads the numbers of a platform from one place.
+"""Writes src/mcu_stm32h757/Common/platform_profile.h from docs/platform_profiles.json, so the firmware reads the numbers of a platform from one place.
 
     python tools/gen_platform_header.py           write the header
     python tools/gen_platform_header.py --check   exit 1 when the header is not what the profiles say
@@ -22,7 +22,7 @@ from pathlib import Path
 import platform_profile as pp
 
 ROOT = Path(__file__).resolve().parents[1]
-HEADER_PATH = ROOT / "src" / "mcu_stm32h745" / "Common" / "platform_profile.h"
+HEADER_PATH = ROOT / "src" / "mcu_stm32h757" / "Common" / "platform_profile.h"
 OWNER_CODE = {"CM4": 4, "CM7": 7}
 
 

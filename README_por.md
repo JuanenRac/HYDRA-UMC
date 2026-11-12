@@ -254,7 +254,7 @@ Os seis componentes do firmware (três carregadores de arranque e três aplicaç
 HYDRA-UMC/
 ├── src/
 │   ├── cm5_host/                    Aplicações Linux de espaço de utilizador que correm SOBRE a imagem de os/
-│   ├── mcu_stm32h745/               Firmware do Cérebro Cinemático (nível 0) - dois núcleos
+│   ├── mcu_stm32h757/               Firmware do Cérebro Cinemático (nível 0) - dois núcleos
 │   └── mcu_stm32g474/               Firmware da placa controladora de robô (nível 1) - um só núcleo, + o seu próprio boot/
 ├── .vscode/                         Extensões recomendadas + tarefas de build - ver "Ambiente de desenvolvimento" abaixo
 ├── config/                          configuração da máquina da placa controladora (categoria de paragem, entrada de paragem de emergência, gravação de produção)

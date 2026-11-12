@@ -35,7 +35,7 @@ which is real: it polls **`RobotControllerRelay.c`** — a real AXIS_STATUS
 and a real RELAY_SEND/RELAY_RECV (+0x12/+0x13) tunnel forwarding opaque CAN
 traffic between FDCAN1 (uplink, STACK A) and FDCAN2 (downlink, this robot's
 own URTC Tool Head) — the exact real fragmentation scheme
-`../mcu_stm32h745/CM4/KinematicBrainCan.c` (Tier 0) and
+`../mcu_stm32h757/CM4/KinematicBrainCan.c` (Tier 0) and
 `../cm5_host/spi_bridge/spi_bridge/relay_tunnel.py` (CM5) already implement,
 closing the real gap `docs/architecture.md` section 6 used to flag as "the
 Robot Controller Board's own APPLICATION-side relay logic... still not

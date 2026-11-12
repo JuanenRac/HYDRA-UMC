@@ -16,8 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SITES = (
     "src/mcu_stm32g474/boot/bootloader_main.c",
     "src/mcu_stm32g474/RobotControllerRelay.c",
-    "src/mcu_stm32h745/CM4/boot/bootloader_main.c",
-    "src/mcu_stm32h745/CM4/KinematicBrainCan.c",
+    "src/mcu_stm32h757/CM4/boot/bootloader_main.c",
+    "src/mcu_stm32h757/CM4/KinematicBrainCan.c",
 )
 FIELDS = ("NominalPrescaler", "NominalSyncJumpWidth", "NominalTimeSeg1", "NominalTimeSeg2",
           "DataPrescaler", "DataSyncJumpWidth", "DataTimeSeg1", "DataTimeSeg2")

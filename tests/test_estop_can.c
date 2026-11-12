@@ -4,7 +4,7 @@
  * GPL-3.0-or-later - see LICENSE
  * =============================================================================
  * The frames and the scenarios are the ones of tests/estop_vectors.json, read through tests/estop_vectors.h (tools/gen_node_vectors.py).
- * Built twice: against src/mcu_stm32g474 (the node alone) and against src/mcu_stm32h745/CM4 with ESTOP_TEST_BRAIN (the node and the brain).
+ * Built twice: against src/mcu_stm32g474 (the node alone) and against src/mcu_stm32h757/CM4 with ESTOP_TEST_BRAIN (the node and the brain).
  */
 #include <stdio.h>
 #include <string.h>

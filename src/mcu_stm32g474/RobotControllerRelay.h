@@ -10,7 +10,7 @@
  * relay logic (not its bootloader) that actually speaks to the URTC head
  * is still not written" - found and left as a real, named next step while
  * building the Tier 0 (Kinematic Brain) side of this exact tunnel
- * (src/mcu_stm32h745/CM4/KinematicBrainCan.c). This module is that side.
+ * (src/mcu_stm32h757/CM4/KinematicBrainCan.c). This module is that side.
  *
  * Two real jobs, both driven off this board's own slot base ID
  * (CAN_ID_STACKA_BASE + N*STACKA_SLOT_WINDOW, bootloader_common.h):

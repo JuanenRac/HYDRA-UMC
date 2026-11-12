@@ -5,8 +5,8 @@
   "profiles": {
     "h745_current": {
       "device": "STM32H745ZIT6 (LQFP-144)",
-      "status": "what the firmware in this repository is built for today",
-      "source": "src/mcu_stm32h745/",
+      "status": "the numbers the sources still set after the folder was renamed to the H757: the clock assumptions of the earlier Nucleo H745 bench (a 16 MHz FDCAN kernel clock); the clock tree of the H757 board (a 25 MHz crystal, PLL2 at 100 MHz) is applied in the phase of the clock tree, and until then this is what the compiled firmware does",
+      "source": "src/mcu_stm32h757/",
       "host": {
         "module": "Raspberry Pi CM5",
         "spi_role": "slave"
@@ -40,7 +40,7 @@
             "origin": 134217728,
             "length": 131072,
             "owner": "CM7",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository)",
+            "source": "the linker scripts of src/mcu_stm32h757/ (the layout of this repository)",
             "status": "matches_linker",
             "note": "bootloader of the application core"
           },
@@ -49,7 +49,7 @@
             "origin": 134479872,
             "length": 393216,
             "owner": "CM7",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository)",
+            "source": "the linker scripts of src/mcu_stm32h757/ (the layout of this repository)",
             "status": "matches_linker"
           },
           {
@@ -57,7 +57,7 @@
             "origin": 135266304,
             "length": 131072,
             "owner": "CM4",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository)",
+            "source": "the linker scripts of src/mcu_stm32h757/ (the layout of this repository)",
             "status": "matches_linker"
           },
           {
@@ -65,7 +65,7 @@
             "origin": 135528448,
             "length": 393216,
             "owner": "CM4",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository)",
+            "source": "the linker scripts of src/mcu_stm32h757/ (the layout of this repository)",
             "status": "matches_linker"
           },
           {
@@ -73,7 +73,7 @@
             "origin": 603979776,
             "length": 524288,
             "owner": "CM7",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); AXI SRAM of the D1 domain",
+            "source": "the linker scripts of src/mcu_stm32h757/ (the layout of this repository); AXI SRAM of the D1 domain",
             "status": "matches_linker"
           },
           {
@@ -81,7 +81,7 @@
             "origin": 805306368,
             "length": 294912,
             "owner": "CM4",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); SRAM1-3 of the D2 domain",
+            "source": "the linker scripts of src/mcu_stm32h757/ (the layout of this repository); SRAM1-3 of the D2 domain",
             "status": "matches_linker"
           },
           {
@@ -89,7 +89,7 @@
             "origin": 939524096,
             "length": 65536,
             "owner": "shared",
-            "source": "src/mcu_stm32h745/Common/ipc_mailbox.h (IPC_MAILBOX_BASE); SRAM4 of the D3 domain",
+            "source": "src/mcu_stm32h757/Common/ipc_mailbox.h (IPC_MAILBOX_BASE); SRAM4 of the D3 domain",
             "status": "matches_source",
             "note": "the only RAM both cores see; non-cacheable by the MPU"
           }
@@ -99,7 +99,7 @@
     "h757_target": {
       "device": "STM32H757XIH6 (TFBGA240)",
       "status": "the board of the CubeMX project; candidates, not confirmed on a board",
-      "source": "the CubeMX project of the board (clock tree and pins) and the answers of the owner",
+      "source": "the CubeMX project of the board (clock tree and pins) and the answers of the owner; the sources are in src/mcu_stm32h757/",
       "host": {
         "module": "NVIDIA Jetson Orin NX 16 GB",
         "spi_role": "master"
@@ -259,7 +259,7 @@
             "origin": 134217728,
             "length": 131072,
             "owner": "CM7",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
+            "source": "the linker scripts of src/mcu_stm32h757/ (the layout of this repository); the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
             "status": "size_confirmed_by_datasheet_address_to_confirm",
             "note": "bootloader of the application core"
           },
@@ -268,7 +268,7 @@
             "origin": 134479872,
             "length": 393216,
             "owner": "CM7",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
+            "source": "the linker scripts of src/mcu_stm32h757/ (the layout of this repository); the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
             "status": "size_confirmed_by_datasheet_address_to_confirm"
           },
           {
@@ -276,7 +276,7 @@
             "origin": 135266304,
             "length": 131072,
             "owner": "CM4",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
+            "source": "the linker scripts of src/mcu_stm32h757/ (the layout of this repository); the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
             "status": "size_confirmed_by_datasheet_address_to_confirm"
           },
           {
@@ -284,7 +284,7 @@
             "origin": 135528448,
             "length": 393216,
             "owner": "CM4",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
+            "source": "the linker scripts of src/mcu_stm32h757/ (the layout of this repository); the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
             "status": "size_confirmed_by_datasheet_address_to_confirm"
           },
           {
@@ -292,7 +292,7 @@
             "origin": 603979776,
             "length": 524288,
             "owner": "CM7",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); AXI SRAM of the D1 domain; the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
+            "source": "the linker scripts of src/mcu_stm32h757/ (the layout of this repository); AXI SRAM of the D1 domain; the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
             "status": "size_confirmed_by_datasheet_address_to_confirm"
           },
           {
@@ -300,7 +300,7 @@
             "origin": 805306368,
             "length": 294912,
             "owner": "CM4",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); SRAM1-3 of the D2 domain; the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
+            "source": "the linker scripts of src/mcu_stm32h757/ (the layout of this repository); SRAM1-3 of the D2 domain; the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
             "status": "size_confirmed_by_datasheet_address_to_confirm"
           },
           {
@@ -308,7 +308,7 @@
             "origin": 939524096,
             "length": 65536,
             "owner": "shared",
-            "source": "src/mcu_stm32h745/Common/ipc_mailbox.h (IPC_MAILBOX_BASE); SRAM4 of the D3 domain; the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
+            "source": "src/mcu_stm32h757/Common/ipc_mailbox.h (IPC_MAILBOX_BASE); SRAM4 of the D3 domain; the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
             "status": "size_confirmed_by_datasheet_address_to_confirm",
             "note": "the only RAM both cores see; non-cacheable by the MPU"
           },

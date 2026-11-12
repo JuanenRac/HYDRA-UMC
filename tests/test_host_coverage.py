@@ -98,8 +98,8 @@ class FloorsFile(unittest.TestCase):
         for module in ("fdcan_clock.h", "app_boot_request.h", "health_frame.h"):
             self.assertEqual(floors[f"src/mcu_stm32g474/{module}"], 100.0)
         self.assertEqual(floors["src/mcu_stm32g474/boot/adoption_guard.h"], 100.0)
-        self.assertEqual(floors["src/mcu_stm32h745/CM4/rcc_owner.h"], 100.0)
-        self.assertEqual(floors["src/mcu_stm32h745/CM4/spi_system.h"], 100.0)
+        self.assertEqual(floors["src/mcu_stm32h757/CM4/rcc_owner.h"], 100.0)
+        self.assertEqual(floors["src/mcu_stm32h757/CM4/spi_system.h"], 100.0)
         self.assertEqual(floors["src/mcu_stm32g474/boot/flash_layer.h"], 100.0)
 
     def test_a_floors_file_is_read_from_any_path(self):

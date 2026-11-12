@@ -12,7 +12,7 @@ framing to this project's real SPI framing.
 ## What's here today
 
 - `spi_bridge/protocol.py` — the real, exact 128-byte `SpiOtaFrame` wire
-  format (byte-for-byte match of `mcu_stm32h745/CM4/boot/bootloader_common.h`'s
+  format (byte-for-byte match of `mcu_stm32h757/CM4/boot/bootloader_common.h`'s
   own C struct) and every `OFS_*`/`STATUS_*` constant.
 - `spi_bridge/bootloader_client.py` — real `query_version()` and the full
   `SpiOtaFlasher.flash()` cycle (ENTER_BOOTLOADER → START_UPDATE →

@@ -10,14 +10,14 @@
     },
     "kb_cm7": {
       "elf_glob": "firmware/HYDRA_KB_CM7_BOOTLOADER_v*.elf",
-      "linker": "src/mcu_stm32h745/CM7/boot/STM32H745ZITx_CM7_BOOTLOADER.ld",
+      "linker": "src/mcu_stm32h757/CM7/boot/STM32H757XIHx_CM7_BOOTLOADER.ld",
       "flash_region": "FLASH_BOOT",
       "flash_margin_bytes": 4096,
       "ram_margin_bytes": 8192
     },
     "kb_cm4": {
       "elf_glob": "firmware/HYDRA_KB_CM4_BOOTLOADER_v*.elf",
-      "linker": "src/mcu_stm32h745/CM4/boot/STM32H745ZITx_CM4_BOOTLOADER.ld",
+      "linker": "src/mcu_stm32h757/CM4/boot/STM32H757XIHx_CM4_BOOTLOADER.ld",
       "flash_region": "FLASH_BOOT",
       "flash_margin_bytes": 4096,
       "ram_margin_bytes": 8192

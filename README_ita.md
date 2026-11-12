@@ -310,7 +310,7 @@ Tutti e sei i componenti del firmware (tre bootloader e tre applicazioni, una co
 HYDRA-UMC/
 ├── src/
 │   ├── cm5_host/                    App Linux userspace eseguite SOPRA la propria immagine di os/
-│   ├── mcu_stm32h745/               Firmware del Kinematic Brain (Livello 0) - dual-core
+│   ├── mcu_stm32h757/               Firmware del Kinematic Brain (Livello 0) - dual-core
 │   └── mcu_stm32g474/               Firmware della Robot Controller Board (Livello 1) - single-core, + il proprio boot/
 ├── .vscode/                         Estensioni consigliate + task di build - vedi "Ambiente di Sviluppo" sotto
 ├── config/                          configurazione della macchina della scheda controller (categoria di arresto, ingresso di arresto di emergenza, programmazione di produzione)

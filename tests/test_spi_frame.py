@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import spi_frame  # noqa: E402
 
 VECTORS = json.loads((ROOT / "tests" / "spi_frame_vectors.json").read_text(encoding="utf-8"))
-HEADER_FIRMWARE = ROOT / "src/mcu_stm32h745/CM4/boot/spi_frame_crc.h"
+HEADER_FIRMWARE = ROOT / "src/mcu_stm32h757/CM4/boot/spi_frame_crc.h"
 HEADER_HOST = ROOT / "src/cm5_host/ipc_driver/src/spi_frame_crc.h"
 
 

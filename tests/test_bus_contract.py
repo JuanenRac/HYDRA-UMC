@@ -71,7 +71,7 @@ class BusContractTests(unittest.TestCase):
         stack = BUSES["stack_a"]
         self.assertEqual(stack["slot_window"], can_ids.SLOT_WINDOW)
         base = int(stack["slot_base"], 16)
-        for relative in ("src/mcu_stm32h745/CM4/boot/bootloader_common.h", "src/mcu_stm32g474/boot/bootloader_common.h"):
+        for relative in ("src/mcu_stm32h757/CM4/boot/bootloader_common.h", "src/mcu_stm32g474/boot/bootloader_common.h"):
             found = re.search(r"#define\s+CAN_ID_STACKA_BASE\s+(0x[0-9A-Fa-f]+)", (ROOT / relative).read_text(encoding="utf-8"))
             self.assertIsNotNone(found, relative)
             self.assertEqual(int(found.group(1), 16), base, relative)

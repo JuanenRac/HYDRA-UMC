@@ -38,7 +38,7 @@ def define(text: str, name: str) -> int:
 
 class HeaderParityTests(unittest.TestCase):
     def test_estop_can_h_is_the_same_in_the_controller_board_and_the_brain(self):
-        self.assertEqual(read("src/mcu_stm32g474/estop_can.h"), read("src/mcu_stm32h745/CM4/estop_can.h"))
+        self.assertEqual(read("src/mcu_stm32g474/estop_can.h"), read("src/mcu_stm32h757/CM4/estop_can.h"))
 
     def test_the_generated_vector_headers_are_up_to_date(self):
         result = subprocess.run([sys.executable, str(ROOT / "tools" / "gen_node_vectors.py"), "--check"], capture_output=True, text=True)
@@ -58,7 +58,7 @@ class EstopHeaderTests(unittest.TestCase):
             self.assertIn(code, estop_can.REASONS)
         timing = CONTRACT["emergency_stop"]["timing_ms"]
         self.assertEqual(define(text, "ESTOP_ALIVE_TIMEOUT_MS"), timing["alive_timeout"])
-        brain = read("src/mcu_stm32h745/CM4/estop_brain.h")
+        brain = read("src/mcu_stm32h757/CM4/estop_brain.h")
         self.assertEqual(define(brain, "ESTOP_TRIP_REPEAT_MS"), timing["trip_repeat"])
         self.assertEqual(define(brain, "ESTOP_ALIVE_PERIOD_MS"), timing["alive_period"])
         self.assertEqual(define(brain, "ESTOP_RELEASE_REPEAT_MS"), timing["release_repeat"])
@@ -66,7 +66,7 @@ class EstopHeaderTests(unittest.TestCase):
 
     def test_the_state_answer_has_the_offset_of_the_table(self):
         offset = can_ids.by_name("ESTOP_STATE").offset
-        for path in ("src/mcu_stm32g474/boot/bootloader_common.h", "src/mcu_stm32h745/CM4/boot/bootloader_common.h", "src/mcu_stm32h745/CM7/boot/bootloader_common.h"):
+        for path in ("src/mcu_stm32g474/boot/bootloader_common.h", "src/mcu_stm32h757/CM4/boot/bootloader_common.h", "src/mcu_stm32h757/CM7/boot/bootloader_common.h"):
             self.assertEqual(define(read(path), "OFS_ESTOP_STATE"), offset, path)
 
     def test_the_application_of_the_controller_board_acts_on_the_stop(self):
@@ -90,7 +90,7 @@ class SlotScanHeaderTests(unittest.TestCase):
         self.assertEqual(define(text, "SLOT_SCAN_ROLE_APPLICATION"), slot_scan.ROLE_APPLICATION)
 
     def test_the_offsets_follow_the_table_in_every_bootloader(self):
-        for path in ("src/mcu_stm32g474/boot/bootloader_common.h", "src/mcu_stm32h745/CM4/boot/bootloader_common.h", "src/mcu_stm32h745/CM7/boot/bootloader_common.h"):
+        for path in ("src/mcu_stm32g474/boot/bootloader_common.h", "src/mcu_stm32h757/CM4/boot/bootloader_common.h", "src/mcu_stm32h757/CM7/boot/bootloader_common.h"):
             text = read(path)
             self.assertEqual(define(text, "OFS_SLOT_SCAN_PROBE"), can_ids.by_name("SLOT_SCAN_PROBE").offset, path)
             self.assertEqual(define(text, "OFS_SLOT_SCAN_REPLY"), can_ids.by_name("SLOT_SCAN_REPLY").offset, path)

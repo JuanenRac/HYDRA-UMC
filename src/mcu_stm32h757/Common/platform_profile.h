@@ -20,7 +20,7 @@
 #endif
 
 #if defined(HYDRA_PLATFORM_H745)
-/* STM32H745ZIT6 (LQFP-144) - what the firmware in this repository is built for today */
+/* STM32H745ZIT6 (LQFP-144) - the numbers the sources still set after the folder was renamed to the H757: the clock assumptions of the earlier Nucleo H745 bench (a 16 MHz FDCAN kernel clock); the clock tree of the H757 board (a 25 MHz crystal, PLL2 at 100 MHz) is applied in the phase of the clock tree, and until then this is what the compiled firmware does */
 #ifndef HYDRA_SPI_ROLE
 #define HYDRA_SPI_ROLE HYDRA_SPI_ROLE_SLAVE /* default of this platform: the host is Raspberry Pi CM5 */
 #endif

@@ -22,8 +22,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 G4 = "src/mcu_stm32g474/boot/bootloader_common.h"
-CM7 = "src/mcu_stm32h745/CM7/boot/bootloader_common.h"
-CM4 = "src/mcu_stm32h745/CM4/boot/bootloader_common.h"
+CM7 = "src/mcu_stm32h757/CM7/boot/bootloader_common.h"
+CM4 = "src/mcu_stm32h757/CM4/boot/bootloader_common.h"
 # name -> (header, macro prefix, label)
 COMPONENTS = {
     "g474-boot": (G4, "BOOTLOADER_VERSION", "Robot Controller Board bootloader"),

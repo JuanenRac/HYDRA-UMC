@@ -7,7 +7,7 @@
  *
  * STARTING POINT ONLY - proves the shape of the spidev + libgpiod interface
  * this driver will need, NOT a verified-working link (no real STM32H745
- * firmware exists yet on the other end - see ../../mcu_stm32h745/README.md).
+ * firmware exists yet on the other end - see ../../mcu_stm32h757/README.md).
  * Not compiled/verified on this development machine (Windows) - Linux-only
  * dependencies (linux/spi/spidev.h, gpiod.h). Verify on target or a
  * cross-compile sysroot before trusting this builds cleanly.

@@ -58,7 +58,7 @@
 * 💾 **内部存储架构：**
   * 💾 **2 MB** 双区内部闪存
   * 🧠 **1 MB** 内部 SRAM 总容量（512 KB AXI SRAM + 128 KB ITCM / 128 KB DTCM + SRAM1/SRAM2/SRAM3）
-* 🧵 **RTOS：** **FreeRTOS**，每个核心运行独立实例（AMP 而非 SMP —— 核心 1 与核心 2 之间不共享调度器状态）。`src/mcu_stm32h745/`：核心 2（CM4）已经运行着真实的 FDCAN1 “STACK A” 主机应用（`CM4/STM32H745ZI_CM4_main.c`）；核心 1（CM7）自身的 `main()` 目前仍在调用那个什么都不做的旧占位实现——详见 `docs/architecture.md` 第 2 节。
+* 🧵 **RTOS：** **FreeRTOS**，每个核心运行独立实例（AMP 而非 SMP —— 核心 1 与核心 2 之间不共享调度器状态）。`src/mcu_stm32h757/`：核心 2（CM4）已经运行着真实的 FDCAN1 “STACK A” 主机应用（`CM4/STM32H757XI_CM4_main.c`）；核心 1（CM7）自身的 `main()` 目前仍在调用那个什么都不做的旧占位实现——详见 `docs/architecture.md` 第 2 节。
 
 ## 6. 📡 分布式现场总线通信（单一 CAN 总线，FDCAN 外设以经典模式运行）
 
@@ -68,7 +68,7 @@
 * ⚡ **物理层收发器：** 1 路高速 CAN FD 收发器（例如 TI `TCAN1044AVD` / NXP `TJA1443`）—— 出于与上述外设相同的未来余量考量而选用具备 FD 能力的硬件，尽管当前流量仍为经典帧。
 * 🔀 **总线拓扑：**
   * 🅰️ **STACK A（`FDCAN1`）：** 服务于从属模块 A1 至 A8。
-* ⏱️ **协议规格：** 标称比特率约 1 Mbps（经典 CAN，每帧最大 8 字节载荷）。自动总线关闭恢复计划由 Cortex-M4 管理 —— 目前尚未实现；当前 CM4 的应用（`src/mcu_stm32h745/CM4/STM32H745ZI_CM4_main.c`）已经运行着真实的 FDCAN1 “STACK A” 主机任务（对全部 8 个插槽轮询 `AXIS_STATUS`，见 `KinematicBrainCan.c`），并会刷新看门狗，但总线关闭恢复本身仍是真实的未来工作项，而非已交付的能力。
+* ⏱️ **协议规格：** 标称比特率约 1 Mbps（经典 CAN，每帧最大 8 字节载荷）。自动总线关闭恢复计划由 Cortex-M4 管理 —— 目前尚未实现；当前 CM4 的应用（`src/mcu_stm32h757/CM4/STM32H757XI_CM4_main.c`）已经运行着真实的 FDCAN1 “STACK A” 主机任务（对全部 8 个插槽轮询 `AXIS_STATUS`，见 `KinematicBrainCan.c`），并会刷新看门狗，但总线关闭恢复本身仍是真实的未来工作项，而非已交付的能力。
 * 🔌 **物理连接器：** 40 针、2.54mm 间距的堆叠式排针/插座（+24V ×10 针，GND ×10 针，辅助 +5V ×4 针，FDCAN1 H/L，`BOARD_PRESENT_N`，13 针备用）—— 8 块机器人控制板在本板一侧依次物理堆叠（已确认为此拓扑，而非背板式），每块板都将全部 40 路信号直通传递给堆叠在其上方的下一块板。插槽地址由每块板自身的本地 DIP 开关决定（`BOARD_ID[2:0]`，README.md 第 12 节），而非由此连接器派生。完整引脚表与堆叠拓扑见 `docs/PINOUT_STACKA_CONNECTOR.md`。运动学大脑自身端口与每块机器人控制板的一对端口，均采用完全相同的连接器定义。
 
 ```mermaid

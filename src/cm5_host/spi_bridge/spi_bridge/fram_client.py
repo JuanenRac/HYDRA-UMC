@@ -3,7 +3,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see repo root LICENSE
 # =============================================================================
-"""The host side of the F-RAM requests of the kinematic brain (src/mcu_stm32h745/CM4/fram_node.h, docs/FRAM_ERASE.md).
+"""The host side of the F-RAM requests of the kinematic brain (src/mcu_stm32h757/CM4/fram_node.h, docs/FRAM_ERASE.md).
 
 The chip is the FM24CL64B on the main board, on the local I2C bus of the brain, so the requests go to the brain itself over the SPI link (the tier SELF) and
 never to a CAN bus. Two operations, each one request (frame type 0x28) and one answer (frame type 0x29), the operation being a byte of the payload:

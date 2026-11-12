@@ -18,8 +18,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 HEADERS = {
     "g474": ROOT / "src" / "mcu_stm32g474" / "boot" / "bootloader_common.h",
-    "cm4": ROOT / "src" / "mcu_stm32h745" / "CM4" / "boot" / "bootloader_common.h",
-    "cm7": ROOT / "src" / "mcu_stm32h745" / "CM7" / "boot" / "bootloader_common.h",
+    "cm4": ROOT / "src" / "mcu_stm32h757" / "CM4" / "boot" / "bootloader_common.h",
+    "cm7": ROOT / "src" / "mcu_stm32h757" / "CM7" / "boot" / "bootloader_common.h",
 }
 SHARED_PREFIXES = ("OFS_", "STATUS_", "VERIFY_FAIL_REASON_", "META_STATE_")
 

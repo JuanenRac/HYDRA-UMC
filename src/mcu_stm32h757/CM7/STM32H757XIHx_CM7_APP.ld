@@ -1,6 +1,6 @@
 /*
  * =============================================================================
- * STM32H745ZITx_CM7_APP.ld - Kinematic Brain, Cortex-M7 application linker script
+ * STM32H757XIHx_CM7_APP.ld - Kinematic Brain, Cortex-M7 application linker script
  * PROJECT: HYDRA-UMC (Kinematic Brain firmware, Tier 0 - STM32H745ZIT6)
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
  * LICENSE: GPL-3.0-or-later - see repo root LICENSE
@@ -29,7 +29,7 @@
  * separate from the bootloader's - see boot/bootloader_common.h's own
  * METADATA_ADDR comment for why sharing a sector with the running
  * bootloader's code was a real hazard on this chip, not just untidy):
- *   0x08000000  Sector 0: Bootloader             128 KB - see boot/STM32H745ZITx_CM7_BOOTLOADER.ld
+ *   0x08000000  Sector 0: Bootloader             128 KB - see boot/STM32H757XIHx_CM7_BOOTLOADER.ld
  *   0x08020000  Sector 1: Metadata                128 KB - see boot/bootloader_common.h
  *   0x08040000  Sectors 2-4: App main slot        384 KB - THIS script targets this slot
  *   0x080A0000  Sectors 5-7: App backup slot      384 KB

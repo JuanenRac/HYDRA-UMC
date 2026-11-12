@@ -4,7 +4,7 @@
 // GPL-3.0-or-later - see repo root LICENSE
 // =============================================================================
 // Pure logic, no HAL and no flash access, so it runs unchanged on the host (tests/test_image_header.c) and in the bootloader. The same
-// file lives in the three bootloaders (src/mcu_stm32g474/boot, src/mcu_stm32h745/CM4/boot, src/mcu_stm32h745/CM7/boot); tests/
+// file lives in the three bootloaders (src/mcu_stm32g474/boot, src/mcu_stm32h757/CM4/boot, src/mcu_stm32h757/CM7/boot); tests/
 // test_image_header.c is compiled against each of them, and tools/image_header.py is the host reference whose byte layout and
 // decisions this file reproduces (tests/image_header_vectors.h is generated from it).
 //

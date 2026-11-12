@@ -5,7 +5,7 @@
  * =============================================================================
  * A.11: locks in the DLC (0-8, Classic CAN) -> FDCAN data-length-code
  * mapping both RobotControllerRelay.c (src/mcu_stm32g474/) and
- * KinematicBrainCan.c (src/mcu_stm32h745/CM4/) build their TX headers
+ * KinematicBrainCan.c (src/mcu_stm32h757/CM4/) build their TX headers
  * from. This exact source file is compiled TWICE by build_firmware.sh's
  * own host-tests step - once per target's own include path - so it
  * proves BOTH real per-target copies of dlc_to_fdcan_data_length.h

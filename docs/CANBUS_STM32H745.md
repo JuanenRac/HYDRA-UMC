@@ -11,14 +11,14 @@ LICENSE: This document is licensed under CC BY-SA 4.0 (https://creativecommons.o
          Firmware source is GPL-3.0-or-later; hardware design files are CERN-OHL-S v2 - see the repo README.
 MCU: STM32H745ZIT6 (2MB flash: 1MB Bank 1/CM7 + 1MB Bank 2/CM4, each 128KB
      bootloader sector / 128KB metadata sector / 384KB main / 384KB backup -
-     see src/mcu_stm32h745/README.md). CM4 owns SPI1 (to the CM5) and
+     see src/mcu_stm32h757/README.md). CM4 owns SPI1 (to the CM5) and
      FDCAN1 ("STACK A", up to 8 Robot Controller Boards); CM7 owns neither -
      it's reached only through the CM7<->CM4 IPC mailbox (section 2 below).
 =============================================================================
 
 STATUS: sections 1-3 (SPI1 frame format, IPC mailbox frame format, the 3-way
 gateway routing) are REAL, implemented, compiling firmware -
-src/mcu_stm32h745/CM4/boot/, CM7/boot/, Common/ipc_mailbox.h. Section 4
+src/mcu_stm32h757/CM4/boot/, CM7/boot/, Common/ipc_mailbox.h. Section 4
 (this chip's own APPLICATION-level protocol - motion commands, axis
 telemetry for its own local X/Y1/Y2/Z/E0/E1 stage) is PROPOSED at the ID-
 allocation level only - no application firmware implements it yet.
@@ -36,7 +36,7 @@ handshake (README.md section 10) - the SAME physical link this chip's own
 telemetry protocol already uses in normal (non-OTA) operation; CAN-OTA mode
 reuses it rather than adding a second physical interface.
 
-Frame: `SpiOtaFrame_t` (src/mcu_stm32h745/CM4/boot/bootloader_
+Frame: `SpiOtaFrame_t` (src/mcu_stm32h757/CM4/boot/bootloader_
 common.h), 128 bytes, full-duplex (CM5 and CM4 exchange one frame per SPI
 transaction - CM4's outgoing frame was prepared from whatever the PREVIOUS
 transaction's response was, since SPI cannot push data the master hasn't
@@ -68,7 +68,7 @@ carried in an SPI frame instead of an FDCAN frame with ID slot_base+0x01.
 -----------------------------------------------------------------------------
 Physical: SRAM4 (D3 domain, 64KB @ 0x38000000, the only RAM region both
 cores can see) + 2 hardware semaphore (HSEM) channels for synchronization -
-src/mcu_stm32h745/Common/ipc_mailbox.h.
+src/mcu_stm32h757/Common/ipc_mailbox.h.
 
 Frame: `IpcFrame_t`, 16 bytes, single-producer/single-consumer per
 direction (CM4 only ever writes `.cmd` / reads `.resp`; CM7 only ever reads
@@ -85,9 +85,9 @@ Protocol: CM4 writes an `IpcFrame_t` into `mailbox->cmd`, then takes
 loop polls that semaphore, reads `.cmd` once taken, releases it (frees the
 slot for CM4's next post), runs the command through the SAME protocol
 handler functions every other bootloader in this project uses
-(HandleStartUpdate/HandleData/etc. - src/mcu_stm32h745/CM7/boot/
+(HandleStartUpdate/HandleData/etc. - src/mcu_stm32h757/CM7/boot/
 bootloader_protocol.c), writes the result into `mailbox->resp`, and takes
-`IPC_HSEM_RESP_ID`. CM4's own `Relay_ToCM7()` (src/mcu_stm32h745/CM4/
+`IPC_HSEM_RESP_ID`. CM4's own `Relay_ToCM7()` (src/mcu_stm32h757/CM4/
 boot/bootloader_protocol.c) blocks up to 200ms waiting for that semaphore,
 then relays whatever landed in `.resp` back to the CM5 over SPI1 (section 1)
 as the next `SpiOtaFrame_t`.
@@ -103,7 +103,7 @@ BRAIN.md section 2. Classic-CAN-frame-only (no BRS, no FD payloads beyond
 SAME command byte layouts apply regardless of which chip sent them.
 
 When CM4's own SPI1 gateway (section 1) receives a frame with
-target_tier=STACKA, `Relay_ToStackA()` (src/mcu_stm32h745/CM4/boot/
+target_tier=STACKA, `Relay_ToStackA()` (src/mcu_stm32h757/CM4/boot/
 bootloader_protocol.c) computes:
 
     slot_base_id = 0x600 + (target_slot * 0x40)
@@ -169,7 +169,7 @@ designed further here.
   turns into full wire-level detail.
 - docs/PINOUT_STM32H745_KINEMATIC_BRAIN.md - real MCU pins (SPI1, FDCAN1,
   the local stage's own TMC5160A/STEP/DIR/EN interface).
-- src/mcu_stm32h745/CM4/boot/, CM7/boot/, Common/ipc_mailbox.h - the
+- src/mcu_stm32h757/CM4/boot/, CM7/boot/, Common/ipc_mailbox.h - the
   real, compiling implementation of sections 1-3.
 =============================================================================
 ```

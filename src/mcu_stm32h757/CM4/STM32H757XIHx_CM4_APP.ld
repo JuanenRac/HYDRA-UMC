@@ -1,11 +1,11 @@
 /*
  * =============================================================================
- * STM32H745ZITx_CM4_APP.ld - Kinematic Brain, Cortex-M4 application linker script
+ * STM32H757XIHx_CM4_APP.ld - Kinematic Brain, Cortex-M4 application linker script
  * PROJECT: HYDRA-UMC (Kinematic Brain firmware, Tier 0 - STM32H745ZIT6)
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
  * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
- * See ../CM7/STM32H745ZITx_CM7_APP.ld's own header comment for the shared
+ * See ../CM7/STM32H757XIHx_CM7_APP.ld's own header comment for the shared
  * partitioning philosophy - this is the SAME split applied to Flash Bank 2
  * (the CM4 core's own 1 MB bank) instead of Bank 1.
  *
@@ -24,9 +24,9 @@
  * the way .data/.bss in their own private RAM is owned.
  *
  * Flash Bank 2 layout (1 MB = 0x100000 total, 8 sectors x 128 KB each -
- * same sector-alignment as ../CM7/STM32H745ZITx_CM7_APP.ld, and it must
+ * same sector-alignment as ../CM7/STM32H757XIHx_CM7_APP.ld, and it must
  * match MAIN_APP_ADDR / METADATA_ADDR in boot/bootloader_common.h):
- *   0x08100000  Sector 0: Bootloader             128 KB - see boot/STM32H745ZITx_CM4_BOOTLOADER.ld
+ *   0x08100000  Sector 0: Bootloader             128 KB - see boot/STM32H757XIHx_CM4_BOOTLOADER.ld
  *   0x08120000  Sector 1: Metadata               128 KB - own dedicated sector, never linked into
  *   0x08140000  Sectors 2-4: App main slot       384 KB - THIS script targets this slot
  *   0x081A0000  Sectors 5-7: App backup slot     384 KB

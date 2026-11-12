@@ -4,7 +4,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-"""Host twin of the SPI slave service of the application of the CM4 (src/mcu_stm32h745/CM4/spi_app.h, docs/SPI_SYSTEM.md).
+"""Host twin of the SPI slave service of the application of the CM4 (src/mcu_stm32h757/CM4/spi_app.h, docs/SPI_SYSTEM.md).
 
 The twin has the same state and takes the same decisions as the C header, frame by frame: the seal and the sequence of the link, which frames are
 commands of the tier SELF, the reply that waits for the next transaction, and the requests the SPI task leaves for the STACK A task. The vectors of

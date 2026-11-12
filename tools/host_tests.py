@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from local_build import local_build_refusal  # noqa: E402  (the lock on builds that compile on this PC)
 OUT = ROOT / "build" / "host_tests"
 G4 = "src/mcu_stm32g474"
-H7 = "src/mcu_stm32h745"
+H7 = "src/mcu_stm32h757"
 BOOT_DIRS = (f"{G4}/boot", f"{H7}/CM4/boot", f"{H7}/CM7/boot")
 
 STRICT = ("-std=c11", "-Wall", "-Wextra")

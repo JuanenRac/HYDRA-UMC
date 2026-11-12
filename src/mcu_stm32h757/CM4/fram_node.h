@@ -1,5 +1,5 @@
 /* =============================================================================
- * HYDRA-UMC Firmware - src/mcu_stm32h745/CM4/fram_node.h
+ * HYDRA-UMC Firmware - src/mcu_stm32h757/CM4/fram_node.h
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
  * GPL-3.0-or-later - see LICENSE
  * =============================================================================

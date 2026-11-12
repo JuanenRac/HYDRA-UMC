@@ -2,7 +2,7 @@
 
 ## TweetNaCl 20140427
 
-`src/mcu_stm32g474/boot/tweetnacl.c`, `tweetnacl.h` and their copies in `src/mcu_stm32h745/CM4/boot` and `src/mcu_stm32h745/CM7/boot`.
+`src/mcu_stm32g474/boot/tweetnacl.c`, `tweetnacl.h` and their copies in `src/mcu_stm32h757/CM4/boot` and `src/mcu_stm32h757/CM7/boot`.
 
 TweetNaCl is a compact implementation of the NaCl library by Daniel J. Bernstein, Wesley Janssen, Tanja Lange, Peter Schwabe, Matthew
 Dempsky, Sjaak Smetsers, Bernard van Gastel, Joost Rijneveld and others (https://tweetnacl.cr.yp.to/). It is in the public domain: no

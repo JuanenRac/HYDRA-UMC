@@ -3,7 +3,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see repo root LICENSE
 # =============================================================================
-"""Stop, release, telemetry and probe over the SPI link (docs/SPI_SYSTEM.md; the firmware side is src/mcu_stm32h745/CM4/spi_system.h and spi_app.h).
+"""Stop, release, telemetry and probe over the SPI link (docs/SPI_SYSTEM.md; the firmware side is src/mcu_stm32h757/CM4/spi_system.h and spi_app.h).
 
 The frames are of the tier SELF and never reach a CAN bus. The firmware answers them only when it is built with the switches on, so every call here
 reports "no answer" instead of inventing a value, and a call that acts on the stack (stop, release) says only that the frame was sent: whether the

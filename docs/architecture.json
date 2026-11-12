@@ -106,7 +106,7 @@
         "CM4 and G474 communication"
       ],
       "code": [
-        "src/mcu_stm32h745/CM4/",
+        "src/mcu_stm32h757/CM4/",
         "src/mcu_stm32g474/"
       ]
     },

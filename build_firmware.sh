@@ -138,12 +138,12 @@ else
     fi
 
     # A.11: DlcToFdcanDataLength exists as a real per-target copy in BOTH
-    # src/mcu_stm32g474/ and src/mcu_stm32h745/CM4/ (see that header's own
+    # src/mcu_stm32g474/ and src/mcu_stm32h757/CM4/ (see that header's own
     # comment on why a genuinely shared file isn't possible here) - the
     # exact same test source is compiled and run TWICE, once per target's
     # own include path, so a real behavioral drift between the two copies
     # is a real test failure, not just unnoticed.
-    for DLC_TARGET_DIR in "$ROOT/src/mcu_stm32g474" "$ROOT/src/mcu_stm32h745/CM4"; do
+    for DLC_TARGET_DIR in "$ROOT/src/mcu_stm32g474" "$ROOT/src/mcu_stm32h757/CM4"; do
         DLC_HOST_BIN="$ROOT/build/host_tests_dlc"
         if "$HOST_CC" -std=c11 -Wall -Wextra -I"$DLC_TARGET_DIR" \
             -o "$DLC_HOST_BIN" "$ROOT/tests/test_dlc_to_fdcan_data_length.c"; then
@@ -162,11 +162,11 @@ else
 
     # boot_decision.h exists as a real per-target copy in
     # all THREE real bootloaders (src/mcu_stm32g474/boot/,
-    # src/mcu_stm32h745/CM4/boot/, src/mcu_stm32h745/CM7/boot/) - the exact
+    # src/mcu_stm32h757/CM4/boot/, src/mcu_stm32h757/CM7/boot/) - the exact
     # same test source is compiled and run three times, once per target's
     # own include path, so a real behavioral drift between the three
     # copies is a real test failure, not just unnoticed.
-    for BOOT_DECISION_TARGET_DIR in "$ROOT/src/mcu_stm32g474/boot" "$ROOT/src/mcu_stm32h745/CM4/boot" "$ROOT/src/mcu_stm32h745/CM7/boot"; do
+    for BOOT_DECISION_TARGET_DIR in "$ROOT/src/mcu_stm32g474/boot" "$ROOT/src/mcu_stm32h757/CM4/boot" "$ROOT/src/mcu_stm32h757/CM7/boot"; do
         BOOT_DECISION_HOST_BIN="$ROOT/build/host_tests_boot_decision"
         if "$HOST_CC" -std=c11 -Wall -Wextra -I"$BOOT_DECISION_TARGET_DIR" \
             -o "$BOOT_DECISION_HOST_BIN" "$ROOT/tests/test_boot_decision.c"; then
@@ -212,7 +212,7 @@ else
 
     # spi_frame_crc.h: marker, sequence and CRC16 that seal the frame of the SPI link between the CM5 and the H745.
     SPI_FRAME_HOST_BIN="$ROOT/build/host_tests_spi_frame_crc"
-    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h745/CM4/boot" -o "$SPI_FRAME_HOST_BIN" "$ROOT/tests/test_spi_frame_crc.c" && "$SPI_FRAME_HOST_BIN"; then
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h757/CM4/boot" -o "$SPI_FRAME_HOST_BIN" "$ROOT/tests/test_spi_frame_crc.c" && "$SPI_FRAME_HOST_BIN"; then
         pass "spi_frame_crc host logic tests passed"
     else
         fail "spi_frame_crc host logic tests FAILED"
@@ -222,7 +222,7 @@ else
     # ipc_mailbox.h: seal of the frame between the two cores, with the switch HYDRA_IPC_REQUIRE_CRC off and on, and the two semaphore channels modelled on the host.
     for IPC_REQUIRE in 0 1; do
         IPC_HOST_BIN="$ROOT/build/host_tests_ipc_mailbox_$IPC_REQUIRE"
-        if "$HOST_CC" -std=c11 -Wall -Wextra -DHYDRA_IPC_REQUIRE_CRC=$IPC_REQUIRE -I"$ROOT/src/mcu_stm32h745/Common" -I"$ROOT/src/mcu_stm32h745/CM4/boot" -o "$IPC_HOST_BIN" "$ROOT/tests/test_ipc_mailbox.c" && "$IPC_HOST_BIN" >/dev/null; then
+        if "$HOST_CC" -std=c11 -Wall -Wextra -DHYDRA_IPC_REQUIRE_CRC=$IPC_REQUIRE -I"$ROOT/src/mcu_stm32h757/Common" -I"$ROOT/src/mcu_stm32h757/CM4/boot" -o "$IPC_HOST_BIN" "$ROOT/tests/test_ipc_mailbox.c" && "$IPC_HOST_BIN" >/dev/null; then
             pass "test_ipc_mailbox host logic tests passed (HYDRA_IPC_REQUIRE_CRC=$IPC_REQUIRE)"
         else
             fail "test_ipc_mailbox host logic tests FAILED (HYDRA_IPC_REQUIRE_CRC=$IPC_REQUIRE)"
@@ -247,7 +247,7 @@ else
 
     # spi_system.h: stop, release, telemetry and probe over the SPI link, against the real state machine of the brain.
     SPI_SYSTEM_BIN="$ROOT/build/host_tests_spi_system"
-    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h745/CM4" -o "$SPI_SYSTEM_BIN" "$ROOT/tests/test_spi_system.c" && "$SPI_SYSTEM_BIN" >/dev/null; then
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h757/CM4" -o "$SPI_SYSTEM_BIN" "$ROOT/tests/test_spi_system.c" && "$SPI_SYSTEM_BIN" >/dev/null; then
         pass "spi_system host logic tests passed"
     else
         fail "spi_system host logic tests FAILED"
@@ -257,7 +257,7 @@ else
     # spi_app.h: the SPI slave service of the application of the CM4, a CM5 played by the test, with the switches off and on.
     for SPI_APP_ON in 0 1; do
         SPI_APP_BIN="$ROOT/build/host_tests_spi_app_$SPI_APP_ON"
-        if "$HOST_CC" -std=c11 -Wall -Wextra -DSPI_APP_TEST_SWITCHES=$SPI_APP_ON -I"$ROOT/src/mcu_stm32h745/CM4" -I"$ROOT/src/mcu_stm32h745/CM4/boot" -o "$SPI_APP_BIN" "$ROOT/tests/test_spi_app.c" && "$SPI_APP_BIN" >/dev/null; then
+        if "$HOST_CC" -std=c11 -Wall -Wextra -DSPI_APP_TEST_SWITCHES=$SPI_APP_ON -I"$ROOT/src/mcu_stm32h757/CM4" -I"$ROOT/src/mcu_stm32h757/CM4/boot" -o "$SPI_APP_BIN" "$ROOT/tests/test_spi_app.c" && "$SPI_APP_BIN" >/dev/null; then
             pass "spi_app host logic tests passed (switches on: $SPI_APP_ON)"
         else
             fail "spi_app host logic tests FAILED (switches on: $SPI_APP_ON)"
@@ -267,7 +267,7 @@ else
 
     # rcc_owner.h: which core of the H745 sets the clock tree up, in every interleaving of the two cores.
     RCC_OWNER_BIN="$ROOT/build/host_tests_rcc_owner"
-    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h745/CM4" -o "$RCC_OWNER_BIN" "$ROOT/tests/test_rcc_owner.c" && "$RCC_OWNER_BIN" >/dev/null; then
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h757/CM4" -o "$RCC_OWNER_BIN" "$ROOT/tests/test_rcc_owner.c" && "$RCC_OWNER_BIN" >/dev/null; then
         pass "rcc_owner host logic tests passed"
     else
         fail "rcc_owner host logic tests FAILED"
@@ -275,7 +275,7 @@ else
     fi
 
     # flash_layer.h in the three boot directories (and adoption_guard.h, which only the controller board has).
-    for FLASH_LAYER_DIR in src/mcu_stm32g474/boot src/mcu_stm32h745/CM4/boot src/mcu_stm32h745/CM7/boot; do
+    for FLASH_LAYER_DIR in src/mcu_stm32g474/boot src/mcu_stm32h757/CM4/boot src/mcu_stm32h757/CM7/boot; do
         FLASH_LAYER_BIN="$ROOT/build/host_tests_flash_layer_$(echo "$FLASH_LAYER_DIR" | tr '/' '_')"
         FLASH_LAYER_DEFINE=""
         if [ "$FLASH_LAYER_DIR" = "src/mcu_stm32g474/boot" ]; then FLASH_LAYER_DEFINE="-DHYDRA_TEST_ADOPTION"; fi
@@ -291,7 +291,7 @@ else
     # estop_can.h / estop_brain.h: the emergency stop frame on identifier 0x001, the state machine of a node and the master side of the brain (vectors of tests/estop_vectors.json).
     ESTOP_HOST_BIN="$ROOT/build/host_tests_estop_can"
     if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32g474" -o "$ESTOP_HOST_BIN" "$ROOT/tests/test_estop_can.c" && "$ESTOP_HOST_BIN" >/dev/null && \
-       "$HOST_CC" -std=c11 -Wall -Wextra -DESTOP_TEST_BRAIN -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32h745/CM4" -o "$ESTOP_HOST_BIN" "$ROOT/tests/test_estop_can.c" && "$ESTOP_HOST_BIN" >/dev/null; then
+       "$HOST_CC" -std=c11 -Wall -Wextra -DESTOP_TEST_BRAIN -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32h757/CM4" -o "$ESTOP_HOST_BIN" "$ROOT/tests/test_estop_can.c" && "$ESTOP_HOST_BIN" >/dev/null; then
         pass "estop_can host logic tests passed (controller board node, kinematic brain)"
     else
         fail "estop_can host logic tests FAILED"
@@ -310,7 +310,7 @@ else
     # fram_node.h: the F-RAM erase and self-test requests of the kinematic brain, with a simulated chip, once with the switch off and once with it on (tests/test_fram_node.c); fram_i2c.h: the driver of the FM24CL64B on a fake I2C bus (tests/test_fram_i2c.c).
     for FRAM_SWITCH in 0 1; do
         FRAM_HOST_BIN="$ROOT/build/host_tests_fram_node_$FRAM_SWITCH"
-        if "$HOST_CC" -std=c11 -Wall -Wextra -DHYDRA_FRAM_ERASE=$FRAM_SWITCH -DFRAM_TEST_SWITCH=$FRAM_SWITCH -I"$ROOT/src/mcu_stm32h745/CM4" -o "$FRAM_HOST_BIN" "$ROOT/tests/test_fram_node.c" && "$FRAM_HOST_BIN" >/dev/null; then
+        if "$HOST_CC" -std=c11 -Wall -Wextra -DHYDRA_FRAM_ERASE=$FRAM_SWITCH -DFRAM_TEST_SWITCH=$FRAM_SWITCH -I"$ROOT/src/mcu_stm32h757/CM4" -o "$FRAM_HOST_BIN" "$ROOT/tests/test_fram_node.c" && "$FRAM_HOST_BIN" >/dev/null; then
             pass "fram_node host logic tests passed (switch $FRAM_SWITCH)"
         else
             fail "fram_node host logic tests FAILED (switch $FRAM_SWITCH)"
@@ -318,7 +318,7 @@ else
         fi
     done
     FRAM_I2C_HOST_BIN="$ROOT/build/host_tests_fram_i2c"
-    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h745/CM4" -o "$FRAM_I2C_HOST_BIN" "$ROOT/tests/test_fram_i2c.c" && "$FRAM_I2C_HOST_BIN" >/dev/null; then
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h757/CM4" -o "$FRAM_I2C_HOST_BIN" "$ROOT/tests/test_fram_i2c.c" && "$FRAM_I2C_HOST_BIN" >/dev/null; then
         pass "fram_i2c host logic tests passed"
     else
         fail "fram_i2c host logic tests FAILED"
@@ -327,7 +327,7 @@ else
 
     # slot_scan_master.h: the full verdict of the slot scan on the master side (every scenario of tests/slot_scan_vectors.json, a seeded fuzz).
     SLOT_SCAN_MASTER_HOST_BIN="$ROOT/build/host_tests_slot_scan_master"
-    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32g474/boot" -I"$ROOT/src/mcu_stm32h745/CM4" -o "$SLOT_SCAN_MASTER_HOST_BIN" "$ROOT/tests/test_slot_scan_master.c" && "$SLOT_SCAN_MASTER_HOST_BIN" >/dev/null; then
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32g474/boot" -I"$ROOT/src/mcu_stm32h757/CM4" -o "$SLOT_SCAN_MASTER_HOST_BIN" "$ROOT/tests/test_slot_scan_master.c" && "$SLOT_SCAN_MASTER_HOST_BIN" >/dev/null; then
         pass "slot_scan_master host logic tests passed"
     else
         fail "slot_scan_master host logic tests FAILED"
@@ -336,7 +336,7 @@ else
 
     # slot_scan_sweep.h: one full slot scan, the eight windows (the bus is a stand-in that replays tests/slot_scan_vectors.json).
     SLOT_SCAN_SWEEP_HOST_BIN="$ROOT/build/host_tests_slot_scan_sweep"
-    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32h745/CM4" -o "$SLOT_SCAN_SWEEP_HOST_BIN" "$ROOT/tests/test_slot_scan_sweep.c" && "$SLOT_SCAN_SWEEP_HOST_BIN" >/dev/null; then
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32h757/CM4" -o "$SLOT_SCAN_SWEEP_HOST_BIN" "$ROOT/tests/test_slot_scan_sweep.c" && "$SLOT_SCAN_SWEEP_HOST_BIN" >/dev/null; then
         pass "slot_scan_sweep host logic tests passed"
     else
         fail "slot_scan_sweep host logic tests FAILED"
@@ -382,7 +382,7 @@ else
     fi
     for H745_CORE in CM4 CM7; do
         BOOTLOADER_H745_HOST_BIN="$ROOT/build/host_tests_bootloader_h745_$H745_CORE"
-        if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -DHYDRA_TEST_$H745_CORE -I"$ROOT/tests/stubs" -I"$ROOT/src/mcu_stm32h745/$H745_CORE/boot" -o "$BOOTLOADER_H745_HOST_BIN" "$ROOT/tests/test_bootloader_h745_host.c" && "$BOOTLOADER_H745_HOST_BIN" >/dev/null; then
+        if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -DHYDRA_TEST_$H745_CORE -I"$ROOT/tests/stubs" -I"$ROOT/src/mcu_stm32h757/$H745_CORE/boot" -o "$BOOTLOADER_H745_HOST_BIN" "$ROOT/tests/test_bootloader_h745_host.c" && "$BOOTLOADER_H745_HOST_BIN" >/dev/null; then
             pass "H745 $H745_CORE bootloader sector erase, CRC32 and SHA-256 host logic tests passed"
         else
             "$BOOTLOADER_H745_HOST_BIN" || true
@@ -393,7 +393,7 @@ else
     # The same again with the common flash layer under the erase and write routines (off in a build as it ships).
     for H745_CORE in CM4 CM7; do
         BOOTLOADER_H745_HOST_BIN="$ROOT/build/host_tests_bootloader_h745_${H745_CORE}_flash_layer"
-        if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -DHYDRA_TEST_$H745_CORE -DHYDRA_FLASH_LAYER=1 -I"$ROOT/tests/stubs" -I"$ROOT/src/mcu_stm32h745/$H745_CORE/boot" -o "$BOOTLOADER_H745_HOST_BIN" "$ROOT/tests/test_bootloader_h745_host.c" && "$BOOTLOADER_H745_HOST_BIN" >/dev/null; then
+        if "$HOST_CC" -std=gnu11 -Wall -Wextra -Wno-int-to-pointer-cast -DHYDRA_TEST_$H745_CORE -DHYDRA_FLASH_LAYER=1 -I"$ROOT/tests/stubs" -I"$ROOT/src/mcu_stm32h757/$H745_CORE/boot" -o "$BOOTLOADER_H745_HOST_BIN" "$ROOT/tests/test_bootloader_h745_host.c" && "$BOOTLOADER_H745_HOST_BIN" >/dev/null; then
             pass "H745 $H745_CORE bootloader sector erase through the common flash layer (HYDRA_FLASH_LAYER=1), CRC32 and SHA-256 host logic tests passed"
         else
             "$BOOTLOADER_H745_HOST_BIN" || true
@@ -405,7 +405,7 @@ else
     # The signed image header, the anti-rollback rule and the decision at the end of an update (image_header.h, update_verify.h) exist as a real
     # per-target copy in all three bootloaders: the same test sources are compiled and run once per target's own include path. The bytes come
     # from tests/image_header_vectors.h, which tools/gen_image_header_vectors.py makes with the host reference tools/image_header.py.
-    for UPDATE_TARGET_DIR in "$ROOT/src/mcu_stm32g474/boot" "$ROOT/src/mcu_stm32h745/CM4/boot" "$ROOT/src/mcu_stm32h745/CM7/boot"; do
+    for UPDATE_TARGET_DIR in "$ROOT/src/mcu_stm32g474/boot" "$ROOT/src/mcu_stm32h757/CM4/boot" "$ROOT/src/mcu_stm32h757/CM7/boot"; do
         for UPDATE_TEST in test_image_header test_update_verify test_format2_decision; do
             UPDATE_HOST_BIN="$ROOT/build/host_tests_$UPDATE_TEST"
             if "$HOST_CC" -std=c11 -Wall -Wextra -Werror -I"$UPDATE_TARGET_DIR" -I"$ROOT/tests" -o "$UPDATE_HOST_BIN" "$ROOT/tests/$UPDATE_TEST.c" && "$UPDATE_HOST_BIN" >/dev/null; then
@@ -419,7 +419,7 @@ else
     done
 
     # The trust table of the bootloaders (bootloader_trust.c, one copy per bootloader): the bench table and the table of an official build.
-    for TRUST_TARGET_DIR in "$ROOT/src/mcu_stm32g474/boot" "$ROOT/src/mcu_stm32h745/CM4/boot" "$ROOT/src/mcu_stm32h745/CM7/boot"; do
+    for TRUST_TARGET_DIR in "$ROOT/src/mcu_stm32g474/boot" "$ROOT/src/mcu_stm32h757/CM4/boot" "$ROOT/src/mcu_stm32h757/CM7/boot"; do
         for TRUST_FLAVOUR in HYDRA_TRUST_DEV HYDRA_TEST_RELEASE; do
             TRUST_DEFINES="-D$TRUST_FLAVOUR"
             TRUST_HOST_BIN="$ROOT/build/host_tests_trust"
@@ -453,7 +453,7 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
     for H745_CORE in CM4 CM7; do
-        if "$HOST_CC" -std=gnu11 -fsyntax-only -Wall -Wno-int-to-pointer-cast -I"$ROOT/tests/stubs/h7protocol" -I"$ROOT/src/mcu_stm32h745/$H745_CORE/boot" -I"$ROOT/src/mcu_stm32h745/Common" -I"$ROOT/src/mcu_stm32h745/$H745_CORE" -I"$ROOT/src/mcu_stm32h745" -I"$ROOT/tests" "$ROOT/src/mcu_stm32h745/$H745_CORE/boot/bootloader_protocol.c"; then
+        if "$HOST_CC" -std=gnu11 -fsyntax-only -Wall -Wno-int-to-pointer-cast -I"$ROOT/tests/stubs/h7protocol" -I"$ROOT/src/mcu_stm32h757/$H745_CORE/boot" -I"$ROOT/src/mcu_stm32h757/Common" -I"$ROOT/src/mcu_stm32h757/$H745_CORE" -I"$ROOT/src/mcu_stm32h757" -I"$ROOT/tests" "$ROOT/src/mcu_stm32h757/$H745_CORE/boot/bootloader_protocol.c"; then
             pass "H745 $H745_CORE bootloader protocol source compiles against the stand-in HAL"
         else
             fail "H745 $H745_CORE bootloader protocol source does not compile against the stand-in HAL"
@@ -805,7 +805,7 @@ fi
 step "8. Kinematic Brain - common compiler flags and shared HAL objects (per core)"
 # -----------------------------------------------------------------------
 # App smoke-test core modules plus FDCAN + IWDG + SPI + HSEM - the real
-# CAN-OTA bootloaders (src/mcu_stm32h745/CM7/boot/, CM4/boot/): CM7's
+# CAN-OTA bootloaders (src/mcu_stm32h757/CM7/boot/, CM4/boot/): CM7's
 # talks FDCAN/IWDG/HSEM only (no bus of its own, see that bootloader's own
 # header comment); CM4's is the gateway and needs all four (SPI1 to the
 # CM5, FDCAN1 to STACK A, IWDG, HSEM for the CM7<->CM4 mailbox). Compiled
@@ -815,9 +815,9 @@ step "8. Kinematic Brain - common compiler flags and shared HAL objects (per cor
 HAL_MODULES_H7="stm32h7xx_hal stm32h7xx_hal_cortex stm32h7xx_hal_gpio stm32h7xx_hal_rcc stm32h7xx_hal_rcc_ex stm32h7xx_hal_pwr stm32h7xx_hal_pwr_ex stm32h7xx_hal_flash stm32h7xx_hal_flash_ex stm32h7xx_hal_exti stm32h7xx_hal_mdma stm32h7xx_hal_fdcan stm32h7xx_hal_iwdg stm32h7xx_hal_spi stm32h7xx_hal_hsem"
 
 for CORE in CM7 CM4; do
-    CFLAGS_H7="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS ${HYDRA_EXTRA_CFLAGS:-}"
+    CFLAGS_H7="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H757xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS ${HYDRA_EXTRA_CFLAGS:-}"
     if [ "$CORE" = "CM7" ]; then
-        CFLAGS_H7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS ${HYDRA_EXTRA_CFLAGS:-}"
+        CFLAGS_H7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H757xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS ${HYDRA_EXTRA_CFLAGS:-}"
     fi
     LOWER=$(echo "$CORE" | tr 'A-Z' 'a-z')
     OBJDIR="$H7/hal_obj_$LOWER"
@@ -837,22 +837,22 @@ for CORE in CM7 CM4; do
     fi
 
     CORE_DIR="$H7/$LOWER"
-    cp "$H7/vendor/cmsis_device_h7/Source/Templates/gcc/startup_stm32h745xx.s" "$CORE_DIR/"
+    cp "$H7/vendor/cmsis_device_h7/Source/Templates/gcc/startup_stm32h757xx.s" "$CORE_DIR/"
     cp "$H7/vendor/cmsis_device_h7/Source/Templates/system_stm32h7xx_dualcore_boot_cm4_cm7.c" "$CORE_DIR/system_stm32h7xx.c"
-    arm-none-eabi-gcc $CFLAGS_H7 -x assembler-with-cpp -c "$CORE_DIR/startup_stm32h745xx.s" -o "$CORE_DIR/startup.o"
+    arm-none-eabi-gcc $CFLAGS_H7 -x assembler-with-cpp -c "$CORE_DIR/startup_stm32h757xx.s" -o "$CORE_DIR/startup.o"
     arm-none-eabi-gcc $CFLAGS_H7 -x c -c "$CORE_DIR/system_stm32h7xx.c" -o "$CORE_DIR/system_stm32h7xx.o"
     pass "$CORE: startup + system files compiled"
 done
 
-CFLAGS_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS ${HYDRA_EXTRA_CFLAGS:-}"
+CFLAGS_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DSTM32H757xx -DCORE_CM7 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS ${HYDRA_EXTRA_CFLAGS:-}"
 LDCOMMON_CM7="-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
-CFLAGS_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H745xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS ${HYDRA_EXTRA_CFLAGS:-}"
+CFLAGS_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DSTM32H757xx -DCORE_CM4 -I$H7/common/CMSIS_Include -I$H7/common/HAL_Include -O2 -Wall -ffunction-sections -fdata-sections $TRUST_DEFS ${HYDRA_EXTRA_CFLAGS:-}"
 LDCOMMON_CM4="-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=nano.specs -specs=nosys.specs -Wl,--gc-sections"
 # App CFLAGS additionally need each core's own FreeRTOSConfig.h directory
 # plus FreeRTOS's own headers/port headers - each core's bootloader
 # (bare-metal) uses CFLAGS_CM7/CFLAGS_CM4 alone.
-CFLAGS_CM7_APP="$CFLAGS_CM7 -I$ROOT/src/mcu_stm32h745/CM7 -I$FREERTOS_SRC/include -I$FREERTOS_SRC/portable/GCC/ARM_CM7/r0p1"
-CFLAGS_CM4_APP="$CFLAGS_CM4 -I$ROOT/src/mcu_stm32h745/CM4 -I$FREERTOS_SRC/include -I$FREERTOS_SRC/portable/GCC/ARM_CM4F"
+CFLAGS_CM7_APP="$CFLAGS_CM7 -I$ROOT/src/mcu_stm32h757/CM7 -I$FREERTOS_SRC/include -I$FREERTOS_SRC/portable/GCC/ARM_CM7/r0p1"
+CFLAGS_CM4_APP="$CFLAGS_CM4 -I$ROOT/src/mcu_stm32h757/CM4 -I$FREERTOS_SRC/include -I$FREERTOS_SRC/portable/GCC/ARM_CM4F"
 
 if compile_freertos "$CFLAGS_CM7_APP" "$FREERTOS_SRC/portable/GCC/ARM_CM7/r0p1" "$H7/cm7_freertos_obj"; then
     pass "FreeRTOS kernel (ARM_CM7/r0p1 port) compiled for CM7"
@@ -868,10 +868,10 @@ else
 fi
 
 # -----------------------------------------------------------------------
-step "9. Kinematic Brain CM7 bootloader (bare-metal CAN-OTA, mailbox-relayed) + application (FreeRTOS) - src/mcu_stm32h745/CM7/"
+step "9. Kinematic Brain CM7 bootloader (bare-metal CAN-OTA, mailbox-relayed) + application (FreeRTOS) - src/mcu_stm32h757/CM7/"
 # -----------------------------------------------------------------------
-SRC="$ROOT/src/mcu_stm32h745/CM7"
-COMMON_INC="-I$ROOT/src/mcu_stm32h745/Common"
+SRC="$ROOT/src/mcu_stm32h757/CM7"
+COMMON_INC="-I$ROOT/src/mcu_stm32h757/Common"
 component_version "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM7 bootloader"
 if compile_dir "$SRC/boot" "$H7/cm7_boot_obj" "$CFLAGS_CM7" "$COMMON_INC"; then
     pass "CM7 bootloader_*.c compiled ($(ls "$SRC/boot"/*.c | wc -l) files)"
@@ -881,7 +881,7 @@ else
 fi
 CM7_BOOT_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_PATCH)"
 CM7_BOOT_NAME="HYDRA_KB_CM7_BOOTLOADER_${CM7_BOOT_VER}"
-if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM7 -T"$SRC/boot/STM32H745ZITx_CM7_BOOTLOADER.ld" \
+if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM7 -T"$SRC/boot/STM32H757XIHx_CM7_BOOTLOADER.ld" \
     "$H7/cm7/startup.o" "$H7/cm7/system_stm32h7xx.o" \
     "$H7/cm7_boot_obj"/*.o "$H7/hal_obj_cm7"/*.o -o "$H7/cm7_boot_obj/$CM7_BOOT_NAME.elf"; then
     fail "CM7 bootloader: link failed - see errors above"
@@ -892,10 +892,10 @@ cp "$H7/cm7_boot_obj/$CM7_BOOT_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$CM7_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm7_boot_obj/$CM7_BOOT_NAME.elf" | tail -1 | awk '{print $1}') bytes text)"
 
 component_version "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM7 application"
-arm-none-eabi-gcc $CFLAGS_CM7_APP -I"$SRC" -x c -c "$SRC/STM32H745ZI_CM7_main.c" -o "$H7/cm7_app_obj/STM32H745ZI_CM7_main.o"
+arm-none-eabi-gcc $CFLAGS_CM7_APP -I"$SRC" -x c -c "$SRC/STM32H757XI_CM7_main.c" -o "$H7/cm7_app_obj/STM32H757XI_CM7_main.o"
 CM7_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_PATCH)"
 CM7_APP_NAME="HYDRA_KB_CM7_APP_${CM7_APP_VER}"
-if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM7 -T"$SRC/STM32H745ZITx_CM7_APP.ld" \
+if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM7 -T"$SRC/STM32H757XIHx_CM7_APP.ld" \
     "$H7/cm7/startup.o" "$H7/cm7/system_stm32h7xx.o" \
     "$H7/cm7_app_obj"/*.o "$H7/hal_obj_cm7"/*.o "$H7/cm7_freertos_obj"/*.o -o "$H7/cm7_app_obj/$CM7_APP_NAME.elf"; then
     fail "CM7 application: link failed - see errors above"
@@ -906,9 +906,9 @@ cp "$H7/cm7_app_obj/$CM7_APP_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$CM7_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm7_app_obj/$CM7_APP_NAME.elf" | tail -1 | awk '{print $1}') bytes text) - FreeRTOS GPIO-toggle smoke test"
 
 # -----------------------------------------------------------------------
-step "10. Kinematic Brain CM4 bootloader (bare-metal CAN-OTA gateway: SPI1+FDCAN1+mailbox) + application (FreeRTOS) - src/mcu_stm32h745/CM4/"
+step "10. Kinematic Brain CM4 bootloader (bare-metal CAN-OTA gateway: SPI1+FDCAN1+mailbox) + application (FreeRTOS) - src/mcu_stm32h757/CM4/"
 # -----------------------------------------------------------------------
-SRC="$ROOT/src/mcu_stm32h745/CM4"
+SRC="$ROOT/src/mcu_stm32h757/CM4"
 component_version "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION "Kinematic Brain CM4 bootloader"
 if compile_dir "$SRC/boot" "$H7/cm4_boot_obj" "$CFLAGS_CM4" "$COMMON_INC -I$SRC"; then
     pass "CM4 bootloader_*.c compiled ($(ls "$SRC/boot"/*.c | wc -l) files)"
@@ -918,7 +918,7 @@ else
 fi
 CM4_BOOT_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" BOOTLOADER_VERSION_PATCH)"
 CM4_BOOT_NAME="HYDRA_KB_CM4_BOOTLOADER_${CM4_BOOT_VER}"
-if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/boot/STM32H745ZITx_CM4_BOOTLOADER.ld" \
+if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/boot/STM32H757XIHx_CM4_BOOTLOADER.ld" \
     "$H7/cm4/startup.o" "$H7/cm4/system_stm32h7xx.o" \
     "$H7/cm4_boot_obj"/*.o "$H7/hal_obj_cm4"/*.o -o "$H7/cm4_boot_obj/$CM4_BOOT_NAME.elf"; then
     fail "CM4 bootloader: link failed - see errors above"
@@ -929,7 +929,7 @@ cp "$H7/cm4_boot_obj/$CM4_BOOT_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$CM4_BOOT_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_boot_obj/$CM4_BOOT_NAME.elf" | tail -1 | awk '{print $1}') bytes text)"
 
 component_version "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION "Kinematic Brain CM4 application"
-arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/STM32H745ZI_CM4_main.c" -o "$H7/cm4_app_obj/STM32H745ZI_CM4_main.o"
+arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/STM32H757XI_CM4_main.c" -o "$H7/cm4_app_obj/STM32H757XI_CM4_main.o"
 # KinematicBrainCan.c: real FDCAN1 "STACK A" master + Tier 2/3 relay tunnel -
 # needs bootloader_common.h for the shared CAN_ID_STACKA_BASE/OFS_* constants
 # (see that file's own header on why this application reuses it rather than
@@ -955,7 +955,7 @@ else
 fi
 CM4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_PATCH)"
 CM4_APP_NAME="HYDRA_KB_CM4_APP_${CM4_APP_VER}"
-if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/STM32H745ZITx_CM4_APP.ld" \
+if ! link_filtered arm-none-eabi-gcc $LDCOMMON_CM4 -T"$SRC/STM32H757XIHx_CM4_APP.ld" \
     "$H7/cm4/startup.o" "$H7/cm4/system_stm32h7xx.o" \
     "$H7/cm4_app_obj"/*.o "$H7/hal_obj_cm4"/*.o "$H7/cm4_freertos_obj"/*.o -o "$H7/cm4_app_obj/$CM4_APP_NAME.elf"; then
     fail "CM4 application: link failed - see errors above"

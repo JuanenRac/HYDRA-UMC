@@ -15,7 +15,7 @@
  * configCPU_CLOCK_HZ is set to this chip's HSI64 reset default (both D1/CM7
  * and D2/CM4 domains run undivided from HSI at reset, per ST's own RM0399)
  * - NOT the real target of 480 MHz, because SystemClock_Config() itself
- * isn't implemented yet (see STM32H745ZI_CM7_main.c's own header comment).
+ * isn't implemented yet (see STM32H757XI_CM7_main.c's own header comment).
  * Update this the same day real PLL-based clock config lands, or every
  * FreeRTOS tick/delay will silently be wrong.
  * =============================================================================
@@ -30,7 +30,7 @@
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     (5)
 #define configMINIMAL_STACK_SIZE                 ((unsigned short)128) /* words */
-#define configTOTAL_HEAP_SIZE                    ((size_t)(64 * 1024)) /* 64 KB, out of this core's own 512 KB D1 AXI SRAM - see STM32H745ZITx_CM7_APP.ld */
+#define configTOTAL_HEAP_SIZE                    ((size_t)(64 * 1024)) /* 64 KB, out of this core's own 512 KB D1 AXI SRAM - see STM32H757XIHx_CM7_APP.ld */
 #define configMAX_TASK_NAME_LEN                  (16)
 #define configUSE_16_BIT_TICKS                   0
 #define configIDLE_SHOULD_YIELD                  1
@@ -72,7 +72,7 @@
 #define configASSERT(x) if ((x) == 0) { taskDISABLE_INTERRUPTS(); for (;;); }
 
 /* Route FreeRTOS's own Cortex-M port handlers onto the exact vector-table
- * names the CMSIS startup file (startup_stm32h745xx.s) declares - see
+ * names the CMSIS startup file (startup_stm32h757xx.s) declares - see
  * ../../mcu_stm32g474/FreeRTOSConfig.h's own header comment for the full
  * reasoning (identical here, different chip). */
 #define vPortSVCHandler    SVC_Handler

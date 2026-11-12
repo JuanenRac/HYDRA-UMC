@@ -16,13 +16,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 GLUE_HEADERS = {
     "g474": ROOT / "src/mcu_stm32g474/boot/boot_update_glue.h",
-    "cm4": ROOT / "src/mcu_stm32h745/CM4/boot/boot_update_glue.h",
-    "cm7": ROOT / "src/mcu_stm32h745/CM7/boot/boot_update_glue.h",
+    "cm4": ROOT / "src/mcu_stm32h757/CM4/boot/boot_update_glue.h",
+    "cm7": ROOT / "src/mcu_stm32h757/CM7/boot/boot_update_glue.h",
 }
 CORES = {
     "g474": ROOT / "src/mcu_stm32g474/boot/bootloader_protocol.c",
-    "cm4": ROOT / "src/mcu_stm32h745/CM4/boot/bootloader_protocol.c",
-    "cm7": ROOT / "src/mcu_stm32h745/CM7/boot/bootloader_protocol.c",
+    "cm4": ROOT / "src/mcu_stm32h757/CM4/boot/bootloader_protocol.c",
+    "cm7": ROOT / "src/mcu_stm32h757/CM7/boot/bootloader_protocol.c",
 }
 SAME_FUNCTIONS = (
     "HandleImageHeaderChunk",
@@ -119,8 +119,8 @@ class GlueParityTests(unittest.TestCase):
     def test_every_core_dispatches_the_new_frames(self):
         mains = {
             "g474": ROOT / "src/mcu_stm32g474/boot/bootloader_main.c",
-            "cm4": ROOT / "src/mcu_stm32h745/CM4/boot/bootloader_main.c",
-            "cm7": ROOT / "src/mcu_stm32h745/CM7/boot/bootloader_main.c",
+            "cm4": ROOT / "src/mcu_stm32h757/CM4/boot/bootloader_main.c",
+            "cm7": ROOT / "src/mcu_stm32h757/CM7/boot/bootloader_main.c",
         }
         for core, path in mains.items():
             text = read(path)
@@ -130,8 +130,8 @@ class GlueParityTests(unittest.TestCase):
     def test_the_frame_numbers_are_the_same_in_the_three_common_headers(self):
         commons = {
             "g474": ROOT / "src/mcu_stm32g474/boot/bootloader_common.h",
-            "cm4": ROOT / "src/mcu_stm32h745/CM4/boot/bootloader_common.h",
-            "cm7": ROOT / "src/mcu_stm32h745/CM7/boot/bootloader_common.h",
+            "cm4": ROOT / "src/mcu_stm32h757/CM4/boot/bootloader_common.h",
+            "cm7": ROOT / "src/mcu_stm32h757/CM7/boot/bootloader_common.h",
         }
         expected = {"OFS_IMAGE_HEADER": 0x19, "OFS_DOWNGRADE_NONCE_REQUEST": 0x1A, "OFS_DOWNGRADE_TOKEN": 0x1B, "OFS_DOWNGRADE_NONCE_RESPONSE": 0x1C, "VERIFY_FAIL_REASON_HEADER": 0x06}
         for core, path in commons.items():

@@ -188,8 +188,8 @@ class SignedFlashTests(unittest.TestCase):
     def test_the_link_addresses_are_the_ones_of_the_three_bootloaders(self):
         sources = {
             0x47343031: REPOSITORY / "src/mcu_stm32g474/boot/bootloader_common.h",
-            0x48374334: REPOSITORY / "src/mcu_stm32h745/CM4/boot/bootloader_common.h",
-            0x48374337: REPOSITORY / "src/mcu_stm32h745/CM7/boot/bootloader_common.h",
+            0x48374334: REPOSITORY / "src/mcu_stm32h757/CM4/boot/bootloader_common.h",
+            0x48374337: REPOSITORY / "src/mcu_stm32h757/CM7/boot/bootloader_common.h",
         }
         import re
 

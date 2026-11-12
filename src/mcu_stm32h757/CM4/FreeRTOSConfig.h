@@ -10,12 +10,12 @@
  * the application links this (bootloader stays bare-metal).
  *
  * configCPU_CLOCK_HZ is now the real target of 240 MHz - SystemClock_Config()
- * in STM32H745ZI_CM4_main.c now configures PLL1 for real (HSI64 -> PLL1
+ * in STM32H757XI_CM4_main.c now configures PLL1 for real (HSI64 -> PLL1
  * M=8/N=120/P=2 -> SYSCLK=480MHz -> HCLK=240MHz, this core's own real bus/
  * CPU clock - see that function's own header comment for the full
  * derivation). CM7 still runs at the HSI64 reset default (64MHz) - its own
  * real clock config is a separate, not-yet-done piece, see
- * STM32H745ZI_CM4_main.c's own header for why only this core touches
+ * STM32H757XI_CM4_main.c's own header for why only this core touches
  * PLL1/RCC today.
  * =============================================================================
  */
@@ -29,7 +29,7 @@
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     (5)
 #define configMINIMAL_STACK_SIZE                 ((unsigned short)128) /* words */
-#define configTOTAL_HEAP_SIZE                    ((size_t)(32 * 1024)) /* 32 KB, out of this core's own 288 KB D2 SRAM1+2+3 region - see STM32H745ZITx_CM4_APP.ld */
+#define configTOTAL_HEAP_SIZE                    ((size_t)(32 * 1024)) /* 32 KB, out of this core's own 288 KB D2 SRAM1+2+3 region - see STM32H757XIHx_CM4_APP.ld */
 #define configMAX_TASK_NAME_LEN                  (16)
 #define configUSE_16_BIT_TICKS                   0
 #define configIDLE_SHOULD_YIELD                  1
@@ -70,7 +70,7 @@
 #define configASSERT(x) if ((x) == 0) { taskDISABLE_INTERRUPTS(); for (;;); }
 
 /* Route FreeRTOS's own Cortex-M port handlers onto the exact vector-table
- * names the CMSIS startup file (startup_stm32h745xx.s) declares - see
+ * names the CMSIS startup file (startup_stm32h757xx.s) declares - see
  * ../../mcu_stm32g474/FreeRTOSConfig.h's own header comment for the full
  * reasoning (identical here, different chip). */
 #define vPortSVCHandler    SVC_Handler
