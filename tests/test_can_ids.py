@@ -13,6 +13,46 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import can_ids  # noqa: E402
 
 
+class CanIdContractTests(unittest.TestCase):
+    """The table is the contract of the SDK (CanIds): the copy in docs/ is the one this module reads."""
+
+    SDK_COPY = Path(__file__).resolve().parents[2] / "HYDRA-UMC-SDK" / "contracts" / "can_ids.json"
+
+    def test_the_numbers_come_from_the_contract_file(self):
+        import json
+
+        document = json.loads((Path(__file__).resolve().parents[1] / "docs" / "can_ids.json").read_text(encoding="utf-8"))
+        self.assertEqual(document["schema_version"], "1.0")
+        self.assertEqual(can_ids.SLOT_WINDOW, document["slot_window"])
+        self.assertEqual(can_ids.SLOT_BASE, document["slot_base"])
+        self.assertEqual(can_ids.ESTOP_CAN_ID, document["estop_id"])
+        self.assertEqual([(m.name, m.offset, m.emitter) for m in can_ids.MESSAGES], [(m["name"], m["offset"], m["emitter"]) for m in document["messages"]])
+
+    def test_the_contract_agrees_with_the_bus_contract_of_this_repository(self):
+        import json
+
+        docs = Path(__file__).resolve().parents[1] / "docs"
+        bus = json.loads((docs / "bus_contract.json").read_text(encoding="utf-8"))["buses"]["stack_a"]
+        self.assertEqual(int(bus["slot_base"], 16), can_ids.SLOT_BASE)
+        self.assertEqual(bus["slot_window"], can_ids.SLOT_WINDOW)
+        self.assertEqual(bus["slots"], json.loads((docs / "can_ids.json").read_text(encoding="utf-8"))["slots"])
+        self.assertEqual(int(json.loads((docs / "bus_contract.json").read_text(encoding="utf-8"))["emergency_stop"]["can_id"], 16), can_ids.ESTOP_CAN_ID)
+
+    def test_every_identifier_of_every_slot_fits_in_eleven_bits_and_the_stop_is_below_them(self):
+        top = can_ids.SLOT_BASE + 8 * can_ids.SLOT_WINDOW - 1
+        self.assertLessEqual(top, 0x7FF)
+        self.assertLess(can_ids.ESTOP_CAN_ID, can_ids.SLOT_BASE)
+        for message in can_ids.MESSAGES:
+            for slot in range(8):
+                self.assertLessEqual(can_ids.identifier(can_ids.SLOT_BASE + slot * can_ids.SLOT_WINDOW, message), 0x7FF)
+
+    @unittest.skipUnless(SDK_COPY.is_file(), "HYDRA-UMC-SDK is not next to this repository")
+    def test_the_copy_is_the_contract_of_the_sdk(self):
+        ours = (Path(__file__).resolve().parents[1] / "docs" / "can_ids.json").read_bytes().replace(b"\r\n", b"\n")
+        theirs = self.SDK_COPY.read_bytes().replace(b"\r\n", b"\n")
+        self.assertEqual(ours, theirs, "docs/can_ids.json differs from contracts/can_ids.json of the SDK: copy it again")
+
+
 class CanIdTableTests(unittest.TestCase):
     def test_no_identifier_has_two_messages(self):
         offsets = [m.offset for m in can_ids.MESSAGES]

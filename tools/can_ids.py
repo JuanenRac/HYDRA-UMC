@@ -19,9 +19,14 @@ the SPI bridge with this table.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
 
-SLOT_WINDOW = 0x40  # identifiers per slot (mask 0x7C0 in the hardware filter)
+CONTRACT_PATH = Path(__file__).resolve().parents[1] / "docs" / "can_ids.json"
+
+SLOT_WINDOW = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))["slot_window"]  # identifiers per slot (mask 0x7C0 in the hardware filter)
+SLOT_BASE = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))["slot_base"]
 
 KINEMATIC_BRAIN = "kinematic-brain"
 CONTROLLER_BOARD = "controller-board"
@@ -36,38 +41,18 @@ class CanMessage:
     emitter: str
 
 
-MESSAGES: tuple[CanMessage, ...] = (
-    # relay protocol
-    CanMessage("RELAY_REQUEST", 0x10, KINEMATIC_BRAIN),
-    CanMessage("RELAY_REQUEST_EXTRA", 0x13, KINEMATIC_BRAIN),
-    CanMessage("RELAY_RESPONSE", 0x16, CONTROLLER_BOARD),  # was the same identifier as the request (0x10)
-    CanMessage("RELAY_RESPONSE_EXTRA", 0x18, CONTROLLER_BOARD),  # was the same identifier as the extra request (0x13)
-    CanMessage("POLL_STATUS", 0x17, HOST),  # was sent with identifiers the bootloader transmits (0x03 / 0x05)
-    # bootloader answers (kept where they are)
-    CanMessage("BOOT_PAGE_ACK", 0x03, BOOTLOADER),
-    CanMessage("BOOT_STATUS", 0x05, BOOTLOADER),
-    # signed image header and downgrade token (image_header.py, src/*/boot/update_verify.h): the first three are sent by the host, the nonce
-    # is the bootloader's answer to the request, so no identifier has two emitters
-    CanMessage("BOOT_IMAGE_HEADER", 0x19, HOST),
-    CanMessage("BOOT_DOWNGRADE_NONCE_REQUEST", 0x1A, HOST),
-    CanMessage("BOOT_DOWNGRADE_TOKEN", 0x1B, HOST),
-    CanMessage("BOOT_DOWNGRADE_NONCE_RESPONSE", 0x1C, BOOTLOADER),
-    # emergency stop (docs/ESTOP_CAN.md): the controller board tells the kinematic brain whether it is latched or ready
-    CanMessage("ESTOP_STATE", 0x1D, CONTROLLER_BOARD),
-    # slot scan (docs/SLOT_SCAN.md): the host asks every slot window who is there; each board answers on its own window, so two boards with the same board identifier are seen
-    CanMessage("SLOT_SCAN_PROBE", 0x1E, HOST),
-    CanMessage("SLOT_SCAN_REPLY", 0x1F, BOOTLOADER),
-    # Reserved (docs/FRAM_ERASE.md): four offsets added for a first design that put the F-RAM on each controller board, why the window is 64 wide. The chip is on the main board and its requests go over the SPI link (src/mcu_stm32h745/CM4/fram_node.h), so nothing sends or answers these any more
-    CanMessage("FRAM_ERASE_REQUEST", 0x20, HOST),
-    CanMessage("FRAM_ERASE_RESPONSE", 0x21, BOOTLOADER),
-    CanMessage("FRAM_SELFTEST_REQUEST", 0x22, HOST),
-    CanMessage("FRAM_SELFTEST_RESPONSE", 0x23, BOOTLOADER),
-    # health frame (tools/health_frame.py, src/mcu_stm32g474/health_frame.h): the application of a controller board says once a second how it is doing; off until the build asks for it
-    CanMessage("HEALTH_FRAME", 0x11, CONTROLLER_BOARD),
-)
+def _load_contract() -> dict:
+    """The contract of the SDK (contracts/can_ids.json, `CanIds`), kept here as docs/can_ids.json: the identifiers of the stack bus are written once
+    and this module, the firmware tests and the telemetry collector read the same document. tests/test_can_ids.py compares this copy with the SDK when
+    the SDK is next to this repository."""
+    return json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+
+
+_CONTRACT = _load_contract()
+MESSAGES: tuple[CanMessage, ...] = tuple(CanMessage(m["name"], m["offset"], m["emitter"]) for m in _CONTRACT["messages"])
 
 # The emergency stop itself is not inside a slot window: one identifier for the whole stack, below every slot (docs/ESTOP_CAN.md).
-ESTOP_CAN_ID = 0x001
+ESTOP_CAN_ID = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))["estop_id"]
 
 
 def identifier(slot_base: int, message: CanMessage) -> int:
