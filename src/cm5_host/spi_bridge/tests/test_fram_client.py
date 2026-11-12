@@ -268,3 +268,52 @@ class HttpRoutes(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Telemetered:
+    """Answers the telemetry query the way the CM4 does: the flags byte says whether the link is fine, the stop is latched and the stop commands are on."""
+
+    def __init__(self, flags=0x01, online=True):
+        self.flags = flags
+        self.online = online
+
+    def transceive(self, frame):
+        from spi_bridge.protocol import SpiOtaFrame as Frame
+
+        if not self.online:
+            return Frame(frame.target_tier, frame.target_slot, OFS_STATUS, 0)
+        payload = bytes((0, self.flags, 1, 2, 3, 4, 5, 2))
+        return Frame(frame.target_tier, frame.target_slot, 0x23, 8, payload)
+
+
+class EstopRoute(unittest.TestCase):
+    start = HttpRoutes.start
+    def get(self, base, path):
+        with urlopen(base + path) as response:
+            return json.loads(response.read())
+
+    def test_a_latched_stop_is_published_as_the_brain_holds_it(self):
+        base = self.start(Telemetered(flags=0x01 | 0x02 | 0x04))
+        self.assertEqual(self.get(base, "/estop"), {"online": True, "latched": True, "link_ok": True, "stop_enabled": True, "source": "brain-telemetry"})
+
+    def test_a_ready_stack_is_not_latched(self):
+        base = self.start(Telemetered(flags=0x01))
+        body = self.get(base, "/estop")
+        self.assertEqual((body["online"], body["latched"], body["stop_enabled"]), (True, False, False))
+
+    def test_a_silent_brain_is_offline_and_nothing_is_made_up(self):
+        base = self.start(Telemetered(online=False))
+        self.assertEqual(self.get(base, "/estop"), {"online": False, "latched": None, "link_ok": None, "stop_enabled": None, "source": "brain-telemetry"})
+
+    def test_a_busy_link_is_a_409(self):
+        import spi_bridge.http_service as service
+
+        lock = threading.Lock()
+        lock.acquire()
+        server = service.serve(Telemetered(), hmac_key=b"\x00" * 32, port=0, bus_lock=lock)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(lambda: (server.shutdown(), server.server_close()))
+        with self.assertRaises(HTTPError) as caught:
+            urlopen(f"http://127.0.0.1:{server.server_port}/estop")
+        with caught.exception:
+            self.assertEqual(caught.exception.code, 409)

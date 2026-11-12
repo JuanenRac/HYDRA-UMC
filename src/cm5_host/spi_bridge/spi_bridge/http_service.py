@@ -10,6 +10,9 @@ HTTP" pattern SERVER already uses for Voice UI/Datalake
 
 Real routes:
   GET  /version?tier=&slot=&relay=   -> query_version()
+  GET  /estop                        -> read_telemetry(): the emergency stop as the brain holds it (the frame on identifier 0x001 latches it): `latched`,
+                                        `link_ok`, `stop_enabled`; `online` is false (and the rest null) when the brain did not answer. The SERVER reads
+                                        this to show one stop state in the apps; nothing is invented when the brain is silent.
   GET  /counters?tier=&slot=&relay=  -> query_error_counters(): the transmit and receive error counters of the CAN controller of a board
   POST /fram/erase?slot=&confirm=ERASE    -> erase_fram(): zeros over the whole F-RAM of the controller board of that slot (docs/FRAM_ERASE.md)
   POST /fram/selftest?slot=               -> fram_selftest(): patterns over a scratch area of the F-RAM, the old bytes put back
@@ -52,6 +55,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from .fram_client import erase_fram, fram_selftest
+from .system_client import read_telemetry
 from .bootloader_client import SpiOtaFlasher, check_manifest_requirements, query_error_counters, query_version
 from .image_header import DowngradeSigner, ImageSigner, SIGNATURE_SIZE, is_signed_header_target
 from .relay_tunnel import RelayedTransport
@@ -95,6 +99,9 @@ def make_handler(
     class SpiBridgeHandler(BaseHTTPRequestHandler):
         def do_GET(self):  # noqa: N802 - BaseHTTPRequestHandler requires this name
             parsed = urlparse(self.path)
+            if parsed.path == "/estop":
+                self._estop()
+                return
             if parsed.path not in ("/version", "/counters"):
                 self._send_json(404, {"error": "not found"})
                 return
@@ -136,6 +143,19 @@ def make_handler(
                     "capabilities": {"fram_erase": fram_erase},
                 },
             )
+
+        def _estop(self) -> None:
+            if not lock.acquire(blocking=False):
+                self._send_json(409, {"error": "the SPI link is busy with another operation"})
+                return
+            try:
+                telemetry = read_telemetry(transport)
+            finally:
+                lock.release()
+            if telemetry is None:
+                self._send_json(200, {"online": False, "latched": None, "link_ok": None, "stop_enabled": None, "source": "brain-telemetry"})
+                return
+            self._send_json(200, {"online": True, "latched": telemetry.estop_latched, "link_ok": telemetry.link_ok, "stop_enabled": telemetry.stop_enabled, "source": "brain-telemetry"})
 
         def do_POST(self):  # noqa: N802 - BaseHTTPRequestHandler requires this name
             parsed = urlparse(self.path)
