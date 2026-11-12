@@ -16,6 +16,7 @@
 #include "stm32h7xx_hal.h"
 #include "KinematicBrainCan.h"
 #include "estop_can.h"
+#include "fram_i2c.h"
 
 #define SPI_APP_DATA_READY_PORT GPIOA
 #define SPI_APP_DATA_READY_PIN  GPIO_PIN_3
@@ -65,6 +66,75 @@ static uint8_t SpiApp_HalInit(void)
     return (uint8_t)(HAL_SPI_Init(&hspi1_app) == HAL_OK);
 }
 
+/* The F-RAM of the main board (docs/FRAM_ERASE.md): the FM24CL64B U7 on I2C4, SCL on PD12 and SDA on PD13 (alternate function 4), address 0x50, 4.7 kOhm pull-ups
+ * on the board (no internal pull). The requests arrive as SPI_APP_FRAM_REQUEST and are run by the STACK A task in SpiApp_Pump; the logic is fram_node.h
+ * (switch HYDRA_FRAM_ERASE, off) and the driver fram_i2c.h. Between two chunks the bus layer sends the frames of the emergency stop that are due, so an
+ * erase (a few seconds at 100 kHz) never starves the ALIVE frames. HYDRA_FRAM_I2C_TIMING is the TIMINGR value for the kernel clock of I2C4 and the speed
+ * the build chooses; it has no default on purpose (a made-up value could run the bus out of spec): while it is 0 the driver is not created and the
+ * answer is NO_CHIP. Not run on a board: bench rows 30 and 31 of docs/BENCH_TESTS.md. */
+#ifndef HYDRA_FRAM_I2C_TIMING
+#define HYDRA_FRAM_I2C_TIMING 0
+#endif
+
+static FramNode_t g_fram_node;
+#if HYDRA_FRAM_ERASE && HYDRA_FRAM_I2C_TIMING
+static I2C_HandleTypeDef hi2c4_fram;
+static FramI2cBus_t g_fram_bus;
+static FramI2c_t g_fram_i2c;
+static FramDriver_t g_fram_driver;
+
+static int SpiApp_FramTransfer(void *context, uint8_t address7, const uint8_t *tx, uint32_t tx_length, uint8_t *rx, uint32_t rx_length, uint32_t timeout_ms)
+{
+    (void)context;
+    if (tx_length < 2u) return 1;
+    const uint16_t memory_address = (uint16_t)(((uint16_t)tx[0] << 8) | tx[1]);
+    const uint16_t device = (uint16_t)(address7 << 1);
+    if (rx_length > 0u) {
+        return HAL_I2C_Mem_Read(&hi2c4_fram, device, memory_address, I2C_MEMADD_SIZE_16BIT, rx, (uint16_t)rx_length, timeout_ms) == HAL_OK ? 0 : 1;
+    }
+    return HAL_I2C_Mem_Write(&hi2c4_fram, device, memory_address, I2C_MEMADD_SIZE_16BIT, (uint8_t *)(uintptr_t)&tx[2], (uint16_t)(tx_length - 2u), timeout_ms) == HAL_OK ? 0 : 1;
+}
+
+static void SpiApp_FramYield(void *context)
+{
+    (void)context;
+    KinematicBrainCan_EstopPoll();
+}
+
+static const FramDriver_t *SpiApp_FramInit(void)
+{
+    __HAL_RCC_GPIOD_CLK_ENABLE();
+    __HAL_RCC_I2C4_CLK_ENABLE();
+    GPIO_InitTypeDef pins = {0};
+    pins.Pin = GPIO_PIN_12 | GPIO_PIN_13;
+    pins.Mode = GPIO_MODE_AF_OD;
+    pins.Pull = GPIO_NOPULL;
+    pins.Speed = GPIO_SPEED_FREQ_LOW;
+    pins.Alternate = GPIO_AF4_I2C4;
+    HAL_GPIO_Init(GPIOD, &pins);
+    hi2c4_fram.Instance = I2C4;
+    hi2c4_fram.Init.Timing = (uint32_t)HYDRA_FRAM_I2C_TIMING;
+    hi2c4_fram.Init.OwnAddress1 = 0u;
+    hi2c4_fram.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+    hi2c4_fram.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+    hi2c4_fram.Init.OwnAddress2 = 0u;
+    hi2c4_fram.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+    hi2c4_fram.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+    if (HAL_I2C_Init(&hi2c4_fram) != HAL_OK) return NULL;
+    g_fram_bus.transfer = SpiApp_FramTransfer;
+    g_fram_bus.yield = SpiApp_FramYield;
+    g_fram_bus.context = NULL;
+    FramI2c_Init(&g_fram_i2c, &g_fram_bus);
+    FramI2c_MakeDriver(&g_fram_driver, &g_fram_i2c);
+    return &g_fram_driver;
+}
+#else
+static const FramDriver_t *SpiApp_FramInit(void)
+{
+    return NULL; /* the switch is off, or no timing is fixed: the node answers DISABLED or NO_CHIP and the bus is never touched */
+}
+#endif /* HYDRA_FRAM_ERASE && HYDRA_FRAM_I2C_TIMING */
+
 static void SpiApp_Task(void *parameters)
 {
     (void)parameters;
@@ -83,6 +153,7 @@ void SpiApp_Start(void)
 {
     const SpiSysConfig_t config = SpiSys_ConfigFromBuild();
     SpiApp_Init(&g_spi_app, &config, (uint8_t)HYDRA_SPI_REQUIRE_CRC);
+    FramNode_Init(&g_fram_node, SpiApp_FramInit());
     if (!SpiApp_HalInit()) {
         g_spi_app.link_ok = 0u;
         return;
@@ -129,6 +200,8 @@ void SpiApp_Pump(void)
     if (SpiApp_TakeTrip(&g_spi_app, &reason)) KinematicBrainCan_EstopTrip(reason);
     if (SpiApp_TakeRelease(&g_spi_app)) (void)KinematicBrainCan_EstopRequestRelease((uint8_t)HYDRA_SPI_RELEASE_EXPECTED_MASK);
     if (SpiApp_TakeScan(&g_spi_app, &scan_id)) SpiApp_RunScan(scan_id);
+    uint8_t fram_request[8], fram_reply[8];
+    if (SpiApp_TakeFram(&g_spi_app, fram_request) && FramNode_Handle(&g_fram_node, FRAM_BRAIN_ID, 0u, fram_request, 8u, fram_reply)) SpiApp_FramDone(&g_spi_app, fram_reply);
 #if HYDRA_SPI_ZONES_HEARTBEAT
     if (SpiApp_ZonesTick(&g_spi_app, HAL_GetTick(), (uint32_t)HYDRA_SPI_ZONES_MAX_AGE_MS)) KinematicBrainCan_EstopTrip((uint8_t)SPI_APP_ZONES_REASON);
 #endif

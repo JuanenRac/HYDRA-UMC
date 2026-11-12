@@ -3,32 +3,30 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see repo root LICENSE
 # =============================================================================
-"""The host side of the F-RAM requests of a controller board (src/mcu_stm32g474/boot/fram_node.h, docs/FRAM_ERASE.md).
+"""The host side of the F-RAM requests of the kinematic brain (src/mcu_stm32h745/CM4/fram_node.h, docs/FRAM_ERASE.md).
 
-Two operations, each one request and one answer on the window of the slot:
+The chip is the FM24CL64B on the main board, on the local I2C bus of the brain, so the requests go to the brain itself over the SPI link (the tier SELF) and
+never to a CAN bus. Two operations, each one request (frame type 0x28) and one answer (frame type 0x29), the operation being a byte of the payload:
 
-    erase     0x20 -> 0x21   writes zeros over the whole F-RAM and reads them back
-    selftest  0x22 -> 0x23   writes two patterns over a scratch area, reads them back and puts the old bytes back
+    erase     writes zeros over the whole F-RAM and reads them back
+    selftest  writes two patterns over a scratch area, reads them back and puts the old bytes back
 
-The frame layouts below are the ones of fram_node.h; tests/test_fram_client.py compares every constant with that file. The chip itself is not fixed
-and the board has no driver for it: a board answers DISABLED (the switch of the firmware is off, the default) or NO_CHIP until that is done, and this
-client reports exactly that. Evidence of anything built on this file: simulator."""
+The frame layouts below are the ones of fram_node.h; tests/test_fram_client.py compares every constant with that file and with spi_app.h. The brain
+answers DISABLED (the switch of the firmware, off by default), NO_CHIP (no bus timing fixed in the build) or the result, and this client reports exactly
+that. Evidence of anything built on this file: simulator."""
 
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass
 
-from .protocol import (
-    OFS_FRAM_ERASE_REQUEST,
-    OFS_FRAM_ERASE_RESPONSE,
-    OFS_FRAM_SELFTEST_REQUEST,
-    OFS_FRAM_SELFTEST_RESPONSE,
-    SPI_TARGET_STACKA,
-    SpiOtaFrame,
-    poll_frame,
-)
+from .protocol import SPI_TARGET_SELF, SpiOtaFrame
 from .transport import SpiOtaTransport
+
+FRAM_REQUEST = 0x28   # SPI_APP_FRAM_REQUEST of spi_app.h
+FRAM_RESPONSE = 0x29  # SPI_APP_FRAM_RESPONSE
+IDLE_FRAME = 0xFF     # the frame that asks for nothing: the firmware ignores it and the transaction brings the staged answer
+BRAIN_ID = 0          # FRAM_BRAIN_ID: the one chip of the stack is the brain's
 
 REQUEST_MAGIC = 0xFA
 RESPONSE_MAGIC = 0xFB
@@ -56,10 +54,6 @@ STATUS_NAMES = {
 }
 
 _WORDS = {OP_ERASE: b"ERAS", OP_SELFTEST: b"TEST"}
-_FRAMES = {
-    OP_ERASE: (OFS_FRAM_ERASE_REQUEST, OFS_FRAM_ERASE_RESPONSE),
-    OP_SELFTEST: (OFS_FRAM_SELFTEST_REQUEST, OFS_FRAM_SELFTEST_RESPONSE),
-}
 OPERATION_NAMES = {OP_ERASE: "erase", OP_SELFTEST: "selftest"}
 
 
@@ -70,12 +64,12 @@ def check_byte(first_seven: bytes) -> int:
     return value ^ 0xFF
 
 
-def build_request(operation: int, slot: int) -> bytes:
+def build_request(operation: int, board: int = BRAIN_ID) -> bytes:
     if operation not in _WORDS:
         raise ValueError("operation must be OP_ERASE or OP_SELFTEST")
-    if not 0 <= slot <= 7:
-        raise ValueError("slot must be 0 to 7")
-    body = bytes((REQUEST_MAGIC, operation, slot)) + _WORDS[operation]
+    if not 0 <= board <= 255:
+        raise ValueError("board must be a byte")
+    body = bytes((REQUEST_MAGIC, operation, board)) + _WORDS[operation]
     return body + bytes((check_byte(body),))
 
 
@@ -111,36 +105,33 @@ def parse_response(operation: int, payload: bytes) -> FramResult | None:
 
 def run_operation(
     transport: SpiOtaTransport,
-    slot: int,
     operation: int,
     *,
-    timeout_seconds: float = 5.0,
+    timeout_seconds: float = 8.0,
     poll_interval_seconds: float = 0.05,
-    target_tier: int = SPI_TARGET_STACKA,
 ) -> FramResult | None:
-    """Sends the request to the board of `slot` and waits for the answer (the gateway hands it over when it polls for its frame type).
-    None when no answer comes within the timeout: the board is absent, or not in its bootloader (the application does not answer these requests)."""
-    request_type, response_type = _FRAMES[operation]
-    request = SpiOtaFrame(target_tier, slot, request_type, 8, build_request(operation, slot))
+    """Sends the request to the brain and polls with idle frames for the answer (an erase takes the brain a few seconds: it writes and reads back the whole chip).
+    None when no answer comes within the timeout: the brain is absent, in its bootloader, or built without the SPI service (nothing answers these requests)."""
+    request = SpiOtaFrame(SPI_TARGET_SELF, 0, FRAM_REQUEST, 8, build_request(operation))
     deadline = time.monotonic() + timeout_seconds
     try:
         answer = transport.transceive(request)
         while True:
-            if answer.frame_type == response_type:
+            if answer.frame_type == FRAM_RESPONSE:
                 result = parse_response(operation, answer.payload)
                 if result is not None:
                     return result
             if time.monotonic() >= deadline:
                 return None
             time.sleep(poll_interval_seconds)
-            answer = transport.transceive(poll_frame(target_tier, slot, response_type))
+            answer = transport.transceive(SpiOtaFrame(SPI_TARGET_SELF, 0, IDLE_FRAME, 0))
     except (OSError, ValueError):
         return None
 
 
-def erase_fram(transport: SpiOtaTransport, slot: int, **kwargs) -> FramResult | None:
-    return run_operation(transport, slot, OP_ERASE, **kwargs)
+def erase_fram(transport: SpiOtaTransport, **kwargs) -> FramResult | None:
+    return run_operation(transport, OP_ERASE, **kwargs)
 
 
-def fram_selftest(transport: SpiOtaTransport, slot: int, **kwargs) -> FramResult | None:
-    return run_operation(transport, slot, OP_SELFTEST, **kwargs)
+def fram_selftest(transport: SpiOtaTransport, **kwargs) -> FramResult | None:
+    return run_operation(transport, OP_SELFTEST, **kwargs)

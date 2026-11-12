@@ -20,13 +20,9 @@ from sim_fram_board import SimulatedFramBoard
 from spi_bridge import fram_client as fc
 from spi_bridge.http_service import serve
 from spi_bridge.protocol import (
-    OFS_FRAM_ERASE_REQUEST,
-    OFS_FRAM_ERASE_RESPONSE,
-    OFS_FRAM_SELFTEST_REQUEST,
-    OFS_FRAM_SELFTEST_RESPONSE,
     OFS_STATUS,
     OFS_VERSION_RESPONSE,
-    SPI_TARGET_STACKA,
+    SPI_TARGET_SELF,
     SpiOtaFrame,
 )
 
@@ -34,7 +30,7 @@ ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "tools"))
 import can_ids  # noqa: E402
 
-FRAM_NODE = (ROOT / "src" / "mcu_stm32g474" / "boot" / "fram_node.h").read_text(encoding="utf-8")
+FRAM_NODE = (ROOT / "src" / "mcu_stm32h745" / "CM4" / "fram_node.h").read_text(encoding="utf-8")
 
 
 def first_hex(pattern: str, text: str) -> int:
@@ -45,6 +41,10 @@ def first_hex(pattern: str, text: str) -> int:
 
 def define(name: str) -> int:
     return first_hex(rf"#define {name}\s+(0x[0-9A-Fa-f]+)u?", FRAM_NODE)
+
+
+SPI_APP = (ROOT / "src" / "mcu_stm32h745" / "CM4" / "spi_app.h").read_text(encoding="utf-8")
+FRAM_I2C = (ROOT / "src" / "mcu_stm32h745" / "CM4" / "fram_i2c.h").read_text(encoding="utf-8")
 
 
 def read(relative: str) -> str:
@@ -61,19 +61,26 @@ class ConstantsMatchTheFirmware(unittest.TestCase):
             self.assertEqual(getattr(fc, f"STATUS_{status}"), define(f"FRAM_STATUS_{status}"), status)
         self.assertEqual(len(fc.STATUS_NAMES), 8)
 
-    def test_the_offsets_are_the_ones_of_the_identifier_table_and_of_the_bootloaders(self):
-        table = {
-            "FRAM_ERASE_REQUEST": (OFS_FRAM_ERASE_REQUEST, can_ids.HOST),
-            "FRAM_ERASE_RESPONSE": (OFS_FRAM_ERASE_RESPONSE, can_ids.BOOTLOADER),
-            "FRAM_SELFTEST_REQUEST": (OFS_FRAM_SELFTEST_REQUEST, can_ids.HOST),
-            "FRAM_SELFTEST_RESPONSE": (OFS_FRAM_SELFTEST_RESPONSE, can_ids.BOOTLOADER),
-        }
-        for name, (offset, emitter) in table.items():
-            message = can_ids.by_name(name)
-            self.assertEqual((message.offset, message.emitter), (offset, emitter), name)
-            for relative in ("src/mcu_stm32g474/boot/bootloader_common.h", "src/mcu_stm32h745/CM4/boot/bootloader_common.h", "src/mcu_stm32h745/CM7/boot/bootloader_common.h"):
-                value = first_hex(rf"#define OFS_{name}\s+(0x[0-9A-Fa-f]+)", read(relative))
-                self.assertEqual(value, offset, f"{relative}: {name}")
+    def test_the_frame_types_are_the_ones_of_spi_app_h(self):
+        self.assertEqual(fc.FRAM_REQUEST, first_hex(r"#define SPI_APP_FRAM_REQUEST\s+(0x[0-9A-Fa-f]+)u", SPI_APP))
+        self.assertEqual(fc.FRAM_RESPONSE, first_hex(r"#define SPI_APP_FRAM_RESPONSE\s+(0x[0-9A-Fa-f]+)u", SPI_APP))
+        self.assertEqual(fc.IDLE_FRAME, first_hex(r"#define SPI_APP_IDLE_TYPE\s+(0x[0-9A-Fa-f]+)u", SPI_APP))
+        self.assertEqual(fc.BRAIN_ID, int(re.search(r"#define FRAM_BRAIN_ID\s+(\d+)u", FRAM_NODE).group(1)))
+
+    def test_the_chip_is_the_fm24cl64b_on_i2c4_at_0x50(self):
+        self.assertEqual(first_hex(r"#define FRAM_I2C_ADDRESS\s+(0x[0-9A-Fa-f]+)u", FRAM_I2C), 0x50)
+        self.assertRegex(FRAM_I2C, r"#define FRAM_I2C_SIZE\s+8192u")
+        glue = read("src/mcu_stm32h745/CM4/SpiApp.c")
+        self.assertIn("GPIO_PIN_12 | GPIO_PIN_13", glue)
+        self.assertIn("GPIO_AF4_I2C4", glue)
+        self.assertIn("I2C_MEMADD_SIZE_16BIT", glue)
+
+    def test_the_bootloader_of_the_controller_board_no_longer_answers_and_the_can_offsets_stay_reserved(self):
+        boot = read("src/mcu_stm32g474/boot/bootloader_main.c")
+        self.assertNotIn("FRAM_", boot)
+        self.assertNotIn("FramNode", boot)
+        self.assertNotIn("CAN_SendFramResponse", read("src/mcu_stm32g474/boot/bootloader_protocol.c"))
+        self.assertIn("FRAM_ERASE_REQUEST", read("tools/can_ids.py"))
 
     def test_the_window_is_64_wide_in_every_firmware_and_the_filters_follow_it(self):
         self.assertEqual(can_ids.SLOT_WINDOW, 0x40)
@@ -90,29 +97,22 @@ class ConstantsMatchTheFirmware(unittest.TestCase):
         for message in can_ids.MESSAGES:
             self.assertLessEqual(can_ids.identifier(last, message), 0x7FF, message.name)
 
-    def test_the_bootloader_answers_both_requests_in_both_receive_loops_and_the_brain_never_sends_the_answers(self):
-        boot = read("src/mcu_stm32g474/boot/bootloader_main.c")
-        self.assertEqual(boot.count("OFS_FRAM_ERASE_REQUEST"), 2)
-        self.assertEqual(boot.count("OFS_FRAM_SELFTEST_REQUEST"), 2)
-        brain = read("src/mcu_stm32h745/CM4/boot/bootloader_protocol.c")
-        self.assertIn("OFS_FRAM_ERASE_RESPONSE", brain)
-        self.assertIn("OFS_FRAM_SELFTEST_RESPONSE", brain)
-
     def test_the_switch_of_the_firmware_defaults_to_off(self):
         self.assertRegex(FRAM_NODE, r"#ifndef HYDRA_FRAM_ERASE\s+#define HYDRA_FRAM_ERASE 0")
+        self.assertRegex(read("src/mcu_stm32h745/CM4/SpiApp.c"), r"#ifndef HYDRA_FRAM_I2C_TIMING\s+#define HYDRA_FRAM_I2C_TIMING 0")
 
 
 class Frames(unittest.TestCase):
     def test_the_request_layout(self):
-        body = bytes((0xFA, 1, 5)) + b"ERAS"
-        self.assertEqual(fc.build_request(fc.OP_ERASE, 5), body + bytes((fc.check_byte(body),)))
-        self.assertEqual(fc.build_request(fc.OP_SELFTEST, 2)[3:7], b"TEST")
+        body = bytes((0xFA, 1, 0)) + b"ERAS"
+        self.assertEqual(fc.build_request(fc.OP_ERASE), body + bytes((fc.check_byte(body),)))
+        self.assertEqual(fc.build_request(fc.OP_SELFTEST)[3:7], b"TEST")
 
     def test_bad_arguments(self):
         with self.assertRaises(ValueError):
             fc.build_request(9, 0)
         with self.assertRaises(ValueError):
-            fc.build_request(fc.OP_ERASE, 8)
+            fc.build_request(fc.OP_ERASE, 256)
 
     def test_a_response_of_another_operation_or_with_a_bad_magic_is_not_taken(self):
         good = bytes((0xFB, fc.OP_ERASE, 0, 3)) + (300).to_bytes(4, "big")
@@ -132,32 +132,32 @@ class Frames(unittest.TestCase):
 
 class AgainstASimulatedBoard(unittest.TestCase):
     def test_erase_ok_zeros_the_chip(self):
-        board = SimulatedFramBoard(3, chip_size=256)
-        result = fc.erase_fram(board, 3)
+        board = SimulatedFramBoard(chip_size=256)
+        result = fc.erase_fram(board)
         assert result is not None
         self.assertTrue(result.ok)
-        self.assertEqual((result.operation, result.value, result.board_id), ("erase", 256, 3))
+        self.assertEqual((result.operation, result.value, result.board_id), ("erase", 256, 0))
         self.assertEqual(bytes(board.cells), bytes(256))
-        self.assertEqual(board.requests[0].target_tier, SPI_TARGET_STACKA)
+        self.assertEqual((board.requests[0].target_tier, board.requests[0].frame_type), (SPI_TARGET_SELF, fc.FRAM_REQUEST))
 
     def test_selftest_ok_keeps_the_chip(self):
-        board = SimulatedFramBoard(3)
+        board = SimulatedFramBoard()
         before = bytes(board.cells)
-        selftest = fc.fram_selftest(board, 3)
+        selftest = fc.fram_selftest(board)
         assert selftest is not None
         self.assertTrue(selftest.ok)
         self.assertEqual(bytes(board.cells), before)
 
     def test_every_refusal_of_the_board_comes_back_by_name_and_touches_nothing(self):
         cases = [
-            (SimulatedFramBoard(3, enabled=False), "disabled"),
-            (SimulatedFramBoard(4), "wrong-slot"),
-            (SimulatedFramBoard(3, update_running=True), "busy"),
-            (SimulatedFramBoard(3, chip_size=0), "no-chip"),
+            (SimulatedFramBoard(enabled=False), "disabled"),
+            (SimulatedFramBoard(4), "wrong-slot"),  # a board byte that is not the brain
+            (SimulatedFramBoard(update_running=True), "busy"),
+            (SimulatedFramBoard(chip_size=0), "no-chip"),
         ]
         for board, name in cases:
             before = None if board.cells is None else bytes(board.cells)
-            result = fc.erase_fram(board, 3)
+            result = fc.erase_fram(board)
             assert result is not None
             self.assertEqual(result.status_name, name)
             self.assertFalse(result.ok)
@@ -165,32 +165,33 @@ class AgainstASimulatedBoard(unittest.TestCase):
                 self.assertEqual(bytes(board.cells), before, name)
 
     def test_a_cell_that_does_not_take_the_zero_is_a_verify_failure_with_its_address(self):
-        result = fc.erase_fram(SimulatedFramBoard(3, stuck_at=250), 3)
+        result = fc.erase_fram(SimulatedFramBoard(stuck_at=250))
         assert result is not None
         self.assertEqual((result.status_name, result.value), ("verify-fail", 250))
 
     def test_a_slow_erase_is_waited_for_by_polling(self):
-        slow = fc.erase_fram(SimulatedFramBoard(3, answer_after_polls=3), 3, poll_interval_seconds=0.001)
+        slow = fc.erase_fram(SimulatedFramBoard(answer_after_polls=3), poll_interval_seconds=0.001)
         assert slow is not None
         self.assertTrue(slow.ok)
 
     def test_no_answer_within_the_timeout_is_none_not_a_made_up_result(self):
-        board = SimulatedFramBoard(3, answer_after_polls=10_000)
-        self.assertIsNone(fc.erase_fram(board, 3, timeout_seconds=0.05, poll_interval_seconds=0.001))
+        board = SimulatedFramBoard(answer_after_polls=10_000)
+        self.assertIsNone(fc.erase_fram(board, timeout_seconds=0.05, poll_interval_seconds=0.001))
 
     def test_a_transport_failure_is_none(self):
         class Dead:
             def transceive(self, frame):
                 raise OSError("link down")
 
-        self.assertIsNone(fc.erase_fram(Dead(), 3))
+        self.assertIsNone(fc.erase_fram(Dead()))
 
     def test_the_simulated_board_ignores_noise(self):
-        board = SimulatedFramBoard(3)
-        bad = bytearray(fc.build_request(fc.OP_ERASE, 3))
+        board = SimulatedFramBoard()
+        bad = bytearray(fc.build_request(fc.OP_ERASE))
         bad[7] ^= 1
-        answer = board.transceive(SpiOtaFrame(2, 3, OFS_FRAM_ERASE_REQUEST, 8, bytes(bad)))
-        self.assertNotEqual(answer.frame_type, OFS_FRAM_ERASE_RESPONSE)
+        answer = board.transceive(SpiOtaFrame(SPI_TARGET_SELF, 0, fc.FRAM_REQUEST, 8, bytes(bad)))
+        self.assertNotEqual(answer.frame_type, fc.FRAM_RESPONSE)
+        self.assertIsNone(board._pending)
 
 
 class Online:
@@ -224,9 +225,9 @@ class HttpRoutes(unittest.TestCase):
                 return error.code, json.loads(error.read())
 
     def test_off_by_default_every_route_answers_403_and_the_board_is_not_touched(self):
-        board = SimulatedFramBoard(3)
+        board = SimulatedFramBoard()
         base = self.start(board)
-        for path in ("/fram/erase?slot=3&confirm=ERASE", "/fram/selftest?slot=3"):
+        for path in ("/fram/erase?confirm=ERASE", "/fram/selftest"):
             status, body = self.post(base, path)
             self.assertEqual(status, 403, path)
             self.assertIn("switched off", body["error"])
@@ -238,23 +239,23 @@ class HttpRoutes(unittest.TestCase):
             with urlopen(base + "/version?tier=2&slot=3") as response:
                 self.assertEqual(json.loads(response.read())["capabilities"], {"fram_erase": flag})
 
-    def test_with_the_switch_on_an_erase_needs_the_confirmation_and_a_valid_slot(self):
-        board = SimulatedFramBoard(3)
+    def test_with_the_switch_on_an_erase_needs_the_confirmation(self):
+        board = SimulatedFramBoard()
         base = self.start(board, fram_erase=True)
-        for path in ("/fram/erase?slot=3", "/fram/erase?slot=3&confirm=erase", "/fram/erase?slot=9&confirm=ERASE", "/fram/erase?confirm=ERASE", "/fram/erase?slot=x&confirm=ERASE"):
+        for path in ("/fram/erase", "/fram/erase?confirm=erase", "/fram/erase?confirm=", "/fram/erase?slot=0"):
             self.assertEqual(self.post(base, path)[0], 400, path)
         self.assertEqual(board.requests, [])
 
     def test_with_the_switch_on_both_operations_run(self):
-        base = self.start(SimulatedFramBoard(3), fram_erase=True)
-        status, body = self.post(base, "/fram/erase?slot=3&confirm=ERASE")
+        base = self.start(SimulatedFramBoard(), fram_erase=True)
+        status, body = self.post(base, "/fram/erase?confirm=ERASE")
         self.assertEqual((status, body["status"], body["ok"], body["value"]), (200, "ok", True, 256))
-        status, body = self.post(base, "/fram/selftest?slot=3")
+        status, body = self.post(base, "/fram/selftest")
         self.assertEqual((status, body["operation"], body["ok"]), (200, "selftest", True))
 
     def test_a_board_that_says_no_chip_is_reported_as_it_is(self):
-        base = self.start(SimulatedFramBoard(3, chip_size=0), fram_erase=True)
-        status, body = self.post(base, "/fram/erase?slot=3&confirm=ERASE")
+        base = self.start(SimulatedFramBoard(chip_size=0), fram_erase=True)
+        status, body = self.post(base, "/fram/erase?confirm=ERASE")
         self.assertEqual((status, body["status"], body["ok"]), (200, "no-chip", False))
 
     def test_a_silent_board_is_a_504(self):
@@ -263,7 +264,7 @@ class HttpRoutes(unittest.TestCase):
         defaults["timeout_seconds"] = 0.05
         self.addCleanup(defaults.__setitem__, "timeout_seconds", original)
         base = self.start(Silent(), fram_erase=True)
-        self.assertEqual(self.post(base, "/fram/selftest?slot=1")[0], 504)
+        self.assertEqual(self.post(base, "/fram/selftest")[0], 504)
 
 
 if __name__ == "__main__":

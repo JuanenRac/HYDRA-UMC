@@ -14,6 +14,8 @@ Commands of the SPI link between the CM5 and the H745 that the CM4 answers itsel
 
 Flags of the telemetry: bit 0 the link is usable, bit 1 the emergency stop is latched, bit 2 the stop commands are enabled in this build. State: `1` bootloader, `2` application.
 
+Two more frame types of the tier `SELF` are not commands of this file: `0x28` (F-RAM request) and `0x29` (its answer), run by the STACK A task on the chip of the main board (`docs/FRAM_ERASE.md`).
+
 A frame that is not exactly one of the above (wrong length, wrong magic, unknown selector) does nothing and is not answered.
 
 ## Switches

@@ -14,11 +14,11 @@ Real routes:
                                         `link_ok`, `stop_enabled`; `online` is false (and the rest null) when the brain did not answer. The SERVER reads
                                         this to show one stop state in the apps; nothing is invented when the brain is silent.
   GET  /counters?tier=&slot=&relay=  -> query_error_counters(): the transmit and receive error counters of the CAN controller of a board
-  POST /fram/erase?slot=&confirm=ERASE    -> erase_fram(): zeros over the whole F-RAM of the controller board of that slot (docs/FRAM_ERASE.md)
-  POST /fram/selftest?slot=               -> fram_selftest(): patterns over a scratch area of the F-RAM, the old bytes put back
+  POST /fram/erase?confirm=ERASE     -> erase_fram(): zeros over the whole F-RAM of the brain (the FM24CL64B on I2C4 of the main board; docs/FRAM_ERASE.md)
+  POST /fram/selftest                -> fram_selftest(): patterns over a scratch area of the F-RAM, the old bytes put back
                                         Both answer 403 unless the service was started with fram_erase=True (--enable-fram-erase); `GET /version`
-                                        says so in `capabilities.fram_erase`, so an app offers the operation only when the bridge does. The board
-                                        has its own switch (HYDRA_FRAM_ERASE) and no driver for the chip yet: it then answers `disabled` or `no-chip`.
+                                        says so in `capabilities.fram_erase`, so an app offers the operation only when the bridge does. The brain
+                                        has its own switch (HYDRA_FRAM_ERASE) and needs the I2C timing of the build: it then answers `disabled` or `no-chip`.
   POST /flash?tier=&slot=&hardware_id=&relay=&version_major=&version_minor=[&version_patch=][&downgrade_from=x.y.z][&signature=HEX][&target=NAME][&min_bootloader=x.y.z] -> SpiOtaFlasher.flash(),
                                         streamed as newline-delimited JSON. The HYDRA-UMC bootloaders verify an Ed25519 signature of the image
                                         (128 hexadecimal digits in `signature`, made with tools/image_header.py sign on the machine that holds the
@@ -243,19 +243,11 @@ def make_handler(
                 lock.release()
 
         def _fram(self, parsed) -> None:
-            """The F-RAM erase and self-test: off unless the service was started for it, and an erase needs the word `ERASE` as a confirmation."""
+            """The F-RAM erase and self-test of the brain: off unless the service was started for it, and an erase needs the word `ERASE` as a confirmation."""
             if not fram_erase:
                 self._send_json(403, {"error": "the F-RAM operations are switched off in this service (start it with --enable-fram-erase)"})
                 return
             params = parse_qs(parsed.query)
-            try:
-                slot = int(params["slot"][0])
-            except (KeyError, ValueError):
-                self._send_json(400, {"error": "slot is required and must be an integer"})
-                return
-            if slot not in VALID_SLOTS:
-                self._send_json(400, {"error": "slot must be 0-7"})
-                return
             is_erase = parsed.path == "/fram/erase"
             if is_erase and params.get("confirm", [""])[0] != "ERASE":
                 self._send_json(400, {"error": "an erase needs confirm=ERASE"})
@@ -264,7 +256,7 @@ def make_handler(
                 self._send_json(409, {"error": "the SPI link is busy with another operation"})
                 return
             try:
-                result = (erase_fram if is_erase else fram_selftest)(transport, slot)
+                result = (erase_fram if is_erase else fram_selftest)(transport)
             finally:
                 lock.release()
             if result is None:

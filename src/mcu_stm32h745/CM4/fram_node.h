@@ -1,16 +1,17 @@
 /* =============================================================================
- * HYDRA-UMC Firmware - src/mcu_stm32g474/boot/fram_node.h
+ * HYDRA-UMC Firmware - src/mcu_stm32h745/CM4/fram_node.h
  * Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
  * GPL-3.0-or-later - see LICENSE
  * =============================================================================
- * fram_node.h - how a controller board answers the F-RAM erase and self-test requests (HAL-free, host-testable)
+ * fram_node.h - how the kinematic brain answers the F-RAM erase and self-test requests (HAL-free, host-testable)
  *
- * The two requests live in the window of the slot (offsets 0x20 to 0x23, tools/can_ids.py; the window is 64 identifiers wide since they were added).
- * The logic knows nothing about the chip: it talks to a FramDriver_t of three functions. The driver for the real chip is not written (the chip and the
- * pins of SPI2 are not fixed): with no driver the board answers NO_CHIP, and with the switch HYDRA_FRAM_ERASE off (the default) it answers DISABLED.
- * Nothing here has run on a board. docs/FRAM_ERASE.md is the contract; tests/test_fram_node.c replays it against this file with a simulated chip.
+ * The chip is the FM24CL64B (8 KiB, I2C) on the main board, on the local bus I2C4 of the H745 (fram_i2c.h). The requests reach the CM4 over the SPI link as the
+ * frame types SPI_APP_FRAM_REQUEST and SPI_APP_FRAM_RESPONSE of the tier SELF (spi_app.h) and never go on a CAN bus. The logic knows nothing about the chip:
+ * it talks to a FramDriver_t of two functions, which fram_i2c.h builds. With the switch HYDRA_FRAM_ERASE off (the default) it answers DISABLED; with no
+ * driver (no I2C timing fixed) it answers NO_CHIP. Nothing here has run on a board. docs/FRAM_ERASE.md is the contract; tests/test_fram_node.c and
+ * tests/test_fram_i2c.c replay it against this file with a simulated chip.
  *
- * Request  (host to board, DLC 8): 0xFA, operation, slot, 'E' 'R' 'A' 'S' (erase) or 'T' 'E' 'S' 'T' (self-test), complement of the XOR of the first seven bytes.
+ * Request  (host to board, DLC 8): 0xFA, operation, board (always FRAM_BRAIN_ID: the brain has the one chip), 'E' 'R' 'A' 'S' (erase) or 'T' 'E' 'S' 'T' (self-test), complement of the XOR of the first seven bytes.
  * Response (board to host, DLC 8): 0xFB, operation, status, detail, four bytes big endian (bytes written for an erase, address that failed for a test).
  * ============================================================================= */
 #ifndef FRAM_NODE_H
@@ -26,6 +27,8 @@
 #define FRAM_REQUEST_MAGIC  0xFAu
 #define FRAM_RESPONSE_MAGIC 0xFBu
 
+#define FRAM_BRAIN_ID 0u /* the one F-RAM of the stack is the brain's: the board byte of a request must be this */
+
 #define FRAM_OP_ERASE    0x01u
 #define FRAM_OP_SELFTEST 0x02u
 
@@ -33,8 +36,8 @@
 #define FRAM_STATUS_DISABLED    0x01u /* the switch is off */
 #define FRAM_STATUS_NO_CHIP     0x02u /* no driver: the chip is not fixed or not fitted */
 #define FRAM_STATUS_BAD_REQUEST 0x03u
-#define FRAM_STATUS_WRONG_SLOT  0x04u
-#define FRAM_STATUS_BUSY        0x05u /* an update is running: the board does not touch the F-RAM meanwhile */
+#define FRAM_STATUS_WRONG_SLOT  0x04u /* the board byte is not FRAM_BRAIN_ID */
+#define FRAM_STATUS_BUSY        0x05u /* an update is running: the brain does not touch the F-RAM meanwhile */
 #define FRAM_STATUS_CHIP_ERROR  0x06u /* the driver reported a failure */
 #define FRAM_STATUS_VERIFY_FAIL 0x07u /* the readback is not what was written */
 

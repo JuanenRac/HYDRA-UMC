@@ -307,16 +307,23 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
-    # fram_node.h: the F-RAM erase and self-test requests of a controller board, with a simulated chip, once with the switch off and once with it on (tests/test_fram_node.c).
+    # fram_node.h: the F-RAM erase and self-test requests of the kinematic brain, with a simulated chip, once with the switch off and once with it on (tests/test_fram_node.c); fram_i2c.h: the driver of the FM24CL64B on a fake I2C bus (tests/test_fram_i2c.c).
     for FRAM_SWITCH in 0 1; do
         FRAM_HOST_BIN="$ROOT/build/host_tests_fram_node_$FRAM_SWITCH"
-        if "$HOST_CC" -std=c11 -Wall -Wextra -DHYDRA_FRAM_ERASE=$FRAM_SWITCH -DFRAM_TEST_SWITCH=$FRAM_SWITCH -I"$ROOT/src/mcu_stm32g474/boot" -o "$FRAM_HOST_BIN" "$ROOT/tests/test_fram_node.c" && "$FRAM_HOST_BIN" >/dev/null; then
+        if "$HOST_CC" -std=c11 -Wall -Wextra -DHYDRA_FRAM_ERASE=$FRAM_SWITCH -DFRAM_TEST_SWITCH=$FRAM_SWITCH -I"$ROOT/src/mcu_stm32h745/CM4" -o "$FRAM_HOST_BIN" "$ROOT/tests/test_fram_node.c" && "$FRAM_HOST_BIN" >/dev/null; then
             pass "fram_node host logic tests passed (switch $FRAM_SWITCH)"
         else
             fail "fram_node host logic tests FAILED (switch $FRAM_SWITCH)"
             echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
         fi
     done
+    FRAM_I2C_HOST_BIN="$ROOT/build/host_tests_fram_i2c"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h745/CM4" -o "$FRAM_I2C_HOST_BIN" "$ROOT/tests/test_fram_i2c.c" && "$FRAM_I2C_HOST_BIN" >/dev/null; then
+        pass "fram_i2c host logic tests passed"
+    else
+        fail "fram_i2c host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
 
     # slot_scan_master.h: the full verdict of the slot scan on the master side (every scenario of tests/slot_scan_vectors.json, a seeded fuzz).
     SLOT_SCAN_MASTER_HOST_BIN="$ROOT/build/host_tests_slot_scan_master"
@@ -937,6 +944,13 @@ if arm-none-eabi-gcc $CFLAGS_CM4_APP -DHYDRA_SPI_SYSTEM=1 -DHYDRA_SPI_STOP_COMMA
     pass "SpiApp.c compiles with every switch on (SPI service, stop command, seal, zones heartbeat, full slot scan)"
 else
     fail "SpiApp.c does not compile with every switch on"
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+fi
+# And with the F-RAM driver on (the I2C4 glue of the FM24CL64B); the timing value is any non-zero one, only to take the code out of the empty branch. Not linked.
+if arm-none-eabi-gcc $CFLAGS_CM4_APP -DHYDRA_SPI_SYSTEM=1 -DHYDRA_SPI_APP=1 -DHYDRA_FRAM_ERASE=1 -DHYDRA_FRAM_I2C_TIMING=0x10000001 -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/SpiApp.c" -o "$H7/cm4_app_check/SpiApp_fram.o"; then
+    pass "SpiApp.c compiles with the F-RAM driver on (I2C4, FM24CL64B)"
+else
+    fail "SpiApp.c does not compile with the F-RAM driver on"
     echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
 fi
 CM4_APP_VER="v$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MAJOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_MINOR).$(get_version_macro "$SRC/boot/bootloader_common.h" FIRMWARE_VERSION_PATCH)"

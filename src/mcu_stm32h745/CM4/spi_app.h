@@ -57,6 +57,8 @@
 
 #define SPI_APP_FRAME_SIZE 128u
 #define SPI_APP_TARGET_SELF 0u
+#define SPI_APP_FRAM_REQUEST  0x28u /* the F-RAM erase or self-test (fram_node.h, docs/FRAM_ERASE.md): 8 bytes, run by the STACK A task, answered with the next type */
+#define SPI_APP_FRAM_RESPONSE 0x29u
 #define SPI_APP_IDLE_TYPE 0xFFu /* the frame that goes out when there is nothing to say (the master ignores it) */
 
 typedef struct {
@@ -89,6 +91,11 @@ typedef struct {
     volatile uint8_t scan_done;
     volatile uint8_t scan_done_id;
     volatile uint8_t scan_verdicts[8];
+    /* an F-RAM request left by the SPI task for the STACK A task, which owns the bus of the chip (one writer each side), and the answer it leaves back */
+    volatile uint8_t fram_pending;
+    uint8_t fram_request[8];
+    volatile uint8_t fram_done;
+    uint8_t fram_reply[8];
     /* the heartbeat of the safety-zones chain: the SPI task counts them, the STACK A task times them (it owns the clock) */
     volatile uint32_t zones_beat;
     uint32_t zones_beat_seen;
@@ -170,6 +177,18 @@ static inline uint8_t SpiApp_OnReceive(SpiApp_t *app, const uint8_t rx_wire[SPI_
     const uint8_t tier = rx_wire[0];
     const uint8_t frame_type = rx_wire[2];
     uint8_t dlc = rx_wire[3];
+    if (tier == SPI_APP_TARGET_SELF && frame_type == SPI_APP_FRAM_REQUEST) {
+        /* not one of the commands of spi_system.h: the chip is the STACK A task's to touch, so the request is only left for it */
+        if (!app->config.telemetry_enabled || dlc != 8u) {
+            app->frames_ignored++;
+            return 0u;
+        }
+        memcpy(app->fram_request, &rx_wire[4], 8);
+        app->fram_done = 0u;
+        app->fram_pending = 1u;
+        app->commands_run++;
+        return 1u;
+    }
     if (tier != SPI_APP_TARGET_SELF || !SpiSys_IsCommand(frame_type) || dlc > 8u) {
         app->frames_ignored++;
         return 0u;
@@ -204,9 +223,13 @@ static inline uint8_t SpiApp_OnReceive(SpiApp_t *app, const uint8_t rx_wire[SPI_
     return 1u;
 }
 
-/* The SPI task calls this between transactions: a finished scan becomes the answer of the probe. */
+/* The SPI task calls this between transactions: a finished scan becomes the answer of the probe, a finished F-RAM request the answer of the request. */
 static inline void SpiApp_Service(SpiApp_t *app)
 {
+    if (app->fram_done) {
+        app->fram_done = 0u;
+        SpiApp_StageReply(app, SPI_APP_FRAM_RESPONSE, app->fram_reply, 8u);
+    }
     if (app->scan_done) {
         uint8_t answer_type, answer[8], answer_dlc;
         SpiSysSnapshot_t snap = SpiApp_Snapshot(app);
@@ -257,6 +280,21 @@ static inline uint8_t SpiApp_ZonesTick(SpiApp_t *app, uint32_t now_ms, uint32_t 
         return 1u;
     }
     return 0u;
+}
+
+/* The STACK A task side of an F-RAM request: 1 once per request, with its 8 bytes. */
+static inline uint8_t SpiApp_TakeFram(SpiApp_t *app, uint8_t request[8])
+{
+    if (!app->fram_pending) return 0u;
+    memcpy(request, app->fram_request, 8);
+    app->fram_pending = 0u;
+    return 1u;
+}
+
+static inline void SpiApp_FramDone(SpiApp_t *app, const uint8_t reply[8])
+{
+    memcpy(app->fram_reply, reply, 8);
+    app->fram_done = 1u;
 }
 
 static inline void SpiApp_ScanDone(SpiApp_t *app, uint8_t scan_id, const uint8_t verdicts[8])

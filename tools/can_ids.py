@@ -57,7 +57,7 @@ MESSAGES: tuple[CanMessage, ...] = (
     # slot scan (docs/SLOT_SCAN.md): the host asks every slot window who is there; each board answers on its own window, so two boards with the same board identifier are seen
     CanMessage("SLOT_SCAN_PROBE", 0x1E, HOST),
     CanMessage("SLOT_SCAN_REPLY", 0x1F, BOOTLOADER),
-    # F-RAM erase and self-test (docs/FRAM_ERASE.md, src/mcu_stm32g474/boot/fram_node.h): the first 32 identifiers of the window were all taken, so these four are why the window is 64 wide
+    # Reserved (docs/FRAM_ERASE.md): four offsets added for a first design that put the F-RAM on each controller board, why the window is 64 wide. The chip is on the main board and its requests go over the SPI link (src/mcu_stm32h745/CM4/fram_node.h), so nothing sends or answers these any more
     CanMessage("FRAM_ERASE_REQUEST", 0x20, HOST),
     CanMessage("FRAM_ERASE_RESPONSE", 0x21, BOOTLOADER),
     CanMessage("FRAM_SELFTEST_REQUEST", 0x22, HOST),

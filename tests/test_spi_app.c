@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "estop_brain.h"
+#include "fram_node.h"
 #include "spi_app.h"
 
 #ifndef SPI_APP_TEST_SWITCHES
@@ -255,6 +256,37 @@ static void run_with_switches_on(void)
         TEST_ASSERT(memcmp(again, app.tx_wire, sizeof again) == 0, "the answer is staged once, not on every pass");
     }
 
+    /* the F-RAM request: left for the STACK A task, which owns the chip; the answer is staged by the service once it is done */
+    {
+        SpiApp_t app = make_app(1u, 0u, 0u);
+        uint8_t request[8], taken[8], reply[8], keep[SPI_APP_FRAME_SIZE];
+        FramNode_t node;
+        FramNode_Init(&node, NULL);
+        Fram_BuildRequest(request, FRAM_OP_ERASE, FRAM_BRAIN_ID);
+        make_wire(wire, 0u, SPI_APP_FRAM_REQUEST, request, 8u, 1, 1u);
+        memcpy(keep, app.tx_wire, sizeof keep);
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 1u && app.fram_pending == 1u, "a well-formed F-RAM request is a command that ran and left a request");
+        SpiApp_Service(&app);
+        TEST_ASSERT(memcmp(keep, app.tx_wire, sizeof keep) == 0, "nothing is staged while the request waits");
+        TEST_ASSERT(SpiApp_TakeFram(&app, taken) == 1u && memcmp(taken, request, 8) == 0 && app.fram_pending == 0u, "the STACK A task takes the 8 bytes once");
+        TEST_ASSERT(SpiApp_TakeFram(&app, taken) == 0u, "and only once");
+        TEST_ASSERT(FramNode_Handle(&node, FRAM_BRAIN_ID, 0u, taken, 8u, reply) == 1u && reply[2] == FRAM_STATUS_DISABLED + (HYDRA_FRAM_ERASE ? 1u : 0u), "the switch of the firmware decides the answer");
+        SpiApp_FramDone(&app, reply);
+        SpiApp_Service(&app);
+        TEST_ASSERT(app.tx_wire[2] == SPI_APP_FRAM_RESPONSE && app.tx_wire[3] == 8u && memcmp(&app.tx_wire[4], reply, 8) == 0, "the answer is the F-RAM response of 8 bytes");
+        memcpy(keep, app.tx_wire, sizeof keep);
+        SpiApp_Service(&app);
+        TEST_ASSERT(memcmp(keep, app.tx_wire, sizeof keep) == 0, "the answer is staged once, not on every pass");
+        make_wire(wire, 0u, SPI_APP_FRAM_REQUEST, request, 7u, 1, 2u);
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u && app.fram_pending == 0u, "a short request leaves nothing");
+        make_wire(wire, 1u, SPI_APP_FRAM_REQUEST, request, 8u, 1, 3u);
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u && app.fram_pending == 0u, "a request for another tier is not ours: it goes to the stack, never to the chip");
+        make_wire(wire, 0u, SPI_APP_FRAM_REQUEST, request, 8u, 1, 4u);
+        (void)SpiApp_OnReceive(&app, wire);
+        make_wire(wire, 0u, SPI_APP_FRAM_REQUEST, request, 8u, 1, 5u);
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 1u && app.fram_done == 0u && app.fram_pending == 1u, "a new request clears a stale answer");
+    }
+
     /* read only: stop and release are refused and leave no request */
     {
         SpiApp_t app = make_app(1u, 0u, 0u);
@@ -368,7 +400,13 @@ static void run_with_switches_off(void)
     TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u && app.scan_pending == 0u, "off: a probe starts no scan");
     make_wire(wire, 0u, SPI_SYS_ZONES_HEARTBEAT, zone, 4u, 1, ++seq);
     TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u && app.zones_beat == 0u, "off: a heartbeat is not counted");
-    TEST_ASSERT(memcmp(keep, app.tx_wire, sizeof keep) == 0 && app.commands_run == 0u && app.frames_ignored == 5u, "off: nothing staged, nothing run, five ignored");
+    {
+        uint8_t fram[8];
+        Fram_BuildRequest(fram, FRAM_OP_ERASE, FRAM_BRAIN_ID);
+        make_wire(wire, 0u, SPI_APP_FRAM_REQUEST, fram, 8u, 1, ++seq);
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u && app.fram_pending == 0u, "off: an F-RAM request leaves no request");
+    }
+    TEST_ASSERT(memcmp(keep, app.tx_wire, sizeof keep) == 0 && app.commands_run == 0u && app.frames_ignored == 6u, "off: nothing staged, nothing run, six ignored");
     SpiApp_Service(&app);
     TEST_ASSERT(memcmp(keep, app.tx_wire, sizeof keep) == 0, "off: the service stages nothing between transactions");
 }

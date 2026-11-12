@@ -36,7 +36,6 @@
 #include "boot_decision.h"
 #include "dlc_to_fdcan_data_length.h"
 #include "slot_scan_node.h"
-#include "fram_node.h"
 #include "fdcan_clock.h"        // the explicit kernel clock of the FDCAN (off by default)
 #include "app_boot_request.h"  // an application asking to be updated (off by default)
 #include "boot_report.h"        // what this start found, handed to the application for its health frame (off by default)
@@ -211,12 +210,6 @@ static uint32_t last_heartbeat_tick = 0 - 1000; // forces an immediate heartbeat
 static SlotScanNode_t boot_scan;
 static uint32_t boot_uid32;
 static uint8_t boot_board_id;
-// The F-RAM erase and self-test (docs/FRAM_ERASE.md): off by default (HYDRA_FRAM_ERASE) and with no driver until the chip is fixed, so the answer is DISABLED or NO_CHIP.
-static FramNode_t boot_fram;
-static void BootFramHandle(uint8_t request_offset, const uint8_t *data, uint8_t dlc, uint8_t update_running) {
-    uint8_t reply[8];
-    if (FramNode_Handle(&boot_fram, boot_board_id, update_running, data, dlc, reply)) CAN_SendFramResponse(request_offset, reply);
-}
 
 static void BootScanPoll(void) {
     uint8_t reply[8];
@@ -262,7 +255,6 @@ int main(void) {
     boot_board_id = (uint8_t)((slot_base - CAN_ID_STACKA_BASE) / STACKA_SLOT_WINDOW);
     boot_uid32 = SlotScan_FoldUid(HAL_GetUIDw0(), HAL_GetUIDw1(), HAL_GetUIDw2());
     SlotScanNode_Reset(&boot_scan);
-    FramNode_Init(&boot_fram, NULL);
 
     MX_FDCAN1_Init(slot_base);
     const uint8_t link_ok = (boot_hal_fault & BOOT_FAULT_LINK_MASK) == 0; // false: the bus is not usable, a valid application still starts but no update can come in
@@ -306,8 +298,6 @@ int main(void) {
                     HandleVersionQuery();
                 } else if (ofs == OFS_SLOT_SCAN_PROBE) {
                     (void)SlotScanNode_OnProbe(&boot_scan, HAL_GetTick(), rxData, (uint8_t)dlc, boot_uid32);
-                } else if (ofs == OFS_FRAM_ERASE_REQUEST || ofs == OFS_FRAM_SELFTEST_REQUEST) {
-                    BootFramHandle((uint8_t)ofs, rxData, (uint8_t)dlc, 0);
                 } else if (ofs == OFS_QUERY_ERROR_COUNTERS) {
                     HandleErrorCounterQuery();
                 } else if (ofs == OFS_BACKUP_READ_REQUEST) {
@@ -401,8 +391,6 @@ int main(void) {
                     HandleVersionQuery();
                 } else if (ofs == OFS_SLOT_SCAN_PROBE) {
                     (void)SlotScanNode_OnProbe(&boot_scan, HAL_GetTick(), rxData, (uint8_t)dlc, boot_uid32);
-                } else if (ofs == OFS_FRAM_ERASE_REQUEST || ofs == OFS_FRAM_SELFTEST_REQUEST) {
-                    BootFramHandle((uint8_t)ofs, rxData, (uint8_t)dlc, update_in_progress);
                 } else if (ofs == OFS_QUERY_ERROR_COUNTERS) {
                     HandleErrorCounterQuery();
                 } else if (ofs == OFS_AUTHORIZE_DOWNGRADE && dlc == 4) {
