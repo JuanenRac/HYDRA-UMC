@@ -288,7 +288,13 @@
           "role": "master",
           "device": "GD25Q128E",
           "clock_hz": 6250000,
-          "note": "standard SPI, not memory mapped"
+          "note": "standard SPI, not memory mapped",
+          "status": "command_set_of_the_family_to_confirm_with_the_datasheet_of_the_chip; model and host double only",
+          "capacity_bytes": 16777216,
+          "page_bytes": 256,
+          "sector_bytes": 4096,
+          "jedec_id": "C84018",
+          "busy_poll_limit": 2000000
         }
       },
       "memory_map": {
@@ -399,7 +405,8 @@
             "the flash sector numbers and the option bytes that choose the dual-bank layout"
           ]
         }
-      }
+      },
+      "rcc_poll_limit": 200000
     }
   },
   "controller_board": {

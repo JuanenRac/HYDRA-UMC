@@ -154,6 +154,10 @@ def main(argv: list[str] | None = None) -> int:
             import sdram_plan  # here and not at the top: that module imports this one
 
             bad += [f"{name}: {line}" for line in sdram_plan.problems(p)]
+        if "pll" in p and "rcc_poll_limit" in p:
+            import rcc_plan  # same reason as above
+
+            bad += [f"{name}: {line}" for line in rcc_plan.problems(p)]
     bad += contract_problems(document, contract)
     bad += board_problems(document, contract)
     for line in bad:

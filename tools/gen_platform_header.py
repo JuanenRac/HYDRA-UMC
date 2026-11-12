@@ -82,8 +82,18 @@ def render(document: dict | None = None) -> str:
                 w(f"#define HYDRA_CLOCK_PLL{number}_DIVN {pll['divn']}U")
                 for output, divider in pp.PLL_DIVIDERS[pll_name].items():
                     w(f"#define HYDRA_CLOCK_{output.upper()}_DIV {divider}U")
+            if "rcc_poll_limit" in profile:
+                w(f"#define HYDRA_CLOCK_POLL_LIMIT {profile['rcc_poll_limit']}UL /* polls of a ready flag before the clock set-up gives up */")
             for output, hz in profile["clocks_hz"].items():
                 w(f"#define HYDRA_CLOCK_{output.upper()}_HZ {hz}UL")
+        nor = profile.get("new_peripherals", {}).get("SPI5_NOR_FLASH")
+        if nor and "capacity_bytes" in nor:
+            w(f"#define HYDRA_NOR_CAPACITY_BYTES {nor['capacity_bytes']}UL")
+            w(f"#define HYDRA_NOR_PAGE_BYTES {nor['page_bytes']}U")
+            w(f"#define HYDRA_NOR_SECTOR_BYTES {nor['sector_bytes']}U")
+            w(f"#define HYDRA_NOR_JEDEC_ID 0x{nor['jedec_id']}UL")
+            w(f"#define HYDRA_NOR_BUSY_POLL_LIMIT {nor['busy_poll_limit']}UL")
+            w(f"#define HYDRA_NOR_SPI_CLOCK_HZ {nor['clock_hz']}UL")
         sdram = profile.get("new_peripherals", {}).get("FMC", {}).get("sdram")
         if sdram:
             w(f"#define HYDRA_SDRAM_BUS_WIDTH_BITS {sdram['bus_width_bits']}U")
