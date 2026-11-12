@@ -44,7 +44,7 @@ typedef struct {
 
 void ui_pin_init(ui_pin_store_t *store, const ui_pin_ports_t *ports, uint32_t iterations, uint32_t min_digits, uint32_t max_digits);
 
-/* unset: both slots are erased (all 0xFF); set: a valid record; corrupt: something is there that cannot be read. */
+/* unset: both slots are erased (all 0xFF, or all zero as the F-RAM erase of the brain leaves the chip); set: a valid record; corrupt: something is there that cannot be read. */
 ui_pin_state_t ui_pin_state(const ui_pin_store_t *store);
 
 /* The failure counter of the valid record, 0 when there is none. */
