@@ -120,6 +120,60 @@ class PlatformProfileTests(unittest.TestCase):
 
         self.assertEqual(can_ids.TOOL_HEAD_BIT_RATE_BPS, pp.bit_rate(self.document["controller_board"]["tool_head_downlink"]))
 
+    def test_the_memory_maps_have_no_overlap_and_every_region_says_where_it_comes_from(self):
+        for name, p in self.document["profiles"].items():
+            self.assertEqual(pp.memory_problems(name, p), [], name)
+
+    def test_the_current_memory_map_is_what_the_linker_scripts_of_the_repository_say(self):
+        base = ROOT / "src" / "mcu_stm32h745"
+        files = {
+            ("CM7", "FLASH_APP"): base / "CM7" / "STM32H745ZITx_CM7_APP.ld",
+            ("CM4", "FLASH_APP"): base / "CM4" / "STM32H745ZITx_CM4_APP.ld",
+            ("CM7", "FLASH_BOOT"): base / "CM7" / "boot" / "STM32H745ZITx_CM7_BOOTLOADER.ld",
+            ("CM4", "FLASH_BOOT"): base / "CM4" / "boot" / "STM32H745ZITx_CM4_BOOTLOADER.ld",
+        }
+        regions = {r["name"]: r for r in self.document["profiles"]["h745_current"]["memory_map"]["regions"]}
+        checked = 0
+        for (core, kind), path in files.items():
+            text = path.read_text(encoding="utf-8")
+            for name, origin, length in re.findall(r"^\s*(\w+)\s*\(\w+\)\s*:\s*ORIGIN\s*=\s*(0x[0-9A-Fa-f]+),\s*LENGTH\s*=\s*(\d+)K", text, re.M):
+                key = f"{name}_{core}" if name.startswith("FLASH") else f"RAM_{core}"
+                self.assertEqual((int(origin, 16), int(length) * 1024), (regions[key]["origin"], regions[key]["length"]), f"{path.name}: {name}")
+                checked += 1
+        self.assertGreaterEqual(checked, 8, "the linker scripts were not read")
+
+    def test_the_linker_block_is_generated_from_the_profile_and_agrees_with_the_script_of_today(self):
+        generated = pp.linker_memory("h745_current", "CM7")
+        text = (ROOT / "src/mcu_stm32h745/CM7/STM32H745ZITx_CM7_APP.ld").read_text(encoding="utf-8")
+        for line in generated.splitlines()[2:-1]:
+            self.assertIn(re.sub(r"\s+", " ", line.strip()), re.sub(r"\s+", " ", text), line)
+        self.assertEqual(pp.linker_memory("h757_target", "CM7").count("ORIGIN"), 2)
+        self.assertEqual(pp.linker_memory("h757_target", "CM4").count("ORIGIN"), 2)
+
+    def test_the_h757_adds_the_sdram_and_keeps_the_internal_layout_to_be_confirmed(self):
+        regions = {r["name"]: r for r in self.document["profiles"]["h757_target"]["memory_map"]["regions"]}
+        self.assertEqual((regions["SDRAM_BANK1"]["origin"], regions["SDRAM_BANK1"]["length"]), (0xC0000000, 128 * 1024 * 1024))
+        self.assertEqual((regions["SDRAM_BANK2"]["origin"], regions["SDRAM_BANK2"]["length"]), (0xD0000000, 128 * 1024 * 1024))
+        self.assertEqual(regions["SDRAM_BANK1"]["status"], "from_board_documents")
+        for name in ("FLASH_APP_CM7", "RAM_CM7", "RAM_CM4", "SRAM4_MAILBOX"):
+            self.assertEqual(regions[name]["status"], "inherited_to_confirm", name)
+        self.assertNotIn("SDRAM_BANK1", {r["name"] for r in self.document["profiles"]["h745_current"]["memory_map"]["regions"]})
+
+    def test_the_nor_flash_is_on_spi5_and_is_not_a_memory_region(self):
+        h757 = self.document["profiles"]["h757_target"]
+        self.assertEqual(h757["memory_map"]["not_memory_mapped"][0]["name"], "NOR_FLASH_SPI5")
+        self.assertNotIn("QSPI", h757["new_peripherals"])
+        self.assertIn("SPI5_NOR_FLASH", h757["new_peripherals"])
+        self.assertTrue(any("QSPI" in c for c in h757["memory_map"]["contradictions_with_the_h745_repository"]))
+
+    def test_a_memory_map_with_an_overlap_or_no_source_is_caught(self):
+        broken = copy.deepcopy(self.document["profiles"]["h757_target"])
+        broken["memory_map"]["regions"][1]["origin"] = broken["memory_map"]["regions"][0]["origin"] + 1024
+        self.assertTrue(pp.memory_problems("h757_target", broken))
+        broken = copy.deepcopy(self.document["profiles"]["h757_target"])
+        del broken["memory_map"]["regions"][0]["source"]
+        self.assertTrue(pp.memory_problems("h757_target", broken))
+
     def test_the_command_line_prints_the_table_and_checks(self):
         self.assertEqual(pp.main(["--check"]), 0)
         self.assertEqual(pp.main([]), 0)

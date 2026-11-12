@@ -98,6 +98,37 @@ def board_problems(document: dict, contract: dict) -> list[str]:
     return found
 
 
+def linker_memory(profile_name: str, core: str, document: dict | None = None) -> str:
+    """The MEMORY block of the application linker script of a core, written from the memory map of the profile (what the linkers of a platform are generated from)."""
+    document = document or load()
+    regions = [r for r in document["profiles"][profile_name]["memory_map"]["regions"] if r["owner"] == core and r["name"].startswith(("FLASH_APP", "RAM"))]
+    lines = ["MEMORY", "{"]
+    for r in regions:
+        kind, attrs = ("FLASH_APP", "rx") if r["name"].startswith("FLASH_APP") else ("RAM", "rwx")
+        lines.append(f"  {kind} ({attrs}) : ORIGIN = 0x{r['origin']:08X}, LENGTH = {r['length'] // 1024}K")
+    lines.append("}")
+    return chr(10).join(lines)
+
+
+def memory_problems(name: str, profile: dict) -> list[str]:
+    """What is wrong in the memory map of a profile: regions that overlap, that start or end outside the family map, or that are not backed by a source."""
+    found: list[str] = []
+    regions = sorted(profile["memory_map"]["regions"], key=lambda r: r["origin"])
+    for a, b in zip(regions, regions[1:]):
+        if a["origin"] + a["length"] > b["origin"]:
+            found.append(f"{name}: {a['name']} overlaps {b['name']}")
+    flash = [r for r in regions if r["name"].startswith("FLASH")]
+    for r in flash:
+        if r["origin"] < 0x08000000:
+            found.append(f"{name}: {r['name']} is outside the flash")
+        if r["origin"] + r["length"] > 0x08000000 + profile["memory_map"]["flash_total_bytes"]:
+            found.append(f"{name}: {r['name']} goes past the end of the flash")
+    for r in regions:
+        if not r.get("source") or not r.get("status"):
+            found.append(f"{name}: {r['name']} says nowhere where it comes from")
+    return found
+
+
 def contract_problems(document: dict, contract: dict) -> list[str]:
     """What the default profile says that docs/bus_contract.json does not: the stack bus must give the rate the controller boards use."""
     found: list[str] = []
