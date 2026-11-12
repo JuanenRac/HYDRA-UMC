@@ -47,7 +47,11 @@ def _int(section, key, low, high, default=None):
 
 def load(path: Path = CFG_PATH) -> dict:
     parser = configparser.ConfigParser(inline_comment_prefixes=None)
-    parser.read_string(path.read_text(encoding="utf-8"))
+    try:
+        parser.read_string(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, configparser.Error) as error:
+        # a damaged file is a refusal with a reason, never an exception of the parser: the caller (the build, the checks) knows only ConfigError
+        raise ConfigError(f"cannot read {path.name}: {error.__class__.__name__}: {str(error).splitlines()[0][:120] if str(error) else ''}") from error
     for name in ("stop", "estop_input", "production"):
         if name not in parser:
             raise ConfigError(f"section [{name}] is missing")
