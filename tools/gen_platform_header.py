@@ -74,6 +74,16 @@ def render(document: dict | None = None) -> str:
         w(f"#define HYDRA_STACK_BUS_TIME_SEG1 {bus['time_segment_1']}U")
         w(f"#define HYDRA_STACK_BUS_TIME_SEG2 {bus['time_segment_2']}U")
         w(f"#define HYDRA_STACK_BUS_BIT_RATE_BPS {int(pp.bit_rate(bus))}UL")
+        if "pll" in profile:
+            w(f"#define HYDRA_CLOCK_HSE_HZ {profile['hse_hz']}UL")
+            for pll_name, pll in profile["pll"].items():
+                number = pll_name[-1]
+                w(f"#define HYDRA_CLOCK_PLL{number}_DIVM {pll['divm']}U")
+                w(f"#define HYDRA_CLOCK_PLL{number}_DIVN {pll['divn']}U")
+                for output, divider in pp.PLL_DIVIDERS[pll_name].items():
+                    w(f"#define HYDRA_CLOCK_{output.upper()}_DIV {divider}U")
+            for output, hz in profile["clocks_hz"].items():
+                w(f"#define HYDRA_CLOCK_{output.upper()}_HZ {hz}UL")
         for region in profile["memory_map"]["regions"]:
             base = f"HYDRA_MEM_{_macro(region['name'])}"
             w(f"#define {base}_ORIGIN 0x{region['origin']:08X}UL")
