@@ -12,14 +12,14 @@ GPL-3.0-or-later - see LICENSE
 
 <p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | 🇨🇳 <b>简体中文</b> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
-### 🤖 终极双核微工厂与多机器人控制器平台（V1.0 — 双 PCIe Hailo-8 + Hailo-10 AI 加速器 与 双 USB 3.0 集线器）
+### 🤖 终极双核微工厂与多机器人控制器平台（V1.0 — NVIDIA Jetson Orin NX 16 GB 主机、Hailo-8 AI 加速器 与 USB 3.0 摄像头集线器）
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H757-003551.svg" alt="Platform">
-  <img src="https://img.shields.io/badge/Tests-746%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-750%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
@@ -38,7 +38,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | 版本 | `0.2.8` |
 | 成熟度 | 雏形 |
-| 测试 | 746 (`python -m unittest discover -s tests -p 'test_*.py'`) |
+| 测试 | 750 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | 技术栈 | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | 目标 | 微控制器板（固件）；在电脑上构建 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
@@ -54,7 +54,7 @@ GPL-3.0-or-later - see LICENSE
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 软件 | 🟠 | 目前只有结构和最初的部分，大部分工作尚未完成 |
-| 测试 | 🟡 | 746 项自动测试，每次变更都会运行 |
+| 测试 | 🟡 | 750 项自动测试，每次变更都会运行 |
 | 真实硬件 | 🔴 | 尚未：此版本没有在真实硬件上运行的记录 |
 | 文档 | 🟡 | 八种语言的 README，每次变更都会与清单核对 |
 
@@ -64,13 +64,15 @@ GPL-3.0-or-later - see LICENSE
 
 HYDRA-UMC 按 **异构主机 + 实时协处理器架构** 设计，目标是将高层用户界面渲染、计算机视觉、AI 推理与云端连接，同实时步进脉冲生成、现场总线管理及功率电子驱动解耦（计划中：步进脉冲生成与驱动尚未编写）。
 
-> **目标硬件:** 量产主板是 STM32H757(链路的 SPI 主设备),主机为 NVIDIA Jetson Orin NX 16 GB;Raspberry Pi Compute Module 5 保留为试点开发试验台。在 Jetson 底板上,Hailo-8 位于 PCIe x4 的 M.2 插槽中,旁边是 NVMe 插槽和 Wi-Fi/蓝牙插槽,没有 Hailo-10H。这些都没有在电路板上运行过。下面的框图、功能列表和硬件规格在重绘之前,仍然画的是带有 PCIe 交换芯片和 Hailo-10 的旧 Compute Module 5 载板。
+> **目标硬件:** 量产主板是 STM32H757(链路的 SPI 主设备),主机为 NVIDIA Jetson Orin NX 16 GB;Raspberry Pi Compute Module 5 保留为试点开发试验台。在 Jetson 底板上,Hailo-8 位于 PCIe x4 的 M.2 插槽中,旁边是 NVMe 插槽和 Wi-Fi/蓝牙插槽,没有 Hailo-10H。这些都没有在电路板上运行过。下面的框图和功能列表画的就是这块目标底板；它是设计，不是已经制造出来的电路板。
+
+> **平台：** 平台配置（`cm5`、`jetson_orin_nx`、`h745_current`、`h757_target`）计划做成可配置，主主机为 Jetson，系统为 Linux（JetPack 或 Debian）。底板连接器计划日后也能接入其他 260 针计算模块（Rockchip RK3588 模块，以及尚待设计的 CM5 转接卡）；这些模块及其后继产品只是候选，并非承诺。
 
 > **设计状态:**以下各节描述的是电路板及其固件的预期设计。目前实际存在的只有引导加载程序、CM4 与 G474 的通信应用,以及 为 CM5 试验台编写的 SPI 桥(参见靠后位置的“安全状态”提示框和 `docs/architecture.md` 中的状态表)。下文凡以现在时描述运动生成、S 曲线、PID 回路、安全联锁、E-STOP、掉电处理、目标检测或成品电路板其他行为的句子,均应理解为计划中:其中任何一项都没有在已组装的电路板上运行过。
 
 ### 🤖 微工厂能力（设计目标）：
 * 📡 **分布式多机器人网络：** 计划中：通过单一物理 CAN 总线，协调多达 8 个分布式从属机器人模块（先支持 3、4、5、6 自由度；未来版本将扩展至 7、8、9 自由度及双机器人架构）。
-* 🧠 **双嵌入式神经协处理：** 板载 PCIe Gen3 交换芯片将 CM5 的单条 PCIe 通道扇出为 2 个 M.2 AI 加速器 —— 一颗 Hailo-8（26 TOPS）负责多路 YOLOv8/YOLO11 (计划中;尚未运行) 目标检测、缺陷检测，以及全部 8 路摄像头的实时 PnP 基准点对齐；一颗 Hailo-10（40 TOPS）负责本地设备端的认知推理与生成式 AI（量化后的 LLM/VLA 模型），无需回传云端。
+* 🧠 **嵌入式神经协处理：** NVIDIA Jetson Orin NX 16 GB（最高 100 TOPS，NVIDIA 给出的数据）运行视觉和 AI 负载，并用自己的 PCIe 通道驱动三个 M.2 插槽：PCIe x4 的 Key-M 插槽中的 Hailo-8（26 TOPS）用于覆盖所有摄像头的多路 YOLOv8/YOLO11 目标检测（计划中，目前尚无检测器运行）、缺陷检查和 PnP 基准点对位；此外还有一个 NVMe 硬盘，以及 Key-E 插槽中的 Wi-Fi/蓝牙模块。Jetson 版本没有 Hailo-10H：本地推理和 GenAI（量化的 LLM/VLA 模型，计划中）在 Jetson 本机运行，无需往返云端。
 * 📐 **本地 6 轴工作台：** 为 6 个本地轴（X、Y1、Y2、Z、E0、E1）直接生成 步进/方向/使能 脉冲，服务于辅助需求：额外机器人、ATC（自动换刀装置）转塔、传送带同步或 XYZ 工作台龙门架。
 * 🎯 **JuanenPNP 与 JuanenCNC 集成：** 直接兼容 Pick-and-Place 系统（LumenPNP 硬件结构）以及配备 10W 光学激光模块的 CNC 设备，用于 PCB 原型制作与 SMD 贴装。
 * 👁️ **八路摄像头视觉与检测矩阵：** 集成双 USB 3.0 控制器，驱动 8 个专用 USB 摄像头接口，用于实时 OpenCV Pick-and-Place 光学对位、热成像检测及远程视频流监控。
@@ -92,17 +94,14 @@ HYDRA-UMC 按 **异构主机 + 实时协处理器架构** 设计，目标是将�
 
 ```mermaid
 flowchart TB
-    CM5["<b>Compute Module 5（主机 / 大脑）</b><br/>Broadcom BCM2712 四核 Cortex-A76 @ 2.4 GHz<br/>VideoCore VII GPU（OpenGL ES 3.1 / Vulkan 1.2）<br/>RP1 双 USB 3.0 主控制器（2x 5 Gbps）<br/>搭载 PREEMPT_RT 补丁集的 Linux 系统<br/>基于 MIPI-DSI 的高帧率触控界面（Qt6 / Flutter）<br/>轨迹规划、G-code 解析与视觉 AI"]
+    JETSON["<b>NVIDIA Jetson Orin NX 16 GB（主机 / 大脑）</b><br/>模块装在底板的 SO-DIMM 插座中<br/>Linux（JetPack / Debian）<br/>高帧率触摸界面（Qt6 / Flutter）<br/>轨迹规划、G 代码解析与视觉 AI<br/>生态系统的服务器与各项服务"]
 
-    CM5 -- "PCIe Gen 3.0 x1（最高 8 Gbps）" --> PCIESW["<b>PCIe Gen3 交换芯片</b><br/>1 转 2 通道扇出"]
-    PCIESW -- "PCIe x1" --> HAILO8["<b>Hailo-8 M.2 AI 加速器</b><br/>26 TOPS — 高速视觉处理"]
-    PCIESW -- "PCIe x1" --> HAILO10["<b>Hailo-10 M.2 AI 加速器</b><br/>40 TOPS — 认知推理 / 本地生成式 AI"]
-    CM5 -- "USB3 通道 1" --> HUB1["GL3523 集线器 #1"]
-    CM5 -- "USB3 通道 2" --> HUB2["GL3523 集线器 #2"]
-    HUB1 --> CAM14["4 路 USB3 摄像头接口<br/>（摄像头 1-4）"]
-    HUB2 --> CAM58["4 路 USB3 摄像头接口<br/>（摄像头 5-8）"]
+    JETSON -- "PCIe x4（Key-M 插槽）" --> HAILO8["<b>Hailo-8 M.2 AI 加速器</b><br/>26 TOPS - 高速视觉"]
+    JETSON -- "PCIe（Key-M 插槽）" --> NVME["<b>NVMe M.2 固态硬盘</b><br/>存储"]
+    JETSON -- "PCIe + USB 2.0（Key-E 插槽）" --> WIFI["<b>Wi-Fi / 蓝牙 M.2 模块</b>"]
+    JETSON -- "经集线器的 USB 3.0" --> HUBS["<b>USB 3.0 集线器</b><br/>8 个 USB3 摄像头端口<br/>（摄像头 1-8）"]
 
-    CM5 -- "高速 SPI 总线 + DMA + 中断引脚" --> MCU
+    JETSON -- "SPI 链路（STM32H757 为主设备）" --> MCU
 
     subgraph MCU["STM32H757XIH6 实时协处理器（TFBGA240）"]
         direction LR
@@ -199,7 +198,7 @@ python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the f
 
 ## 🧪 测试
 
-运行 `python -m unittest discover -s tests -p 'test_*.py'` 会执行 746 个自动测试。 其中 187 个是 CM5 SPI 桥的测试，522 个是固件源码、签名镜像头和 CAN 标识符的测试（SPI 桥的测试用 `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` 和 `-s src/cm5_host/spi_bridge/tests` 运行）。引导程序和中继的 C 逻辑还由另外 50 个程序检查，它们在 `build_firmware.sh` 的 1b 步骤中用普通的主机 C 编译器编译。它们都不需要电路板。
+运行 `python -m unittest discover -s tests -p 'test_*.py'` 会执行 750 个自动测试。 其中 187 个是 CM5 SPI 桥的测试，522 个是固件源码、签名镜像头和 CAN 标识符的测试（SPI 桥的测试用 `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` 和 `-s src/cm5_host/spi_bridge/tests` 运行）。引导程序和中继的 C 逻辑还由另外 50 个程序检查，它们在 `build_firmware.sh` 的 1b 步骤中用普通的主机 C 编译器编译。它们都不需要电路板。
 
 CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档、八个 README 和图片。
 

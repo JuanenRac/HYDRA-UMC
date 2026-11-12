@@ -12,14 +12,14 @@ GPL-3.0-or-later - see LICENSE
 
 <p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | 🇯🇵 <b>日本語</b> | <a href="README_por.md">🇵🇹 Português</a></p>
 
-### 🤖 究極のデュアルコア・マイクロファクトリー＆マルチロボットコントローラープラットフォーム（V1.0 — デュアル PCIe Hailo-8 + Hailo-10 AI アクセラレータ & デュアル USB 3.0 ハブ）
+### 🤖 究極のデュアルコア・マイクロファクトリー＆マルチロボットコントローラープラットフォーム（V1.0 — NVIDIA Jetson Orin NX 16 GB ホスト、Hailo-8 AI アクセラレータ & USB 3.0 カメラハブ）
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H757-003551.svg" alt="Platform">
-  <img src="https://img.shields.io/badge/Tests-746%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-750%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
@@ -38,7 +38,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | バージョン | `0.2.8` |
 | 成熟度 | 足場段階 |
-| テスト | 746 (`python -m unittest discover -s tests -p 'test_*.py'`) |
+| テスト | 750 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | 技術 | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | 対象 | マイコン基板（ファームウェア）。ビルドは PC で行います |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
@@ -54,7 +54,7 @@ GPL-3.0-or-later - see LICENSE
 | 領域 | 状態 | ここでの意味 |
 |---|---|---|
 | ソフトウェア | 🟠 | 構造と最初の部品のみで、作業の大部分はこれからです |
-| テスト | 🟡 | 自動テスト 746 件。変更のたびに実行されます |
+| テスト | 🟡 | 自動テスト 750 件。変更のたびに実行されます |
 | 実機 | 🔴 | まだです：このバージョンについて実機での動作記録はありません |
 | ドキュメント | 🟡 | 8 言語の README。変更のたびにマニフェストと照合されます |
 
@@ -64,13 +64,15 @@ GPL-3.0-or-later - see LICENSE
 
 **ヘテロジニアスなホスト + リアルタイムコプロセッサアーキテクチャ** として設計された HYDRA-UMC は、高水準のユーザーインターフェース描画・コンピュータビジョン・AI 推論・クラウド接続を、リアルタイムなステップパルス生成・フィールドバス管理・パワーエレクトロニクス駆動から分離することを目指しています(計画中:ステップパルス生成と駆動はまだ書かれていません)。
 
-> **対象ハードウェア:** 量産基板は STM32H757(リンクの SPI マスター)と、ホストとしての NVIDIA Jetson Orin NX 16 GB です。Raspberry Pi Compute Module 5 はパイロット開発用の試験台として残ります。Jetson のベースボードでは、Hailo-8 は PCIe x4 の M.2 スロットにあり、隣に NVMe スロットと Wi-Fi/Bluetooth スロットがあり、Hailo-10H はありません。これらはいずれも基板上で動作したことがありません。以下のブロック図、機能一覧、ハードウェア仕様は、描き直すまでは、PCIe スイッチと Hailo-10 を備えた従来の Compute Module 5 キャリアを描いたままです。
+> **対象ハードウェア:** 量産基板は STM32H757(リンクの SPI マスター)と、ホストとしての NVIDIA Jetson Orin NX 16 GB です。Raspberry Pi Compute Module 5 はパイロット開発用の試験台として残ります。Jetson のベースボードでは、Hailo-8 は PCIe x4 の M.2 スロットにあり、隣に NVMe スロットと Wi-Fi/Bluetooth スロットがあり、Hailo-10H はありません。これらはいずれも基板上で動作したことがありません。以下のブロック図と機能一覧は、この目標のベースボードを描いたものです。設計であり、製作済みの基板ではありません。
+
+> **プラットフォーム：** プラットフォームプロファイル（`cm5`、`jetson_orin_nx`、`h745_current`、`h757_target`）は設定で切り替えられるようにする計画で、主ホストは Jetson、システムは Linux（JetPack または Debian）です。ベースボードのコネクタは、将来ほかの 260 ピン計算モジュール（Rockchip RK3588 モジュールと、これから設計する CM5 用アダプタカード）も受け入れる想定です。これらと後継モジュールは候補であり、確約ではありません。
 
 > **設計の状況:** 以下の各節は、ボードとそのファームウェアの意図した設計を述べています。現時点で存在するのは、ブートローダー、CM4 と G474 の通信アプリケーション、CM5 パイロット試験台向けに書かれた SPI ブリッジだけです(終盤の「安全に関する現状」の囲みと `docs/architecture.md` の状況表を参照)。以下の文が動作生成、S カーブプロファイル、PID ループ、安全インターロック、E-STOP、停電時の処理、物体検出、あるいは完成後のボードのその他の挙動を現在形で述べている場合は、計画中のものとして読んでください。そのいずれも、実装済みの基板上では動作していません。
 
 ### 🤖 マイクロファクトリーとしての機能（設計上の目標）：
 * 📡 **分散型マルチロボットネットワーク：** 計画中：単一の物理 CAN バス上で、最大 8 台の分散スレーブロボットモジュール（まず 3・4・5・6 自由度、将来のリリースでは 7・8・9 自由度およびデュアルロボット構成へ拡張予定）を協調動作させる。
-* 🧠 **デュアル組み込みニューラルコプロセッシング：** 板載の PCIe Gen3 スイッチが、CM5 の単一 PCIe レーンを 2 基の M.2 AI アクセラレータへファンアウトします。Hailo-8（26 TOPS）は 8 台のカメラすべてに対し、マルチストリームの YOLOv8/YOLO11 (計画中。まだ動作していません) 物体検出・欠陥検査・リアルタイム PnP フィデューシャルアライメントを駆動し、Hailo-10（40 TOPS）はクラウドへの往復通信なしに、ローカル・オンデバイスで認知推論と生成 AI（量子化された LLM/VLA モデル）を実行します。
+* 🧠 **組み込みニューラルコプロセッシング：** NVIDIA Jetson Orin NX 16 GB（最大 100 TOPS、NVIDIA の公表値）が、ビジョンと AI の処理を実行し、自身の PCIe レーンで 3 つの M.2 スロットを駆動します。PCIe x4 の Key-M スロットの Hailo-8（26 TOPS）は、全カメラにわたるマルチストリームの YOLOv8/YOLO11 物体検出（計画中で、検出器はまだ動作していません）、欠陥検査、PnP フィデューシャル位置合わせに使います。ほかに NVMe ドライブと、Key-E スロットの Wi-Fi/Bluetooth モジュールがあります。Jetson 版に Hailo-10H はなく、ローカル推論と GenAI（量子化した LLM/VLA モデル、計画中）は Jetson 自身で、クラウドを経由せずに実行します。
 * 📐 **ローカル 6 軸ステージ：** 6 つのローカル軸（X、Y1、Y2、Z、E0、E1）に対する直接的な step/dir/enable パルス生成。副ロボット、ATC（自動工具交換装置）タレット、コンベアベルト同期、XYZ テーブルガントリーといった補助用途に対応します。
 * 🎯 **JuanenPNP・JuanenCNC 統合：** Pick-and-Place システム（LumenPNP ハードウェア構成）や、PCB プロトタイピング・SMD 実装向けの 10W 光学レーザーモジュールを搭載した CNC ユニットと直接互換性があります。
 * 👁️ **8 系統カメラビジョン・検査マトリクス：** デュアル USB 3.0 コントローラーを統合し、8 個の専用 USB カメラポートを駆動。リアルタイム OpenCV による Pick-and-Place 光学アライメント、熱画像検査、リモートストリーム監視を実現します。
@@ -92,17 +94,14 @@ GPL-3.0-or-later - see LICENSE
 
 ```mermaid
 flowchart TB
-    CM5["<b>Compute Module 5（ホスト / 頭脳）</b><br/>Broadcom BCM2712 クアッドコア Cortex-A76 @ 2.4 GHz<br/>VideoCore VII GPU（OpenGL ES 3.1 / Vulkan 1.2）<br/>RP1 デュアル USB 3.0 ホストコントローラー（2x 5 Gbps）<br/>PREEMPT_RT パッチセット適用 Linux OS<br/>MIPI-DSI 経由の高フレームレートタッチ UI（Qt6 / Flutter）<br/>軌道計画、G-code 解析、Vision AI"]
+    JETSON["<b>NVIDIA Jetson Orin NX 16 GB（ホスト / 頭脳）</b><br/>ベースボードの SO-DIMM ソケットに装着するモジュール<br/>Linux（JetPack / Debian）<br/>高フレームレートのタッチ UI（Qt6 / Flutter）<br/>軌道計画、G コード解析、ビジョン AI<br/>エコシステムのサーバーとサービス"]
 
-    CM5 -- "PCIe Gen 3.0 x1（最大 8 Gbps）" --> PCIESW["<b>PCIe Gen3 スイッチ</b><br/>1 対 2 レーンファンアウト"]
-    PCIESW -- "PCIe x1" --> HAILO8["<b>Hailo-8 M.2 AI アクセラレータ</b><br/>26 TOPS — 高速視覚処理"]
-    PCIESW -- "PCIe x1" --> HAILO10["<b>Hailo-10 M.2 AI アクセラレータ</b><br/>40 TOPS — 認知推論 / ローカル生成 AI"]
-    CM5 -- "USB3 チャンネル 1" --> HUB1["GL3523 ハブ #1"]
-    CM5 -- "USB3 チャンネル 2" --> HUB2["GL3523 ハブ #2"]
-    HUB1 --> CAM14["4 系統 USB3 カメラポート<br/>（カメラ 1-4）"]
-    HUB2 --> CAM58["4 系統 USB3 カメラポート<br/>（カメラ 5-8）"]
+    JETSON -- "PCIe x4（Key-M スロット）" --> HAILO8["<b>Hailo-8 M.2 AI アクセラレータ</b><br/>26 TOPS - 高速ビジョン"]
+    JETSON -- "PCIe（Key-M スロット）" --> NVME["<b>NVMe M.2 SSD</b><br/>ストレージ"]
+    JETSON -- "PCIe + USB 2.0（Key-E スロット）" --> WIFI["<b>Wi-Fi / Bluetooth M.2 モジュール</b>"]
+    JETSON -- "ハブ経由の USB 3.0" --> HUBS["<b>USB 3.0 ハブ</b><br/>USB3 カメラポート 8 個<br/>（カメラ 1-8）"]
 
-    CM5 -- "高速 SPI バス + DMA + IRQ ピン" --> MCU
+    JETSON -- "SPI リンク（STM32H757 がマスター）" --> MCU
 
     subgraph MCU["STM32H757XIH6 リアルタイムコプロセッサ（TFBGA240）"]
         direction LR
@@ -199,7 +198,7 @@ python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the f
 
 ## 🧪 テスト
 
-`python -m unittest discover -s tests -p 'test_*.py'` で自動テスト 746 件を実行します。 CM5 の SPI ブリッジのテスト 187 件と、ファームウェアのソース、署名付きイメージヘッダー、CAN 識別子のテスト 522 件です（SPI ブリッジ側は `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` と `-s src/cm5_host/spi_bridge/tests` で実行します）。ブートローダーとリレーの C ロジックは、`build_firmware.sh` のステップ 1b で通常のホスト C コンパイラーでビルドする 50 本のプログラムがさらに検査します。どれも基板を必要としません。
+`python -m unittest discover -s tests -p 'test_*.py'` で自動テスト 750 件を実行します。 CM5 の SPI ブリッジのテスト 187 件と、ファームウェアのソース、署名付きイメージヘッダー、CAN 識別子のテスト 522 件です（SPI ブリッジ側は `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` と `-s src/cm5_host/spi_bridge/tests` で実行します）。ブートローダーとリレーの C ロジックは、`build_firmware.sh` のステップ 1b で通常のホスト C コンパイラーでビルドする 50 本のプログラムがさらに検査します。どれも基板を必要としません。
 
 CI は `HYDRA_UMC_CI=1 python tools/ci_validate.py` を実行し、マニフェスト、文書、8 つの README、図を検査します。
 

@@ -12,14 +12,14 @@ GPL-3.0-or-later - see LICENSE
 
 <p align="center"><a href="README.md">🇺🇸 English</a> | 🇪🇸 <b>Español</b> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
-### 🤖 La Plataforma Definitiva de Micro-Fábrica de Doble Núcleo y Controlador Multi-Robot (V1.0 - Doble Acelerador de IA por PCIe Hailo-8 + Hailo-10 y Doble Hub USB 3.0)
+### 🤖 La Plataforma Definitiva de Micro-Fábrica de Doble Núcleo y Controlador Multi-Robot (V1.0 - Host NVIDIA Jetson Orin NX de 16 GB con Acelerador de IA Hailo-8 y Hubs USB 3.0 para Cámaras)
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H757-003551.svg" alt="Platform">
-  <img src="https://img.shields.io/badge/Tests-746%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-750%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
@@ -38,7 +38,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versión | `0.2.8` |
 | Madurez | Andamiaje |
-| Tests | 746 (`python -m unittest discover -s tests -p 'test_*.py'`) |
+| Tests | 750 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | Tecnología | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | Destino | Una placa con microcontrolador (el firmware); se compila en un PC |
 | En hardware real | Todavía no: no consta ninguna ejecución en hardware real para esta versión |
@@ -54,7 +54,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Área | Estado | Qué significa aquí |
 |---|---|---|
 | Software | 🟠 | Solo estructura y primeras piezas; falta la mayor parte del trabajo |
-| Pruebas | 🟡 | 746 pruebas automáticas, ejecutadas en cada cambio |
+| Pruebas | 🟡 | 750 pruebas automáticas, ejecutadas en cada cambio |
 | Hardware real | 🔴 | Todavía no: no consta ninguna ejecución en hardware real para esta versión |
 | Documentación | 🟡 | README en ocho idiomas, comprobado contra el manifiesto en cada cambio |
 
@@ -64,13 +64,15 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 
 Diseñada como una **Arquitectura Heterogénea de Host + Co-Procesador de Tiempo Real**, HYDRA-UMC pretende desacoplar el renderizado de interfaz de usuario de alto nivel, la visión por computador, la inferencia de IA y la conectividad en la nube, de la generación de pasos en tiempo real, la gestión del bus de campo y la actuación de la electrónica de potencia (previsto: la generación de pasos y la actuación todavía no están escritas).
 
-> **Hardware objetivo:** la placa de producción es un STM32H757 (el maestro SPI del enlace) con una NVIDIA Jetson Orin NX de 16 GB como host; la Raspberry Pi Compute Module 5 queda como banco piloto de desarrollo. En la placa base del Jetson el Hailo-8 va en una ranura M.2 PCIe x4 junto a una ranura NVMe y otra Wi-Fi/Bluetooth, y no hay Hailo-10H. Nada de esto ha funcionado en una placa. El diagrama de bloques, la lista de funciones y la especificación de hardware de abajo siguen dibujando la placa portadora anterior con la Compute Module 5, con su conmutador PCIe y su Hailo-10, hasta que se redibujen.
+> **Hardware objetivo:** la placa de producción es un STM32H757 (el maestro SPI del enlace) con una NVIDIA Jetson Orin NX de 16 GB como host; la Raspberry Pi Compute Module 5 queda como banco piloto de desarrollo. En la placa base del Jetson el Hailo-8 va en una ranura M.2 PCIe x4 junto a una ranura NVMe y otra Wi-Fi/Bluetooth, y no hay Hailo-10H. Nada de esto ha funcionado en una placa. El diagrama de bloques y la lista de funciones de abajo dibujan esa placa base objetivo; es un diseño, no una placa construida.
+
+> **Plataformas:** los perfiles de plataforma (`cm5`, `jetson_orin_nx`, `h745_current`, `h757_target`) están pensados para ser configurables, con la Jetson como host principal y Linux (JetPack o Debian) como sistema. El conector de la placa base está pensado para admitir más adelante otros módulos de cómputo de 260 pines (un módulo Rockchip RK3588 y una tarjeta adaptadora para la CM5 que aún hay que diseñar); esos módulos y sus sucesores son candidatos, no un compromiso.
 
 > **Estado del diseño:** las secciones siguientes describen el diseño previsto de la placa y de su firmware. Lo que existe hoy se limita a los bootloaders, las aplicaciones de comunicación del CM4 y del G474 y el puente SPI del lado del CM5 (véanse el recuadro *Estado de seguridad* cerca del final y la tabla de estado de `docs/architecture.md`). Siempre que una frase de abajo hable en presente de generación de movimiento, perfiles en S, bucles PID, enclavamientos de seguridad, un E-STOP, gestión de pérdida de alimentación, detección de objetos o cualquier otro comportamiento de la placa final, léela como previsto: nada de ello se ha ejecutado en una placa poblada.
 
 ### 🤖 Capacidades de la Micro-Fábrica (objetivos de diseño):
 * 📡 **Red Multi-Robot Distribuida:** Previsto: coordinar hasta 8 módulos robóticos esclavos distribuidos (primero 3, 4, 5 y 6 ejes; escalable a 7, 8, 9 ejes y arquitecturas de robots duales en futuras versiones) conectados a través de un único bus físico CAN.
-* 🧠 **Doble Coprocesamiento Neuronal Embebido:** Un switch PCIe Gen3 a bordo reparte el único carril PCIe del CM5 entre 2 aceleradores de IA M.2 - un Hailo-8 (26 TOPS) que realiza detección de objetos multi-flujo YOLOv8/YOLO11 (previsto; todavía no se ejecuta), inspección de defectos y alineación de fiduciales PnP en tiempo real en las 8 cámaras, más un Hailo-10 (40 TOPS) que ejecuta razonamiento cognitivo y GenAI local en el propio dispositivo (modelos LLM/VLA cuantizados) sin pasar por la nube.
+* 🧠 **Coprocesamiento Neuronal Embebido:** La NVIDIA Jetson Orin NX de 16 GB (hasta 100 TOPS, cifra de NVIDIA) ejecuta las cargas de visión e IA y maneja tres ranuras M.2 con sus propios carriles PCIe: un Hailo-8 (26 TOPS) en una ranura Key-M PCIe x4 para detección de objetos multiflujo YOLOv8/YOLO11 (previsto; aún no funciona ningún detector), inspección de defectos y alineación de fiduciales de PnP en todas las cámaras, una unidad NVMe y un módulo Wi-Fi/Bluetooth en una ranura Key-E. La variante Jetson no lleva Hailo-10H: el razonamiento local y la GenAI (modelos LLM/VLA cuantizados, previsto) se ejecutan en la propia Jetson, sin ida y vuelta a la nube.
 * 📐 **Etapa Local de 6 Ejes:** Generación directa de pulsos step/dir/enable para 6 ejes locales (X, Y1, Y2, Z, E0, E1) para necesidades auxiliares: robots adicionales, revólveres ATC (Cambiador Automático de Herramientas), sincronización de cintas transportadoras o pórticos de tablas XYZ.
 * 🎯 **Integración con JuanenPNP y JuanenCNC:** Directamente compatible con sistemas de Pick-and-Place (estructuras de hardware LumenPNP) y unidades CNC equipadas con módulos de láser óptico de 10W para prototipado de PCB y colocación SMD.
 * 👁️ **Matriz de Visión e Inspección Óctuple por Cámara:** Doble controlador USB 3.0 integrado que alimenta 8 puertos de cámara USB dedicados para alineación óptica pick-and-place con OpenCV en tiempo real, inspección térmica y monitorización remota de flujo de vídeo.
@@ -92,17 +94,14 @@ Diseñada como una **Arquitectura Heterogénea de Host + Co-Procesador de Tiempo
 
 ```mermaid
 flowchart TB
-    CM5["<b>Compute Module 5 (Host / Cerebro)</b><br/>Broadcom BCM2712 Quad Cortex-A76 a 2.4 GHz<br/>GPU VideoCore VII (OpenGL ES 3.1 / Vulkan 1.2)<br/>Controladores host RP1 Dual USB 3.0 (2x 5 Gbps)<br/>SO Linux con parche PREEMPT_RT<br/>UI táctil de alto FPS (Qt6 / Flutter) vía MIPI-DSI<br/>Planificación de trayectoria, parseo de G-code e IA de Visión"]
+    JETSON["<b>NVIDIA Jetson Orin NX de 16 GB (Host / Cerebro)</b><br/>Módulo en su zócalo SO-DIMM de la placa base<br/>Linux (JetPack / Debian)<br/>UI táctil de alto FPS (Qt6 / Flutter)<br/>Planificación de trayectoria, parseo de G-code e IA de Visión<br/>Servidor y servicios del ecosistema"]
 
-    CM5 -- "PCIe Gen 3.0 x1 (hasta 8 Gbps)" --> PCIESW["<b>Switch PCIe Gen3</b><br/>Reparto de 1 a 2 carriles"]
-    PCIESW -- "PCIe x1" --> HAILO8["<b>Acelerador de IA Hailo-8 M.2</b><br/>26 TOPS - visión de alta velocidad"]
-    PCIESW -- "PCIe x1" --> HAILO10["<b>Acelerador de IA Hailo-10 M.2</b><br/>40 TOPS - razonamiento cognitivo / GenAI local"]
-    CM5 -- "Canal USB3 1" --> HUB1["Hub #1 GL3523"]
-    CM5 -- "Canal USB3 2" --> HUB2["Hub #2 GL3523"]
-    HUB1 --> CAM14["4x puertos de cámara USB3<br/>(Cam 1-4)"]
-    HUB2 --> CAM58["4x puertos de cámara USB3<br/>(Cam 5-8)"]
+    JETSON -- "PCIe x4 (ranura Key-M)" --> HAILO8["<b>Acelerador de IA Hailo-8 M.2</b><br/>26 TOPS - visión de alta velocidad"]
+    JETSON -- "PCIe (ranura Key-M)" --> NVME["<b>SSD NVMe M.2</b><br/>Almacenamiento"]
+    JETSON -- "PCIe + USB 2.0 (ranura Key-E)" --> WIFI["<b>Módulo M.2 Wi-Fi / Bluetooth</b>"]
+    JETSON -- "USB 3.0 mediante hubs" --> HUBS["<b>Hubs USB 3.0</b><br/>8x puertos de cámara USB3<br/>(Cam 1-8)"]
 
-    CM5 -- "Bus SPI de alta velocidad + DMA + pin IRQ" --> MCU
+    JETSON -- "Enlace SPI (el STM32H757 es el maestro)" --> MCU
 
     subgraph MCU["Co-Procesador de Tiempo Real STM32H757XIH6 (TFBGA240)"]
         direction LR
@@ -221,7 +220,7 @@ objetivos `g474`/`h745`/por defecto, 0 errores) - no una lista teórica:
 
 ## 🧪 Pruebas
 
-746 pruebas automáticas se ejecutan con `python -m unittest discover -s tests -p 'test_*.py'`. Son 187 pruebas del puente SPI de la CM5 más 522 de las fuentes del firmware, la cabecera de imagen firmada y los identificadores CAN (las del puente SPI se ejecutan con `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` y `-s src/cm5_host/spi_bridge/tests`). La lógica en C de los cargadores de arranque y del relé la comprueban otros 50 programas compilados con un compilador de C normal del anfitrión, en el paso 1b de `build_firmware.sh`. Ninguna necesita una placa.
+750 pruebas automáticas se ejecutan con `python -m unittest discover -s tests -p 'test_*.py'`. Son 187 pruebas del puente SPI de la CM5 más 522 de las fuentes del firmware, la cabecera de imagen firmada y los identificadores CAN (las del puente SPI se ejecutan con `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` y `-s src/cm5_host/spi_bridge/tests`). La lógica en C de los cargadores de arranque y del relé la comprueban otros 50 programas compilados con un compilador de C normal del anfitrión, en el paso 1b de `build_firmware.sh`. Ninguna necesita una placa.
 
 El CI ejecuta `HYDRA_UMC_CI=1 python tools/ci_validate.py`, que comprueba el manifiesto, los documentos, los ocho README y las imágenes.
 
