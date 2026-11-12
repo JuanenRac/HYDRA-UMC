@@ -88,7 +88,7 @@ class StoreTests(unittest.TestCase):
             result = pin.PinStore(damaged, FAST).verify("0000")
             self.assertNotEqual(result, pin.OK, index)
         garbage = pin.Fram()
-        garbage.data = bytearray(b"\x00" * (2 * pin.RECORD))
+        garbage.data = bytearray(b"\x5a" * (2 * pin.RECORD))
         broken = pin.PinStore(garbage, FAST)
         self.assertEqual((broken.state(), broken.verify("4821")), ("corrupt", pin.UNAVAILABLE))
 
@@ -123,6 +123,14 @@ class StoreTests(unittest.TestCase):
         for sequence in (30000, 60000, 65535, 0, 1):
             s._write(pin.Record(base.digits, sequence, base.iterations, base.salt, base.hash, sequence % 7))
             self.assertEqual(s._current()[1].sequence, sequence)
+        self.assertEqual(s.verify("4821"), pin.OK)
+
+    def test_a_chip_erased_with_zeros_by_the_brain_reads_as_no_pin_not_as_damage(self):
+        s, fram = store()
+        s.set_pin("4821", SALT)
+        fram.data = bytearray(2 * pin.RECORD)  # the F-RAM erase of the brain writes zeros over the chip
+        self.assertEqual((s.state(), s.verify("4821")), ("unset", pin.UNAVAILABLE))
+        s.set_pin("4821", SALT)  # the Studio sets it again
         self.assertEqual(s.verify("4821"), pin.OK)
 
     def test_the_erase_leaves_the_store_as_new(self):
