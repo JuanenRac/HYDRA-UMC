@@ -11,11 +11,15 @@ HTTP" pattern SERVER already uses for Voice UI/Datalake
 Real routes:
   GET  /version?tier=&slot=&relay=   -> query_version()
   GET  /counters?tier=&slot=&relay=  -> query_error_counters(): the transmit and receive error counters of the CAN controller of a board
-  POST /flash?tier=&slot=&hardware_id=&relay=&version_major=&version_minor=[&version_patch=][&downgrade_from=x.y.z][&signature=HEX] -> SpiOtaFlasher.flash(),
+  POST /flash?tier=&slot=&hardware_id=&relay=&version_major=&version_minor=[&version_patch=][&downgrade_from=x.y.z][&signature=HEX][&target=NAME][&min_bootloader=x.y.z] -> SpiOtaFlasher.flash(),
                                         streamed as newline-delimited JSON. The HYDRA-UMC bootloaders verify an Ed25519 signature of the image
                                         (128 hexadecimal digits in `signature`, made with tools/image_header.py sign on the machine that holds the
                                         private seed): this service holds no signing key. A downgrade needs a signer of the token of the session,
-                                        which only a deployment that provides one (serve(downgrade_signer=...)) has.
+                                        which only a deployment that provides one (serve(downgrade_signer=...)) has. `target` and `min_bootloader`
+                                        are the fields of the same names of the update manifest, passed on by the caller that holds it: a target
+                                        that is not the board is refused (400) before the image is read, and a bootloader older than
+                                        `min_bootloader` (or one whose version cannot be read) ends the stream with an error before any image
+                                        byte is sent. Without them nothing is checked.
 
 `tier`/`slot` always identify the directly-reachable Tier 0/1 target (the
 one `transport` was already opened against). `relay=1` additionally tunnels
@@ -42,7 +46,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from .bootloader_client import SpiOtaFlasher, query_error_counters, query_version
+from .bootloader_client import SpiOtaFlasher, check_manifest_requirements, query_error_counters, query_version
 from .image_header import DowngradeSigner, ImageSigner, SIGNATURE_SIZE, is_signed_header_target
 from .relay_tunnel import RelayedTransport
 from .transport import SpiOtaTransport
@@ -142,6 +146,8 @@ def make_handler(
                 downgrade_from = tuple(int(part) for part in installed.split(".")) if installed else None
                 if downgrade_from is not None and len(downgrade_from) != 3:
                     raise ValueError("downgrade_from must be major.minor.patch")
+                target = params.get("target", [""])[0] or None
+                min_bootloader = params.get("min_bootloader", [""])[0] or None
                 signature_hex = params.get("signature", [""])[0]
                 signature = bytes.fromhex(signature_hex) if signature_hex else None
                 if signature is not None and len(signature) != SIGNATURE_SIZE:
@@ -156,6 +162,10 @@ def make_handler(
                 return
             if tier not in VALID_TIERS or slot not in VALID_SLOTS:
                 self._send_json(400, {"error": "tier must be 0, 1 or 2 and slot 0-7"})
+                return
+            refusal = check_manifest_requirements(hardware_id, min_bootloader, target)
+            if refusal is not None:
+                self._send_json(400, {"error": refusal})
                 return
             if is_signed_header_target(hardware_id):
                 # Said before the body is read and before the bootloader is touched: nothing the board would refuse after the whole transfer.
@@ -192,7 +202,7 @@ def make_handler(
                     for progress in flasher.flash(
                         tier, slot, hardware_id, firmware, version_major, version_minor,
                         version_patch=version_patch, allow_downgrade=downgrade_from is not None, downgrade_from=downgrade_from,
-                        signature=signature,
+                        signature=signature, min_bootloader=min_bootloader, target=target,
                     ):
                         self._write_progress(progress.phase, progress.pages_sent, progress.pages_total, progress.percent, progress.error)
                 except (OSError, ValueError) as error:

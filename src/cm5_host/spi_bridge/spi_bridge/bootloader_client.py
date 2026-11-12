@@ -41,6 +41,7 @@ from .protocol import (
     OFS_END_UPDATE,
     OFS_CONFIRM_HEALTHY,
     OFS_ENTER_BOOTLOADER,
+    OFS_BOOTLOADER_VERSION,
     OFS_ERROR_COUNTERS_RESPONSE,
     OFS_QUERY_ERROR_COUNTERS,
     OFS_HEARTBEAT,
@@ -57,6 +58,13 @@ from .protocol import (
     poll_frame,
 )
 from .transport import SpiOtaTransport
+
+# The `target` a manifest names for each board that the HYDRA-UMC bootloaders know (the names of the manifest schema: a short lowercase controller name).
+TARGET_BY_HARDWARE_ID = {
+    0x47343031: "g474",  # "G401": the Robot Controller Board
+    0x48374334: "h745-cm4",  # "H7C4": the Kinematic Brain, CM4 core
+    0x48374337: "h745-cm7",  # "H7C7": the Kinematic Brain, CM7 core
+}
 
 FLASH_PAGE_SIZE = 2048  # matches OFS_DATA's real 2 KB logical transfer-chunk size
 
@@ -86,6 +94,46 @@ def query_version(transport: SpiOtaTransport, target_tier: int, target_slot: int
     firmware_major = struct.unpack(">H", response.payload[5:7])[0]
     firmware_minor = response.payload[7]
     return VersionInfo(True, is_bootloader, hardware_id, firmware_major, firmware_minor)
+
+
+def query_bootloader_version(transport: SpiOtaTransport, target_tier: int, target_slot: int) -> tuple[int, int, int] | None:
+    """The version (major, minor, patch) of the bootloader binary itself, which a bootloader sends in a frame of its own (0x0A) after the answer to
+    a version query. None when the board does not answer, answers with something else or is not in its bootloader: no version is invented."""
+
+    try:
+        transport.transceive(SpiOtaFrame(target_tier, target_slot, OFS_QUERY_VERSION, 1, b"\x00"))
+        response = transport.transceive(poll_frame(target_tier, target_slot, OFS_BOOTLOADER_VERSION))
+    except (OSError, ValueError):
+        return None
+    if response.frame_type != OFS_BOOTLOADER_VERSION or response.dlc < 3:
+        return None
+    return (response.payload[0], response.payload[1], response.payload[2])
+
+
+def parse_version(text: str) -> tuple[int, ...]:
+    """'0.2.0' or '0.2.0.1' as a tuple of integers; ValueError for anything else (the manifest schema allows three or four numbers)."""
+
+    parts = text.split(".")
+    if len(parts) not in (3, 4) or not all(part.isascii() and part.isdigit() for part in parts):
+        raise ValueError(f"a version is MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH.BUILD, got {text!r}")
+    return tuple(int(part) for part in parts)
+
+
+def check_manifest_requirements(hardware_id: int, min_bootloader: str | None, target: str | None) -> str | None:
+    """What of a manifest can be checked before the board is touched: the reason the update must be refused, or None. A manifest without the
+    fields asks for nothing (both are optional in the schema)."""
+
+    if target is not None:
+        known = TARGET_BY_HARDWARE_ID.get(hardware_id)
+        if known != target:
+            board = known if known is not None else f"hardware id 0x{hardware_id:08X}"
+            return f"the manifest is for the target {target!r} but the board is {board!r}"
+    if min_bootloader is not None:
+        try:
+            parse_version(min_bootloader)
+        except ValueError as error:
+            return str(error)
+    return None
 
 
 @dataclass(frozen=True)
@@ -170,6 +218,8 @@ class SpiOtaFlasher:
         downgrade_from: tuple[int, int, int] | None = None,
         signature: bytes | None = None,
         page_timeout_seconds: float = 3.0,
+        min_bootloader: str | None = None,
+        target: str | None = None,
     ) -> Iterator[FlashProgress]:
         """Flash `firmware` to the board. The HYDRA-UMC bootloaders (image_header.is_signed_header_target) take a signed 64-byte header
         with the full version (major.minor.patch) and accept only an image strictly newer than the installed one. The 64-byte Ed25519
@@ -177,8 +227,17 @@ class SpiOtaFlasher:
         as it is; without it `image_signer` is asked for it, and without either nothing is sent. To go back to an older one
         `downgrade_from` must give the installed (major, minor, patch): the board is asked for a nonce and `downgrade_signer` signs a
         token bound to this session, those two versions and this image. `allow_downgrade` is the old constant-magic frame: only the
-        URTC bootloaders behind the relay still understand it, and for a HYDRA-UMC one it is refused here rather than sent."""
+        URTC bootloaders behind the relay still understand it, and for a HYDRA-UMC one it is refused here rather than sent.
+
+        `target` and `min_bootloader` are what the update manifest says (both optional; absent means no check). A manifest for another
+        controller is refused before the board is touched. One that needs a newer bootloader than the board has is refused after the board has
+        entered its bootloader (the only state that can tell its version) and before a single byte of the image is sent; a bootloader
+        whose version cannot be read is refused too, never assumed to be new enough."""
         pages_total = max(1, -(-len(firmware) // FLASH_PAGE_SIZE))  # ceil division
+        refusal = check_manifest_requirements(hardware_id, min_bootloader, target)
+        if refusal is not None:
+            yield FlashProgress("error", 0, pages_total, 0, refusal)
+            return
         signed = image_header.is_signed_header_target(hardware_id)
         version = (version_major, version_minor, version_patch)
         if signed and allow_downgrade and downgrade_from is None:
@@ -210,6 +269,17 @@ class SpiOtaFlasher:
         yield FlashProgress("entering_bootloader", 0, pages_total, 0)
         self._send(target_tier, target_slot, OFS_ENTER_BOOTLOADER, ENTER_BOOTLOADER_MAGIC)
         time.sleep(0.8)  # matches URTC-FLASHER's own real post-reset settle delay
+
+        if min_bootloader is not None:
+            installed_bootloader = query_bootloader_version(self._transport, target_tier, target_slot)
+            if installed_bootloader is None:
+                yield FlashProgress("error", 0, pages_total, 1, "the version of the bootloader could not be read, so the minimum bootloader of the manifest cannot be checked")
+                return
+            needed = parse_version(min_bootloader)
+            if installed_bootloader + (0,) * (len(needed) - len(installed_bootloader)) < needed:
+                have = ".".join(str(part) for part in installed_bootloader)
+                yield FlashProgress("error", 0, pages_total, 1, f"the manifest needs a bootloader of at least {min_bootloader} and the board has {have}")
+                return
 
         if allow_downgrade and not signed:
             self._send(target_tier, target_slot, 0x0D, AUTHORIZE_DOWNGRADE_MAGIC)  # OFS_AUTHORIZE_DOWNGRADE (URTC bootloaders only)

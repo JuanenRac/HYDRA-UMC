@@ -11,6 +11,7 @@ correct without any real SPI/GPIO/hardware."""
 import struct
 
 from spi_bridge.protocol import (
+    OFS_BOOTLOADER_VERSION,
     OFS_DATA,
     OFS_PAGE_ACK,
     OFS_STATUS,
@@ -22,8 +23,9 @@ from spi_bridge.protocol import (
 
 
 class FakeBootloaderTransport:
-    def __init__(self, *, hardware_id: int = 0x48374334, online: bool = True):
+    def __init__(self, *, hardware_id: int = 0x48374334, online: bool = True, bootloader_version: tuple[int, int, int] | None = None):
         self.hardware_id = hardware_id
+        self.bootloader_version = bootloader_version  # None: the board never sends the frame of the bootloader version
         self.online = online
         self.pages_received = 0
         self._page_bytes_buffer = bytearray()
@@ -44,6 +46,11 @@ class FakeBootloaderTransport:
         if frame.frame_type == 0x08:  # OFS_QUERY_VERSION
             payload = bytes([0x00]) + struct.pack(">I", self.hardware_id) + struct.pack(">H", 0) + bytes([1])
             return SpiOtaFrame(frame.target_tier, frame.target_slot, OFS_VERSION_RESPONSE, 8, payload)
+
+        if frame.frame_type == OFS_BOOTLOADER_VERSION:
+            if self.bootloader_version is None:
+                return SpiOtaFrame(frame.target_tier, frame.target_slot, 0xFF, 0)
+            return SpiOtaFrame(frame.target_tier, frame.target_slot, OFS_BOOTLOADER_VERSION, 3, bytes(self.bootloader_version))
 
         if frame.frame_type == OFS_DATA:
             self._page_bytes_buffer += frame.payload[: frame.dlc]
