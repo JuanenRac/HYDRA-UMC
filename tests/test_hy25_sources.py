@@ -155,7 +155,7 @@ class SwitchesShipOff(unittest.TestCase):
         self.assertLess(main.index("HAL_IWDG_Init(&hiwdg)"), main.index("HAL_StatusTypeDef hal_status = HAL_Init();"))  # the watchdog first: the HAL time-outs rest on it once the tick is off
         self.assertLess(main.index("HAL_StatusTypeDef hal_status = HAL_Init();"), level_2)
         switches = text(ROOT / "docs" / "FIRMWARE_SWITCHES.md")
-        row = next(line for line in switches.splitlines() if "HYDRA_QUIET_TICK_BEFORE_SCHEDULER" in line)
+        row = next(line for line in switches.splitlines() if line.startswith("| `HYDRA_QUIET_TICK_BEFORE_SCHEDULER`"))
         self.assertIn("`2` by default", row)
         self.assertIn("-DHYDRA_QUIET_TICK_BEFORE_SCHEDULER=0", row)  # the other levels stay reachable
 
