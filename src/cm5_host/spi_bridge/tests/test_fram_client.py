@@ -37,8 +37,14 @@ import can_ids  # noqa: E402
 FRAM_NODE = (ROOT / "src" / "mcu_stm32g474" / "boot" / "fram_node.h").read_text(encoding="utf-8")
 
 
+def first_hex(pattern: str, text: str) -> int:
+    found = re.search(pattern, text)
+    assert found is not None, pattern
+    return int(found.group(1), 16)
+
+
 def define(name: str) -> int:
-    return int(re.search(rf"#define {name}\s+(0x[0-9A-Fa-f]+)u?", FRAM_NODE).group(1), 16)
+    return first_hex(rf"#define {name}\s+(0x[0-9A-Fa-f]+)u?", FRAM_NODE)
 
 
 def read(relative: str) -> str:
@@ -66,7 +72,7 @@ class ConstantsMatchTheFirmware(unittest.TestCase):
             message = can_ids.by_name(name)
             self.assertEqual((message.offset, message.emitter), (offset, emitter), name)
             for relative in ("src/mcu_stm32g474/boot/bootloader_common.h", "src/mcu_stm32h745/CM4/boot/bootloader_common.h", "src/mcu_stm32h745/CM7/boot/bootloader_common.h"):
-                value = int(re.search(rf"#define OFS_{name}\s+(0x[0-9A-Fa-f]+)", read(relative)).group(1), 16)
+                value = first_hex(rf"#define OFS_{name}\s+(0x[0-9A-Fa-f]+)", read(relative))
                 self.assertEqual(value, offset, f"{relative}: {name}")
 
     def test_the_window_is_64_wide_in_every_firmware_and_the_filters_follow_it(self):
@@ -110,13 +116,16 @@ class Frames(unittest.TestCase):
 
     def test_a_response_of_another_operation_or_with_a_bad_magic_is_not_taken(self):
         good = bytes((0xFB, fc.OP_ERASE, 0, 3)) + (300).to_bytes(4, "big")
-        self.assertEqual(fc.parse_response(fc.OP_ERASE, good).value, 300)
+        parsed = fc.parse_response(fc.OP_ERASE, good)
+        assert parsed is not None
+        self.assertEqual(parsed.value, 300)
         self.assertIsNone(fc.parse_response(fc.OP_SELFTEST, good))
         self.assertIsNone(fc.parse_response(fc.OP_ERASE, b"\xFA" + good[1:]))
         self.assertIsNone(fc.parse_response(fc.OP_ERASE, good[:7]))
 
     def test_an_unknown_status_is_named_not_hidden(self):
         result = fc.parse_response(fc.OP_ERASE, bytes((0xFB, 1, 0x99, 0, 0, 0, 0, 0)))
+        assert result is not None
         self.assertEqual(result.status_name, "unknown-0x99")
         self.assertFalse(result.ok)
 
@@ -125,6 +134,7 @@ class AgainstASimulatedBoard(unittest.TestCase):
     def test_erase_ok_zeros_the_chip(self):
         board = SimulatedFramBoard(3, chip_size=256)
         result = fc.erase_fram(board, 3)
+        assert result is not None
         self.assertTrue(result.ok)
         self.assertEqual((result.operation, result.value, result.board_id), ("erase", 256, 3))
         self.assertEqual(bytes(board.cells), bytes(256))
@@ -133,7 +143,9 @@ class AgainstASimulatedBoard(unittest.TestCase):
     def test_selftest_ok_keeps_the_chip(self):
         board = SimulatedFramBoard(3)
         before = bytes(board.cells)
-        self.assertTrue(fc.fram_selftest(board, 3).ok)
+        selftest = fc.fram_selftest(board, 3)
+        assert selftest is not None
+        self.assertTrue(selftest.ok)
         self.assertEqual(bytes(board.cells), before)
 
     def test_every_refusal_of_the_board_comes_back_by_name_and_touches_nothing(self):
@@ -146,6 +158,7 @@ class AgainstASimulatedBoard(unittest.TestCase):
         for board, name in cases:
             before = None if board.cells is None else bytes(board.cells)
             result = fc.erase_fram(board, 3)
+            assert result is not None
             self.assertEqual(result.status_name, name)
             self.assertFalse(result.ok)
             if before is not None:
@@ -153,10 +166,13 @@ class AgainstASimulatedBoard(unittest.TestCase):
 
     def test_a_cell_that_does_not_take_the_zero_is_a_verify_failure_with_its_address(self):
         result = fc.erase_fram(SimulatedFramBoard(3, stuck_at=250), 3)
+        assert result is not None
         self.assertEqual((result.status_name, result.value), ("verify-fail", 250))
 
     def test_a_slow_erase_is_waited_for_by_polling(self):
-        self.assertTrue(fc.erase_fram(SimulatedFramBoard(3, answer_after_polls=3), 3, poll_interval_seconds=0.001).ok)
+        slow = fc.erase_fram(SimulatedFramBoard(3, answer_after_polls=3), 3, poll_interval_seconds=0.001)
+        assert slow is not None
+        self.assertTrue(slow.ok)
 
     def test_no_answer_within_the_timeout_is_none_not_a_made_up_result(self):
         board = SimulatedFramBoard(3, answer_after_polls=10_000)
