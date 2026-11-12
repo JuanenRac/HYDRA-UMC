@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H757-003551.svg" alt="Platform">
-  <img src="https://img.shields.io/badge/Tests-796%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-805%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
@@ -38,7 +38,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versão | `0.2.8` |
 | Maturidade | Estrutura inicial |
-| Testes | 796 (`python -m unittest discover -s tests -p 'test_*.py'`) |
+| Testes | 805 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | Tecnologia | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | Destino | Uma placa com microcontrolador (o firmware); compila-se num PC |
 | Em hardware real | Ainda não: não há registo de execução em hardware real para esta versão |
@@ -54,7 +54,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Área | Estado | O que significa aqui |
 |---|---|---|
 | Software | 🟠 | Só estrutura e as primeiras peças; falta a maior parte do trabalho |
-| Testes | 🟡 | 796 testes automáticos, executados a cada alteração |
+| Testes | 🟡 | 805 testes automáticos, executados a cada alteração |
 | Hardware real | 🔴 | Ainda não: não há registo de execução em hardware real para esta versão |
 | Documentação | 🟡 | README em oito idiomas, verificado contra o manifesto a cada alteração |
 
@@ -66,14 +66,14 @@ Concebido como uma **arquitetura heterogénea de anfitrião + coprocessador em t
 
 > **Hardware-alvo:** a placa de produção é um STM32H757 (o mestre SPI da ligação) com uma NVIDIA Jetson Orin NX de 16 GB como anfitrião; o Raspberry Pi Compute Module 5 fica como banco piloto de desenvolvimento. Na placa base do Jetson o Hailo-8 vai numa ranhura M.2 PCIe x4 ao lado de uma ranhura NVMe e de uma Wi-Fi/Bluetooth, e não há Hailo-10H. Nada disto funcionou numa placa. O diagrama de blocos e a lista de funções abaixo desenham essa placa base objetivo; é um desenho, não uma placa construída.
 
-> **Plataformas:** os perfis de plataforma (`cm5`, `jetson_orin_nx`, `h745_current`, `h757_target`) destinam-se a ser configuráveis, com a Jetson como anfitrião principal e Linux (JetPack ou Debian) como sistema. O conector da placa base destina-se a aceitar mais tarde outros módulos de computação de 260 pinos (um módulo Rockchip RK3588 e uma placa adaptadora para a CM5 que ainda tem de ser desenhada); esses módulos e os seus sucessores são candidatos, não um compromisso.
+> **Plataformas:** os perfis de plataforma (`cm5`, `jetson_orin_nx`, `h745_current`, `h757_target`) destinam-se a ser configuráveis, com o Jetson como anfitrião principal e Linux (JetPack ou Debian) como sistema. O conector da placa base destina-se a aceitar mais tarde outros módulos de computação de 260 pinos (um módulo Rockchip RK3588 e uma placa adaptadora para a CM5 que ainda tem de ser desenhada); esses módulos e os seus sucessores são candidatos, não um compromisso.
 
 > **Estado do desenho:** as secções seguintes descrevem o desenho previsto da placa e do seu firmware. O que existe hoje limita-se aos bootloaders, às aplicações de comunicação do CM4 e do G474 e à ponte SPI do lado do CM5 (ver a caixa *Estado de segurança* perto do fim e a tabela de estado em `docs/architecture.md`). Sempre que uma frase abaixo falar no presente de geração de movimento, perfis em S, laços PID, interlocks de segurança, um E-STOP, tratamento de perda de energia, deteção de objetos ou qualquer outro comportamento da placa final, deve ler-se como previsto: nada disso foi executado numa placa montada.
 
 ### 🤖 Capacidades da microfábrica (objetivos de desenho):
 * 📡 **Rede distribuída multirrobô:** previsto: coordenar até 8 módulos robóticos escravos distribuídos (primeiro 3, 4, 5 e 6 GDL; com escala para 7, 8, 9 GDL e arquiteturas de duplo robô em versões futuras) ligados por um único barramento CAN físico.
-* 🧠 **Coprocessamento neuronal integrado:** a NVIDIA Jetson Orin NX de 16 GB (até 100 TOPS, valor da NVIDIA) executa as cargas de visão e de IA e gere três ranhuras M.2 com as suas próprias vias PCIe: um Hailo-8 (26 TOPS) numa ranhura Key-M PCIe x4 para deteção de objetos multifluxo YOLOv8/YOLO11 (previsto; ainda não corre nenhum detetor), inspeção de defeitos e alinhamento de fiduciais de PnP em todas as câmaras, uma unidade NVMe e um módulo Wi-Fi/Bluetooth numa ranhura Key-E. A variante Jetson não tem Hailo-10H: o raciocínio local e a GenAI (modelos LLM/VLA quantizados, previsto) correm na própria Jetson, sem ida e volta à nuvem.
-* 🖥️ **Modo degradado (desenho):** o ecrã tátil DSI destina-se a ligar-se ao STM32H757, que deverá executar a interface completa no ecrã, de modo que o H757 e o ecrã continuem a funcionar (paragem, estado, controlo) mesmo que a Jetson bloqueie; nada disto está construído nem validado.
+* 🧠 **Coprocessamento neuronal integrado:** a NVIDIA Jetson Orin NX de 16 GB (até 100 TOPS, valor da NVIDIA) executa as cargas de visão e de IA e gere três ranhuras M.2 com as suas próprias vias PCIe: um Hailo-8 (26 TOPS) numa ranhura Key-M PCIe x4 para deteção de objetos multifluxo YOLOv8/YOLO11 (previsto; ainda não corre nenhum detetor), inspeção de defeitos e alinhamento de fiduciais de PnP em todas as câmaras, uma unidade NVMe e um módulo Wi-Fi/Bluetooth numa ranhura Key-E. A variante Jetson não tem Hailo-10H: o raciocínio local e a GenAI (modelos LLM/VLA quantizados, previsto) correm no próprio Jetson, sem ida e volta à nuvem.
+* 🖥️ **Modo degradado (desenho):** o ecrã tátil DSI destina-se a ligar-se ao STM32H757, que deverá executar a interface completa no ecrã, de modo que o H757 e o ecrã continuem a funcionar (paragem, estado, controlo) mesmo que o Jetson bloqueie; nada disto está construído nem validado.
 * 📐 **Estágio local de 6 eixos:** geração direta de pulsos step/dir/enable para 6 eixos locais (X, Y1, Y2, Z, E0, E1) para necessidades auxiliares: robôs adicionais, revólveres ATC (trocador automático de ferramentas), sincronização de tapete rolante ou pórticos de mesa XYZ.
 * 🎯 **Integração JuanenPNP e JuanenCNC:** compatível diretamente com sistemas Pick-and-Place (estruturas de hardware LumenPNP) e unidades CNC equipadas com módulos laser ópticos de 10 W para prototipagem de PCB e colocação de SMD.
 * 👁️ **Matriz de visão e inspeção com oito câmaras:** controladores USB 3.0 duplos integrados que alimentam 8 portas de câmara USB dedicadas para alinhamento ótico pick-and-place com OpenCV em tempo real, inspeção térmica e monitorização remota de transmissões.
@@ -200,7 +200,7 @@ O que as máquinas de desenvolvimento deste projeto têm realmente instalado e v
 
 ## 🧪 Testes
 
-796 testes automáticos correm com `python -m unittest discover -s tests -p 'test_*.py'`. São 187 testes da ponte SPI da CM5 mais 522 das fontes do firmware, do cabeçalho de imagem assinado e dos identificadores CAN (os da ponte SPI correm com `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` e `-s src/cm5_host/spi_bridge/tests`). A lógica em C dos carregadores de arranque e do relé é verificada por mais 50 programas compilados com um compilador de C normal do anfitrião, no passo 1b de `build_firmware.sh`. Nenhum precisa de uma placa.
+805 testes automáticos correm com `python -m unittest discover -s tests -p 'test_*.py'`. São 187 testes da ponte SPI da CM5 mais 522 das fontes do firmware, do cabeçalho de imagem assinado e dos identificadores CAN (os da ponte SPI correm com `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` e `-s src/cm5_host/spi_bridge/tests`). A lógica em C dos carregadores de arranque e do relé é verificada por mais 50 programas compilados com um compilador de C normal do anfitrião, no passo 1b de `build_firmware.sh`. Nenhum precisa de uma placa.
 
 A CI executa `HYDRA_UMC_CI=1 python tools/ci_validate.py`, que verifica o manifesto, os documentos, os oito README e as imagens.
 

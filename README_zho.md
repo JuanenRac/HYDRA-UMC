@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H757-003551.svg" alt="Platform">
-  <img src="https://img.shields.io/badge/Tests-796%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-805%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
@@ -38,7 +38,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | 版本 | `0.2.8` |
 | 成熟度 | 雏形 |
-| 测试 | 796 (`python -m unittest discover -s tests -p 'test_*.py'`) |
+| 测试 | 805 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | 技术栈 | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | 目标 | 微控制器板（固件）；在电脑上构建 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
@@ -54,7 +54,7 @@ GPL-3.0-or-later - see LICENSE
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 软件 | 🟠 | 目前只有结构和最初的部分，大部分工作尚未完成 |
-| 测试 | 🟡 | 796 项自动测试，每次变更都会运行 |
+| 测试 | 🟡 | 805 项自动测试，每次变更都会运行 |
 | 真实硬件 | 🔴 | 尚未：此版本没有在真实硬件上运行的记录 |
 | 文档 | 🟡 | 八种语言的 README，每次变更都会与清单核对 |
 
@@ -64,7 +64,7 @@ GPL-3.0-or-later - see LICENSE
 
 HYDRA-UMC 按 **异构主机 + 实时协处理器架构** 设计，目标是将高层用户界面渲染、计算机视觉、AI 推理与云端连接，同实时步进脉冲生成、现场总线管理及功率电子驱动解耦（计划中：步进脉冲生成与驱动尚未编写）。
 
-> **目标硬件:** 量产主板是 STM32H757(链路的 SPI 主设备),主机为 NVIDIA Jetson Orin NX 16 GB;Raspberry Pi Compute Module 5 保留为试点开发试验台。在 Jetson 底板上,Hailo-8 位于 PCIe x4 的 M.2 插槽中,旁边是 NVMe 插槽和 Wi-Fi/蓝牙插槽,没有 Hailo-10H。这些都没有在电路板上运行过。下面的框图和功能列表画的就是这块目标底板；它是设计，不是已经制造出来的电路板。
+> **目标硬件:** 量产主板是 STM32H757(链路的 SPI 主设备),主机为 NVIDIA Jetson Orin NX 16 GB;Raspberry Pi Compute Module 5 保留为试点开发试验台。在 Jetson 底板上,Hailo-8 位于 PCIe x4 的 M.2 插槽中,旁边是 NVMe 插槽和 Wi-Fi/蓝牙插槽,没有 Hailo-10H。这些都没有在电路板上运行过。下面的框图和功能列表画的就是这块目标底板。它是设计，不是已经制造出来的电路板。
 
 > **平台：** 平台配置（`cm5`、`jetson_orin_nx`、`h745_current`、`h757_target`）计划做成可配置，主主机为 Jetson，系统为 Linux（JetPack 或 Debian）。底板连接器计划日后也能接入其他 260 针计算模块（Rockchip RK3588 模块，以及尚待设计的 CM5 转接卡）；这些模块及其后继产品只是候选，并非承诺。
 
@@ -73,7 +73,7 @@ HYDRA-UMC 按 **异构主机 + 实时协处理器架构** 设计，目标是将�
 ### 🤖 微工厂能力（设计目标）：
 * 📡 **分布式多机器人网络：** 计划中：通过单一物理 CAN 总线，协调多达 8 个分布式从属机器人模块（先支持 3、4、5、6 自由度；未来版本将扩展至 7、8、9 自由度及双机器人架构）。
 * 🧠 **嵌入式神经协处理：** NVIDIA Jetson Orin NX 16 GB（最高 100 TOPS，NVIDIA 给出的数据）运行视觉和 AI 负载，并用自己的 PCIe 通道驱动三个 M.2 插槽：PCIe x4 的 Key-M 插槽中的 Hailo-8（26 TOPS）用于覆盖所有摄像头的多路 YOLOv8/YOLO11 目标检测（计划中，目前尚无检测器运行）、缺陷检查和 PnP 基准点对位；此外还有一个 NVMe 硬盘，以及 Key-E 插槽中的 Wi-Fi/蓝牙模块。Jetson 版本没有 Hailo-10H：本地推理和 GenAI（量化的 LLM/VLA 模型，计划中）在 Jetson 本机运行，无需往返云端。
-* 🖥️ **降级模式（设计）：** DSI 触摸屏计划接在 STM32H757 上，由 H757 在屏幕上运行完整界面，这样即使 Jetson 卡死，H757 和显示屏也能继续工作（停止、状态、控制）；这些都没有构建或验证过。
+* 🖥️ **降级模式（设计）：** DSI 触摸屏计划接在 STM32H757 上，由 H757 在屏幕上运行完整界面，这样即使 Jetson 死机，H757 和显示屏也能继续工作（停止、状态、控制）；这些都没有构建或验证过。
 * 📐 **本地 6 轴工作台：** 为 6 个本地轴（X、Y1、Y2、Z、E0、E1）直接生成 步进/方向/使能 脉冲，服务于辅助需求：额外机器人、ATC（自动换刀装置）转塔、传送带同步或 XYZ 工作台龙门架。
 * 🎯 **JuanenPNP 与 JuanenCNC 集成：** 直接兼容 Pick-and-Place 系统（LumenPNP 硬件结构）以及配备 10W 光学激光模块的 CNC 设备，用于 PCB 原型制作与 SMD 贴装。
 * 👁️ **八路摄像头视觉与检测矩阵：** 集成双 USB 3.0 控制器，驱动 8 个专用 USB 摄像头接口，用于实时 OpenCV Pick-and-Place 光学对位、热成像检测及远程视频流监控。
@@ -200,7 +200,7 @@ python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the f
 
 ## 🧪 测试
 
-运行 `python -m unittest discover -s tests -p 'test_*.py'` 会执行 796 个自动测试。 其中 187 个是 CM5 SPI 桥的测试，522 个是固件源码、签名镜像头和 CAN 标识符的测试（SPI 桥的测试用 `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` 和 `-s src/cm5_host/spi_bridge/tests` 运行）。引导程序和中继的 C 逻辑还由另外 50 个程序检查，它们在 `build_firmware.sh` 的 1b 步骤中用普通的主机 C 编译器编译。它们都不需要电路板。
+运行 `python -m unittest discover -s tests -p 'test_*.py'` 会执行 805 个自动测试。 其中 187 个是 CM5 SPI 桥的测试，522 个是固件源码、签名镜像头和 CAN 标识符的测试（SPI 桥的测试用 `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` 和 `-s src/cm5_host/spi_bridge/tests` 运行）。引导程序和中继的 C 逻辑还由另外 50 个程序检查，它们在 `build_firmware.sh` 的 1b 步骤中用普通的主机 C 编译器编译。它们都不需要电路板。
 
 CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档、八个 README 和图片。
 

@@ -13,6 +13,9 @@
 # fails when one leaves less free space in its reserved region than the margin of tools/bootloader_size.json. The images are signed afterwards, on the
 # maintainer's machine, with tools/sign_release.py. With dry_run on (the default) nothing but the artifact is made; with it
 # off a DRAFT pre-release named v<version>-bench with the unsigned files is also prepared (its tag is never the tag of an official release).
+# Only code that is in main is built for a draft pre-release (dry_run off) or with the official trust table (flavour release). A dry run with the dev table may build a branch
+# that is not in main yet, to compile a change before it is merged: it makes no draft, signs nothing, holds no secret and its artifact is unsigned. The owner is still the only one who starts it,
+# and the commit it builds is pinned in the plan and checked out again by its SHA.
 # A failed or stuck build writes the Job Summary and opens (or updates) the issue "build-failed"; a later good build closes it.
 
 name: Firmware build (manual)
@@ -79,12 +82,24 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Make sure the commit belongs to the main branch
+      - name: Make sure the commit belongs to the main branch (a dry run may check a branch)
         shell: bash
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          FLAVOUR: ${{ inputs.flavour }}
         run: |
           set -euo pipefail
-          # only code that is already in main is built: a branch or a fork commit that is not in main is refused
-          git merge-base --is-ancestor HEAD refs/remotes/origin/main || { echo "::error::the commit $(git rev-parse --short HEAD) is not part of the main branch; merge it first"; exit 1; }
+          # Only code that is already in main is built for anything that can become a release: a draft pre-release (dry_run off) and the official trust table
+          # (flavour release) are refused for a branch or a fork commit that is not in main. A DRY RUN (dry_run on, which makes no draft pre-release, signs nothing, holds no
+          # secret and uploads only an unsigned artifact) may check a commit that is not in main yet, with the dev trust table, so a change of the firmware is compiled before it is merged.
+          if git merge-base --is-ancestor HEAD refs/remotes/origin/main; then
+            echo "The commit $(git rev-parse --short HEAD) is part of the main branch."
+          elif [ "$DRY_RUN" = "true" ] && [ "$FLAVOUR" = "dev" ]; then
+            echo "::notice::the commit $(git rev-parse --short HEAD) is NOT in main: this dry run only checks that it compiles; its artifact is unsigned and is not to be released"
+            echo "### Branch check: the commit $(git rev-parse --short HEAD) is not in main (dry run, dev table, unsigned artifact)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::the commit $(git rev-parse --short HEAD) is not part of the main branch; merge it first (only a dry run with the dev trust table may build a commit that is not in main)"; exit 1
+          fi
 
       - name: Work out the version and pin the commit
         id: plan
