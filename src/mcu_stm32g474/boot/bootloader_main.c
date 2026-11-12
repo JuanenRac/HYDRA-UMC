@@ -209,14 +209,14 @@ static uint32_t last_heartbeat_tick = 0 - 1000; // forces an immediate heartbeat
 // The slot scan (docs/SLOT_SCAN.md): the answer to a probe leaves after a delay taken from the unique identifier of the chip, so two boards set to the
 // same slot answer one after the other and the host can tell that there are two.
 static SlotScanNode_t boot_scan;
+static uint32_t boot_uid32;
+static uint8_t boot_board_id;
 // The F-RAM erase and self-test (docs/FRAM_ERASE.md): off by default (HYDRA_FRAM_ERASE) and with no driver until the chip is fixed, so the answer is DISABLED or NO_CHIP.
 static FramNode_t boot_fram;
 static void BootFramHandle(uint8_t request_offset, const uint8_t *data, uint8_t dlc, uint8_t update_running) {
     uint8_t reply[8];
     if (FramNode_Handle(&boot_fram, boot_board_id, update_running, data, dlc, reply)) CAN_SendFramResponse(request_offset, reply);
 }
-static uint32_t boot_uid32;
-static uint8_t boot_board_id;
 
 static void BootScanPoll(void) {
     uint8_t reply[8];
