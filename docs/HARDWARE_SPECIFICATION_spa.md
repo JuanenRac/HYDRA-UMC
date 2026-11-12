@@ -5,6 +5,8 @@
 
 Esta es la especificación del diseño previsto de la placa y su firmware, trasladada aquí desde el README para que este sea corto. Describe lo que el diseño persigue; el README dice lo que existe hoy.
 
+> HYDRA-UMC se diseña pensando en la seguridad funcional, pero no está certificado conforme a ISO 13849-1 ni a ninguna otra norma de seguridad funcional, y no se debe confiar en ninguna de sus funciones de parada o de protección como función de seguridad certificada.
+
 ## 2. 🖥️ SUBSISTEMA DE COMPUTACIÓN HOST (HMI Y ALTO NIVEL)
 
 * 🧩 **Módulo:** Raspberry Pi Compute Module 5 (CM5)

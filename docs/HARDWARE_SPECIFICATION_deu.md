@@ -5,6 +5,8 @@
 
 Dies ist die Spezifikation des geplanten Entwurfs der Platine und ihrer Firmware, aus der README hierher verschoben, damit die README kurz bleibt. Sie beschreibt, was der Entwurf anstrebt; die README sagt, was heute existiert.
 
+> HYDRA-UMC wird mit Blick auf die funktionale Sicherheit entwickelt, ist jedoch weder nach ISO 13849-1 noch nach einer anderen Norm für funktionale Sicherheit zertifiziert, und keine seiner Stopp- oder Schutzfunktionen darf als zertifizierte Sicherheitsfunktion betrachtet werden.
+
 ## 2. 🖥️ HOST-COMPUTING-SUBSYSTEM (HMI & HOCHNIVEAU)
 
 * 🧩 **Modul:** Raspberry Pi Compute Module 5 (CM5)

@@ -87,7 +87,7 @@ Built on a **Heterogeneous Host + Real-Time Co-Processor Architecture**, HYDRA-U
 * 📦 **Package:** LQFP-144 (0.5 mm pin pitch)
 * 🧠 **Architecture:** Dual-Core Asymmetric Multiprocessing (AMP)
   * 🚀 **Core 1 (Cortex-M7 @ 480 MHz):** Real-time motion engine, hardware pulse generation, S-curve kinematic velocity profiles, PID control loops.
-  * 📡 **Core 2 (Cortex-M4 @ 240 MHz):** FDCAN protocol management, analog sensor filtering, safety interlocks, and inter-core IPC handling.
+  * 📡 **Core 2 (Cortex-M4 @ 240 MHz):** FDCAN protocol management and inter-core IPC handling; analog sensor filtering and safety interlocks are planned and not implemented.
 * 💾 **Internal Memory Architecture:**
   * 💾 **2 MB** Dual-Bank Internal Flash
   * 🧠 **1 MB** Total Internal SRAM (512 KB AXI SRAM + 128 KB ITCM / 128 KB DTCM + SRAM1/SRAM2/SRAM3)

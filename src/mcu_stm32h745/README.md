@@ -13,7 +13,8 @@ FDCAN1 "STACK A". Two independent cores, two independent firmware images:
   S-curve motion engine, hardware timer pulse generation, the 6-axis local
   stage.
 - **`CM4/`** — Cortex-M4 @ up to 240 MHz. Real job: FDCAN1 protocol
-  management, analog sensor filtering, safety interlocks, inter-core IPC.
+  management, inter-core IPC (analog sensor filtering and safety
+  interlocks are planned and not implemented).
 
 ## Status: real CAN-OTA/SPI-OTA bootloaders, application still a skeleton
 

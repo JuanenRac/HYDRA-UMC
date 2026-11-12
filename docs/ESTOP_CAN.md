@@ -162,3 +162,7 @@ Nothing of this has run on a board; the debounce and the decision are checked on
 
 - `docs/bus_contract.json`, `tools/estop_can.py`, `tools/can_ids.py` (`ESTOP_STATE`), `tests/estop_vectors.json`, `tests/test_estop_contract.py`
 - `docs/CANBUS_STM32G474.md`, `docs/CANBUS_STM32H745.md`, `docs/BENCH_TESTS.md`
+
+## Safety status
+
+HYDRA-UMC is designed with functional safety in mind, but it is not certified to ISO 13849-1 or any other functional safety standard, and none of its stop or protection functions may be relied on as a certified safety function.
