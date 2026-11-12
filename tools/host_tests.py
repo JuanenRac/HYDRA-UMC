@@ -87,6 +87,7 @@ def table() -> list[HostTest]:
         HostTest("estop_can@g474", "tests/test_estop_can.c", ("tests", G4)),
         HostTest("estop_can@cm4_brain", "tests/test_estop_can.c", ("tests", f"{H7}/CM4"), STRICT, defines=("ESTOP_TEST_BRAIN",)),
         HostTest("estop_input", "tests/test_estop_input.c", (G4,)),
+        HostTest("enabling_device", "tests/test_enabling_device.c", ("tests", f"{H7}/CM4"), STRICT),
         HostTest("slot_scan_node", "tests/test_slot_scan_node.c", ("tests", f"{G4}/boot")),
         HostTest("fram_node@off", "tests/test_fram_node.c", (f"{H7}/CM4",)),
         HostTest("fram_node@on", "tests/test_fram_node.c", (f"{H7}/CM4",), defines=("HYDRA_FRAM_ERASE=1", "FRAM_TEST_SWITCH=1")),

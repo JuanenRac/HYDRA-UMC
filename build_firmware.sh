@@ -375,6 +375,15 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # enabling_device.h: the logic of the three-position enabling device (vectors of tests/enabling_device_vectors.h).
+    ENABLING_HOST_BIN="$ROOT/build/host_tests_enabling_device"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32h757/CM4" -o "$ENABLING_HOST_BIN" "$ROOT/tests/test_enabling_device.c" && "$ENABLING_HOST_BIN" >/dev/null; then
+        pass "enabling_device host logic tests passed"
+    else
+        fail "enabling_device host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # slot_scan_node.h: how a controller board answers the slot scan probe (vectors of tests/slot_scan_vectors.json).
     SLOT_SCAN_HOST_BIN="$ROOT/build/host_tests_slot_scan_node"
     if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32g474/boot" -o "$SLOT_SCAN_HOST_BIN" "$ROOT/tests/test_slot_scan_node.c" && "$SLOT_SCAN_HOST_BIN" >/dev/null; then
