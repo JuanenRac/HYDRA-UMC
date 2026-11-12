@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ui_model as model  # noqa: E402
 import ui_spec  # noqa: E402
 
-LATIN_FONTS = ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "C:/Windows/Fonts/segoeui.ttf", "C:/Windows/Fonts/arial.ttf", "/System/Library/Fonts/Helvetica.ttc")
+LATIN_FONTS = ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "C:/Windows/Fonts/DejaVuSans.ttf", "C:/Windows/Fonts/segoeui.ttf", "C:/Windows/Fonts/arial.ttf", "/System/Library/Fonts/Helvetica.ttc")
 CJK_FONTS = {
     "ja": ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc#0", "C:/Windows/Fonts/YuGothR.ttc#0", "C:/Windows/Fonts/meiryo.ttc#0"),
     "zh": ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc#2", "C:/Windows/Fonts/msyh.ttc#0", "C:/Windows/Fonts/simsun.ttc#0"),
@@ -285,6 +285,7 @@ def scene_state(scene: str) -> model.State:
 def render_set(folder: Path, languages: tuple[str, ...], scenes: tuple[str, ...], screens: tuple[str, ...]) -> list[Path]:
     spec, i18n = ui_spec.load_spec(), ui_spec.load_i18n()
     written: list[Path] = []
+    problems: list[str] = []
     folder.mkdir(parents=True, exist_ok=True)
     for language in languages:
         renderer = Renderer(spec, i18n, language)
@@ -294,8 +295,9 @@ def render_set(folder: Path, languages: tuple[str, ...], scenes: tuple[str, ...]
                 path = folder / f"ui_{scene}_{screen}_{language}.png"
                 image.save(path, optimize=True)
                 written.append(path)
-        if renderer.overflows:
-            raise SystemExit(f"PROBLEM ({language}, {len(renderer.overflows)}): " + "; ".join(sorted(set(renderer.overflows))[:12]))
+        problems += [f"{language}: {line}" for line in sorted(set(renderer.overflows))]
+    if problems:
+        raise SystemExit(f"PROBLEM ({len(problems)}): " + "; ".join(problems[:40]))
     return written
 
 

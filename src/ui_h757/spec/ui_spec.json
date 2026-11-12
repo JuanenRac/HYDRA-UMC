@@ -479,7 +479,7 @@
    "rect": {
     "x": 16,
     "y": 8,
-    "w": 380,
+    "w": 260,
     "h": 40
    }
   },
@@ -489,33 +489,33 @@
    "label_key": "link.jetson",
    "signal": "jetson.link",
    "rect": {
-    "x": 420,
+    "x": 292,
     "y": 8,
-    "w": 300,
+    "w": 320,
     "h": 40
    }
   },
   {
    "id": "status_bus",
    "kind": "led",
-   "label_key": "link.stack_bus",
+   "label_key": "status.bus",
    "signal": "stack.can_state",
    "rect": {
-    "x": 744,
+    "x": 628,
     "y": 8,
-    "w": 300,
+    "w": 380,
     "h": 40
    }
   },
   {
    "id": "status_alarms",
    "kind": "value",
-   "label_key": "dash.alarms",
+   "label_key": "nav.alarms",
    "signal": "ui.alarm_count",
    "rect": {
-    "x": 1068,
+    "x": 1024,
     "y": 8,
-    "w": 196,
+    "w": 240,
     "h": 40
    }
   },

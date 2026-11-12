@@ -98,6 +98,16 @@
    "pt": "Definições",
    "arb": "navSettings"
   },
+  "status.bus": {
+   "en": "Bus",
+   "es": "Bus",
+   "de": "Bus",
+   "fr": "Bus",
+   "it": "Bus",
+   "ja": "バス",
+   "zh": "总线",
+   "pt": "Barramento"
+  },
   "stop.label": {
    "en": "STOP",
    "es": "STOP",
