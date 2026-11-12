@@ -81,13 +81,14 @@ class CanIdStopAndToolHeadTests(unittest.TestCase):
         # the tool head bus is not STACK A: its identifiers may sit in the numbers of the slot windows
         self.assertTrue(any(v >= can_ids.SLOT_BASE for v in can_ids.TOOL_HEAD_MESSAGES.values()))
 
-    def test_the_two_bit_rates_the_repository_gives_to_the_tool_head_bus_are_both_recorded(self):
+    def test_the_tool_head_bus_is_one_megabit_in_the_contract_and_in_the_bus_contract(self):
         import json
 
         bus = json.loads((Path(__file__).resolve().parents[1] / "docs" / "bus_contract.json").read_text(encoding="utf-8"))["buses"]
-        # known disagreement, kept visible: the URTC protocol is 500 kbit/s and the downlink of the controller board is written for 1 Mbit/s
-        self.assertEqual(can_ids.TOOL_HEAD_BIT_RATE_BPS, 500_000)
-        self.assertEqual(bus["tool_head_downlink"]["nominal_bit_rate_bps"], 1_000_000)
+        # decision of the owner: the heads move to 1 Mbit/s; the 500 kbit/s of the earlier protocol stays in the contract as a documented legacy value
+        self.assertEqual(can_ids.TOOL_HEAD_BIT_RATE_BPS, 1_000_000)
+        self.assertEqual(can_ids.TOOL_HEAD_LEGACY_BIT_RATE_BPS, 500_000)
+        self.assertEqual(bus["tool_head_downlink"]["nominal_bit_rate_bps"], can_ids.TOOL_HEAD_BIT_RATE_BPS)
 
 
 class CanIdTableTests(unittest.TestCase):

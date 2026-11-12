@@ -54,6 +54,7 @@ MESSAGES: tuple[CanMessage, ...] = tuple(CanMessage(m["name"], m["offset"], m["e
 ESTOP_FRAME: dict = _CONTRACT["estop_frame"]
 TOOL_HEAD_MESSAGES: dict[str, int] = {m["name"]: m["id"] for m in _CONTRACT["tool_head"]["messages"]}
 TOOL_HEAD_BIT_RATE_BPS: int = _CONTRACT["tool_head"]["bit_rate_bps"]
+TOOL_HEAD_LEGACY_BIT_RATE_BPS: int = _CONTRACT["tool_head"]["legacy_bit_rate_bps"]  # the 500 kbit/s of the earlier URTC protocol, for heads not updated yet
 
 # The emergency stop itself is not inside a slot window: one identifier for the whole stack, below every slot (docs/ESTOP_CAN.md).
 ESTOP_CAN_ID = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))["estop_id"]

@@ -94,6 +94,32 @@ class PlatformProfileTests(unittest.TestCase):
         document["profiles"]["h757_target"]["stack_bus"]["prescaler"] = 10
         self.assertTrue(pp.contract_problems(document, self.contract))
 
+    def test_the_controller_board_runs_both_of_its_buses_at_one_megabit(self):
+        self.assertEqual(pp.board_problems(self.document, self.contract), [])
+        board = self.document["controller_board"]
+        for name in ("stack_bus", "tool_head_downlink"):
+            self.assertEqual(pp.bit_rate(board[name]), 1_000_000, name)
+            self.assertGreaterEqual(pp.sample_point(board[name]), 0.75, name)
+
+    def test_the_controller_board_timing_is_what_the_sources_of_both_controllers_set(self):
+        text = (ROOT / "src/mcu_stm32g474/RobotControllerRelay.c").read_text(encoding="utf-8")
+        board = self.document["controller_board"]
+        for handle, bus in (("hfdcan1_app", "stack_bus"), ("hfdcan2_app", "tool_head_downlink")):
+            for field, key in (("NominalPrescaler", "prescaler"), ("NominalSyncJumpWidth", "sync_jump_width"), ("NominalTimeSeg1", "time_segment_1"), ("NominalTimeSeg2", "time_segment_2")):
+                found = {int(v) for v in re.findall(rf"\b{handle}\.Init\.{field}\s*=\s*(\d+)\s*;", text)}
+                self.assertEqual(found, {board[bus][key]}, f"{handle}.{field}")
+
+    def test_a_wrong_controller_board_timing_is_caught(self):
+        for key, value in (("prescaler", 2), ("time_segment_2", 6), ("kernel_clock_hz", 8_000_000)):
+            document = copy.deepcopy(self.document)
+            document["controller_board"]["tool_head_downlink"][key] = value
+            self.assertTrue(pp.board_problems(document, self.contract), key)
+
+    def test_the_tool_head_rate_of_the_can_contract_is_the_downlink_rate(self):
+        import can_ids
+
+        self.assertEqual(can_ids.TOOL_HEAD_BIT_RATE_BPS, pp.bit_rate(self.document["controller_board"]["tool_head_downlink"]))
+
     def test_the_command_line_prints_the_table_and_checks(self):
         self.assertEqual(pp.main(["--check"]), 0)
         self.assertEqual(pp.main([]), 0)

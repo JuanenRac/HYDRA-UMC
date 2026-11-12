@@ -79,6 +79,25 @@ def problems(name: str, p: dict) -> list[str]:
     return found
 
 
+def board_problems(document: dict, contract: dict) -> list[str]:
+    """The two buses of the controller board: each must give the rate of the contract, with a usable sample point and no rate error."""
+    found: list[str] = []
+    board = document["controller_board"]
+    for bus_name, bus_key in (("stack_bus", "stack_a"), ("tool_head_downlink", "tool_head_downlink")):
+        timing = board[bus_name]
+        nominal = contract["buses"][bus_key]["nominal_bit_rate_bps"]
+        if abs(bit_rate(timing) - nominal) > 0:
+            found.append(f"controller_board.{bus_name}: gives {bit_rate(timing):.0f} bit/s, the contract says {nominal} (the rate error must be 0)")
+        if not 0.75 <= sample_point(timing) <= 0.90:
+            found.append(f"controller_board.{bus_name}: the sample point {sample_point(timing) * 100:.1f} % is outside 75 to 90 %")
+        for key, contract_key in (("prescaler", "prescaler"), ("sync_jump_width", "sync_jump_width"), ("time_segment_1", "time_segment_1"), ("time_segment_2", "time_segment_2")):
+            if timing[key] != contract["buses"][bus_key]["nominal_bit_timing"][contract_key]:
+                found.append(f"controller_board.{bus_name}: {key} differs from docs/bus_contract.json")
+        if timing["kernel_clock_hz"] != contract["buses"][bus_key]["assumed_kernel_clock_hz"]:
+            found.append(f"controller_board.{bus_name}: the kernel clock differs from docs/bus_contract.json")
+    return found
+
+
 def contract_problems(document: dict, contract: dict) -> list[str]:
     """What the default profile says that docs/bus_contract.json does not: the stack bus must give the rate the controller boards use."""
     found: list[str] = []
@@ -101,6 +120,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{name}: {p['device']}; host {p['host']['module']} (SPI {p['host']['spi_role']}); stack bus {bit_rate(bus):,.0f} bit/s, sample point {sample_point(bus) * 100:.1f} %")
         bad += problems(name, p)
     bad += contract_problems(document, contract)
+    bad += board_problems(document, contract)
     for line in bad:
         print("PROBLEM " + line, file=sys.stderr)
     print("PLATFORM_PROFILES=" + ("FAIL" if bad else "PASS"))

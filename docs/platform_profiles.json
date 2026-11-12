@@ -7,9 +7,18 @@
       "device": "STM32H745ZIT6 (LQFP-144)",
       "status": "what the firmware in this repository is built for today",
       "source": "src/mcu_stm32h745/",
-      "host": {"module": "Raspberry Pi CM5", "spi_role": "slave"},
-      "peripheral_owner": {"SPI1": "CM4", "FDCAN1": "CM4", "I2C4": "CM4"},
-      "clocks_hz": {"kernel_fdcan": 16000000},
+      "host": {
+        "module": "Raspberry Pi CM5",
+        "spi_role": "slave"
+      },
+      "peripheral_owner": {
+        "SPI1": "CM4",
+        "FDCAN1": "CM4",
+        "I2C4": "CM4"
+      },
+      "clocks_hz": {
+        "kernel_fdcan": 16000000
+      },
       "stack_bus": {
         "kernel_clock_hz": 16000000,
         "prescaler": 1,
@@ -17,15 +26,27 @@
         "time_segment_1": 13,
         "time_segment_2": 2
       },
-      "fram_i2c": {"bus": "I2C4", "address": "0x50", "timing": null, "note": "no default on purpose (HYDRA_FRAM_I2C_TIMING)"}
+      "fram_i2c": {
+        "bus": "I2C4",
+        "address": "0x50",
+        "timing": null,
+        "note": "no default on purpose (HYDRA_FRAM_I2C_TIMING)"
+      }
     },
     "h757_target": {
       "device": "STM32H757XIH6 (TFBGA240)",
       "status": "the board of the CubeMX project; candidates, not confirmed on a board",
       "source": "the CubeMX project of the board (clock tree and pins) and the answers of the owner",
-      "host": {"module": "NVIDIA Jetson Orin NX 16 GB", "spi_role": "master"},
+      "host": {
+        "module": "NVIDIA Jetson Orin NX 16 GB",
+        "spi_role": "master"
+      },
       "host_link_note": "the board is the SPI master towards the Jetson; HYDRA_SPI_ROLE=slave keeps the CM5 path (the CM5 is the pilot bench)",
-      "peripheral_owner": {"SPI1": "CM7", "FDCAN1": "CM7", "I2C4": "CM7"},
+      "peripheral_owner": {
+        "SPI1": "CM7",
+        "FDCAN1": "CM7",
+        "I2C4": "CM7"
+      },
       "clocks_hz": {
         "sysclk": 400000000,
         "hclk": 200000000,
@@ -48,9 +69,18 @@
         "kernel_spi6": 100000000
       },
       "pll": {
-        "pll1": {"divm": 5, "divn": 160},
-        "pll2": {"divm": 5, "divn": 80},
-        "pll3": {"divm": 1, "divn": 6}
+        "pll1": {
+          "divm": 5,
+          "divn": 160
+        },
+        "pll2": {
+          "divm": 5,
+          "divn": 80
+        },
+        "pll3": {
+          "divm": 1,
+          "divn": 6
+        }
       },
       "hse_hz": 25000000,
       "stack_bus": {
@@ -61,22 +91,120 @@
         "time_segment_2": 3,
         "note": "the CubeMX project has prescaler 10 (500 kbit/s); the owner decided the stack bus stays at 1 Mbit/s, so the prescaler is 5; the segments give a sample point of 85 %, close to the 87.5 % of the controller boards"
       },
-      "cubemx_stack_bus": {"kernel_clock_hz": 100000000, "prescaler": 10, "sync_jump_width": 4, "time_segment_1": 15, "time_segment_2": 4},
-      "second_can": {"peripheral": "FDCAN2", "pins": {"rx": "PB12", "tx": "PB13"}, "status": "present in the CubeMX project, not used by the firmware yet"},
-      "stack_can_pins": {"rx": "PB8", "tx": "PB9"},
-      "host_spi": {"peripheral": "SPI1", "role": "master", "pins": {"sck": "PB3", "miso": "PB4", "mosi": "PB5", "nss": "PA15"}, "data_size": 8, "prescaler": 16, "clock_hz": 12500000},
-      "fram_i2c": {"bus": "I2C4", "address": "0x50", "pins": {"scl": "PD12", "sda": "PD13"}, "timing": "0x009034B6", "timing_status": "candidate from the CubeMX project for a 100 MHz kernel clock, NOT confirmed on a bench; the firmware keeps no default for it"},
-      "uart": {"USART1": {"tx": "PB14", "rx": "PB15"}, "USART2": {"de": "PD4", "tx": "PD5", "rx": "PD6", "note": "RS-485"}},
+      "cubemx_stack_bus": {
+        "kernel_clock_hz": 100000000,
+        "prescaler": 10,
+        "sync_jump_width": 4,
+        "time_segment_1": 15,
+        "time_segment_2": 4
+      },
+      "second_can": {
+        "peripheral": "FDCAN2",
+        "pins": {
+          "rx": "PB12",
+          "tx": "PB13"
+        },
+        "status": "present in the CubeMX project, not used by the firmware yet"
+      },
+      "stack_can_pins": {
+        "rx": "PB8",
+        "tx": "PB9"
+      },
+      "host_spi": {
+        "peripheral": "SPI1",
+        "role": "master",
+        "pins": {
+          "sck": "PB3",
+          "miso": "PB4",
+          "mosi": "PB5",
+          "nss": "PA15"
+        },
+        "data_size": 8,
+        "prescaler": 16,
+        "clock_hz": 12500000
+      },
+      "fram_i2c": {
+        "bus": "I2C4",
+        "address": "0x50",
+        "pins": {
+          "scl": "PD12",
+          "sda": "PD13"
+        },
+        "timing": "0x009034B6",
+        "timing_status": "candidate from the CubeMX project for a 100 MHz kernel clock, NOT confirmed on a bench; the firmware keeps no default for it"
+      },
+      "uart": {
+        "USART1": {
+          "tx": "PB14",
+          "rx": "PB15"
+        },
+        "USART2": {
+          "de": "PD4",
+          "tx": "PD5",
+          "rx": "PD6",
+          "note": "RS-485"
+        }
+      },
       "new_peripherals": {
-        "SPI5": {"role": "master", "clock_hz": 6250000},
-        "SPI6": {"role": "master", "clock_hz": 3125000},
-        "I2C1": {"pins": {"scl": "PB6", "sda": "PB7"}},
-        "I2C3": {"pins": {"scl": "PA8", "sda": "PC9"}},
-        "USB_OTG_FS": {"pins": {"dm": "PA11", "dp": "PA12", "vbus": "PA9"}, "mode": "host"},
-        "FMC": {"device": "SDRAM", "status": "no driver yet"},
-        "QSPI": {"device": "GD25Q128 flash", "status": "no driver yet"},
-        "LTDC_DMA2D": {"status": "no driver yet"}
+        "SPI5": {
+          "role": "master",
+          "clock_hz": 6250000
+        },
+        "SPI6": {
+          "role": "master",
+          "clock_hz": 3125000
+        },
+        "I2C1": {
+          "pins": {
+            "scl": "PB6",
+            "sda": "PB7"
+          }
+        },
+        "I2C3": {
+          "pins": {
+            "scl": "PA8",
+            "sda": "PC9"
+          }
+        },
+        "USB_OTG_FS": {
+          "pins": {
+            "dm": "PA11",
+            "dp": "PA12",
+            "vbus": "PA9"
+          },
+          "mode": "host"
+        },
+        "FMC": {
+          "device": "SDRAM",
+          "status": "no driver yet"
+        },
+        "QSPI": {
+          "device": "GD25Q128 flash",
+          "status": "no driver yet"
+        },
+        "LTDC_DMA2D": {
+          "status": "no driver yet"
+        }
       }
+    }
+  },
+  "controller_board": {
+    "device": "STM32G474",
+    "source": "src/mcu_stm32g474/RobotControllerRelay.c",
+    "note": "the controller board has two FDCAN controllers: FDCAN1 on STACK A towards the brain and FDCAN2 on the downlink towards its tool head; both run at 1 Mbit/s (the tool head bus moved to 1 Mbit/s by decision of the owner, the 500 kbit/s of the earlier URTC protocol is a legacy value of the CAN contract and is not used here)",
+    "stack_bus": {
+      "kernel_clock_hz": 16000000,
+      "prescaler": 1,
+      "sync_jump_width": 1,
+      "time_segment_1": 13,
+      "time_segment_2": 2
+    },
+    "tool_head_downlink": {
+      "kernel_clock_hz": 16000000,
+      "prescaler": 1,
+      "sync_jump_width": 1,
+      "time_segment_1": 13,
+      "time_segment_2": 2
     }
   }
 }
