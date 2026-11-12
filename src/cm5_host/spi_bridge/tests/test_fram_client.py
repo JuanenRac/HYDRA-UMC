@@ -80,7 +80,7 @@ class ConstantsMatchTheFirmware(unittest.TestCase):
         self.assertNotIn("FRAM_", boot)
         self.assertNotIn("FramNode", boot)
         self.assertNotIn("CAN_SendFramResponse", read("src/mcu_stm32g474/boot/bootloader_protocol.c"))
-        self.assertIn("FRAM_ERASE_REQUEST", read("tools/can_ids.py"))
+        self.assertIn("FRAM_ERASE_REQUEST", read("docs/can_ids.json"))
 
     def test_the_window_is_64_wide_in_every_firmware_and_the_filters_follow_it(self):
         self.assertEqual(can_ids.SLOT_WINDOW, 0x40)
