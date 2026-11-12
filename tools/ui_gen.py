@@ -164,7 +164,7 @@ def render_vectors() -> str:
         "#include <stdint.h>",
         "",
         "typedef struct { uint64_t t; const char *name; int32_t a, b, c; } ui_vector_event_t;",
-        "typedef struct { const char *name; uint32_t cfg[11]; unsigned count; const ui_vector_event_t *events; const char *const *expected; } ui_vector_scenario_t;",
+        "typedef struct { const char *name; uint32_t cfg[@N@]; unsigned count; const ui_vector_event_t *events; const char *const *expected; } ui_vector_scenario_t;".replace("@N@", str(len(model.CONFIG_FIELDS))),
         "",
     ]
     names = []

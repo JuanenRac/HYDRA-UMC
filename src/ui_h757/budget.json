@@ -15,9 +15,10 @@
     "layer_bytes_per_pixel": {"value": 2, "origin": "estimate", "note": "RGB565 layers; the DSI link carries the pixels of the panel in its own format"},
     "refresh_hz": {"value": 30, "origin": "data", "note": "docs of the board: 60 Hz does not fit two lanes with margin, 30 Hz is the experimental candidate"},
     "framebuffers": {"value": 2, "origin": "estimate", "note": "double buffer in the SDRAM"},
-    "panel_native_orientation": "portrait 720x1280, used as landscape: the rotation is a cost the driver phase has to settle (LTDC does not rotate)"
+    "panel_native_orientation": "portrait 720x1280, used only as landscape (decision of the owner): the rotation is a fixed cost the driver phase has to settle (LTDC does not rotate), not a choice of the user"
   },
   "sdram": {
+    "size_note": "the size of the SDRAM is a value of config/ui.cfg ([budget] sdram_bytes), not a figure of this file: the board documents give two banks of 128 MiB, the owner will add RAM, and the exact model and size are to be confirmed by the owner (pending decision)",
     "bus_bits": {"value": 32, "origin": "data", "note": "two x16 devices per bank (docs/H757_MEMORY_MAP.md)"},
     "sdclk_hz": {"value": 100000000, "origin": "estimate", "note": "HCLK 200 MHz with SDCLK period 2 (the CubeMX values are starting values)"},
     "sustained_fraction": {"value": 0.5, "origin": "estimate", "note": "share of the peak a mix of scan-out, DMA2D and CPU keeps"},
@@ -31,8 +32,7 @@
   },
   "internal_flash": {
     "cm7_app_reserve_bytes": {"value": 131072, "origin": "estimate", "note": "what the brain application of the CM7 needs besides the interface (CAN stack, kinematics, SPI link); replaced by the size of the real build"},
-    "proposed_cm7_app_slot_bytes": 786432,
-    "proposed_note": "bank 1 from 0x08040000 to the end of the bank (0x08100000): the profile gives the CM7 application 384 KiB and leaves the rest of the bank unassigned; the change belongs to the profile of the H757 and waits for its owner"
+    "slot_note": "the CM7 application slot is the one of the h757_target profile: 768 KiB, from 0x08040000 to the end of bank 1 (decision of the owner)"
   },
   "ram": {
     "axi_core_state_bytes": {"value": 2048, "origin": "estimate", "note": "ui_state_t, the render buffer bookkeeping and the stack of the interface task"},

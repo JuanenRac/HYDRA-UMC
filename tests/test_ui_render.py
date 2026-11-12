@@ -40,7 +40,7 @@ class RenderTests(unittest.TestCase):
     def test_every_screen_in_every_language_and_scene_fits_its_boxes(self):
         folder = Path(tempfile.mkdtemp(prefix="ui_render_"))
         written = r.render_set(folder, s.LANGUAGES, r.SCENES, m.SCREENS)
-        self.assertEqual(len(written), 8 * len(r.SCENES) * 8)
+        self.assertEqual(len(written), 8 * len(r.SCENES) * len(m.SCREENS))
         with Image.open(written[0]) as image:
             self.assertEqual(image.size, (1280, 720))
         for path in written:
@@ -53,6 +53,8 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(m.MODES[r.scene_state("stopped").mode], "stopped")
         self.assertEqual(m.MODES[r.scene_state("alarm").mode], "alarm")
         self.assertTrue(r.scene_state("listen_only").listen_only)
+        self.assertTrue(r.scene_state("locked").locked())
+        self.assertFalse(r.scene_state("normal").locked())
         with self.assertRaises(ValueError):
             r.scene_state("nope")
 

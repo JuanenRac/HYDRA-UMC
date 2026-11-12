@@ -30,7 +30,7 @@ CJK_FONTS = {
     "ja": ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc#0", "C:/Windows/Fonts/YuGothR.ttc#0", "C:/Windows/Fonts/meiryo.ttc#0"),
     "zh": ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc#2", "C:/Windows/Fonts/msyh.ttc#0", "C:/Windows/Fonts/simsun.ttc#0"),
 }
-SCENES = ("normal", "degraded", "stopped", "alarm", "listen_only")
+SCENES = ("normal", "degraded", "stopped", "alarm", "listen_only", "locked")
 BASE_SIZE = {"label": 20, "value": 32, "button": 28, "banner": 24, "tab": 22, "note": 22}
 
 
@@ -109,13 +109,15 @@ class Renderer:
         away = ("--", "muted")
         values = {
             "ui.mode": (self.t("mode." + model.MODES[state.mode]), {0: "warn", 1: "ok", 2: "warn", 3: "danger", 4: "danger"}[state.mode]),
-            "ui.banner": (self.t("banner." + model.BANNERS[state.banner]), {0: "ok", 1: "warn", 2: "warn", 3: "warn", 4: "danger", 5: "danger", 6: "warn", 7: "danger", 8: "danger"}[state.banner]),
+            "ui.banner": (self.t("banner." + model.BANNERS[state.banner]), {0: "ok", 1: "warn", 2: "warn", 3: "warn", 4: "danger", 5: "danger", 6: "warn", 7: "danger", 8: "danger", 9: "warn"}[state.banner]),
             "ui.listen_only": ("ON" if state.listen_only else "OFF", "warn" if state.listen_only else "plain"),
             "ui.jog_armed": (self.t("action.jog_armed") if state.jog_armed() else self.t("action.jog_not_armed"), "warn" if state.jog_armed() else "muted"),
             "ui.jog_arm_left_s": (str(max(0, (state.jog_armed_until - state.now + 999) // 1000)) if state.jog_armed() else "0", "plain"),
             "ui.alarm_count": (str(count), "danger" if count else "ok"),
             "ui.language": (self.t("settings.language_name"), "plain"),
             "ui.alarm_list": ("", "plain"),
+            "ui.locked": ((self.t("lock.state_off"), "muted") if not state.cfg["operator_pin_enabled"] else (self.t("lock.state_locked"), "danger") if state.locked() else (self.t("lock.state_open"), "ok")),
+            "ui.pin_digits": ("••••", "plain"),
             "estop.latched": (self.t("stop.latched") if state.latched or state.stop_pending else self.t("link.ok"), "danger" if state.latched or state.stop_pending else "ok"),
             "stack.can_state": (self.t(bus_text[0]), bus_text[1]),
             "stack.can_tx_errors": (str(state.can_tx), "warn" if state.can_tx >= state.cfg["can_warn_errors"] else "plain"),
@@ -231,8 +233,15 @@ class Renderer:
                 self.text_in(draw, {"x": rect["x"] + 8, "y": top, "w": rect["w"] - 16, "h": 52}, text, BASE_SIZE["button"], ink, where + f"/row{row}", "left", pad=10)
         elif kind == "image":
             draw.rectangle(box, fill=th["disabled"], outline=th["text_muted"])
-            draw.line((box[0], box[1], box[2], box[3]), fill=th["text_muted"], width=2)
-            draw.line((box[0], box[3], box[2], box[1]), fill=th["text_muted"], width=2)
+            if state.link == 1:
+                # a stand-in for the still picture of the Jetson: a gradient, not a camera image
+                for row in range(rect["h"] - 2):
+                    shade = 40 + int(80 * row / max(1, rect["h"]))
+                    draw.line((box[0] + 1, box[1] + 1 + row, box[2] - 1, box[1] + 1 + row), fill=(shade, shade + 10, shade + 20))
+                self.text_in(draw, {**rect, "h": 40}, label, BASE_SIZE["label"], th["text"], where, "left", pad=10)
+            else:
+                draw.line((box[0], box[1], box[2], box[3]), fill=th["text_muted"], width=2)
+                draw.line((box[0], box[3], box[2], box[1]), fill=th["text_muted"], width=2)
         elif kind == "text":
             self.text_in(draw, rect, label, BASE_SIZE["note"], th["text"], where, "left", pad=6)
 
@@ -250,7 +259,7 @@ class Renderer:
                 draw.rectangle((widget["rect"]["x"], widget["rect"]["y"], widget["rect"]["x"] + widget["rect"]["w"] - 1, widget["rect"]["y"] + widget["rect"]["h"] - 1), fill=self.theme["disabled"])
                 continue
             if needs_away and widget["kind"] == "text":
-                self.draw_widget(draw, widget, state, values, screen_id)
+                self.draw_widget(draw, {**widget, "label_key": "cam.needs_jetson"}, state, values, screen_id)
                 continue
             self.draw_widget(draw, widget, state, values, screen_id)
         return image
@@ -258,7 +267,10 @@ class Renderer:
 
 def scene_state(scene: str) -> model.State:
     """A state of the view-model reached through events, as the firmware would reach it."""
-    state = model.State(model.load_config())
+    cfg = model.load_config()
+    if scene == "locked":
+        cfg["operator_pin_enabled"] = 1
+    state = model.State(cfg)
     state._derive()
     state.event(0, "HB", 0)
     if scene == "normal":
@@ -277,6 +289,8 @@ def scene_state(scene: str) -> model.State:
         state.event(200, "CAN", 0, 120, 30)
     elif scene == "listen_only":
         state.event(100, "DOWN", model.A_LISTEN)
+    elif scene == "locked":
+        state.event(100, "HB", 0)
     else:
         raise ValueError(scene)
     return state

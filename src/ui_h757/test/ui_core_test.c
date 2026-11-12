@@ -20,10 +20,10 @@
 static const char *const k_modes[] = {"boot", "normal", "degraded", "alarm", "stopped"};
 static const char *const k_links[] = {"starting", "ok", "silent", "spi_fault"};
 static const char *const k_buses[] = {"ok", "warn", "off"};
-static const char *const k_banners[] = {"normal", "boot", "degraded", "spi_fault", "bus_off", "stopped", "listen_only", "alarm", "stop_unconfirmed"};
+static const char *const k_banners[] = {"normal", "boot", "degraded", "spi_fault", "bus_off", "stopped", "listen_only", "alarm", "stop_unconfirmed", "locked"};
 static const char *const k_actions[] = {"stop", "release", "jog_arm", "jog_x_plus", "jog_x_minus", "jog_y_plus", "jog_y_minus", "jog_z_plus", "jog_z_minus",
                                         "ack_alarm", "toggle_listen_only", "next_language"};
-static const char *const k_reasons[] = {"listen_only", "not_stopped", "stopped", "degraded", "bus_fault", "not_armed", "alarm", "starting"};
+static const char *const k_reasons[] = {"listen_only", "not_stopped", "stopped", "degraded", "bus_fault", "not_armed", "alarm", "starting", "locked"};
 static const char *const k_alarms[] = {"jetson_lost", "spi_link", "can_errors", "can_bus_off", "stop_unconfirmed", "motion_after_stop", "zone_warning", "zone_danger",
                                        "zone_inhibited", "zone_fault"};
 
@@ -43,7 +43,8 @@ static ui_event_kind_t kind_of(const char *name)
 {
     static const struct { const char *name; ui_event_kind_t kind; } table[] = {
         {"TICK", UI_EV_TICK}, {"HB", UI_EV_HEARTBEAT}, {"SPI_ERR", UI_EV_SPI_ERROR}, {"SPI_OK", UI_EV_SPI_OK}, {"CAN", UI_EV_CAN}, {"ESTOP", UI_EV_ESTOP},
-        {"MOTION", UI_EV_MOTION}, {"NAV", UI_EV_NAV}, {"DOWN", UI_EV_TOUCH_DOWN}, {"UP", UI_EV_TOUCH_UP},
+        {"MOTION", UI_EV_MOTION}, {"NAV", UI_EV_NAV}, {"DOWN", UI_EV_TOUCH_DOWN}, {"UP", UI_EV_TOUCH_UP}, {"PIN_OK", UI_EV_PIN_OK},
+        {"PIN_BAD", UI_EV_PIN_BAD},
     };
     for (unsigned i = 0; i < sizeof(table) / sizeof(table[0]); i++) {
         if (strcmp(table[i].name, name) == 0) {
@@ -57,8 +58,8 @@ static void format_line(const ui_state_t *s, const char *name, char *out, size_t
 {
     unsigned unacked = (unsigned)(s->alarms & ~s->acked);
     out[0] = '\0';
-    append(out, size, "t=%llu ev=%s mode=%s link=%s bus=%s lo=%d scr=%u al=%03x un=%03x arm=%d stop=%d%d hold=%s ban=%s caps=%04x fx=", (unsigned long long)s->now, name,
-           k_modes[s->mode], k_links[s->link], k_buses[s->bus], s->listen_only, (unsigned)s->screen, (unsigned)s->alarms, unacked, ui_jog_armed(s), s->latched,
+    append(out, size, "t=%llu ev=%s mode=%s link=%s bus=%s lo=%d lk=%d scr=%u al=%03x un=%03x arm=%d stop=%d%d hold=%s ban=%s caps=%04x fx=", (unsigned long long)s->now, name,
+           k_modes[s->mode], k_links[s->link], k_buses[s->bus], s->listen_only, ui_locked(s), (unsigned)s->screen, (unsigned)s->alarms, unacked, ui_jog_armed(s), s->latched,
            s->stop_pending, s->hold_action >= 0 ? k_actions[s->hold_action] : "-", k_banners[s->banner], (unsigned)s->caps);
     if (s->fx_count == 0) {
         append(out, size, "-");
@@ -80,6 +81,10 @@ static void format_line(const ui_state_t *s, const char *name, char *out, size_t
         case UI_FX_ALARM_ON: append(out, size, "alarm+:%s", k_alarms[fx->a]); break;
         case UI_FX_ALARM_OFF: append(out, size, "alarm-:%s", k_alarms[fx->a]); break;
         case UI_FX_HOLD_CANCEL: append(out, size, "hold_cancel"); break;
+        case UI_FX_UNLOCKED: append(out, size, "unlocked"); break;
+        case UI_FX_LOCKED: append(out, size, "locked"); break;
+        case UI_FX_PIN_WRONG: append(out, size, "pin_wrong"); break;
+        case UI_FX_PIN_LOCKOUT: append(out, size, "pin_lockout"); break;
         default: append(out, size, "?"); break;
         }
     }
@@ -118,7 +123,7 @@ static uint32_t next_random(void)
 }
 
 /* The rules that never change, held over a long random run (fixed seed, deterministic). */
-static int fuzz(int allow_release, int allow_motion)
+static int fuzz(int allow_release, int allow_motion, int pin)
 {
     int failures = 0;
     ui_config_t cfg = UI_CONFIG_DEFAULT;
@@ -126,12 +131,14 @@ static int fuzz(int allow_release, int allow_motion)
     uint64_t now = 0;
     cfg.degraded_allow_release = (uint32_t)allow_release;
     cfg.degraded_allow_motion = (uint32_t)allow_motion;
+    cfg.operator_pin_enabled = (uint32_t)pin;
+    cfg.pin_idle_ms = 20000u;
     ui_init(&s, &cfg);
     for (unsigned step = 0; step < 200000u; step++) {
         uint32_t r = next_random();
-        ui_event_kind_t kind = (ui_event_kind_t)(r % 10u);
+        ui_event_kind_t kind = (ui_event_kind_t)(r % 12u);
         int32_t a = 0, b = 0, c = 0;
-        int listen_before, latched_before;
+        int listen_before, latched_before, locked_before;
         now += (r >> 4) % 700u;
         switch (kind) {
         case UI_EV_HEARTBEAT: a = (int32_t)((r >> 8) % 7u); break;
@@ -157,13 +164,14 @@ static int fuzz(int allow_release, int allow_motion)
             continue;
         }
         listen_before = s.listen_only;
+        locked_before = ui_locked(&s);
         latched_before = s.latched;
         ui_event(&s, now, kind, a, b, c);
         for (unsigned i = 0; i < s.fx_count; i++) {
             const ui_effect_t *fx = &s.fx[i];
             if (fx->kind == UI_FX_JOG || fx->kind == UI_FX_JOG_ARMED) {
                 int degraded = s.link == UI_LINK_SILENT || s.link == UI_LINK_SPI_FAULT;
-                if (s.listen_only || listen_before || s.mode == UI_MODE_STOPPED || s.mode == UI_MODE_BOOT || s.bus == UI_BUS_OFF || (degraded && !allow_motion)) {
+                if (s.listen_only || listen_before || ui_locked(&s) || locked_before || s.mode == UI_MODE_STOPPED || s.mode == UI_MODE_BOOT || s.bus == UI_BUS_OFF || (degraded && !allow_motion)) {
                     printf("  FAIL: a jog effect in a state that forbids it (step %u, mode %u link %u)\n", step, (unsigned)s.mode, (unsigned)s.link);
                     return failures + 1;
                 }
@@ -174,7 +182,7 @@ static int fuzz(int allow_release, int allow_motion)
             }
             if (fx->kind == UI_FX_RELEASE) {
                 int degraded = s.link != UI_LINK_OK;
-                if (!latched_before || s.listen_only || s.bus == UI_BUS_OFF || (degraded && !allow_release)) {
+                if (!latched_before || s.listen_only || ui_locked(&s) || locked_before || s.bus == UI_BUS_OFF || (degraded && !allow_release)) {
                     printf("  FAIL: a release effect in a state that forbids it (step %u)\n", step);
                     return failures + 1;
                 }
@@ -251,10 +259,12 @@ int main(void)
     int failures = 0;
     failures += scenarios();
     failures += tables();
-    failures += fuzz(0, 0);
-    failures += fuzz(1, 0);
-    failures += fuzz(0, 1);
-    failures += fuzz(1, 1);
+    failures += fuzz(0, 0, 0);
+    failures += fuzz(1, 0, 0);
+    failures += fuzz(0, 1, 0);
+    failures += fuzz(1, 1, 0);
+    failures += fuzz(0, 0, 1);
+    failures += fuzz(1, 1, 1);
     if (failures == 0) {
         printf("ui_core: PASS\n");
         return 0;

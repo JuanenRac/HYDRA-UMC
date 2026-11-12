@@ -21,6 +21,10 @@ static const ui_config_t UI_CONFIG_DEFAULT = {
     96u, /* can_warn_errors */
     0u, /* degraded_allow_release */
     0u, /* degraded_allow_motion */
+    0u, /* operator_pin_enabled */
+    3u, /* pin_max_failures */
+    30000u, /* pin_lockout_ms */
+    120000u, /* pin_idle_ms */
 };
 
 #endif /* UI_CONFIG_H */

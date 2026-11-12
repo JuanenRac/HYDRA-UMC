@@ -982,6 +982,239 @@
    "zh": "中文",
    "pt": "Português"
   },
+  "banner.locked": {
+   "en": "Panel locked: enter the operator PIN. STOP still works.",
+   "es": "Panel bloqueado: introduce el PIN de operador. STOP sigue funcionando.",
+   "de": "Panel gesperrt: Bediener-PIN eingeben. STOP funktioniert weiterhin.",
+   "fr": "Panneau verrouillé : saisissez le PIN opérateur. STOP fonctionne toujours.",
+   "it": "Pannello bloccato: inserisci il PIN operatore. STOP continua a funzionare.",
+   "ja": "パネルはロックされています。オペレーター PIN を入力してください。STOP は引き続き使えます。",
+   "zh": "面板已锁定：请输入操作员 PIN。STOP 仍然可用。",
+   "pt": "Painel bloqueado: introduza o PIN de operador. O PARAR continua a funcionar."
+  },
+  "refused.locked": {
+   "en": "Refused: the panel is locked",
+   "es": "Rechazado: el panel está bloqueado",
+   "de": "Abgelehnt: das Panel ist gesperrt",
+   "fr": "Refusé : le panneau est verrouillé",
+   "it": "Rifiutato: il pannello è bloccato",
+   "ja": "拒否：パネルはロックされています",
+   "zh": "已拒绝：面板已锁定",
+   "pt": "Recusado: o painel está bloqueado"
+  },
+  "lock.title": {
+   "en": "Panel locked",
+   "es": "Panel bloqueado",
+   "de": "Panel gesperrt",
+   "fr": "Panneau verrouillé",
+   "it": "Pannello bloccato",
+   "ja": "パネルはロックされています",
+   "zh": "面板已锁定",
+   "pt": "Painel bloqueado",
+   "arb": "lockTitle"
+  },
+  "lock.hint": {
+   "en": "Enter the operator PIN to continue. STOP stays available.",
+   "es": "Introduce el PIN de operador para continuar. STOP sigue disponible.",
+   "de": "Gib die Bediener-PIN ein, um fortzufahren. STOP bleibt verfügbar.",
+   "fr": "Saisis le code PIN opérateur pour continuer. STOP reste disponible.",
+   "it": "Inserisci il PIN operatore per continuare. STOP resta disponibile.",
+   "ja": "続けるにはオペレーターのPINを入力してください。停止ボタンは使えます。",
+   "zh": "请输入操作员 PIN 继续。急停按钮仍然可用。",
+   "pt": "Introduza o PIN de operador para continuar. O STOP continua disponível.",
+   "arb": "lockHint"
+  },
+  "lock.wrong_pin": {
+   "en": "Wrong PIN",
+   "es": "PIN incorrecto",
+   "de": "Falsche PIN",
+   "fr": "PIN incorrect",
+   "it": "PIN errato",
+   "ja": "PIN が違います",
+   "zh": "PIN 错误",
+   "pt": "PIN errado"
+  },
+  "lock.locked_out": {
+   "en": "Too many wrong PINs: wait and try again",
+   "es": "Demasiados PIN incorrectos: espera e inténtalo de nuevo",
+   "de": "Zu viele falsche PINs: warten und erneut versuchen",
+   "fr": "Trop de PIN incorrects : patientez puis réessayez",
+   "it": "Troppi PIN errati: attendi e riprova",
+   "ja": "PIN の誤りが多すぎます。しばらく待ってからやり直してください",
+   "zh": "错误 PIN 过多：请稍候再试",
+   "pt": "Demasiados PIN errados: aguarde e tente novamente"
+  },
+  "lock.state_locked": {
+   "en": "Locked",
+   "es": "Bloqueado",
+   "de": "Gesperrt",
+   "fr": "Verrouillé",
+   "it": "Bloccato",
+   "ja": "ロック中",
+   "zh": "已锁定",
+   "pt": "Bloqueado"
+  },
+  "lock.state_open": {
+   "en": "Unlocked",
+   "es": "Desbloqueado",
+   "de": "Entsperrt",
+   "fr": "Déverrouillé",
+   "it": "Sbloccato",
+   "ja": "ロック解除",
+   "zh": "已解锁",
+   "pt": "Desbloqueado"
+  },
+  "lock.state_off": {
+   "en": "PIN off",
+   "es": "Sin PIN",
+   "de": "PIN aus",
+   "fr": "PIN désactivé",
+   "it": "PIN spento",
+   "ja": "PIN オフ",
+   "zh": "PIN 关闭",
+   "pt": "PIN desligado"
+  },
+  "pin.enter": {
+   "en": "OK",
+   "es": "OK",
+   "de": "OK",
+   "fr": "OK",
+   "it": "OK",
+   "ja": "OK",
+   "zh": "确定",
+   "pt": "OK",
+   "arb": "pinPadOk"
+  },
+  "pin.clear": {
+   "en": "Clear",
+   "es": "Borrar",
+   "de": "Löschen",
+   "fr": "Effacer",
+   "it": "Cancella",
+   "ja": "消去",
+   "zh": "清除",
+   "pt": "Apagar"
+  },
+  "pin.entry": {
+   "en": "PIN",
+   "es": "PIN",
+   "de": "PIN",
+   "fr": "PIN",
+   "it": "PIN",
+   "ja": "PIN",
+   "zh": "PIN",
+   "pt": "PIN"
+  },
+  "cam.thumbnail_hint": {
+   "en": "Still picture, a few updates per second. The video stays on the Jetson.",
+   "es": "Imagen fija, unas pocas actualizaciones por segundo. El vídeo sigue en el Jetson.",
+   "de": "Standbild, wenige Aktualisierungen pro Sekunde. Das Video bleibt auf dem Jetson.",
+   "fr": "Image fixe, quelques mises à jour par seconde. La vidéo reste sur le Jetson.",
+   "it": "Immagine fissa, pochi aggiornamenti al secondo. Il video resta sul Jetson.",
+   "ja": "静止画像で、1 秒に数回更新されます。映像は Jetson に残ります。",
+   "zh": "静态图像，每秒更新几次。视频仍保留在 Jetson 上。",
+   "pt": "Imagem fixa, poucas atualizações por segundo. O vídeo fica no Jetson."
+  },
+  "pin.digit_0": {
+   "en": "0",
+   "es": "0",
+   "de": "0",
+   "fr": "0",
+   "it": "0",
+   "ja": "0",
+   "zh": "0",
+   "pt": "0"
+  },
+  "pin.digit_1": {
+   "en": "1",
+   "es": "1",
+   "de": "1",
+   "fr": "1",
+   "it": "1",
+   "ja": "1",
+   "zh": "1",
+   "pt": "1"
+  },
+  "pin.digit_2": {
+   "en": "2",
+   "es": "2",
+   "de": "2",
+   "fr": "2",
+   "it": "2",
+   "ja": "2",
+   "zh": "2",
+   "pt": "2"
+  },
+  "pin.digit_3": {
+   "en": "3",
+   "es": "3",
+   "de": "3",
+   "fr": "3",
+   "it": "3",
+   "ja": "3",
+   "zh": "3",
+   "pt": "3"
+  },
+  "pin.digit_4": {
+   "en": "4",
+   "es": "4",
+   "de": "4",
+   "fr": "4",
+   "it": "4",
+   "ja": "4",
+   "zh": "4",
+   "pt": "4"
+  },
+  "pin.digit_5": {
+   "en": "5",
+   "es": "5",
+   "de": "5",
+   "fr": "5",
+   "it": "5",
+   "ja": "5",
+   "zh": "5",
+   "pt": "5"
+  },
+  "pin.digit_6": {
+   "en": "6",
+   "es": "6",
+   "de": "6",
+   "fr": "6",
+   "it": "6",
+   "ja": "6",
+   "zh": "6",
+   "pt": "6"
+  },
+  "pin.digit_7": {
+   "en": "7",
+   "es": "7",
+   "de": "7",
+   "fr": "7",
+   "it": "7",
+   "ja": "7",
+   "zh": "7",
+   "pt": "7"
+  },
+  "pin.digit_8": {
+   "en": "8",
+   "es": "8",
+   "de": "8",
+   "fr": "8",
+   "it": "8",
+   "ja": "8",
+   "zh": "8",
+   "pt": "8"
+  },
+  "pin.digit_9": {
+   "en": "9",
+   "es": "9",
+   "de": "9",
+   "fr": "9",
+   "it": "9",
+   "ja": "9",
+   "zh": "9",
+   "pt": "9"
+  },
   "unit.seconds": {
    "en": "s",
    "es": "s",

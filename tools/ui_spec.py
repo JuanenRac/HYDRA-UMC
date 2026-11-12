@@ -250,8 +250,8 @@ def problems(spec: dict, i18n: dict, root: Path = ROOT) -> list[str]:
         for field in needs:
             if field not in widget:
                 found.append(f"{where}/{wid}: a {kind} needs {field}")
-        if kind not in ("button", "tab", "toggle") and "action" in widget:
-            found.append(f"{where}/{wid}: only a button, a tab or a toggle carries an action")
+        if kind not in ("button", "tab", "toggle", "banner") and "action" in widget:
+            found.append(f"{where}/{wid}: only a button, a tab, a toggle or the banner carries an action")
         if not _inside(widget["rect"], frame):
             found.append(f"{where}/{wid}: outside the frame")
         if area is not None and not _inside(widget["rect"], area):
@@ -303,8 +303,9 @@ def problems(spec: dict, i18n: dict, root: Path = ROOT) -> list[str]:
     if nav_targets != set(screen_ids):
         found.append(f"the navigation actions {sorted(nav_targets)} and the screens {sorted(screen_ids)} must match")
     tabs = {w["action"][4:] for w in spec["global_widgets"] if w["kind"] == "tab"}
-    if tabs != set(screen_ids):
-        found.append("every screen needs exactly one tab")
+    modal = {sc["id"] for sc in spec["screens"] if sc.get("modal")}
+    if tabs != set(screen_ids) - modal:
+        found.append("every screen that is not modal needs exactly one tab, and a modal screen has none")
     for unused in sorted(set(signals) - used_signals):
         found.append(f"signal {unused} is bound to no widget")
     for unused in sorted(set(actions) - used_actions):

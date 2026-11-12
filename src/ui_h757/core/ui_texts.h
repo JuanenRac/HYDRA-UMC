@@ -106,9 +106,32 @@ typedef enum {
     UI_T_ALARM_ZONE_FAULT = 92,
     UI_T_SETTINGS_LISTEN_ONLY_HINT = 93,
     UI_T_SETTINGS_LANGUAGE_NAME = 94,
-    UI_T_UNIT_SECONDS = 95,
-    UI_T_UNIT_MILLIMETRES = 96,
-    UI_T_COUNT = 97
+    UI_T_BANNER_LOCKED = 95,
+    UI_T_REFUSED_LOCKED = 96,
+    UI_T_LOCK_TITLE = 97,
+    UI_T_LOCK_HINT = 98,
+    UI_T_LOCK_WRONG_PIN = 99,
+    UI_T_LOCK_LOCKED_OUT = 100,
+    UI_T_LOCK_STATE_LOCKED = 101,
+    UI_T_LOCK_STATE_OPEN = 102,
+    UI_T_LOCK_STATE_OFF = 103,
+    UI_T_PIN_ENTER = 104,
+    UI_T_PIN_CLEAR = 105,
+    UI_T_PIN_ENTRY = 106,
+    UI_T_CAM_THUMBNAIL_HINT = 107,
+    UI_T_PIN_DIGIT_0 = 108,
+    UI_T_PIN_DIGIT_1 = 109,
+    UI_T_PIN_DIGIT_2 = 110,
+    UI_T_PIN_DIGIT_3 = 111,
+    UI_T_PIN_DIGIT_4 = 112,
+    UI_T_PIN_DIGIT_5 = 113,
+    UI_T_PIN_DIGIT_6 = 114,
+    UI_T_PIN_DIGIT_7 = 115,
+    UI_T_PIN_DIGIT_8 = 116,
+    UI_T_PIN_DIGIT_9 = 117,
+    UI_T_UNIT_SECONDS = 118,
+    UI_T_UNIT_MILLIMETRES = 119,
+    UI_T_COUNT = 120
 } ui_text_id_t;
 
 /* UTF-8 text of every key in every language; the arrays are in flash. */
@@ -208,6 +231,29 @@ static const char *const ui_texts[UI_T_COUNT][UI_LANG_COUNT] = {
     {"Safety service fault", "Fallo del servicio de seguridad", "Fehler des Sicherheitsdienstes", "Défaut du service de sécurité", "Guasto del servizio di sicurezza", "安全サービスの障害", "安全服务故障", "Falha do serviço de segurança"}, /* alarm.zone_fault */
     {"Turning it off needs a long press.", "Para desactivarla hay que mantener pulsado.", "Zum Ausschalten lange drücken.", "Pour la désactiver, maintenez appuyé.", "Per disattivarla tieni premuto.", "解除するには長押しが必要です。", "关闭需要长按。", "Para a desativar, mantenha premido."}, /* settings.listen_only_hint */
     {"English", "Español", "Deutsch", "Français", "Italiano", "日本語", "中文", "Português"}, /* settings.language_name */
+    {"Panel locked: enter the operator PIN. STOP still works.", "Panel bloqueado: introduce el PIN de operador. STOP sigue funcionando.", "Panel gesperrt: Bediener-PIN eingeben. STOP funktioniert weiterhin.", "Panneau verrouillé : saisissez le PIN opérateur. STOP fonctionne toujours.", "Pannello bloccato: inserisci il PIN operatore. STOP continua a funzionare.", "パネルはロックされています。オペレーター PIN を入力してください。STOP は引き続き使えます。", "面板已锁定：请输入操作员 PIN。STOP 仍然可用。", "Painel bloqueado: introduza o PIN de operador. O PARAR continua a funcionar."}, /* banner.locked */
+    {"Refused: the panel is locked", "Rechazado: el panel está bloqueado", "Abgelehnt: das Panel ist gesperrt", "Refusé : le panneau est verrouillé", "Rifiutato: il pannello è bloccato", "拒否：パネルはロックされています", "已拒绝：面板已锁定", "Recusado: o painel está bloqueado"}, /* refused.locked */
+    {"Panel locked", "Panel bloqueado", "Panel gesperrt", "Panneau verrouillé", "Pannello bloccato", "パネルはロックされています", "面板已锁定", "Painel bloqueado"}, /* lock.title */
+    {"Enter the operator PIN to continue. STOP stays available.", "Introduce el PIN de operador para continuar. STOP sigue disponible.", "Gib die Bediener-PIN ein, um fortzufahren. STOP bleibt verfügbar.", "Saisis le code PIN opérateur pour continuer. STOP reste disponible.", "Inserisci il PIN operatore per continuare. STOP resta disponibile.", "続けるにはオペレーターのPINを入力してください。停止ボタンは使えます。", "请输入操作员 PIN 继续。急停按钮仍然可用。", "Introduza o PIN de operador para continuar. O STOP continua disponível."}, /* lock.hint */
+    {"Wrong PIN", "PIN incorrecto", "Falsche PIN", "PIN incorrect", "PIN errato", "PIN が違います", "PIN 错误", "PIN errado"}, /* lock.wrong_pin */
+    {"Too many wrong PINs: wait and try again", "Demasiados PIN incorrectos: espera e inténtalo de nuevo", "Zu viele falsche PINs: warten und erneut versuchen", "Trop de PIN incorrects : patientez puis réessayez", "Troppi PIN errati: attendi e riprova", "PIN の誤りが多すぎます。しばらく待ってからやり直してください", "错误 PIN 过多：请稍候再试", "Demasiados PIN errados: aguarde e tente novamente"}, /* lock.locked_out */
+    {"Locked", "Bloqueado", "Gesperrt", "Verrouillé", "Bloccato", "ロック中", "已锁定", "Bloqueado"}, /* lock.state_locked */
+    {"Unlocked", "Desbloqueado", "Entsperrt", "Déverrouillé", "Sbloccato", "ロック解除", "已解锁", "Desbloqueado"}, /* lock.state_open */
+    {"PIN off", "Sin PIN", "PIN aus", "PIN désactivé", "PIN spento", "PIN オフ", "PIN 关闭", "PIN desligado"}, /* lock.state_off */
+    {"OK", "OK", "OK", "OK", "OK", "OK", "确定", "OK"}, /* pin.enter */
+    {"Clear", "Borrar", "Löschen", "Effacer", "Cancella", "消去", "清除", "Apagar"}, /* pin.clear */
+    {"PIN", "PIN", "PIN", "PIN", "PIN", "PIN", "PIN", "PIN"}, /* pin.entry */
+    {"Still picture, a few updates per second. The video stays on the Jetson.", "Imagen fija, unas pocas actualizaciones por segundo. El vídeo sigue en el Jetson.", "Standbild, wenige Aktualisierungen pro Sekunde. Das Video bleibt auf dem Jetson.", "Image fixe, quelques mises à jour par seconde. La vidéo reste sur le Jetson.", "Immagine fissa, pochi aggiornamenti al secondo. Il video resta sul Jetson.", "静止画像で、1 秒に数回更新されます。映像は Jetson に残ります。", "静态图像，每秒更新几次。视频仍保留在 Jetson 上。", "Imagem fixa, poucas atualizações por segundo. O vídeo fica no Jetson."}, /* cam.thumbnail_hint */
+    {"0", "0", "0", "0", "0", "0", "0", "0"}, /* pin.digit_0 */
+    {"1", "1", "1", "1", "1", "1", "1", "1"}, /* pin.digit_1 */
+    {"2", "2", "2", "2", "2", "2", "2", "2"}, /* pin.digit_2 */
+    {"3", "3", "3", "3", "3", "3", "3", "3"}, /* pin.digit_3 */
+    {"4", "4", "4", "4", "4", "4", "4", "4"}, /* pin.digit_4 */
+    {"5", "5", "5", "5", "5", "5", "5", "5"}, /* pin.digit_5 */
+    {"6", "6", "6", "6", "6", "6", "6", "6"}, /* pin.digit_6 */
+    {"7", "7", "7", "7", "7", "7", "7", "7"}, /* pin.digit_7 */
+    {"8", "8", "8", "8", "8", "8", "8", "8"}, /* pin.digit_8 */
+    {"9", "9", "9", "9", "9", "9", "9", "9"}, /* pin.digit_9 */
     {"s", "s", "s", "s", "s", "秒", "秒", "s"}, /* unit.seconds */
     {"mm", "mm", "mm", "mm", "mm", "mm", "mm", "mm"}, /* unit.millimetres */
 };

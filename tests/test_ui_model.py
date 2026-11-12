@@ -51,7 +51,7 @@ class ConfigTests(unittest.TestCase):
         base = (ROOT / "config" / "ui.cfg").read_text(encoding="utf-8")
         scratch = Path(tempfile.mkdtemp(prefix="ui_cfg_test_"))
         self.addCleanup(shutil.rmtree, scratch, True)
-        for name, text in (("range", base.replace("jetson_timeout_ms = 1500", "jetson_timeout_ms = 5")), ("unknown", base + "\nsurprise = 1\n"),
+        for name, text in (("range", base.replace("jetson_timeout_ms = 1500", "jetson_timeout_ms = 5")), ("unknown", base.replace("degraded_allow_motion = 0", "degraded_allow_motion = 0\nsurprise = 1")),
                            ("word", base.replace("jog_arm_ms = 10000", "jog_arm_ms = soon")), ("section", "[other]\na = 1\n")):
             path = scratch / f"{name}.cfg"
             path.write_text(text, encoding="utf-8")
@@ -169,6 +169,38 @@ class ScenarioTests(unittest.TestCase):
         self.assertEqual(at(rows, 600)["al"], "000")  # a level out of range reads as unknown: no zone alarm
         self.assertEqual(rows[-1]["scr"], "6")
 
+    def test_the_operator_pin_locks_every_command_but_stop_and_is_off_by_default(self):
+        self.assertEqual(m.load_config()["operator_pin_enabled"], 0)
+        rows = run("pin_locks_commands_but_never_stop")
+        self.assertEqual((at(rows, 100)["lk"], at(rows, 100)["ban"]), ("1", "locked"))
+        self.assertIn("refused:jog_arm:locked", effects(at(rows, 100)))
+        self.assertIn("stop", effects(at(rows, 200)))  # STOP never asks for the PIN
+        self.assertIn("refused:release:locked", effects(at(rows, 300)))
+        self.assertIn("pin_wrong", effects(at(rows, 500)))
+        self.assertIn("unlocked", effects(at(rows, 600)))
+        self.assertIn("release", effects(at(rows, 2300)))  # the same hold releases once unlocked
+        self.assertIn("jog_armed", effects(at(rows, 2600)))
+        off = run("pin_is_off_by_default")
+        self.assertEqual(effects(at(off, 100)), [])  # the PIN events change nothing
+        self.assertEqual(at(off, 300)["lk"], "0")
+        self.assertIn("jog_armed", effects(at(off, 300)))
+
+    def test_wrong_pins_lock_the_pad_out_and_the_panel_locks_again_when_idle(self):
+        rows = run("pin_lockout_and_idle_relock")
+        self.assertIn("pin_lockout", effects(at(rows, 300)))
+        self.assertEqual(at(rows, 400)["lk"], "1")  # a right PIN is ignored during the lock-out
+        self.assertIn("unlocked", effects(at(rows, 3400)))
+        late = at(rows, 8500)
+        self.assertEqual((late["lk"], late["arm"]), ("1", "0"))
+        self.assertIn("locked", effects(late))
+        self.assertIn("refused:jog_x_plus:locked", effects(at(rows, 8600)))
+
+    def test_turning_listen_only_on_needs_no_pin_but_leaving_it_does(self):
+        rows = run("leaving_listen_only_needs_the_pin")
+        self.assertIn("listen:1", effects(at(rows, 200)))
+        self.assertIn("refused:toggle_listen_only:locked", effects(at(rows, 5500)))
+        self.assertIn("listen:0", effects(at(rows, 7300)))
+
     def test_time_never_goes_back(self):
         state = m.State(m.load_config())
         state.event(1000, "TICK")
@@ -185,15 +217,16 @@ class ScenarioTests(unittest.TestCase):
 class FuzzTests(unittest.TestCase):
     """The rules that never change, over a long random run with a fixed seed (the C twin runs the same kind of fuzz)."""
 
-    def run_fuzz(self, allow_release: int, allow_motion: int) -> None:
+    def run_fuzz(self, allow_release: int, allow_motion: int, pin: int = 0) -> None:
         cfg = m.load_config()
         cfg["degraded_allow_release"], cfg["degraded_allow_motion"] = allow_release, allow_motion
+        cfg["operator_pin_enabled"], cfg["pin_idle_ms"] = pin, 20000
         state = m.State(cfg)
         state._derive()
-        rng = random.Random(20260001 + allow_release * 2 + allow_motion)
+        rng = random.Random(20260001 + allow_release * 2 + allow_motion + 7 * pin)
         now = 0
         for step in range(30000):
-            kind = rng.choice(("TICK", "HB", "SPI_ERR", "SPI_OK", "CAN", "ESTOP", "MOTION", "NAV", "DOWN", "UP"))
+            kind = rng.choice(("TICK", "HB", "SPI_ERR", "SPI_OK", "CAN", "ESTOP", "MOTION", "NAV", "DOWN", "UP", "PIN_OK", "PIN_BAD"))
             now += rng.randrange(700)
             args: tuple[int, ...] = ()
             if kind == "HB":
@@ -203,11 +236,12 @@ class FuzzTests(unittest.TestCase):
             elif kind in ("ESTOP", "MOTION"):
                 args = (rng.randrange(2),)
             elif kind == "NAV":
-                args = (rng.randrange(10),)
+                args = (rng.randrange(11),)
             elif kind in ("DOWN", "UP"):
                 args = (rng.randrange(14) - 1,)
             latched_before = state.latched
             listen_before = state.listen_only
+            locked_before = state.locked()
             fx = state.event(now, kind, *args)
             where = f"step {step} {kind} {args}"
             if kind == "DOWN" and args == (m.A_STOP,):
@@ -216,11 +250,13 @@ class FuzzTests(unittest.TestCase):
             for effect in fx:
                 if effect.startswith("jog"):
                     degraded = state.link in (2, 3)
-                    self.assertFalse(state.listen_only or listen_before or state.mode in (0, 3, 4) or state.bus == 2 or (degraded and not allow_motion), where)
+                    self.assertFalse(state.listen_only or listen_before or state.locked() or locked_before or state.mode in (0, 3, 4) or state.bus == 2 or (degraded and not allow_motion), where)
                 if effect == "release":
-                    self.assertTrue(latched_before and not state.listen_only and state.bus != 2 and (state.link == 1 or allow_release), where)
+                    self.assertTrue(latched_before and not state.listen_only and not state.locked() and not locked_before and state.bus != 2 and (state.link == 1 or allow_release), where)
             self.assertTrue(state.caps & 1, where)  # STOP is always allowed
             if state.listen_only:
+                self.assertEqual(state.caps & ((1 << m.A_RELEASE) | (1 << m.A_JOG_ARM) | (1 << m.A_JOG_FIRST)), 0, where)
+            if state.locked():
                 self.assertEqual(state.caps & ((1 << m.A_RELEASE) | (1 << m.A_JOG_ARM) | (1 << m.A_JOG_FIRST)), 0, where)
             if state.latched:
                 self.assertEqual(state.mode, 4, where)
@@ -235,6 +271,10 @@ class FuzzTests(unittest.TestCase):
         self.run_fuzz(1, 0)
         self.run_fuzz(0, 1)
         self.run_fuzz(1, 1)
+
+    def test_the_rules_hold_with_the_operator_pin_on(self):
+        self.run_fuzz(0, 0, 1)
+        self.run_fuzz(1, 1, 1)
 
 
 if __name__ == "__main__":

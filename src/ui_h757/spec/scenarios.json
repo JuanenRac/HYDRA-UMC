@@ -93,6 +93,30 @@
       "events": ["0 HB 0", "100 CAN 1 255 255", "200 SPI_ERR", "300 SPI_ERR", "400 SPI_ERR", "500 SPI_ERR", "600 SPI_ERR", "2000 DOWN stop", "2600 TICK", "3000 DOWN jog_arm", "3100 DOWN release"]
     },
     {
+      "name": "pin_locks_commands_but_never_stop",
+      "note": "With the operator PIN on, the panel starts locked: the jog and the release are refused with their reason, STOP still goes out; two wrong PINs do not lock the pad out, the right one unlocks and the same hold then releases the stop.",
+      "cfg": {"operator_pin_enabled": 1},
+      "events": ["0 HB 0", "100 DOWN jog_arm", "200 DOWN stop", "250 ESTOP 1", "300 DOWN release", "400 PIN_BAD", "500 PIN_BAD", "600 PIN_OK", "700 HB 0", "800 DOWN release", "1500 HB 0", "2300 HB 0", "2400 UP release", "2500 ESTOP 0", "2600 DOWN jog_arm", "2700 HB 0"]
+    },
+    {
+      "name": "pin_lockout_and_idle_relock",
+      "note": "Three wrong PINs lock the pad out for the configured time (even a right PIN is ignored meanwhile); after it the PIN unlocks, and without a touch for the idle time the panel locks again and disarms the jog.",
+      "cfg": {"operator_pin_enabled": 1, "pin_lockout_ms": 3000, "pin_idle_ms": 5000},
+      "events": ["0 HB 0", "100 PIN_BAD", "200 PIN_BAD", "300 PIN_BAD", "400 PIN_OK", "1000 HB 0", "2000 HB 0", "3200 HB 0", "3400 PIN_OK", "3500 DOWN jog_arm", "4500 HB 0", "5500 HB 0", "6500 HB 0", "7500 HB 0", "8500 HB 0", "8600 DOWN jog_x_plus"]
+    },
+    {
+      "name": "pin_is_off_by_default",
+      "note": "With the PIN off (as it ships) the PIN events change nothing and no command is refused for want of a PIN.",
+      "cfg": {},
+      "events": ["0 HB 0", "100 PIN_BAD", "200 PIN_OK", "300 DOWN jog_arm", "400 DOWN jog_x_plus"]
+    },
+    {
+      "name": "leaving_listen_only_needs_the_pin",
+      "note": "Turning listen-only on never needs the PIN, leaving it does: after the idle relock the long press is refused until the PIN is given.",
+      "cfg": {"operator_pin_enabled": 1, "pin_idle_ms": 5000},
+      "events": ["0 HB 0", "100 PIN_OK", "200 DOWN toggle_listen_only", "300 UP toggle_listen_only", "1000 HB 0", "2000 HB 0", "3000 HB 0", "4000 HB 0", "5000 HB 0", "5400 HB 0", "5500 DOWN toggle_listen_only", "5600 PIN_OK", "5700 DOWN toggle_listen_only", "6500 HB 0", "7300 HB 0", "7400 UP toggle_listen_only"]
+    },
+    {
       "name": "settings_and_navigation",
       "note": "Navigation and the language never depend on the state; hostile values (an unknown action, a level out of range, a screen out of range, time going back) change nothing they should not.",
       "cfg": {},

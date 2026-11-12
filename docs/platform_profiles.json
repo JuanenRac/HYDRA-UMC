@@ -266,10 +266,11 @@
           {
             "name": "FLASH_APP_CM7",
             "origin": 134479872,
-            "length": 393216,
+            "length": 786432,
             "owner": "CM7",
             "source": "the linker scripts of src/mcu_stm32h757/ (the layout of this repository); the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
-            "status": "size_confirmed_by_datasheet_address_to_confirm"
+            "status": "size_confirmed_by_datasheet_address_to_confirm",
+            "note": "768 KiB: the rest of bank 1 up to the start of the CM4 bootloader (decision of the owner, so that the interface of the display fits: docs/UI_STACK_H757.md); the CM7 linker script of today still has the 384 KiB of the earlier layout"
           },
           {
             "name": "FLASH_BOOT_CM4",

@@ -7,7 +7,7 @@ The map is data: `docs/platform_profiles.json` (`memory_map` of each profile) ho
 | Region | Origin | Length | Owner | Where it comes from | Status |
 |---|---|---|---|---|---|
 | FLASH_BOOT_CM7 | `0x08000000` | 128 KB | CM7 | the linker scripts of the repository | size confirmed by the datasheet, address to confirm |
-| FLASH_APP_CM7 | `0x08040000` | 384 KB | CM7 | the linker scripts of the repository | size confirmed, address to confirm |
+| FLASH_APP_CM7 | `0x08040000` | 768 KB | CM7 | the linker scripts of the repository, extended to the end of bank 1 (decision of the owner, for the interface of the display: `docs/UI_STACK_H757.md`; the linker script of today still has 384 KB) | size of the bank confirmed, address to confirm |
 | FLASH_BOOT_CM4 | `0x08100000` | 128 KB | CM4 | the linker scripts of the repository | size confirmed, address to confirm |
 | FLASH_APP_CM4 | `0x08140000` | 384 KB | CM4 | the linker scripts of the repository | size confirmed, address to confirm |
 | RAM_CM7 (AXI SRAM, D1) | `0x24000000` | 512 KB | CM7 | the linker scripts of the repository | size confirmed, address to confirm |
