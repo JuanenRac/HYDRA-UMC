@@ -48,7 +48,8 @@ Computed by `python tools/ui_budget.py` from `docs/platform_profiles.json` (prof
 | View-model `ui_core` for the Cortex-M7 | limit 12 KiB flash, 256 bytes RAM; built with `arm-none-eabi-gcc -Os` for the Cortex-M7 it is about 1.6 KiB of flash and no static RAM (the test prints the size on every run) | limit; size measured by compiling, not on a board |
 | LVGL flash | 300 KiB | published (upper figure of 200-300 kB) |
 | Application reserve of the CM7 besides the interface | 128 KiB | estimate |
-| **Flash needed in the CM7 application slot** | **465 KiB** | |
+| Store of the PIN (`ui_pin`) and host side of the Jetson link (`ui_link`) for the Cortex-M7 | limits 4 KiB and 2 KiB; built with `-Os` they are about 2.4 KiB and 1 KiB, no static RAM (the test prints the sizes) | limits; sizes measured by compiling |
+| **Flash needed in the CM7 application slot** | **471 KiB** | |
 | Slot of the profile (`FLASH_APP_CM7`, rest of bank 1 up to `0x08100000`) | 768 KiB | decision of the owner: fits with 10 % free (it would not fit the 384 KiB of the earlier layout) |
 | LVGL RAM + render buffer (1/10 of the frame) + core + stack | 298 KiB of the 512 KiB AXI SRAM | published + estimate: fits |
 | Framebuffers, two of 1280×720 RGB565 | 3600 KiB of the SDRAM | data |

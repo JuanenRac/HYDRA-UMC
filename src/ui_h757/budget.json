@@ -44,6 +44,8 @@
     "images_bytes": {"value": 524288, "origin": "estimate", "note": "logo and icons"}
   },
   "measured_limits": {
-    "ui_core": {"flash_bytes_max": 12288, "ram_bytes_max": 256, "note": "limits the CI holds the build of src/ui_h757/core/ui_core.c for the Cortex-M7 to (arm-none-eabi-gcc -Os); the measured size is printed by the test"}
+    "ui_core": {"flash_bytes_max": 12288, "ram_bytes_max": 256, "note": "limits the CI holds the build of src/ui_h757/core/ui_core.c for the Cortex-M7 to (arm-none-eabi-gcc -Os); the measured size is printed by the test"},
+    "ui_pin": {"flash_bytes_max": 4096, "ram_bytes_max": 64, "note": "the store of the operator PIN (SHA-256, HMAC, PBKDF2, the records); the stack it needs is about 1 KiB and is not static RAM"},
+    "ui_link": {"flash_bytes_max": 2048, "ram_bytes_max": 64, "note": "the host side of the Jetson link; the picture buffer is the caller's and is counted in the SDRAM figures"}
   }
 }

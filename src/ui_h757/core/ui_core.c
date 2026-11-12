@@ -396,6 +396,17 @@ uint8_t ui_event(ui_state_t *s, uint64_t now, ui_event_kind_t kind, int32_t a, i
             }
         }
         break;
+    case UI_EV_PIN_FAILURES:
+        if (s->cfg.operator_pin_enabled != 0u) {
+            if (a >= (int32_t)s->cfg.pin_max_failures) {
+                s->pin_failures = 0;
+                s->pin_lockout_until = s->now + s->cfg.pin_lockout_ms;
+                push(s, UI_FX_PIN_LOCKOUT, 0, 0);
+            } else {
+                s->pin_failures = a > 0 ? (uint32_t)a : 0u;
+            }
+        }
+        break;
     case UI_EV_PIN_BAD:
         if (s->cfg.operator_pin_enabled != 0u && s->now >= s->pin_lockout_until) {
             s->pin_failures++;

@@ -591,6 +591,31 @@ static const char *const ui_expected_18[] = {
 
 static const ui_vector_event_t ui_events_19[] = {
     {0u, "HB", 0, 0, 0},
+    {10u, "PIN_FAILURES", 3, 0, 0},
+    {200u, "PIN_OK", 0, 0, 0},
+    {1000u, "HB", 0, 0, 0},
+    {2000u, "HB", 0, 0, 0},
+    {3000u, "HB", 0, 0, 0},
+    {3100u, "PIN_OK", 0, 0, 0},
+    {3200u, "PIN_FAILURES", 2, 0, 0},
+    {3300u, "PIN_BAD", 0, 0, 0},
+    {3400u, "PIN_OK", 0, 0, 0},
+};
+static const char *const ui_expected_19[] = {
+    "t=0 ev=HB mode=normal link=ok bus=ok lo=0 lk=1 scr=0 al=000 un=000 arm=0 stop=00 hold=- ban=locked caps=0e01 fx=-",
+    "t=10 ev=PIN_FAILURES mode=normal link=ok bus=ok lo=0 lk=1 scr=0 al=000 un=000 arm=0 stop=00 hold=- ban=locked caps=0e01 fx=pin_lockout",
+    "t=200 ev=PIN_OK mode=normal link=ok bus=ok lo=0 lk=1 scr=0 al=000 un=000 arm=0 stop=00 hold=- ban=locked caps=0e01 fx=-",
+    "t=1000 ev=HB mode=normal link=ok bus=ok lo=0 lk=1 scr=0 al=000 un=000 arm=0 stop=00 hold=- ban=locked caps=0e01 fx=-",
+    "t=2000 ev=HB mode=normal link=ok bus=ok lo=0 lk=1 scr=0 al=000 un=000 arm=0 stop=00 hold=- ban=locked caps=0e01 fx=-",
+    "t=3000 ev=HB mode=normal link=ok bus=ok lo=0 lk=1 scr=0 al=000 un=000 arm=0 stop=00 hold=- ban=locked caps=0e01 fx=-",
+    "t=3100 ev=PIN_OK mode=normal link=ok bus=ok lo=0 lk=0 scr=0 al=000 un=000 arm=0 stop=00 hold=- ban=normal caps=0e05 fx=unlocked",
+    "t=3200 ev=PIN_FAILURES mode=normal link=ok bus=ok lo=0 lk=0 scr=0 al=000 un=000 arm=0 stop=00 hold=- ban=normal caps=0e05 fx=-",
+    "t=3300 ev=PIN_BAD mode=normal link=ok bus=ok lo=0 lk=0 scr=0 al=000 un=000 arm=0 stop=00 hold=- ban=normal caps=0e05 fx=pin_lockout",
+    "t=3400 ev=PIN_OK mode=normal link=ok bus=ok lo=0 lk=0 scr=0 al=000 un=000 arm=0 stop=00 hold=- ban=normal caps=0e05 fx=-",
+};
+
+static const ui_vector_event_t ui_events_20[] = {
+    {0u, "HB", 0, 0, 0},
     {100u, "NAV", 7, 0, 0},
     {200u, "DOWN", 11, 0, 0},
     {300u, "DOWN", 11, 0, 0},
@@ -601,7 +626,7 @@ static const ui_vector_event_t ui_events_19[] = {
     {700u, "NAV", 2, 0, 0},
     {800u, "NAV", 6, 0, 0},
 };
-static const char *const ui_expected_19[] = {
+static const char *const ui_expected_20[] = {
     "t=0 ev=HB mode=normal link=ok bus=ok lo=0 lk=0 scr=0 al=000 un=000 arm=0 stop=00 hold=- ban=normal caps=0e05 fx=-",
     "t=100 ev=NAV mode=normal link=ok bus=ok lo=0 lk=0 scr=7 al=000 un=000 arm=0 stop=00 hold=- ban=normal caps=0e05 fx=-",
     "t=200 ev=DOWN mode=normal link=ok bus=ok lo=0 lk=0 scr=7 al=000 un=000 arm=0 stop=00 hold=- ban=normal caps=0e05 fx=lang:1",
@@ -614,7 +639,7 @@ static const char *const ui_expected_19[] = {
     "t=800 ev=NAV mode=normal link=ok bus=ok lo=0 lk=0 scr=6 al=000 un=000 arm=0 stop=00 hold=- ban=normal caps=0e05 fx=-",
 };
 
-#define UI_VECTOR_SCENARIO_COUNT 20
+#define UI_VECTOR_SCENARIO_COUNT 21
 static const ui_vector_scenario_t ui_vector_scenarios[UI_VECTOR_SCENARIO_COUNT] = {
     {"boot_without_jetson_goes_degraded", {1500u, 5000u, 5u, 500u, 1000u, 1500u, 1500u, 10000u, 96u, 0u, 0u, 0u, 3u, 30000u, 120000u}, 9u, ui_events_0, ui_expected_0},
     {"normal_session", {1500u, 90000u, 5u, 500u, 1000u, 1500u, 1500u, 10000u, 96u, 0u, 0u, 0u, 3u, 30000u, 120000u}, 20u, ui_events_1, ui_expected_1},
@@ -635,7 +660,8 @@ static const ui_vector_scenario_t ui_vector_scenarios[UI_VECTOR_SCENARIO_COUNT] 
     {"pin_lockout_and_idle_relock", {1500u, 90000u, 5u, 500u, 1000u, 1500u, 1500u, 10000u, 96u, 0u, 0u, 1u, 3u, 3000u, 5000u}, 16u, ui_events_16, ui_expected_16},
     {"pin_is_off_by_default", {1500u, 90000u, 5u, 500u, 1000u, 1500u, 1500u, 10000u, 96u, 0u, 0u, 0u, 3u, 30000u, 120000u}, 5u, ui_events_17, ui_expected_17},
     {"leaving_listen_only_needs_the_pin", {1500u, 90000u, 5u, 500u, 1000u, 1500u, 1500u, 10000u, 96u, 0u, 0u, 1u, 3u, 30000u, 5000u}, 16u, ui_events_18, ui_expected_18},
-    {"settings_and_navigation", {1500u, 90000u, 5u, 500u, 1000u, 1500u, 1500u, 10000u, 96u, 0u, 0u, 0u, 3u, 30000u, 120000u}, 10u, ui_events_19, ui_expected_19},
+    {"pin_failures_survive_a_restart", {1500u, 90000u, 5u, 500u, 1000u, 1500u, 1500u, 10000u, 96u, 0u, 0u, 1u, 3u, 3000u, 120000u}, 10u, ui_events_19, ui_expected_19},
+    {"settings_and_navigation", {1500u, 90000u, 5u, 500u, 1000u, 1500u, 1500u, 10000u, 96u, 0u, 0u, 0u, 3u, 30000u, 120000u}, 10u, ui_events_20, ui_expected_20},
 };
 
 #endif /* UI_CORE_VECTORS_H */

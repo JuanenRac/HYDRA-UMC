@@ -117,6 +117,12 @@
       "events": ["0 HB 0", "100 PIN_OK", "200 DOWN toggle_listen_only", "300 UP toggle_listen_only", "1000 HB 0", "2000 HB 0", "3000 HB 0", "4000 HB 0", "5000 HB 0", "5400 HB 0", "5500 DOWN toggle_listen_only", "5600 PIN_OK", "5700 DOWN toggle_listen_only", "6500 HB 0", "7300 HB 0", "7400 UP toggle_listen_only"]
     },
     {
+      "name": "pin_failures_survive_a_restart",
+      "note": "The store has counted three wrong PINs before the power went: at start the port says so and the lock-out begins at once, a right PIN is ignored until it ends; with two counted, one more wrong PIN is enough to lock the pad out.",
+      "cfg": {"operator_pin_enabled": 1, "pin_lockout_ms": 3000},
+      "events": ["0 HB 0", "10 PIN_FAILURES 3", "200 PIN_OK", "1000 HB 0", "2000 HB 0", "3000 HB 0", "3100 PIN_OK", "3200 PIN_FAILURES 2", "3300 PIN_BAD", "3400 PIN_OK"]
+    },
+    {
       "name": "settings_and_navigation",
       "note": "Navigation and the language never depend on the state; hostile values (an unknown action, a level out of range, a screen out of range, time going back) change nothing they should not.",
       "cfg": {},

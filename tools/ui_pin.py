@@ -37,7 +37,7 @@ def load_settings(path: Path = ROOT / "config" / "ui.cfg") -> dict[str, int]:
     parser = configparser.ConfigParser(inline_comment_prefixes=None)
     parser.read_string(path.read_text(encoding="utf-8"))
     section = parser["pin"]
-    values = {name: int(section[name]) for name in ("pin_hash_iterations", "pin_min_digits", "pin_max_digits")}
+    values = {name: int(section[name]) for name in ("pin_hash_iterations", "pin_min_digits", "pin_max_digits", "pin_cycles_per_block", "pin_hw_cycles_per_block", "pin_check_max_ms")}
     if not (1 <= values["pin_min_digits"] <= values["pin_max_digits"] <= 12 and 1000 <= values["pin_hash_iterations"] <= 1_000_000):
         raise ValueError("the [pin] values of config/ui.cfg are out of range")
     return values
@@ -185,6 +185,10 @@ class PinPad:
     def __init__(self, store: PinStore) -> None:
         self.store = store
         self.digits = ""
+
+    def boot_event(self) -> tuple[str, tuple[int, ...]]:
+        """What the port tells the view-model at start: the wrong PINs the store has counted since the last right one, so a power cut is not a way to get new tries."""
+        return ("PIN_FAILURES", (self.store.failures(),))
 
     def touch(self, action: str) -> tuple[str, tuple[int, ...]] | None:
         high = self.store.settings["pin_max_digits"]
