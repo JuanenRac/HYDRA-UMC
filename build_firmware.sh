@@ -944,7 +944,7 @@ arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/STM32H757
 # (see that file's own header on why this application reuses it rather than
 # duplicating it), so it's the one CM4 app source that also needs $SRC/boot
 # on its include path.
-arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/KinematicBrainCan.c" -o "$H7/cm4_app_obj/KinematicBrainCan.o"
+arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -I"$SRC/boot" $COMMON_INC -x c -c "$SRC/KinematicBrainCan.c" -o "$H7/cm4_app_obj/KinematicBrainCan.o"
 # SpiApp.c: the SPI slave service for the CM5 (an empty unit unless the build sets HYDRA_SPI_APP=1; needs spi_frame_crc.h from $SRC/boot)
 arm-none-eabi-gcc $CFLAGS_CM4_APP -I"$SRC" -I"$SRC/boot" -x c -c "$SRC/SpiApp.c" -o "$H7/cm4_app_obj/SpiApp.o"
 # The same unit with every switch of the SPI service on (including the full slot scan), only to prove that it compiles; the object is not linked.
