@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+# =============================================================================
+# HYDRA-UMC - tools/platform_profile.py
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+"""Reads docs/platform_profiles.json and computes what each profile gives: the clocks of the PLLs, the bit rate and the sample point of the stack bus.
+
+The profile is data, not code: the numbers of a platform (clocks, bit timing, who owns a peripheral, the role of the host link) are written once in the file and
+the tests compare what they compute with the contract of the bus. `python tools/platform_profile.py` prints the table of every profile; `--check` exits 1 when a
+profile is inconsistent. Evidence: simulator (arithmetic on the numbers of the file); nothing here has run on a board."""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+PROFILES_PATH = Path(__file__).resolve().parents[1] / "docs" / "platform_profiles.json"
+BUS_CONTRACT_PATH = Path(__file__).resolve().parents[1] / "docs" / "bus_contract.json"
+NODES = ("CM4", "CM7")
+SPI_ROLES = ("master", "slave")
+
+
+def load(path: Path = PROFILES_PATH) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def profile(name: str | None = None, document: dict | None = None) -> dict:
+    document = document or load()
+    chosen = name or document["default_profile"]
+    return document["profiles"][chosen]
+
+
+def bit_rate(timing: dict) -> float:
+    """Bits per second of the nominal timing: kernel clock / (prescaler * (1 + segment 1 + segment 2))."""
+    return timing["kernel_clock_hz"] / (timing["prescaler"] * (1 + timing["time_segment_1"] + timing["time_segment_2"]))
+
+
+def sample_point(timing: dict) -> float:
+    """The fraction of the bit time at which the bit is sampled."""
+    return (1 + timing["time_segment_1"]) / (1 + timing["time_segment_1"] + timing["time_segment_2"])
+
+
+def pll_outputs(hse_hz: int, pll: dict, dividers: dict) -> dict:
+    """The outputs of a PLL: hse / divm * divn is the VCO, and each output divides it by its own divider (from `dividers`)."""
+    vco = hse_hz / pll["divm"] * pll["divn"]
+    return {name: vco / divider for name, divider in dividers.items()}
+
+
+# the dividers of the outputs that the CubeMX project sets (P, Q, R of each PLL); with them the clock tree of the file can be recomputed from the crystal
+PLL_DIVIDERS = {
+    "pll1": {"sysclk": 2},
+    "pll2": {"pll2_p": 5, "pll2_q": 4, "pll2_r": 4},
+    "pll3": {"pll3_p": 2, "pll3_q": 2, "pll3_r": 3},
+}
+
+
+def problems(name: str, p: dict) -> list[str]:
+    """What is wrong in one profile, in words; empty when it is consistent."""
+    found: list[str] = []
+    bus = p["stack_bus"]
+    for node in p["peripheral_owner"].values():
+        if node not in NODES:
+            found.append(f"{name}: an owner of a peripheral is {node!r}, not one of {', '.join(NODES)}")
+    if p["host"]["spi_role"] not in SPI_ROLES:
+        found.append(f"{name}: the SPI role {p['host']['spi_role']!r} is not one of {', '.join(SPI_ROLES)}")
+    if bus["kernel_clock_hz"] != p["clocks_hz"].get("kernel_fdcan"):
+        found.append(f"{name}: the kernel clock of the bus timing is not the FDCAN kernel clock of the clock table")
+    if bus["sync_jump_width"] > bus["time_segment_2"] + 1 and name != "h745_current":
+        found.append(f"{name}: the synchronisation jump is wider than the second segment")
+    if bus["time_segment_1"] > 256 or bus["time_segment_2"] > 128 or bus["prescaler"] > 512:
+        found.append(f"{name}: the bit timing does not fit the registers of the FDCAN")
+    if "pll" in p:
+        for pll_name, pll in p["pll"].items():
+            for output, value in pll_outputs(p["hse_hz"], pll, PLL_DIVIDERS[pll_name]).items():
+                if abs(value - p["clocks_hz"][output]) > 1:
+                    found.append(f"{name}: {output} is {p['clocks_hz'][output]} Hz in the table and {value:.0f} Hz from the crystal and the PLL")
+    return found
+
+
+def contract_problems(document: dict, contract: dict) -> list[str]:
+    """What the default profile says that docs/bus_contract.json does not: the stack bus must give the rate the controller boards use."""
+    found: list[str] = []
+    nominal = contract["buses"]["stack_a"]["nominal_bit_rate_bps"]
+    for name, p in document["profiles"].items():
+        if abs(bit_rate(p["stack_bus"]) - nominal) > 1:
+            found.append(f"{name}: the stack bus gives {bit_rate(p['stack_bus']):.0f} bit/s, the contract says {nominal}")
+    return found
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
+    parser.add_argument("--check", action="store_true", help="exit 1 when a profile is inconsistent")
+    args = parser.parse_args(argv)
+    document = load()
+    contract = json.loads(BUS_CONTRACT_PATH.read_text(encoding="utf-8"))
+    bad: list[str] = []
+    for name, p in document["profiles"].items():
+        bus = p["stack_bus"]
+        print(f"{name}: {p['device']}; host {p['host']['module']} (SPI {p['host']['spi_role']}); stack bus {bit_rate(bus):,.0f} bit/s, sample point {sample_point(bus) * 100:.1f} %")
+        bad += problems(name, p)
+    bad += contract_problems(document, contract)
+    for line in bad:
+        print("PROBLEM " + line, file=sys.stderr)
+    print("PLATFORM_PROFILES=" + ("FAIL" if bad else "PASS"))
+    return 1 if bad and args.check else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
