@@ -6,17 +6,17 @@ The map is data: `docs/platform_profiles.json` (`memory_map` of each profile) ho
 
 | Region | Origin | Length | Owner | Where it comes from | Status |
 |---|---|---|---|---|---|
-| FLASH_BOOT_CM7 | `0x08000000` | 128 KB | CM7 | the linker scripts of the repository | inherited, to confirm for the H757 |
-| FLASH_APP_CM7 | `0x08040000` | 384 KB | CM7 | the linker scripts of the repository | inherited, to confirm |
-| FLASH_BOOT_CM4 | `0x08100000` | 128 KB | CM4 | the linker scripts of the repository | inherited, to confirm |
-| FLASH_APP_CM4 | `0x08140000` | 384 KB | CM4 | the linker scripts of the repository | inherited, to confirm |
-| RAM_CM7 (AXI SRAM, D1) | `0x24000000` | 512 KB | CM7 | the linker scripts of the repository | inherited, to confirm |
-| RAM_CM4 (SRAM1-3, D2) | `0x30000000` | 288 KB | CM4 | the linker scripts of the repository | inherited, to confirm |
-| SRAM4_MAILBOX (D3) | `0x38000000` | 64 KB | shared | `ipc_mailbox.h`; the only RAM both cores see, non-cacheable by the MPU | inherited, to confirm |
+| FLASH_BOOT_CM7 | `0x08000000` | 128 KB | CM7 | the linker scripts of the repository | size confirmed by the datasheet, address to confirm |
+| FLASH_APP_CM7 | `0x08040000` | 384 KB | CM7 | the linker scripts of the repository | size confirmed, address to confirm |
+| FLASH_BOOT_CM4 | `0x08100000` | 128 KB | CM4 | the linker scripts of the repository | size confirmed, address to confirm |
+| FLASH_APP_CM4 | `0x08140000` | 384 KB | CM4 | the linker scripts of the repository | size confirmed, address to confirm |
+| RAM_CM7 (AXI SRAM, D1) | `0x24000000` | 512 KB | CM7 | the linker scripts of the repository | size confirmed, address to confirm |
+| RAM_CM4 (SRAM1-3, D2) | `0x30000000` | 288 KB | CM4 | the linker scripts of the repository | size confirmed, address to confirm |
+| SRAM4_MAILBOX (D3) | `0x38000000` | 64 KB | shared | `ipc_mailbox.h`; the only RAM both cores see, non-cacheable by the MPU | size confirmed, address to confirm |
 | SDRAM_BANK1 | `0xC0000000` | 128 MiB | CM7 | the nets document of the board, step 14 (two AS4C32M16SB-7BIN as 32 bits) and the FMC of the CubeMX project | from the board documents |
 | SDRAM_BANK2 | `0xD0000000` | 128 MiB | CM7 | the same (two IS42S16320F-7TLI as 32 bits) | from the board documents |
 
-The internal flash (2 MB in two banks) and the SRAM are those of the STM32H745/H747/H757 family: the H757 and the H745 are the same dual-core family with the same memory sizes, so the layout of the repository is kept. The reference manual (RM0399) is not in the folder of the board, only the datasheet of the H757XIH6, so the **status is "inherited, to confirm"**: before a linker of the H757 is used, check the flash banks and sectors, the SRAM sizes and the base addresses in RM0399 and in the datasheet.
+The internal flash (2 MB in two banks) and the SRAM are those of the STM32H745/H747/H757 family: the H757 and the H745 are the same dual-core family with the same memory sizes, so the layout of the repository is kept. The owner decided that the map is confirmed **only with the datasheet of the H757XIH6 and the documents of the board** (the reference manual is not used). The datasheet confirms the sizes: 2 Mbytes of flash in two independent banks of 1 Mbyte with eight user sectors of 128 Kbytes each, 1 Mbyte of RAM made of 192 Kbytes of TCM (64 ITCM and 128 DTCM), the AXI SRAM of 512 Kbytes, SRAM1 to SRAM3 of the D2 domain (288 Kbytes) and SRAM4 of the D3 domain (64 Kbytes), and 4 Kbytes of backup SRAM. The datasheet gives **no base address** and no sector numbering, so every address stays **to confirm** (they are the addresses of the repository linker scripts, which already work for the H745 of the same family) and so does the option byte that chooses the dual-bank layout. The same facts are in `docs/platform_profiles.json` (`datasheet_confirmation`).
 
 The SDRAM is not usable for heap, framebuffer or DMA before the JEDEC start-up sequence, the real refresh and the data, address, marching and temperature tests the CubeMX guide asks for. The CubeMX values (CAS 3, 13 rows, 10 columns, SDCLK period 2, read burst, tMRD 2, tXSR 7, tRAS 5, tRC 7, tWR 2, tRP 3, tRCD 3) are starting values.
 

@@ -156,7 +156,10 @@ class PlatformProfileTests(unittest.TestCase):
         self.assertEqual((regions["SDRAM_BANK2"]["origin"], regions["SDRAM_BANK2"]["length"]), (0xD0000000, 128 * 1024 * 1024))
         self.assertEqual(regions["SDRAM_BANK1"]["status"], "from_board_documents")
         for name in ("FLASH_APP_CM7", "RAM_CM7", "RAM_CM4", "SRAM4_MAILBOX"):
-            self.assertEqual(regions[name]["status"], "inherited_to_confirm", name)
+            self.assertEqual(regions[name]["status"], "size_confirmed_by_datasheet_address_to_confirm", name)
+        confirmation = self.document["profiles"]["h757_target"]["memory_map"]["datasheet_confirmation"]
+        self.assertTrue(any("2 Mbytes of Flash" in line for line in confirmation["confirmed"]))
+        self.assertTrue(any("base address" in line for line in confirmation["not_in_the_datasheet"]))
         self.assertNotIn("SDRAM_BANK1", {r["name"] for r in self.document["profiles"]["h745_current"]["memory_map"]["regions"]})
 
     def test_the_nor_flash_is_on_spi5_and_is_not_a_memory_region(self):

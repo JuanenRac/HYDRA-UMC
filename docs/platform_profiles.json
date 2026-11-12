@@ -259,8 +259,8 @@
             "origin": 134217728,
             "length": 131072,
             "owner": "CM7",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); the H757 has the same 2 MB of flash and the same SRAM as the H745 (RM0399 family map): to confirm against the reference manual and the datasheet of the H757XIH6",
-            "status": "inherited_to_confirm",
+            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
+            "status": "size_confirmed_by_datasheet_address_to_confirm",
             "note": "bootloader of the application core"
           },
           {
@@ -268,48 +268,48 @@
             "origin": 134479872,
             "length": 393216,
             "owner": "CM7",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); the H757 has the same 2 MB of flash and the same SRAM as the H745 (RM0399 family map): to confirm against the reference manual and the datasheet of the H757XIH6",
-            "status": "inherited_to_confirm"
+            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
+            "status": "size_confirmed_by_datasheet_address_to_confirm"
           },
           {
             "name": "FLASH_BOOT_CM4",
             "origin": 135266304,
             "length": 131072,
             "owner": "CM4",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); the H757 has the same 2 MB of flash and the same SRAM as the H745 (RM0399 family map): to confirm against the reference manual and the datasheet of the H757XIH6",
-            "status": "inherited_to_confirm"
+            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
+            "status": "size_confirmed_by_datasheet_address_to_confirm"
           },
           {
             "name": "FLASH_APP_CM4",
             "origin": 135528448,
             "length": 393216,
             "owner": "CM4",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); the H757 has the same 2 MB of flash and the same SRAM as the H745 (RM0399 family map): to confirm against the reference manual and the datasheet of the H757XIH6",
-            "status": "inherited_to_confirm"
+            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
+            "status": "size_confirmed_by_datasheet_address_to_confirm"
           },
           {
             "name": "RAM_CM7",
             "origin": 603979776,
             "length": 524288,
             "owner": "CM7",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); AXI SRAM of the D1 domain; the H757 has the same 2 MB of flash and the same SRAM as the H745 (RM0399 family map): to confirm against the reference manual and the datasheet of the H757XIH6",
-            "status": "inherited_to_confirm"
+            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); AXI SRAM of the D1 domain; the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
+            "status": "size_confirmed_by_datasheet_address_to_confirm"
           },
           {
             "name": "RAM_CM4",
             "origin": 805306368,
             "length": 294912,
             "owner": "CM4",
-            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); SRAM1-3 of the D2 domain; the H757 has the same 2 MB of flash and the same SRAM as the H745 (RM0399 family map): to confirm against the reference manual and the datasheet of the H757XIH6",
-            "status": "inherited_to_confirm"
+            "source": "the linker scripts of src/mcu_stm32h745/ (the layout of this repository); SRAM1-3 of the D2 domain; the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
+            "status": "size_confirmed_by_datasheet_address_to_confirm"
           },
           {
             "name": "SRAM4_MAILBOX",
             "origin": 939524096,
             "length": 65536,
             "owner": "shared",
-            "source": "src/mcu_stm32h745/Common/ipc_mailbox.h (IPC_MAILBOX_BASE); SRAM4 of the D3 domain; the H757 has the same 2 MB of flash and the same SRAM as the H745 (RM0399 family map): to confirm against the reference manual and the datasheet of the H757XIH6",
-            "status": "inherited_to_confirm",
+            "source": "src/mcu_stm32h745/Common/ipc_mailbox.h (IPC_MAILBOX_BASE); SRAM4 of the D3 domain; the size is confirmed by the datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board): the datasheet gives no base address, so the address stays to confirm",
+            "status": "size_confirmed_by_datasheet_address_to_confirm",
             "note": "the only RAM both cores see; non-cacheable by the MPU"
           },
           {
@@ -344,7 +344,20 @@
           "the H745 repository has no external memory at all; the H757 board has 256 MiB of SDR SDRAM on FMC (two banks of 128 MiB) that no linker script or driver uses yet",
           "the migration note called the NOR flash QSPI; the board documents put it on SPI5 in standard SPI mode, so it is not memory mapped and needs no linker region",
           "the CubeMX project gives every pin to the CM7 (the owner decided the CM7 owns SPI1, FDCAN1 and I2C4); the H745 repository gave them to the CM4 and let the CM7 reach them through the mailbox"
-        ]
+        ],
+        "datasheet_confirmation": {
+          "source": "datasheet of the STM32H757XIH6 (STM32H757XIH6_LCSC-C1343741.pdf in the folder of the board)",
+          "confirmed": [
+            "2 Mbytes of Flash in two independent banks of 1 Mbyte, each with eight user sectors of 128 Kbytes",
+            "1 Mbyte of RAM: 192 Kbytes of TCM (64 Kbytes ITCM and 128 Kbytes DTCM), up to 864 Kbytes of user SRAM and 4 Kbytes of backup SRAM",
+            "AXI SRAM 512 Kbytes; SRAM1, SRAM2 and SRAM3 of the D2 domain (128, 128 and 32 Kbytes, 288 in all); SRAM4 of the D3 domain 64 Kbytes",
+            "FMC present; Quad-SPI interface present (not used by this board, whose NOR flash is on SPI5)"
+          ],
+          "not_in_the_datasheet": [
+            "the base address of every region (flash banks, AXI SRAM, SRAM1-4, TCM, backup SRAM, the FMC SDRAM banks): the datasheet has no memory map; the addresses come from the repository linker scripts (internal) and from the usual family map, and stay to confirm",
+            "the flash sector numbers and the option bytes that choose the dual-bank layout"
+          ]
+        }
       }
     }
   },
