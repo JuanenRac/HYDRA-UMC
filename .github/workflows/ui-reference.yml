@@ -51,7 +51,7 @@ jobs:
         run: python tools/ui_gen.py --check
 
       - name: Run the tests of the interface
-        run: python -m unittest -v tests.test_ui_spec tests.test_ui_model tests.test_ui_budget tests.test_ui_core_c tests.test_ui_render
+        run: python -m unittest -v tests.test_ui_spec tests.test_ui_model tests.test_ui_budget tests.test_ui_core_c tests.test_ui_render tests.test_ui_link tests.test_ui_pin
 
       - name: Print the budget
         run: python tools/ui_budget.py

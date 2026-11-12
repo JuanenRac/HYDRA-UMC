@@ -69,7 +69,7 @@
         "id": {"type": "string", "pattern": "^[a-z]+(\\.[a-z0-9_]+)+$"},
         "type": {"type": "string", "enum": ["bool", "int", "float", "enum", "list", "image"]},
         "source": {"type": "string", "enum": ["stack_bus", "jetson_spi", "brain", "local", "derived"]},
-        "contract_ref": {"type": "string", "pattern": "^(local|can_message:[A-Z0-9_]+|bus_contract:[a-z_]+|spi_self:[A-Z0-9_]+|pending:[a-z_]+)$"},
+        "contract_ref": {"type": "string", "pattern": "^(local|can_message:[A-Z0-9_]+|bus_contract:[a-z_]+|spi_self:[A-Z0-9_]+|link:[A-Z0-9_]+|pending:[a-z_]+)$"},
         "max_age_ms": {"type": "integer", "minimum": 0, "maximum": 60000},
         "needs_jetson": {"type": "boolean"},
         "note": {"type": "string"}
