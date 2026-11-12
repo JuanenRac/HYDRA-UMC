@@ -266,6 +266,15 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # memtest.h: data bus, address bus and march tests for the external SDRAM, run against a RAM double with stuck lines, bridged lines and bad cells.
+    MEMTEST_HOST_BIN="$ROOT/build/host_tests_memtest"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h757/Common" -o "$MEMTEST_HOST_BIN" "$ROOT/tests/test_memtest.c" && "$MEMTEST_HOST_BIN"; then
+        pass "memtest host logic tests passed"
+    else
+        fail "memtest host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # ipc_mailbox.h: seal of the frame between the two cores, with the switch HYDRA_IPC_REQUIRE_CRC off and on, and the two semaphore channels modelled on the host.
     for IPC_REQUIRE in 0 1; do
         IPC_HOST_BIN="$ROOT/build/host_tests_ipc_mailbox_$IPC_REQUIRE"
