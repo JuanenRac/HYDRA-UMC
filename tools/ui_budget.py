@@ -98,7 +98,7 @@ def compute(budget: dict | None = None, inputs: dict[str, float] | None = None) 
     scanout = frame * disp["refresh_hz"]["value"]
     render_buffer = int(frame * budget["stack"]["render_buffer_fraction"]["value"])
     core = budget["measured_limits"]["ui_core"]
-    extra = sum(budget["measured_limits"][name]["flash_bytes_max"] for name in ("ui_pin", "ui_link"))
+    extra = sum(budget["measured_limits"][name]["flash_bytes_max"] for name in ("ui_pin", "ui_link", "ui_runtime"))
     flash_ui = budget["stack"]["flash_bytes"]["value"] + core["flash_bytes_max"] + extra + tables["texts"] + tables["screens"]
     flash_reserve = budget["internal_flash"]["cm7_app_reserve_bytes"]["value"]
     slot_today = reg["FLASH_APP_CM7"]["length"]
