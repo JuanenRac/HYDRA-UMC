@@ -1,0 +1,174 @@
+# =============================================================================
+# HYDRA-UMC - H745 images must not change (manual comparison of two commits)
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Started by hand only (workflow_dispatch): it never runs on a push or a pull request. It builds the six firmware images of the default platform from two commits (the base, main
+# by default, and the head, the branch that is being checked) with build_firmware.sh in CI mode, and compares the sha256 of every image with tools/h745_invariance.py. A change made
+# for the H757 platform only, behind the platform profile, must leave every image exactly as it was; the comparison fails when one differs, is missing or is new. Both builds run in
+# the same job layout (the same path and toolchain) so that nothing but the code can make an image differ.
+# It holds no key, signs nothing and makes no release: the images are not kept, only their sums. The owner is the only one who starts it.
+
+name: H745 images unchanged (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "The commit or branch that is the reference (main by default)"
+        type: string
+        required: true
+        default: main
+      head:
+        description: "The commit or branch that is checked against it"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: h745-invariance-${{ inputs.head }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Resolve the two commits
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      base_sha: ${{ steps.resolve.outputs.base_sha }}
+      head_sha: ${{ steps.resolve.outputs.head_sha }}
+    steps:
+      - name: Only the owner starts the comparison
+        shell: bash
+        env:
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          [ "$ACTOR" = "$OWNER" ] || { echo "::error::only the owner of the repository starts this comparison"; exit 1; }
+
+      - name: Check the inputs
+        shell: bash
+        env:
+          BASE: ${{ inputs.base }}
+          HEAD_REF: ${{ inputs.head }}
+        run: |
+          set -euo pipefail
+          for value in "$BASE" "$HEAD_REF"; do
+            [[ "$value" =~ ^[A-Za-z0-9._/-]{1,100}$ ]] || { echo "::error::a ref has characters that a branch, tag or commit does not have"; exit 1; }
+          done
+
+      - name: Check out this repository with its history
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Pin the two commits
+        id: resolve
+        shell: bash
+        env:
+          BASE: ${{ inputs.base }}
+          HEAD_REF: ${{ inputs.head }}
+        run: |
+          set -euo pipefail
+          resolve() {
+            if git rev-parse --verify --quiet "refs/remotes/origin/$1^{commit}" >/dev/null; then git rev-parse "refs/remotes/origin/$1^{commit}"; else git rev-parse --verify "$1^{commit}"; fi
+          }
+          base_sha="$(resolve "$BASE")"
+          head_sha="$(resolve "$HEAD_REF")"
+          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
+          echo "### Commits compared" >> "$GITHUB_STEP_SUMMARY"
+          echo "- base: \`${base_sha}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- head: \`${head_sha}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: Build the images (${{ matrix.side }})
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        side: [base, head]
+    steps:
+      - name: Check out the exact commit
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ matrix.side == 'base' && needs.plan.outputs.base_sha || needs.plan.outputs.head_sha }}
+          persist-credentials: false
+
+      - name: Make sure the build has no private key to take
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in HYDRA_UMC_RELEASE HYDRA_FW_UPDATE_PUBKEY_HEX HYDRA_FW_HMAC_KEY_HEX HYDRA_FW_SIGNING_SEED_FILE; do
+            if [ -n "${!name:-}" ]; then
+              echo "::error::$name is set in this job; a build made here must use the public development keys"
+              exit 1
+            fi
+          done
+
+      - name: Install the ARM GNU toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
+
+      - name: Compile the firmware without a version bump
+        env:
+          HYDRA_UMC_CI: "1"
+          HYDRA_UMC_RELEASE: "0"
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x build_firmware.sh
+          ./build_firmware.sh
+
+      - name: Take the sums of the images
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/h745_invariance.py collect firmware > "sums-${{ matrix.side }}.txt"
+          cat "sums-${{ matrix.side }}.txt"
+
+      - name: Keep the sums
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sums-${{ matrix.side }}
+          path: sums-${{ matrix.side }}.txt
+          if-no-files-found: error
+          retention-days: 7
+
+  compare:
+    name: Compare the images
+    needs: [plan, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out this repository (for the comparison tool)
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Download the sums of both sides
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: sums-*
+          path: sums
+
+      - name: Compare
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "### Images of the default platform, base against head"
+            echo '```'
+            cat sums/sums-base/sums-base.txt
+            echo '--- head'
+            cat sums/sums-head/sums-head.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          python3 tools/h745_invariance.py compare sums/sums-base/sums-base.txt sums/sums-head/sums-head.txt 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
