@@ -84,6 +84,28 @@ def render(document: dict | None = None) -> str:
                     w(f"#define HYDRA_CLOCK_{output.upper()}_DIV {divider}U")
             for output, hz in profile["clocks_hz"].items():
                 w(f"#define HYDRA_CLOCK_{output.upper()}_HZ {hz}UL")
+        sdram = profile.get("new_peripherals", {}).get("FMC", {}).get("sdram")
+        if sdram:
+            w(f"#define HYDRA_SDRAM_BUS_WIDTH_BITS {sdram['bus_width_bits']}U")
+            w(f"#define HYDRA_SDRAM_INTERNAL_BANKS {sdram['internal_banks']}U")
+            w(f"#define HYDRA_SDRAM_ROW_BITS {sdram['row_bits']}U")
+            w(f"#define HYDRA_SDRAM_COLUMN_BITS {sdram['column_bits']}U")
+            w(f"#define HYDRA_SDRAM_CAS_LATENCY {sdram['cas_latency']}U")
+            w(f"#define HYDRA_SDRAM_SDCLK_PERIOD_HCLK {sdram['sdclk_period_hclk']}U")
+            w(f"#define HYDRA_SDRAM_READ_BURST {int(sdram['read_burst'])}U")
+            w(f"#define HYDRA_SDRAM_READ_PIPE_DELAY_HCLK {sdram['read_pipe_delay_hclk']}U")
+            w(f"#define HYDRA_SDRAM_REFRESH_PERIOD_MS {sdram['refresh_period_ms']}U")
+            w(f"#define HYDRA_SDRAM_REFRESH_MARGIN_CYCLES {sdram['refresh_margin_cycles']}U")
+            w(f"#define HYDRA_SDRAM_STARTUP_DELAY_US {sdram['startup_delay_us']}U")
+            w(f"#define HYDRA_SDRAM_AUTO_REFRESH_CYCLES {sdram['auto_refresh_cycles']}U")
+            for timing, cycles in sdram["timing_sdclk_cycles"].items():
+                w(f"#define HYDRA_SDRAM_{timing.upper()} {cycles}U")
+            for bank in sdram["banks"]:
+                n = bank["fmc_bank"]
+                w(f"#ifndef HYDRA_SDRAM_BANK{n}_ENABLED")
+                w(f"#define HYDRA_SDRAM_BANK{n}_ENABLED {int(bank['enabled'])} /* a bank that is not enabled is not initialised */")
+                w("#endif")
+                w(f"#define HYDRA_SDRAM_BANK{n}_SIZE_BYTES {bank['size_bytes']}UL /* the window the firmware uses, at most what the geometry holds */")
         for region in profile["memory_map"]["regions"]:
             base = f"HYDRA_MEM_{_macro(region['name'])}"
             w(f"#define {base}_ORIGIN 0x{region['origin']:08X}UL")

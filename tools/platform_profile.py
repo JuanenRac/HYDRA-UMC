@@ -150,6 +150,10 @@ def main(argv: list[str] | None = None) -> int:
         bus = p["stack_bus"]
         print(f"{name}: {p['device']}; host {p['host']['module']} (SPI {p['host']['spi_role']}); stack bus {bit_rate(bus):,.0f} bit/s, sample point {sample_point(bus) * 100:.1f} %")
         bad += problems(name, p)
+        if "sdram" in p.get("new_peripherals", {}).get("FMC", {}):
+            import sdram_plan  # here and not at the top: that module imports this one
+
+            bad += [f"{name}: {line}" for line in sdram_plan.problems(p)]
     bad += contract_problems(document, contract)
     bad += board_problems(document, contract)
     for line in bad:
