@@ -234,24 +234,24 @@
         {
           "name": "os/",
           "desc": {
-            "en": "CM5 OS image - base OS choice",
-            "es": "Imagen de SO del CM5",
-            "de": "CM5-OS-Image - Basis-Betriebssystemwahl",
-            "fr": "Image OS du CM5",
-            "it": "Immagine SO del CM5",
-            "ja": "CM5 OS イメージ — ベース OS の",
-            "zh": "CM5 操作系统镜像 —— 基础系统选型",
-            "pt": "Imagem do SO do CM5"
+            "en": "OS image of the host (CM5 pilot bench today, Jetson image to be defined) - base OS choice",
+            "es": "Imagen de SO del anfitrión (banco piloto CM5 hoy, imagen del Jetson por definir)",
+            "de": "OS-Image des Hosts (heute CM5-Pilotprüfstand, Jetson-Image noch zu definieren) - Basis-Betriebssystemwahl",
+            "fr": "Image OS de l'hôte (banc pilote CM5 aujourd'hui, image du Jetson à définir)",
+            "it": "Immagine SO dell'host (banco pilota CM5 oggi, immagine del Jetson da definire)",
+            "ja": "ホストの OS イメージ（現在は CM5 試験用ベンチ、Jetson 用イメージは未定）— ベース OS の",
+            "zh": "主机操作系统镜像（目前为 CM5 试验台，Jetson 镜像待定）—— 基础系统选型",
+            "pt": "Imagem do SO do anfitrião (banco piloto CM5 hoje, imagem da Jetson por definir)"
           },
           "tree_desc": {
-            "en": "CM5 OS image - base OS choice, systemd units, first-boot provisioning",
-            "es": "Imagen de SO del CM5 - elección de SO base, unidades systemd, aprovisionamiento de primer arranque",
-            "de": "CM5-OS-Image - Basis-Betriebssystemwahl, systemd-Units, Erstinbetriebnahme-Provisionierung",
-            "fr": "Image OS du CM5 - choix de l'OS de base, unités systemd, provisionnement au premier démarrage",
-            "it": "Immagine SO del CM5 - scelta SO base, unit systemd, provisioning al primo avvio",
-            "ja": "CM5 OS イメージ — ベース OS の選定、systemd ユニット、初回起動時のプロビジョニング",
-            "zh": "CM5 操作系统镜像 —— 基础系统选型、systemd 单元、首次启动配置",
-            "pt": "Imagem do SO do CM5 - escolha do SO base, unidades systemd, aprovisionamento de primeiro arranque"
+            "en": "OS image of the host (CM5 pilot bench today, Jetson image to be defined) - base OS choice, systemd units, first-boot provisioning",
+            "es": "Imagen de SO del anfitrión (banco piloto CM5 hoy, imagen del Jetson por definir) - elección de SO base, unidades systemd, aprovisionamiento de primer arranque",
+            "de": "OS-Image des Hosts (heute CM5-Pilotprüfstand, Jetson-Image noch zu definieren) - Basis-Betriebssystemwahl, systemd-Units, Erstinbetriebnahme-Provisionierung",
+            "fr": "Image OS de l'hôte (banc pilote CM5 aujourd'hui, image du Jetson à définir) - choix de l'OS de base, unités systemd, provisionnement au premier démarrage",
+            "it": "Immagine SO dell'host (banco pilota CM5 oggi, immagine del Jetson da definire) - scelta SO base, unit systemd, provisioning al primo avvio",
+            "ja": "ホストの OS イメージ（現在は CM5 試験用ベンチ、Jetson 用イメージは未定）— ベース OS の選定、systemd ユニット、初回起動時のプロビジョニング",
+            "zh": "主机操作系统镜像（目前为 CM5 试验台，Jetson 镜像待定）—— 基础系统选型、systemd 单元、首次启动配置",
+            "pt": "Imagem do SO do anfitrião (banco piloto CM5 hoje, imagem da Jetson por definir) - escolha do SO base, unidades systemd, aprovisionamento de primeiro arranque"
           }
         },
         {

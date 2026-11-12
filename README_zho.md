@@ -108,7 +108,7 @@ flowchart TB
         CM7["<b>Cortex-M7 @ 480 MHz</b><br/>S 曲线运动学<br/>硬件定时器<br/>6 轴本地工作台"]
         CM4["<b>Cortex-M4 @ 240 MHz</b><br/>FDCAN1 控制器<br/>传感器滤波<br/>核间 IPC 通信"]
     end
-    MEM["1 MB SRAM / 2 MB 双区内部闪存<br/>专用 SPI2 接口连接 64 KB FRAM"]
+    MEM["1 MB SRAM / 2 MB 双区内部闪存<br/>专用 I2C4 接口连接外部 F-RAM（FM24CL64B）"]
     MCU --- MEM
 
     MCU -- "FDCAN1 — STACK A 总线" --> ROBOTS["机器人控制板 A1...A8<br/>（最多 8 个从站模块）"]
@@ -259,7 +259,7 @@ HYDRA-UMC/
 ├── docs/                            架构、构建参考、引脚分配、CAN 协议、数据手册
 ├── hardware/                        两个电路板设计；尚无原理图
 ├── tests/                           主机测试: 引导程序与中继的 C 逻辑 (stubs/ 代替 HAL,image_header_vectors.h 存放参考向量) 以及工具的 Python 测试
-├── os/                              CM5 操作系统镜像 —— 基础系统选型、systemd 单元、首次启动配置
+├── os/                              主机操作系统镜像（目前为 CM5 试验台，Jetson 镜像待定）—— 基础系统选型、systemd 单元、首次启动配置
 ├── images/                          README 横幅 + 图标 + 启动画面（SVG）
 ├── tools/                           项目工具和 CI 检查
 ├── firmware/                        已提交的构建产物（.bin/.hex/.elf + 清单文件）—— 未被 gitignore 排除，与 URTC 自身的输出文件夹约定一致，见下方“构建固件”

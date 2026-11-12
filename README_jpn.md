@@ -108,7 +108,7 @@ flowchart TB
         CM7["<b>Cortex-M7 @ 480 MHz</b><br/>S カーブ運動学<br/>ハードウェアタイマー<br/>6 軸ローカルステージ"]
         CM4["<b>Cortex-M4 @ 240 MHz</b><br/>FDCAN1 コントローラー<br/>センサーフィルタリング<br/>コア間 IPC"]
     end
-    MEM["1 MB SRAM / 2 MB デュアルバンク内蔵フラッシュ<br/>64 KB FRAM への専用 SPI2 インターフェース"]
+    MEM["1 MB SRAM / 2 MB デュアルバンク内蔵フラッシュ<br/>外付け F-RAM（FM24CL64B）への専用 I2C4 インターフェース"]
     MCU --- MEM
 
     MCU -- "FDCAN1 — STACK A バス" --> ROBOTS["ロボットコントローラーボード A1...A8<br/>（最大 8 台のスレーブモジュール）"]
@@ -259,7 +259,7 @@ HYDRA-UMC/
 ├── docs/                            アーキテクチャ、ビルド資料、ピン割り当て、CAN プロトコル、データシート
 ├── hardware/                        2 つの基板設計。回路図はまだありません
 ├── tests/                           ホストテスト: ブートローダーとリレーの C ロジック (stubs/ が HAL の代わり、image_header_vectors.h が基準ベクタ) とツールの Python テスト
-├── os/                              CM5 OS イメージ — ベース OS の選定、systemd ユニット、初回起動時のプロビジョニング
+├── os/                              ホストの OS イメージ（現在は CM5 試験用ベンチ、Jetson 用イメージは未定）— ベース OS の選定、systemd ユニット、初回起動時のプロビジョニング
 ├── images/                          README バナー + アイコン + スプラッシュスクリーン（SVG）
 ├── tools/                           プロジェクトのツールと CI の検査
 ├── firmware/                        コミット済みのビルド成果物（.bin/.hex/.elf + マニフェスト）— gitignore 対象外、URTC 自身の出力フォルダと同じ規約、下記「ファームウェアのビルド」参照

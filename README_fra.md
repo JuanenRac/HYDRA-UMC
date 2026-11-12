@@ -108,7 +108,7 @@ flowchart TB
         CM7["<b>Cortex-M7 à 480 MHz</b><br/>Cinématique en courbe en S<br/>Timers matériels<br/>Étage local 6 axes"]
         CM4["<b>Cortex-M4 à 240 MHz</b><br/>Contrôleur FDCAN1<br/>Filtrage des capteurs<br/>IPC inter-cœurs"]
     end
-    MEM["1 Mo SRAM / 2 Mo flash interne double banque<br/>Interface SPI2 dédiée vers 64 Ko de FRAM"]
+    MEM["1 Mo SRAM / 2 Mo flash interne double banque<br/>Interface I2C4 dédiée vers la F-RAM externe (FM24CL64B)"]
     MCU --- MEM
 
     MCU -- "Bus FDCAN1 - STACK A" --> ROBOTS["Cartes Robot Controller Board A1...A8<br/>(jusqu'à 8 modules esclaves)"]
@@ -320,7 +320,7 @@ HYDRA-UMC/
 ├── docs/                            architecture, références de compilation, affectation des broches, protocole CAN, fiches techniques
 ├── hardware/                        les deux conceptions de carte ; pas encore de schéma
 ├── tests/                           Tests sur l'ordinateur : la logique C des bootloaders et du relais (stubs/ remplace le HAL, image_header_vectors.h contient les vecteurs de référence) et les tests Python des outils
-├── os/                              Image OS du CM5 - choix de l'OS de base, unités systemd, provisionnement au premier démarrage
+├── os/                              Image OS de l'hôte (banc pilote CM5 aujourd'hui, image du Jetson à définir) - choix de l'OS de base, unités systemd, provisionnement au premier démarrage
 ├── images/                          Bannière du README + icône + écran de démarrage (SVG)
 ├── tools/                           outils du projet et vérifications de la CI
 ├── firmware/                        Sortie de build commitée (.bin/.hex/.elf + manifest) - PAS dans gitignore, même convention que le propre dossier de sortie d'URTC, voir "Compiler le Firmware" ci-dessous

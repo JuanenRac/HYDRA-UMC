@@ -108,7 +108,7 @@ flowchart TB
         CM7["<b>Cortex-M7 mit 480 MHz</b><br/>S-Kurven-Kinematik<br/>Hardware-Timer<br/>Lokale 6-Achsen-Stufe"]
         CM4["<b>Cortex-M4 mit 240 MHz</b><br/>FDCAN1-Controller<br/>Sensorfilterung<br/>Kernübergreifende IPC"]
     end
-    MEM["1 MB SRAM / 2 MB interner Dual-Bank-Flash<br/>Dedizierte SPI2-Schnittstelle zu 64 KB FRAM"]
+    MEM["1 MB SRAM / 2 MB interner Dual-Bank-Flash<br/>Dedizierte I2C4-Schnittstelle zum externen F-RAM (FM24CL64B)"]
     MCU --- MEM
 
     MCU -- "FDCAN1 - STACK A Bus" --> ROBOTS["Robot-Controller-Boards A1...A8<br/>(bis zu 8 Slave-Module)"]
@@ -322,7 +322,7 @@ HYDRA-UMC/
 ├── docs/                            Architektur, Build-Referenzen, Pinbelegungen, CAN-Protokoll, Datenblätter
 ├── hardware/                        die beiden Platinenentwürfe; noch kein Schaltplan
 ├── tests/                           Host-Tests: die C-Logik der Bootloader und des Relays (stubs/ ersetzt das HAL, image_header_vectors.h enthält die Referenzvektoren) und Python-Tests der Werkzeuge
-├── os/                              CM5-OS-Image - Basis-Betriebssystemwahl, systemd-Units, Erstinbetriebnahme-Provisionierung
+├── os/                              OS-Image des Hosts (heute CM5-Pilotprüfstand, Jetson-Image noch zu definieren) - Basis-Betriebssystemwahl, systemd-Units, Erstinbetriebnahme-Provisionierung
 ├── images/                          README-Banner + Icon + Splashscreen (SVG)
 ├── tools/                           Projektwerkzeuge und CI-Prüfungen
 ├── firmware/                        Committete Build-Ausgabe (.bin/.hex/.elf + Manifest) - NICHT in gitignore, dieselbe Konvention wie der eigene Ausgabeordner von URTC, siehe "Die Firmware bauen" unten
