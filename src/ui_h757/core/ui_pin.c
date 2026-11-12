@@ -318,15 +318,21 @@ ui_pin_state_t ui_pin_state(const ui_pin_store_t *store)
     if (current(store, &r) >= 0) {
         return UI_PIN_STATE_SET;
     }
-    for (unsigned slot = 0; slot < UI_PIN_SLOTS; slot++) {
-        uint8_t raw[UI_PIN_RECORD_BYTES];
-        if (store->ports.read(store->ports.context, slot * UI_PIN_RECORD_BYTES, raw, UI_PIN_RECORD_BYTES) != 0) {
-            return UI_PIN_STATE_CORRUPT;
-        }
-        for (unsigned i = 0; i < UI_PIN_RECORD_BYTES; i++) {
-            if (raw[i] != 0xFFu) {
+    {
+        int all_ff = 1;
+        int all_zero = 1;
+        for (unsigned slot = 0; slot < UI_PIN_SLOTS; slot++) {
+            uint8_t raw[UI_PIN_RECORD_BYTES];
+            if (store->ports.read(store->ports.context, slot * UI_PIN_RECORD_BYTES, raw, UI_PIN_RECORD_BYTES) != 0) {
                 return UI_PIN_STATE_CORRUPT;
             }
+            for (unsigned i = 0; i < UI_PIN_RECORD_BYTES; i++) {
+                all_ff = all_ff && raw[i] == 0xFFu;
+                all_zero = all_zero && raw[i] == 0u;
+            }
+        }
+        if (!all_ff && !all_zero) {
+            return UI_PIN_STATE_CORRUPT;
         }
     }
     return UI_PIN_STATE_UNSET;

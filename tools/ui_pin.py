@@ -125,10 +125,10 @@ class PinStore:
 
     # ------------------------------------------------------------ what the panel asks
     def state(self) -> str:
-        """unset: never set, or erased; set: a valid record; corrupt: something is there that cannot be read."""
+        """unset: never set, or erased (all 0xFF, or all zero as the F-RAM erase of the brain leaves it); set: a valid record; corrupt: something is there that cannot be read."""
         if self._current() is not None:
             return "set"
-        erased = all(byte == 0xFF for byte in self.fram.data)
+        erased = all(byte == 0xFF for byte in self.fram.data) or all(byte == 0 for byte in self.fram.data)
         return "unset" if erased else "corrupt"
 
     def failures(self) -> int:

@@ -62,6 +62,13 @@ def estimate() -> dict:
     }
 
 
+def calibrate(measured_cycles: int, iterations: int) -> dict:
+    """What a measurement on the board (the cycles of ui_pin_bench for `iterations`) says: the cycles per compression to put in config/ui.cfg and the time of a check at the clock of the profile."""
+    blocks = compressions(iterations)
+    clock = sysclk_hz()
+    return {"compressions": blocks, "cycles_per_block": measured_cycles / blocks, "milliseconds": measured_cycles / clock * 1000}
+
+
 def report(numbers: dict) -> list[str]:
     return [
         f"one check: {numbers['iterations']} iterations = {numbers['compressions']} SHA-256 compressions (exact)",
