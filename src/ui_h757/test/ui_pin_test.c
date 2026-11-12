@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "ui_pin.h"
+#include "ui_pin_bench.h"
 #include "ui_pin_vectors.h"
 
 typedef struct {
@@ -123,6 +124,31 @@ static int vectors(void)
     return failures;
 }
 
+static uint32_t bench_cycles(void *context)
+{
+    (void)context;
+    return (uint32_t)(ui_sha256_blocks * 2600u); /* a counter that charges 2600 cycles per compression */
+}
+
+static int bench_harness(void)
+{
+    int failures = 0;
+    ui_cycle_counter_t counter;
+    uint8_t out[32];
+    uint8_t expected[32];
+    uint32_t cycles;
+    counter.cycles = bench_cycles;
+    counter.context = 0;
+    ui_sha256_blocks = 0;
+    cycles = ui_pin_bench(&counter, 1000, out);
+    ui_pbkdf2_sha256((const uint8_t *)"4821", 4, k_salt_a, 16, 1000, expected);
+    if (cycles != (2u * 1000u + 2u) * 2600u || memcmp(out, expected, 32) != 0) {
+        printf("  FAIL: the bench harness gave %u cycles\n", (unsigned)cycles);
+        failures++;
+    }
+    return failures;
+}
+
 static int states_and_refusals(void)
 {
     int failures = 0;
@@ -150,9 +176,14 @@ static int states_and_refusals(void)
         printf("  FAIL: set, right and wrong\n");
         failures++;
     }
-    memset(f.data, 0, sizeof(f.data));
+    memset(f.data, 0x5A, sizeof(f.data));
     if (ui_pin_state(&store) != UI_PIN_STATE_CORRUPT || ui_pin_verify(&store, "4821") != UI_PIN_UNAVAILABLE) {
         printf("  FAIL: garbage must read as corrupt and let nothing in\n");
+        failures++;
+    }
+    memset(f.data, 0, sizeof(f.data)); /* the F-RAM erase of the brain writes zeros over the chip: that is no PIN set, not a damaged record */
+    if (ui_pin_state(&store) != UI_PIN_STATE_UNSET || ui_pin_verify(&store, "4821") != UI_PIN_UNAVAILABLE) {
+        printf("  FAIL: a chip erased with zeros must read as unset and let nothing in\n");
         failures++;
     }
     ui_pin_set(&store, "4821", k_salt_a);
@@ -282,6 +313,7 @@ int main(void)
 {
     int failures = 0;
     failures += vectors();
+    failures += bench_harness();
     failures += states_and_refusals();
     failures += restart_and_counter();
     failures += torn_writes();

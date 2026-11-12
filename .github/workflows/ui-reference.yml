@@ -51,12 +51,13 @@ jobs:
         run: python tools/ui_gen.py --check
 
       - name: Run the tests of the interface
-        run: python -m unittest -v tests.test_ui_spec tests.test_ui_model tests.test_ui_budget tests.test_ui_core_c tests.test_ui_render tests.test_ui_link tests.test_ui_pin tests.test_ui_io_c tests.test_ui_jetson_side tests.test_ui_pin_cost
+        run: python -m unittest -v tests.test_ui_spec tests.test_ui_model tests.test_ui_budget tests.test_ui_core_c tests.test_ui_render tests.test_ui_link tests.test_ui_pin tests.test_ui_io_c tests.test_ui_jetson_side tests.test_ui_pin_cost tests.test_ui_runtime_c tests.test_ui_sched_sim
 
       - name: Print the budget and the estimate of the PIN check
         run: |
           python tools/ui_budget.py
           python tools/ui_pin_cost.py
+          python tools/ui_sched_sim.py
 
       - name: Draw every screen in every language
         run: python tools/ui_render.py build/ui_pictures --all
