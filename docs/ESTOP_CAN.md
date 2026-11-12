@@ -166,3 +166,13 @@ Nothing of this has run on a board; the debounce and the decision are checked on
 ## Safety status
 
 HYDRA-UMC is designed with functional safety in mind, but it is not certified to ISO 13849-1 or any other functional safety standard, and none of its stop or protection functions may be relied on as a certified safety function.
+
+## The frame of the safety-zones service on `0x002`
+
+The safety-zones service has its own identifier, `0x002`, never `0x001` (whose layout is the one above). The brain has its **own filter** for it (decision of the owner), behind the build switch `HYDRA_ZONES_CAN_FILTER`, which ships off: it programs the identifier on FDCAN1, checks the frame and asks for a TRIP with the reason `0x04` (safety zone). The frame has 8 bytes: kind (`1` stop, `2` heartbeat), version `1`, sequence (16 bits, little endian), subject (16 bits), the number of zones breached and a CRC-8 (polynomial `0x07`, start `0`) of the first seven bytes.
+
+* A stop request trips. **A damaged frame trips too** (wrong length, wrong version, wrong CRC): a damaged frame can only cause a stop, which is the safe outcome.
+* A heartbeat refreshes the clock only when its sequence is **newer** than the last one (modulo 65536), so a replayed heartbeat cannot keep a dead service alive. When the heartbeats had started and stop for more than 1000 ms the brain trips once; the next heartbeat arms the check again. **Before the first heartbeat nothing trips**, so a machine without the service is not affected.
+* A valid frame of a kind this version does not know is ignored; any other identifier is not this filter's business.
+
+`tools/zones_frame.py` is the reference and `src/mcu_stm32h757/CM4/zones_frame.h` its C twin; `tests/test_zones_frame.py` and `tests/test_zones_frame.c` hold both to the same vectors (`tests/zones_frame_vectors.h`, written by `tools/gen_zones_vectors.py`), with the switch on and off. The frame is the one the CM5 bridge already translates on the bench (`tests/sim_hil_bench.py`); the brain no longer has to rely on the bridge for it. Nothing here has run on a board: the bench rows 17 and 20 are the check that remains.

@@ -21,8 +21,10 @@
 #include "platform_profile.h" /* the bit timing of the stack bus comes from the platform profile, not from numbers here */
 #include "bootloader_common.h" /* shared CAN_ID_STACKA_BASE/STACKA_SLOT_WINDOW/OFS_* - see that header's own comment on why this application reuses it, not a copy */
 #include <string.h>
+#include "zones_frame.h" /* the filter for the frame of the safety-zones service on 0x002: off unless HYDRA_ZONES_CAN_FILTER=1 */
 
 static FDCAN_HandleTypeDef hfdcan1_app;
+static ZonesFilter_t zones_filter; /* decision of the owner: the brain has its own filter for 0x002 and turns a stop of the zones service into a TRIP with the reason safety-zone */
 static EstopBrain_t estop_brain; /* the master side of the emergency stop on identifier 0x001 (docs/ESTOP_CAN.md); LATCHED at power-up */
 
 /* A set-up call that fails leaves the brain unable to talk to the slots: stop here with the interrupts off. Nothing refreshes the watchdog any more, it
@@ -117,10 +119,17 @@ void KinematicBrainCan_Init(void)
     sf.FilterID1 = BRAIN_ESTOP_CAN_ID;
     sf.FilterID2 = 0x7FF; /* exact match */
     BrainHalRequire(HAL_FDCAN_ConfigFilter(&hfdcan1_app, &sf));
+#if HYDRA_ZONES_CAN_FILTER
+    sf.FilterIndex = 2;
+    sf.FilterID1 = ZONES_CAN_ID;
+    sf.FilterID2 = 0x7FF; /* exact match */
+    BrainHalRequire(HAL_FDCAN_ConfigFilter(&hfdcan1_app, &sf));
+#endif
     BrainHalRequire(HAL_FDCAN_ConfigGlobalFilter(&hfdcan1_app, FDCAN_REJECT, FDCAN_REJECT, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE));
 
     BrainHalRequire(HAL_FDCAN_Start(&hfdcan1_app));
     EstopBrain_Reset(&estop_brain, HAL_GetTick());
+    ZonesFilter_Init(&zones_filter);
 }
 
 /* DLC 0-8 map directly onto FDCAN_DLC_BYTES_0..8 for Classic CAN (no
@@ -155,6 +164,9 @@ static uint8_t SendClassicFrame(uint32_t can_id, const uint8_t *data, uint8_t dl
 static void EstopSendDue(void)
 {
     uint8_t frame[8];
+    if (ZonesFilter_Tick(&zones_filter, HAL_GetTick())) { /* the heartbeats of the zones service had started and stopped */
+        EstopBrain_Trip(&estop_brain, HAL_GetTick(), ESTOP_REASON_SAFETY_ZONE);
+    }
     for (int sent = 0; sent < 4; sent++) {
         if (!EstopBrain_Tick(&estop_brain, HAL_GetTick(), frame)) break;
         (void)SendClassicFrame(BRAIN_ESTOP_CAN_ID, frame, 8);
@@ -166,6 +178,10 @@ static void ObserveFrame(uint32_t id, const uint8_t *data, uint8_t dlc)
 {
     if (id == BRAIN_ESTOP_CAN_ID) {
         EstopBrain_OnFrame(&estop_brain, HAL_GetTick(), data, dlc);
+    } else if (id == ZONES_CAN_ID) {
+        if (ZonesFilter_OnFrame(&zones_filter, HAL_GetTick(), id, data, dlc)) {
+            EstopBrain_Trip(&estop_brain, HAL_GetTick(), ESTOP_REASON_SAFETY_ZONE);
+        }
     } else if (id >= CAN_ID_STACKA_BASE && id < CAN_ID_STACKA_BASE + 8u * STACKA_SLOT_WINDOW && ((id - CAN_ID_STACKA_BASE) % STACKA_SLOT_WINDOW) == OFS_ESTOP_STATE) {
         EstopBrain_OnSlotState(&estop_brain, (uint8_t)((id - CAN_ID_STACKA_BASE) / STACKA_SLOT_WINDOW), data, dlc);
     }
