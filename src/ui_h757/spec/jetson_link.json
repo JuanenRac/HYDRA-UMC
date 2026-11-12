@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "description": "The frames the H757 and the Jetson exchange for the interface of the display, over the SPI link where the H757 is the master. The framing is the one of the boot exchange (docs/SPI_BOOT_MASTER.md): sync 0x53, type, sequence (2 bytes), length (2 bytes), payload up to 260 bytes, CRC-32 of every byte before it, little endian. The master asks, the Jetson answers on the next transaction. The types are chosen not to collide with those of the boot exchange. tools/ui_link.py is the reference of both sides and tests/test_ui_link.py replays it, damage and hangs included. Evidence: simulator; nothing here has run on a Jetson or a board.",
+  "framing": {"sync": 83, "max_payload": 260, "crc": "crc32"},
+  "limits": {"chunk_data_bytes": 240, "status_period_ms": 100, "snapshot_period_ms": 500, "jpeg_max_factor": 2, "answer_timeout_ms": 50},
+  "frames": [
+    {"name": "STATUS_REQ", "type": 16, "direction": "master_to_host", "payload": [], "purpose": "asks for the status of the Jetson; the answer is the heartbeat the view-model waits for"},
+    {"name": "SNAPSHOT_REQ", "type": 17, "direction": "master_to_host", "payload": [{"field": "camera_id", "format": "B"}, {"field": "last_picture_id", "format": "H"}, {"field": "offset", "format": "I"}], "purpose": "asks for the chunk at `offset` of the current still picture of a camera when it is newer than last_picture_id (offset 0 starts a picture); the Jetson keeps no state per request, so a lost chunk is asked again"},
+    {"name": "STATUS", "type": 144, "direction": "host_to_master", "payload": [{"field": "version", "format": "B"}, {"field": "zone_level", "format": "B"}, {"field": "cpu_pct", "format": "B"}, {"field": "temperature_x10", "format": "h"}, {"field": "flags", "format": "B"}, {"field": "uptime_s", "format": "I"}], "purpose": "the verdict of the safety-zones service (0 ready .. 5 unknown), the load and temperature of the Jetson, flags (bit 0: a camera picture is available) and its uptime"},
+    {"name": "SNAPSHOT", "type": 145, "direction": "host_to_master", "payload": [{"field": "picture_id", "format": "H"}, {"field": "total", "format": "I"}, {"field": "offset", "format": "I"}, {"field": "data", "format": "bytes"}], "purpose": "one chunk of a JPEG picture, in order; the picture is complete when offset plus the data reaches total"},
+    {"name": "SNAPSHOT_NONE", "type": 159, "direction": "host_to_master", "payload": [{"field": "reason", "format": "B"}], "purpose": "there is no picture to send"}
+  ],
+  "snapshot_none_reasons": {"0": "no camera", "1": "no newer picture", "2": "camera busy"}
+}

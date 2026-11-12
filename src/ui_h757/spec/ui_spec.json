@@ -55,9 +55,7 @@
   "disabled_text": "#C9D2DA"
  },
  "pending_contracts": {
-  "brain_kinematics": "position and motion flags the kinematic brain publishes to its own interface; the structure is not fixed yet",
-  "jetson_status": "the status frame the Jetson answers over the SPI link (safety verdict, CPU, temperature); the exchange is not fixed yet",
-  "jetson_snapshot": "a low-rate still image (thumbnail) from the Jetson; the screen shows it (decision of the owner) but the exchange over the SPI link is not fixed yet"
+  "brain_kinematics": "position and motion flags the kinematic brain publishes to its own interface; the structure is not fixed yet"
  },
  "signals": [
   {
@@ -271,7 +269,7 @@
    "id": "jetson.safety_level",
    "type": "enum",
    "source": "jetson_spi",
-   "contract_ref": "pending:jetson_status",
+   "contract_ref": "link:STATUS",
    "max_age_ms": 1500,
    "needs_jetson": true,
    "note": "verdict of the safety-zones service (ready, warning, danger, inhibited, fault, unknown)"
@@ -280,7 +278,7 @@
    "id": "jetson.cpu_load_pct",
    "type": "int",
    "source": "jetson_spi",
-   "contract_ref": "pending:jetson_status",
+   "contract_ref": "link:STATUS",
    "max_age_ms": 1500,
    "needs_jetson": true,
    "note": "CPU load of the Jetson"
@@ -289,7 +287,7 @@
    "id": "jetson.temperature_c",
    "type": "float",
    "source": "jetson_spi",
-   "contract_ref": "pending:jetson_status",
+   "contract_ref": "link:STATUS",
    "max_age_ms": 1500,
    "needs_jetson": true,
    "note": "temperature of the Jetson"
@@ -298,7 +296,7 @@
    "id": "jetson.camera_snapshot",
    "type": "image",
    "source": "jetson_spi",
-   "contract_ref": "pending:jetson_snapshot",
+   "contract_ref": "link:SNAPSHOT",
    "max_age_ms": 5000,
    "needs_jetson": true,
    "note": "low-rate still image of a camera, a thumbnail of the picture (the video stays on the Jetson; decision of the owner: shown)"

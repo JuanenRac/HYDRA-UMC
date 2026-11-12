@@ -128,7 +128,9 @@ def contract_names(root: Path = ROOT) -> dict[str, set[str]]:
     can = read_json(root / "docs" / "can_ids.json")
     bus = read_json(root / "docs" / "bus_contract.json")
     text = (root / "docs" / "SPI_SYSTEM.md").read_text(encoding="utf-8")
+    link = read_json(root / "src" / "ui_h757" / "spec" / "jetson_link.json")
     return {
+        "link": {f["name"] for f in link["frames"] if f["direction"] == "host_to_master"},
         "can_message": {m["name"] for m in can["messages"]},
         "bus_contract": set(bus["buses"]) | {"emergency_stop"},
         "spi_self": set(re.findall(r"\| `0x[0-9A-F]{2}` \| `([A-Z0-9_]+)` \|", text)),
@@ -200,8 +202,8 @@ def problems(spec: dict, i18n: dict, root: Path = ROOT) -> list[str]:
             found.append(f"signal {sig['id']}: pending contract {name} is not declared")
         if (sig["source"] == "jetson_spi") != sig["needs_jetson"]:
             found.append(f"signal {sig['id']}: needs_jetson must be true exactly for the signals that come from the Jetson")
-        if sig["source"] == "jetson_spi" and kind != "pending":
-            found.append(f"signal {sig['id']}: the exchange with the Jetson is not in the contract yet, so it must be pending")
+        if sig["source"] == "jetson_spi" and kind not in ("link", "pending"):
+            found.append(f"signal {sig['id']}: a signal of the Jetson must point at a frame of the Jetson link (link:) or at a contract declared pending")
         if sig["source"] == "stack_bus" and kind not in ("can_message", "bus_contract"):
             found.append(f"signal {sig['id']}: a stack bus signal must point at a message or a bus of the contract")
         if sig["needs_jetson"] and sig["max_age_ms"] == 0:
