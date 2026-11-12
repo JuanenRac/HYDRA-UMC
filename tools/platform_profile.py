@@ -114,7 +114,7 @@ def memory_problems(name: str, profile: dict) -> list[str]:
     """What is wrong in the memory map of a profile: regions that overlap, that start or end outside the family map, or that are not backed by a source."""
     found: list[str] = []
     regions = sorted(profile["memory_map"]["regions"], key=lambda r: r["origin"])
-    for a, b in zip(regions, regions[1:]):
+    for a, b in zip(regions, regions[1:], strict=False):
         if a["origin"] + a["length"] > b["origin"]:
             found.append(f"{name}: {a['name']} overlaps {b['name']}")
     flash = [r for r in regions if r["name"].startswith("FLASH")]

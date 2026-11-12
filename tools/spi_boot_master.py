@@ -205,8 +205,7 @@ class SpiMasterBootloader:
                 return Result(REFUSED, "the host has nothing to offer", frames=self.frames)
             if kind != T_OFFER or len(body) != 32:
                 return Result(FAILED, "the offer is not an offer", frames=self.frames)
-            size, major, minor, patch = struct.unpack_from("<IHHH", body, 0)
-            offered_version = (major, minor, patch)
+            size = struct.unpack_from("<I", body, 0)[0]
             target = body[16:32].rstrip(b"\x00").decode("ascii", "replace")
             # checks that refuse before a byte is fetched; none of them replaces the verification below
             if size < ih.HEADER_SIZE + ih.SIGNATURE_SIZE or size > MAX_IMAGE_BYTES:

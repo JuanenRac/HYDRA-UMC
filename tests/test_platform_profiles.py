@@ -134,7 +134,7 @@ class PlatformProfileTests(unittest.TestCase):
         }
         regions = {r["name"]: r for r in self.document["profiles"]["h745_current"]["memory_map"]["regions"]}
         checked = 0
-        for (core, kind), path in files.items():
+        for (core, _kind), path in files.items():
             text = path.read_text(encoding="utf-8")
             for name, origin, length in re.findall(r"^\s*(\w+)\s*\(\w+\)\s*:\s*ORIGIN\s*=\s*(0x[0-9A-Fa-f]+),\s*LENGTH\s*=\s*(\d+)K", text, re.M):
                 key = f"{name}_{core}" if name.startswith("FLASH") else f"RAM_{core}"
