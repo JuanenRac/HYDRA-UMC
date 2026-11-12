@@ -62,6 +62,7 @@ def table() -> list[HostTest]:
         HostTest("spi_boot_master", "tests/test_spi_boot_master.c", (f"{H7}/Common", "tests")),
         HostTest("spi_boot_master_fsm", "tests/test_spi_boot_master_fsm.c", (f"{H7}/Common", "tests")),
         HostTest("clock_tree@h757", "tests/test_clock_tree.c", (f"{H7}/Common",), defines=("HYDRA_PLATFORM_H757",)),
+        HostTest("nor_flash@h757", "tests/test_nor_flash.c", (f"{H7}/Common",), defines=("HYDRA_PLATFORM_H757",)),
         HostTest("sdram_init@both_banks", "tests/test_sdram_init.c", (f"{H7}/Common", "tests"), defines=("HYDRA_PLATFORM_H757",)),
         HostTest("sdram_init@bank2_off", "tests/test_sdram_init.c", (f"{H7}/Common", "tests"), defines=("HYDRA_PLATFORM_H757", "HYDRA_SDRAM_BANK2_ENABLED=0")),
         HostTest("sdram_init@bank1_off", "tests/test_sdram_init.c", (f"{H7}/Common", "tests"), defines=("HYDRA_PLATFORM_H757", "HYDRA_SDRAM_BANK1_ENABLED=0")),
