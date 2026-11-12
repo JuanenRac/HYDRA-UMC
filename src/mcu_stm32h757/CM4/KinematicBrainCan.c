@@ -18,6 +18,7 @@
 #include "dlc_to_fdcan_data_length.h"
 #include "estop_brain.h"
 #include "stm32h7xx_hal.h"
+#include "platform_profile.h" /* the bit timing of the stack bus comes from the platform profile, not from numbers here */
 #include "bootloader_common.h" /* shared CAN_ID_STACKA_BASE/STACKA_SLOT_WINDOW/OFS_* - see that header's own comment on why this application reuses it, not a copy */
 #include <string.h>
 
@@ -82,14 +83,14 @@ void KinematicBrainCan_Init(void)
     /* Same real prescaler/timing this application inherits from the
      * bootloader's own MX_FDCAN1_Init() - see that function's own comment
      * on the kernel-clock assumption this is built on. */
-    hfdcan1_app.Init.NominalPrescaler = 1;
-    hfdcan1_app.Init.NominalSyncJumpWidth = 1;
-    hfdcan1_app.Init.NominalTimeSeg1 = 13;
-    hfdcan1_app.Init.NominalTimeSeg2 = 2;
-    hfdcan1_app.Init.DataPrescaler = 1;
-    hfdcan1_app.Init.DataSyncJumpWidth = 1;
-    hfdcan1_app.Init.DataTimeSeg1 = 13;
-    hfdcan1_app.Init.DataTimeSeg2 = 2;
+    hfdcan1_app.Init.NominalPrescaler = HYDRA_STACK_BUS_PRESCALER;
+    hfdcan1_app.Init.NominalSyncJumpWidth = HYDRA_STACK_BUS_SYNC_JUMP_WIDTH;
+    hfdcan1_app.Init.NominalTimeSeg1 = HYDRA_STACK_BUS_TIME_SEG1;
+    hfdcan1_app.Init.NominalTimeSeg2 = HYDRA_STACK_BUS_TIME_SEG2;
+    hfdcan1_app.Init.DataPrescaler = HYDRA_STACK_BUS_PRESCALER;
+    hfdcan1_app.Init.DataSyncJumpWidth = HYDRA_STACK_BUS_SYNC_JUMP_WIDTH;
+    hfdcan1_app.Init.DataTimeSeg1 = HYDRA_STACK_BUS_TIME_SEG1;
+    hfdcan1_app.Init.DataTimeSeg2 = HYDRA_STACK_BUS_TIME_SEG2;
     hfdcan1_app.Init.MessageRAMOffset = 0;
     hfdcan1_app.Init.StdFiltersNbr = 2;
     hfdcan1_app.Init.ExtFiltersNbr = 0;

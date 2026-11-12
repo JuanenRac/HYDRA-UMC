@@ -86,10 +86,13 @@ class PlatformHeaderTests(unittest.TestCase):
         self.assertIn("#error \"HYDRA_SPI_ROLE must be", self.text)
         self.assertTrue(self.text.endswith("#endif /* HYDRA_PLATFORM_PROFILE_H */\n"))
 
-    def test_the_header_is_not_included_by_any_source_yet(self):
-        for path in (ROOT / "src").rglob("*.[ch]"):
-            if path.name != "platform_profile.h":
-                self.assertNotIn("platform_profile.h", path.read_text(encoding="utf-8", errors="ignore"), str(path))
+    def test_only_the_sources_that_set_up_the_stack_bus_include_the_header(self):
+        including = {
+            path.relative_to(ROOT).as_posix()
+            for path in (ROOT / "src").rglob("*.[ch]")
+            if path.name != "platform_profile.h" and "platform_profile.h" in path.read_text(encoding="utf-8", errors="ignore")
+        }
+        self.assertEqual(including, {"src/mcu_stm32h757/CM4/KinematicBrainCan.c", "src/mcu_stm32h757/CM4/boot/bootloader_main.c"})
 
 
 if __name__ == "__main__":

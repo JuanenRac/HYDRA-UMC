@@ -25,6 +25,7 @@
 #include "bootloader_flash.h"
 #include "bootloader_protocol.h"
 #include "ipc_mailbox.h"
+#include "platform_profile.h" /* the bit timing of the stack bus comes from the platform profile, not from numbers here */
 #include "boot_decision.h"
 #include "spi_frame_crc.h"
 #include "spi_system.h"   // telemetry and probe commands of the SPI link (off by default)
@@ -128,14 +129,14 @@ static void MX_FDCAN1_Init(void) {
     // clock tree (currently HSI64 reset default) is designed, since the
     // FDCAN kernel clock source/frequency assumption this prescaler is
     // built on will very likely change alongside it.
-    hfdcan1.Init.NominalPrescaler = 1;
-    hfdcan1.Init.NominalSyncJumpWidth = 1;
-    hfdcan1.Init.NominalTimeSeg1 = 13;
-    hfdcan1.Init.NominalTimeSeg2 = 2;
-    hfdcan1.Init.DataPrescaler = 1;
-    hfdcan1.Init.DataSyncJumpWidth = 1;
-    hfdcan1.Init.DataTimeSeg1 = 13;
-    hfdcan1.Init.DataTimeSeg2 = 2;
+    hfdcan1.Init.NominalPrescaler = HYDRA_STACK_BUS_PRESCALER;
+    hfdcan1.Init.NominalSyncJumpWidth = HYDRA_STACK_BUS_SYNC_JUMP_WIDTH;
+    hfdcan1.Init.NominalTimeSeg1 = HYDRA_STACK_BUS_TIME_SEG1;
+    hfdcan1.Init.NominalTimeSeg2 = HYDRA_STACK_BUS_TIME_SEG2;
+    hfdcan1.Init.DataPrescaler = HYDRA_STACK_BUS_PRESCALER;
+    hfdcan1.Init.DataSyncJumpWidth = HYDRA_STACK_BUS_SYNC_JUMP_WIDTH;
+    hfdcan1.Init.DataTimeSeg1 = HYDRA_STACK_BUS_TIME_SEG1;
+    hfdcan1.Init.DataTimeSeg2 = HYDRA_STACK_BUS_TIME_SEG2;
     hfdcan1.Init.MessageRAMOffset = 0;
     hfdcan1.Init.StdFiltersNbr = 2;
     hfdcan1.Init.ExtFiltersNbr = 0;

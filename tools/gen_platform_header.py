@@ -12,7 +12,7 @@
 The header holds, for each profile, the SPI role of the link to the host, the owner of each peripheral, the bit timing of the stack bus and the regions of the memory map,
 and selects one profile with `HYDRA_PLATFORM` (`HYDRA_PLATFORM_H745` is the default, because that is what the sources build for today; `HYDRA_PLATFORM_H757` selects the
 board of production). `HYDRA_SPI_ROLE` may be set on the command line (`HYDRA_SPI_ROLE_MASTER` or `HYDRA_SPI_ROLE_SLAVE`) and otherwise follows the profile: master on the H757,
-slave on the H745 (the CM5 path). Nothing includes the header yet; it is the data the next phases of the firmware read. Evidence: simulator (the header is checked against the profiles)."""
+slave on the H745 (the CM5 path). The stack-bus timing of the CM4 sources is read from it. Evidence: simulator (the header is checked against the profiles)."""
 from __future__ import annotations
 
 import argparse

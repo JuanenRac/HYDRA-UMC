@@ -25,11 +25,19 @@ TIMING_FIELDS = {
 }
 
 
+def default_platform_numbers() -> dict[str, str]:
+    """The HYDRA_STACK_BUS_* numbers of the default platform (H745, what the contract describes) from the generated header."""
+    text = (ROOT / "src/mcu_stm32h757/Common/platform_profile.h").read_text(encoding="utf-8").replace(chr(13), "")
+    block = text.split("#if defined(HYDRA_PLATFORM_H745)" + chr(10), 1)[1].split("#elif defined(HYDRA_PLATFORM_H757)", 1)[0]
+    return {name: number.rstrip("UL") for name, number in re.findall(r"#define (HYDRA_STACK_BUS_\w+) (\w+)", block)}
+
+
 def can_inits(path: Path) -> dict[str, dict[str, str]]:
     """For each FDCAN handle initialised in a source, the Init fields it sets (as written)."""
     handles: dict[str, dict[str, str]] = {}
+    numbers = default_platform_numbers()
     for handle, field, value in re.findall(r"\b(hfdcan\d\w*)\.Init\.(\w+)\s*=\s*([^;]+);", path.read_text(encoding="utf-8")):
-        handles.setdefault(handle, {})[field] = value.strip()
+        handles.setdefault(handle, {})[field] = numbers.get(value.strip(), value.strip())
     return handles
 
 

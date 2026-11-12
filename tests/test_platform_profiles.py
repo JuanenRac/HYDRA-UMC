@@ -18,6 +18,9 @@ sys.path.insert(0, str(ROOT / "tools"))
 import platform_profile as pp  # noqa: E402
 
 
+HEADER_H745 = (ROOT / "src/mcu_stm32h757/Common/platform_profile.h").read_text(encoding="utf-8").split("#elif defined(HYDRA_PLATFORM_H757)", 1)[0]
+
+
 class PlatformProfileTests(unittest.TestCase):
     def setUp(self):
         self.document = pp.load()
@@ -45,9 +48,11 @@ class PlatformProfileTests(unittest.TestCase):
     def test_the_timing_of_today_is_the_one_of_the_sources(self):
         text = (ROOT / "src/mcu_stm32h757/CM4/KinematicBrainCan.c").read_text(encoding="utf-8")
         bus = pp.profile("h745_current")["stack_bus"]
-        for field, key in (("NominalPrescaler", "prescaler"), ("NominalSyncJumpWidth", "sync_jump_width"), ("NominalTimeSeg1", "time_segment_1"), ("NominalTimeSeg2", "time_segment_2")):
-            found = {int(v) for v in re.findall(rf"\.Init\.{field}\s*=\s*(\d+)\s*;", text)}
-            self.assertEqual(found, {bus[key]}, field)
+        for field, key, macro in (("NominalPrescaler", "prescaler", "PRESCALER"), ("NominalSyncJumpWidth", "sync_jump_width", "SYNC_JUMP_WIDTH"),
+                                  ("NominalTimeSeg1", "time_segment_1", "TIME_SEG1"), ("NominalTimeSeg2", "time_segment_2", "TIME_SEG2")):
+            found = set(re.findall(rf"\.Init\.{field}\s*=\s*(\w+)\s*;", text))
+            self.assertEqual(found, {f"HYDRA_STACK_BUS_{macro}"}, field)   # the source reads the profile header; the header carries the number of the profile
+            self.assertEqual(int(re.search(rf"#define HYDRA_STACK_BUS_{macro} (\d+)U", HEADER_H745).group(1)), bus[key], field)
 
     def test_the_cubemx_value_is_kept_and_is_the_half_rate_the_owner_corrected(self):
         p = self.document["profiles"]["h757_target"]
