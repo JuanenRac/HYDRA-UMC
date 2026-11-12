@@ -145,6 +145,38 @@ class SpecTests(unittest.TestCase):
         self.assertEqual({a[4:] for a in ids if a.startswith("nav_")}, set(m.SCREENS))
         self.assertEqual([sc["id"] for sc in self.spec["screens"]], list(m.SCREENS))
 
+    def test_the_panel_is_landscape_only_and_the_orientation_cannot_be_portrait(self):
+        self.assertEqual(self.spec["display"]["orientation"], "landscape")
+        self.assertEqual(self.spec["display"]["width"] > self.spec["display"]["height"], True)
+        spec = copy.deepcopy(self.spec)
+        spec["display"]["orientation"] = "portrait"
+        self.assertTrue(self.problems(spec))
+
+    def test_the_pin_pad_is_a_modal_screen_opened_by_the_banner_and_never_gates_stop(self):
+        unlock = next(sc for sc in self.spec["screens"] if sc["id"] == "unlock")
+        self.assertTrue(unlock["modal"])
+        self.assertNotIn("tab_unlock", {w["id"] for w in self.spec["global_widgets"]})
+        banner = next(w for w in self.spec["global_widgets"] if w["id"] == "banner")
+        self.assertEqual(banner["action"], "nav_unlock")
+        self.assertGreaterEqual(min(banner["rect"]["w"], banner["rect"]["h"]), self.spec["display"]["min_touch_px"])
+        digits = {w["action"] for w in unlock["widgets"] if w.get("action", "").startswith("pin_digit_")}
+        self.assertEqual(digits, {f"pin_digit_{n}" for n in range(10)})
+        by_id = {a["id"]: a for a in self.spec["actions"]}
+        for name in digits | {"pin_clear", "pin_enter"}:
+            self.assertEqual((by_id[name]["kind"], by_id[name]["requires"]), ("local", []))
+        self.assertEqual(by_id["stop"]["requires"], [])  # the PIN is never asked for the stop
+        spec = copy.deepcopy(self.spec)
+        next(sc for sc in spec["screens"] if sc["id"] == "unlock")["modal"] = False
+        self.assertTrue(any("tab" in p for p in self.problems(spec)))
+
+    def test_the_camera_screen_shows_a_still_thumbnail_that_needs_the_jetson(self):
+        camera = next(sc for sc in self.spec["screens"] if sc["id"] == "camera")
+        image = next(w for w in camera["widgets"] if w["kind"] == "image")
+        self.assertEqual(image["signal"], "jetson.camera_snapshot")
+        sig = next(x for x in self.spec["signals"] if x["id"] == "jetson.camera_snapshot")
+        self.assertEqual((sig["type"], sig["needs_jetson"], sig["contract_ref"]), ("image", True, "pending:jetson_snapshot"))
+        self.assertIn("shows it", self.spec["pending_contracts"]["jetson_snapshot"])
+
     def test_the_holds_of_the_actions_match_the_configuration(self):
         cfg = m.load_config()
         by_id = {a["id"]: a for a in self.spec["actions"]}

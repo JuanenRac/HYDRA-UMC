@@ -57,7 +57,7 @@
  "pending_contracts": {
   "brain_kinematics": "position and motion flags the kinematic brain publishes to its own interface; the structure is not fixed yet",
   "jetson_status": "the status frame the Jetson answers over the SPI link (safety verdict, CPU, temperature); the exchange is not fixed yet",
-  "jetson_snapshot": "a low-rate still image from the Jetson; not decided whether the screen shows one"
+  "jetson_snapshot": "a low-rate still image (thumbnail) from the Jetson; the screen shows it (decision of the owner) but the exchange over the SPI link is not fixed yet"
  },
  "signals": [
   {
@@ -131,6 +131,24 @@
    "max_age_ms": 0,
    "needs_jetson": false,
    "note": "language shown"
+  },
+  {
+   "id": "ui.locked",
+   "type": "bool",
+   "source": "derived",
+   "contract_ref": "local",
+   "max_age_ms": 0,
+   "needs_jetson": false,
+   "note": "the optional operator PIN is on and has not been given (STOP never asks for it)"
+  },
+  {
+   "id": "ui.pin_digits",
+   "type": "int",
+   "source": "local",
+   "contract_ref": "local",
+   "max_age_ms": 0,
+   "needs_jetson": false,
+   "note": "digits typed on the pad of the PIN (shown as dots; the digits never enter the view-model)"
   },
   {
    "id": "estop.latched",
@@ -283,7 +301,7 @@
    "contract_ref": "pending:jetson_snapshot",
    "max_age_ms": 5000,
    "needs_jetson": true,
-   "note": "low-rate still of a camera (the video stays on the Jetson)"
+   "note": "low-rate still image of a camera, a thumbnail of the picture (the video stays on the Jetson; decision of the owner: shown)"
   }
  ],
  "actions": [
@@ -468,6 +486,110 @@
    "hold_ms": 0,
    "requires": [],
    "note": "opens the screen"
+  },
+  {
+   "id": "nav_unlock",
+   "kind": "nav",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "opens the screen"
+  },
+  {
+   "id": "pin_digit_0",
+   "kind": "local",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "types a digit of the operator PIN; the port checks the PIN and tells the view-model right or wrong"
+  },
+  {
+   "id": "pin_digit_1",
+   "kind": "local",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "types a digit of the operator PIN; the port checks the PIN and tells the view-model right or wrong"
+  },
+  {
+   "id": "pin_digit_2",
+   "kind": "local",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "types a digit of the operator PIN; the port checks the PIN and tells the view-model right or wrong"
+  },
+  {
+   "id": "pin_digit_3",
+   "kind": "local",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "types a digit of the operator PIN; the port checks the PIN and tells the view-model right or wrong"
+  },
+  {
+   "id": "pin_digit_4",
+   "kind": "local",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "types a digit of the operator PIN; the port checks the PIN and tells the view-model right or wrong"
+  },
+  {
+   "id": "pin_digit_5",
+   "kind": "local",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "types a digit of the operator PIN; the port checks the PIN and tells the view-model right or wrong"
+  },
+  {
+   "id": "pin_digit_6",
+   "kind": "local",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "types a digit of the operator PIN; the port checks the PIN and tells the view-model right or wrong"
+  },
+  {
+   "id": "pin_digit_7",
+   "kind": "local",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "types a digit of the operator PIN; the port checks the PIN and tells the view-model right or wrong"
+  },
+  {
+   "id": "pin_digit_8",
+   "kind": "local",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "types a digit of the operator PIN; the port checks the PIN and tells the view-model right or wrong"
+  },
+  {
+   "id": "pin_digit_9",
+   "kind": "local",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "types a digit of the operator PIN; the port checks the PIN and tells the view-model right or wrong"
+  },
+  {
+   "id": "pin_clear",
+   "kind": "local",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "clears the digits typed"
+  },
+  {
+   "id": "pin_enter",
+   "kind": "local",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "gives the typed PIN to the port to be checked"
   }
  ],
  "global_widgets": [
@@ -523,6 +645,7 @@
    "id": "banner",
    "kind": "banner",
    "signal": "ui.banner",
+   "action": "nav_unlock",
    "rect": {
     "x": 16,
     "y": 620,
@@ -888,7 +1011,7 @@
     {
      "id": "cam_note",
      "kind": "text",
-     "label_key": "cam.needs_jetson",
+     "label_key": "cam.thumbnail_hint",
      "rect": {
       "x": 848,
       "y": 152,
@@ -1165,6 +1288,205 @@
       "h": 96
      },
      "value_signal": "ui.language"
+    }
+   ]
+  },
+  {
+   "id": "unlock",
+   "title_key": "lock.title",
+   "needs_jetson": false,
+   "modal": true,
+   "widgets": [
+    {
+     "id": "pin_1",
+     "kind": "button",
+     "label_key": "pin.digit_1",
+     "action": "pin_digit_1",
+     "rect": {
+      "x": 24,
+      "y": 152,
+      "w": 160,
+      "h": 96
+     }
+    },
+    {
+     "id": "pin_2",
+     "kind": "button",
+     "label_key": "pin.digit_2",
+     "action": "pin_digit_2",
+     "rect": {
+      "x": 200,
+      "y": 152,
+      "w": 160,
+      "h": 96
+     }
+    },
+    {
+     "id": "pin_3",
+     "kind": "button",
+     "label_key": "pin.digit_3",
+     "action": "pin_digit_3",
+     "rect": {
+      "x": 376,
+      "y": 152,
+      "w": 160,
+      "h": 96
+     }
+    },
+    {
+     "id": "pin_4",
+     "kind": "button",
+     "label_key": "pin.digit_4",
+     "action": "pin_digit_4",
+     "rect": {
+      "x": 24,
+      "y": 260,
+      "w": 160,
+      "h": 96
+     }
+    },
+    {
+     "id": "pin_5",
+     "kind": "button",
+     "label_key": "pin.digit_5",
+     "action": "pin_digit_5",
+     "rect": {
+      "x": 200,
+      "y": 260,
+      "w": 160,
+      "h": 96
+     }
+    },
+    {
+     "id": "pin_6",
+     "kind": "button",
+     "label_key": "pin.digit_6",
+     "action": "pin_digit_6",
+     "rect": {
+      "x": 376,
+      "y": 260,
+      "w": 160,
+      "h": 96
+     }
+    },
+    {
+     "id": "pin_7",
+     "kind": "button",
+     "label_key": "pin.digit_7",
+     "action": "pin_digit_7",
+     "rect": {
+      "x": 24,
+      "y": 368,
+      "w": 160,
+      "h": 96
+     }
+    },
+    {
+     "id": "pin_8",
+     "kind": "button",
+     "label_key": "pin.digit_8",
+     "action": "pin_digit_8",
+     "rect": {
+      "x": 200,
+      "y": 368,
+      "w": 160,
+      "h": 96
+     }
+    },
+    {
+     "id": "pin_9",
+     "kind": "button",
+     "label_key": "pin.digit_9",
+     "action": "pin_digit_9",
+     "rect": {
+      "x": 376,
+      "y": 368,
+      "w": 160,
+      "h": 96
+     }
+    },
+    {
+     "id": "pin_0",
+     "kind": "button",
+     "label_key": "pin.digit_0",
+     "action": "pin_digit_0",
+     "rect": {
+      "x": 200,
+      "y": 476,
+      "w": 160,
+      "h": 96
+     }
+    },
+    {
+     "id": "pin_clear_b",
+     "kind": "button",
+     "label_key": "pin.clear",
+     "action": "pin_clear",
+     "rect": {
+      "x": 24,
+      "y": 476,
+      "w": 160,
+      "h": 96
+     }
+    },
+    {
+     "id": "pin_enter_b",
+     "kind": "button",
+     "label_key": "pin.enter",
+     "action": "pin_enter",
+     "rect": {
+      "x": 376,
+      "y": 476,
+      "w": 160,
+      "h": 96
+     }
+    },
+    {
+     "id": "pin_entry",
+     "kind": "value",
+     "label_key": "pin.entry",
+     "signal": "ui.pin_digits",
+     "rect": {
+      "x": 600,
+      "y": 152,
+      "w": 400,
+      "h": 96
+     }
+    },
+    {
+     "id": "pin_state",
+     "kind": "led",
+     "label_key": "lock.title",
+     "signal": "ui.locked",
+     "rect": {
+      "x": 600,
+      "y": 264,
+      "w": 400,
+      "h": 96
+     }
+    },
+    {
+     "id": "pin_hint",
+     "kind": "text",
+     "label_key": "lock.hint",
+     "rect": {
+      "x": 600,
+      "y": 376,
+      "w": 656,
+      "h": 90
+     }
+    },
+    {
+     "id": "pin_close",
+     "kind": "button",
+     "label_key": "nav.dashboard",
+     "action": "nav_dashboard",
+     "rect": {
+      "x": 1040,
+      "y": 476,
+      "w": 216,
+      "h": 96
+     }
     }
    ]
   }

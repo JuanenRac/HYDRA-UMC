@@ -26,24 +26,26 @@ typedef enum {
     UI_SIG_UI_ALARM_COUNT = 5,
     UI_SIG_UI_ALARM_LIST = 6,
     UI_SIG_UI_LANGUAGE = 7,
-    UI_SIG_ESTOP_LATCHED = 8,
-    UI_SIG_STACK_CAN_STATE = 9,
-    UI_SIG_STACK_CAN_TX_ERRORS = 10,
-    UI_SIG_STACK_CAN_RX_ERRORS = 11,
-    UI_SIG_ROBOT_MOVING = 12,
-    UI_SIG_ROBOT_X_MM = 13,
-    UI_SIG_ROBOT_Y_MM = 14,
-    UI_SIG_ROBOT_Z_MM = 15,
-    UI_SIG_MCU_TEMPERATURE_C = 16,
-    UI_SIG_MCU_UPTIME_S = 17,
-    UI_SIG_JETSON_LINK = 18,
-    UI_SIG_JETSON_AGE_MS = 19,
-    UI_SIG_JETSON_SPI_ERRORS = 20,
-    UI_SIG_JETSON_SAFETY_LEVEL = 21,
-    UI_SIG_JETSON_CPU_LOAD_PCT = 22,
-    UI_SIG_JETSON_TEMPERATURE_C = 23,
-    UI_SIG_JETSON_CAMERA_SNAPSHOT = 24,
-    UI_SIG_COUNT = 25
+    UI_SIG_UI_LOCKED = 8,
+    UI_SIG_UI_PIN_DIGITS = 9,
+    UI_SIG_ESTOP_LATCHED = 10,
+    UI_SIG_STACK_CAN_STATE = 11,
+    UI_SIG_STACK_CAN_TX_ERRORS = 12,
+    UI_SIG_STACK_CAN_RX_ERRORS = 13,
+    UI_SIG_ROBOT_MOVING = 14,
+    UI_SIG_ROBOT_X_MM = 15,
+    UI_SIG_ROBOT_Y_MM = 16,
+    UI_SIG_ROBOT_Z_MM = 17,
+    UI_SIG_MCU_TEMPERATURE_C = 18,
+    UI_SIG_MCU_UPTIME_S = 19,
+    UI_SIG_JETSON_LINK = 20,
+    UI_SIG_JETSON_AGE_MS = 21,
+    UI_SIG_JETSON_SPI_ERRORS = 22,
+    UI_SIG_JETSON_SAFETY_LEVEL = 23,
+    UI_SIG_JETSON_CPU_LOAD_PCT = 24,
+    UI_SIG_JETSON_TEMPERATURE_C = 25,
+    UI_SIG_JETSON_CAMERA_SNAPSHOT = 26,
+    UI_SIG_COUNT = 27
 } ui_signal_id_t;
 
 typedef struct { uint8_t type; uint8_t source; uint8_t needs_jetson; uint16_t max_age_ms; } ui_signal_info_t;
@@ -56,6 +58,8 @@ static const ui_signal_info_t ui_signals[UI_SIG_COUNT] = {
     {1, 4, 0, 0}, /* ui.alarm_count */
     {4, 4, 0, 0}, /* ui.alarm_list */
     {3, 3, 0, 0}, /* ui.language */
+    {0, 4, 0, 0}, /* ui.locked */
+    {1, 3, 0, 0}, /* ui.pin_digits */
     {0, 0, 0, 100}, /* estop.latched */
     {3, 0, 0, 2000}, /* stack.can_state */
     {1, 0, 0, 2000}, /* stack.can_tx_errors */
@@ -97,7 +101,20 @@ typedef enum {
     UI_ACTID_NAV_SYSTEM = 17,
     UI_ACTID_NAV_ALARMS = 18,
     UI_ACTID_NAV_SETTINGS = 19,
-    UI_ACTID_COUNT = 20
+    UI_ACTID_NAV_UNLOCK = 20,
+    UI_ACTID_PIN_DIGIT_0 = 21,
+    UI_ACTID_PIN_DIGIT_1 = 22,
+    UI_ACTID_PIN_DIGIT_2 = 23,
+    UI_ACTID_PIN_DIGIT_3 = 24,
+    UI_ACTID_PIN_DIGIT_4 = 25,
+    UI_ACTID_PIN_DIGIT_5 = 26,
+    UI_ACTID_PIN_DIGIT_6 = 27,
+    UI_ACTID_PIN_DIGIT_7 = 28,
+    UI_ACTID_PIN_DIGIT_8 = 29,
+    UI_ACTID_PIN_DIGIT_9 = 30,
+    UI_ACTID_PIN_CLEAR = 31,
+    UI_ACTID_PIN_ENTER = 32,
+    UI_ACTID_COUNT = 33
 } ui_action_id_t;
 
 typedef struct { uint16_t x, y, w, h; uint8_t kind, signal, value_signal, action; uint16_t label, hint, unit; uint8_t flags; } ui_widget_t;
@@ -106,10 +123,10 @@ typedef struct { uint16_t title; uint8_t needs_jetson; uint8_t count; const ui_w
 #define UI_GLOBAL_WIDGET_COUNT 14
 static const ui_widget_t ui_global_widgets[UI_GLOBAL_WIDGET_COUNT] = {
     {16, 8, 260, 40, UI_WK_VALUE, 0, 255, 255, 56, 65535, 65535, 0}, /* status_mode */
-    {292, 8, 320, 40, UI_WK_LED, 18, 255, 255, 17, 65535, 65535, 0}, /* status_jetson */
-    {628, 8, 380, 40, UI_WK_LED, 9, 255, 255, 8, 65535, 65535, 0}, /* status_bus */
+    {292, 8, 320, 40, UI_WK_LED, 20, 255, 255, 17, 65535, 65535, 0}, /* status_jetson */
+    {628, 8, 380, 40, UI_WK_LED, 11, 255, 255, 8, 65535, 65535, 0}, /* status_bus */
     {1024, 8, 240, 40, UI_WK_VALUE, 5, 255, 255, 6, 65535, 65535, 0}, /* status_alarms */
-    {16, 620, 960, 92, UI_WK_BANNER, 1, 255, 255, 65535, 65535, 65535, 0}, /* banner */
+    {16, 620, 960, 92, UI_WK_BANNER, 1, 255, 20, 65535, 65535, 65535, 0}, /* banner */
     {992, 620, 272, 92, UI_WK_BUTTON, 255, 255, 0, 9, 65535, 65535, 0}, /* stop_button */
     {0, 56, 160, 80, UI_WK_TAB, 255, 255, 12, 0, 65535, 65535, 0}, /* tab_dashboard */
     {160, 56, 160, 80, UI_WK_TAB, 255, 255, 13, 1, 65535, 65535, 0}, /* tab_control */
@@ -123,17 +140,17 @@ static const ui_widget_t ui_global_widgets[UI_GLOBAL_WIDGET_COUNT] = {
 
 static const ui_widget_t ui_widgets_dashboard[7] = {
     {24, 152, 600, 80, UI_WK_VALUE, 0, 255, 255, 56, 65535, 65535, 0}, /* dash_mode */
-    {656, 152, 600, 80, UI_WK_LED, 8, 255, 255, 57, 65535, 65535, 0}, /* dash_estop */
-    {24, 248, 600, 80, UI_WK_LED, 18, 255, 255, 17, 65535, 65535, 0}, /* dash_jetson */
-    {656, 248, 600, 80, UI_WK_LED, 9, 255, 255, 18, 65535, 65535, 0}, /* dash_bus */
+    {656, 152, 600, 80, UI_WK_LED, 10, 255, 255, 57, 65535, 65535, 0}, /* dash_estop */
+    {24, 248, 600, 80, UI_WK_LED, 20, 255, 255, 17, 65535, 65535, 0}, /* dash_jetson */
+    {656, 248, 600, 80, UI_WK_LED, 11, 255, 255, 18, 65535, 65535, 0}, /* dash_bus */
     {24, 344, 600, 80, UI_WK_VALUE, 5, 255, 255, 58, 65535, 65535, 0}, /* dash_alarms */
-    {656, 344, 600, 80, UI_WK_VALUE, 21, 255, 255, 60, 65535, 65535, 0}, /* dash_safety */
-    {24, 440, 600, 80, UI_WK_VALUE, 17, 255, 255, 59, 65535, 95, 0}, /* dash_uptime */
+    {656, 344, 600, 80, UI_WK_VALUE, 23, 255, 255, 60, 65535, 65535, 0}, /* dash_safety */
+    {24, 440, 600, 80, UI_WK_VALUE, 19, 255, 255, 59, 65535, 118, 0}, /* dash_uptime */
 };
 
 static const ui_widget_t ui_widgets_control[10] = {
     {24, 152, 360, 96, UI_WK_BUTTON, 255, 255, 2, 36, 65535, 65535, 0}, /* ctl_arm */
-    {416, 152, 400, 96, UI_WK_VALUE, 3, 4, 255, 36, 65535, 95, 0}, /* ctl_armed */
+    {416, 152, 400, 96, UI_WK_VALUE, 3, 4, 255, 36, 65535, 118, 0}, /* ctl_armed */
     {848, 152, 408, 96, UI_WK_BUTTON, 255, 255, 1, 34, 65535, 65535, 1}, /* ctl_release */
     {24, 264, 256, 96, UI_WK_BUTTON, 255, 255, 3, 42, 65535, 65535, 2}, /* jog_x_plus */
     {24, 376, 256, 96, UI_WK_BUTTON, 255, 255, 4, 43, 65535, 65535, 2}, /* jog_x_minus */
@@ -141,36 +158,36 @@ static const ui_widget_t ui_widgets_control[10] = {
     {296, 376, 256, 96, UI_WK_BUTTON, 255, 255, 6, 45, 65535, 65535, 2}, /* jog_y_minus */
     {568, 264, 256, 96, UI_WK_BUTTON, 255, 255, 7, 46, 65535, 65535, 2}, /* jog_z_plus */
     {568, 376, 256, 96, UI_WK_BUTTON, 255, 255, 8, 47, 65535, 65535, 2}, /* jog_z_minus */
-    {880, 264, 376, 96, UI_WK_VALUE, 12, 255, 255, 66, 65535, 65535, 0}, /* ctl_moving */
+    {880, 264, 376, 96, UI_WK_VALUE, 14, 255, 255, 66, 65535, 65535, 0}, /* ctl_moving */
 };
 
 static const ui_widget_t ui_widgets_camera[2] = {
-    {24, 152, 800, 450, UI_WK_IMAGE, 24, 255, 255, 62, 65535, 65535, 0}, /* cam_view */
-    {848, 152, 408, 200, UI_WK_TEXT, 255, 255, 255, 61, 65535, 65535, 0}, /* cam_note */
+    {24, 152, 800, 450, UI_WK_IMAGE, 26, 255, 255, 62, 65535, 65535, 0}, /* cam_view */
+    {848, 152, 408, 200, UI_WK_TEXT, 255, 255, 255, 107, 65535, 65535, 0}, /* cam_note */
 };
 
 static const ui_widget_t ui_widgets_position[4] = {
-    {24, 168, 400, 96, UI_WK_VALUE, 13, 255, 255, 63, 65535, 96, 0}, /* pos_x */
-    {24, 280, 400, 96, UI_WK_VALUE, 14, 255, 255, 64, 65535, 96, 0}, /* pos_y */
-    {24, 392, 400, 96, UI_WK_VALUE, 15, 255, 255, 65, 65535, 96, 0}, /* pos_z */
-    {456, 168, 400, 96, UI_WK_LED, 12, 255, 255, 66, 65535, 65535, 0}, /* pos_moving */
+    {24, 168, 400, 96, UI_WK_VALUE, 15, 255, 255, 63, 65535, 119, 0}, /* pos_x */
+    {24, 280, 400, 96, UI_WK_VALUE, 16, 255, 255, 64, 65535, 119, 0}, /* pos_y */
+    {24, 392, 400, 96, UI_WK_VALUE, 17, 255, 255, 65, 65535, 119, 0}, /* pos_z */
+    {456, 168, 400, 96, UI_WK_LED, 14, 255, 255, 66, 65535, 65535, 0}, /* pos_moving */
 };
 
 static const ui_widget_t ui_widgets_metrics[7] = {
-    {24, 152, 600, 64, UI_WK_VALUE, 16, 255, 255, 67, 65535, 65535, 0}, /* met_temp */
-    {24, 232, 600, 64, UI_WK_VALUE, 10, 255, 255, 68, 65535, 65535, 0}, /* met_tx */
-    {24, 312, 600, 64, UI_WK_VALUE, 11, 255, 255, 69, 65535, 65535, 0}, /* met_rx */
-    {24, 392, 600, 64, UI_WK_VALUE, 20, 255, 255, 70, 65535, 65535, 0}, /* met_spi */
-    {656, 152, 600, 64, UI_WK_VALUE, 19, 255, 255, 71, 65535, 65535, 0}, /* met_age */
-    {656, 232, 600, 64, UI_WK_VALUE, 22, 255, 255, 72, 65535, 65535, 0}, /* met_jcpu */
-    {656, 312, 600, 64, UI_WK_VALUE, 23, 255, 255, 73, 65535, 65535, 0}, /* met_jtemp */
+    {24, 152, 600, 64, UI_WK_VALUE, 18, 255, 255, 67, 65535, 65535, 0}, /* met_temp */
+    {24, 232, 600, 64, UI_WK_VALUE, 12, 255, 255, 68, 65535, 65535, 0}, /* met_tx */
+    {24, 312, 600, 64, UI_WK_VALUE, 13, 255, 255, 69, 65535, 65535, 0}, /* met_rx */
+    {24, 392, 600, 64, UI_WK_VALUE, 22, 255, 255, 70, 65535, 65535, 0}, /* met_spi */
+    {656, 152, 600, 64, UI_WK_VALUE, 21, 255, 255, 71, 65535, 65535, 0}, /* met_age */
+    {656, 232, 600, 64, UI_WK_VALUE, 24, 255, 255, 72, 65535, 65535, 0}, /* met_jcpu */
+    {656, 312, 600, 64, UI_WK_VALUE, 25, 255, 255, 73, 65535, 65535, 0}, /* met_jtemp */
 };
 
 static const ui_widget_t ui_widgets_system[4] = {
-    {24, 152, 800, 80, UI_WK_VALUE, 21, 255, 255, 74, 65535, 65535, 0}, /* sys_level */
-    {24, 248, 800, 80, UI_WK_LED, 18, 255, 255, 17, 65535, 65535, 0}, /* sys_jetson */
-    {24, 344, 800, 80, UI_WK_LED, 9, 255, 255, 18, 65535, 65535, 0}, /* sys_bus */
-    {24, 440, 800, 80, UI_WK_LED, 8, 255, 255, 57, 65535, 65535, 0}, /* sys_estop */
+    {24, 152, 800, 80, UI_WK_VALUE, 23, 255, 255, 74, 65535, 65535, 0}, /* sys_level */
+    {24, 248, 800, 80, UI_WK_LED, 20, 255, 255, 17, 65535, 65535, 0}, /* sys_jetson */
+    {24, 344, 800, 80, UI_WK_LED, 11, 255, 255, 18, 65535, 65535, 0}, /* sys_bus */
+    {24, 440, 800, 80, UI_WK_LED, 10, 255, 255, 57, 65535, 65535, 0}, /* sys_estop */
 };
 
 static const ui_widget_t ui_widgets_alarms[2] = {
@@ -183,7 +200,26 @@ static const ui_widget_t ui_widgets_settings[2] = {
     {24, 280, 400, 96, UI_WK_BUTTON, 255, 7, 11, 39, 65535, 65535, 0}, /* set_lang */
 };
 
-#define UI_SCREEN_TABLE_COUNT 8
+static const ui_widget_t ui_widgets_unlock[16] = {
+    {24, 152, 160, 96, UI_WK_BUTTON, 255, 255, 22, 109, 65535, 65535, 0}, /* pin_1 */
+    {200, 152, 160, 96, UI_WK_BUTTON, 255, 255, 23, 110, 65535, 65535, 0}, /* pin_2 */
+    {376, 152, 160, 96, UI_WK_BUTTON, 255, 255, 24, 111, 65535, 65535, 0}, /* pin_3 */
+    {24, 260, 160, 96, UI_WK_BUTTON, 255, 255, 25, 112, 65535, 65535, 0}, /* pin_4 */
+    {200, 260, 160, 96, UI_WK_BUTTON, 255, 255, 26, 113, 65535, 65535, 0}, /* pin_5 */
+    {376, 260, 160, 96, UI_WK_BUTTON, 255, 255, 27, 114, 65535, 65535, 0}, /* pin_6 */
+    {24, 368, 160, 96, UI_WK_BUTTON, 255, 255, 28, 115, 65535, 65535, 0}, /* pin_7 */
+    {200, 368, 160, 96, UI_WK_BUTTON, 255, 255, 29, 116, 65535, 65535, 0}, /* pin_8 */
+    {376, 368, 160, 96, UI_WK_BUTTON, 255, 255, 30, 117, 65535, 65535, 0}, /* pin_9 */
+    {200, 476, 160, 96, UI_WK_BUTTON, 255, 255, 21, 108, 65535, 65535, 0}, /* pin_0 */
+    {24, 476, 160, 96, UI_WK_BUTTON, 255, 255, 31, 105, 65535, 65535, 0}, /* pin_clear_b */
+    {376, 476, 160, 96, UI_WK_BUTTON, 255, 255, 32, 104, 65535, 65535, 0}, /* pin_enter_b */
+    {600, 152, 400, 96, UI_WK_VALUE, 9, 255, 255, 106, 65535, 65535, 0}, /* pin_entry */
+    {600, 264, 400, 96, UI_WK_LED, 8, 255, 255, 97, 65535, 65535, 0}, /* pin_state */
+    {600, 376, 656, 90, UI_WK_TEXT, 255, 255, 255, 98, 65535, 65535, 0}, /* pin_hint */
+    {1040, 476, 216, 96, UI_WK_BUTTON, 255, 255, 12, 0, 65535, 65535, 0}, /* pin_close */
+};
+
+#define UI_SCREEN_TABLE_COUNT 9
 static const ui_screen_t ui_screens[UI_SCREEN_TABLE_COUNT] = {
     {0, 0, 7, ui_widgets_dashboard}, /* dashboard */
     {1, 0, 10, ui_widgets_control}, /* control */
@@ -193,6 +229,7 @@ static const ui_screen_t ui_screens[UI_SCREEN_TABLE_COUNT] = {
     {5, 0, 4, ui_widgets_system}, /* system */
     {6, 0, 2, ui_widgets_alarms}, /* alarms */
     {7, 0, 2, ui_widgets_settings}, /* settings */
+    {97, 0, 16, ui_widgets_unlock}, /* unlock */
 };
 
 #endif /* UI_SCREENS_H */

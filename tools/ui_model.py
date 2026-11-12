@@ -26,11 +26,11 @@ CFG_PATH = ROOT / "config" / "ui.cfg"
 MODES = ("boot", "normal", "degraded", "alarm", "stopped")
 LINKS = ("starting", "ok", "silent", "spi_fault")
 BUSES = ("ok", "warn", "off")
-BANNERS = ("normal", "boot", "degraded", "spi_fault", "bus_off", "stopped", "listen_only", "alarm", "stop_unconfirmed")
-SCREENS = ("dashboard", "control", "camera", "position", "metrics", "system", "alarms", "settings")
+BANNERS = ("normal", "boot", "degraded", "spi_fault", "bus_off", "stopped", "listen_only", "alarm", "stop_unconfirmed", "locked")
+SCREENS = ("dashboard", "control", "camera", "position", "metrics", "system", "alarms", "settings", "unlock")
 ZONE_LEVELS = ("ready", "warning", "danger", "inhibited", "fault", "unknown")
 ZONE_UNKNOWN = 5
-REFUSALS = ("listen_only", "not_stopped", "stopped", "degraded", "bus_fault", "not_armed", "alarm", "starting")
+REFUSALS = ("listen_only", "not_stopped", "stopped", "degraded", "bus_fault", "not_armed", "alarm", "starting", "locked")
 ACTIONS = ("stop", "release", "jog_arm", "jog_x_plus", "jog_x_minus", "jog_y_plus", "jog_y_minus", "jog_z_plus", "jog_z_minus", "ack_alarm", "toggle_listen_only",
            "next_language")
 A_STOP, A_RELEASE, A_JOG_ARM, A_JOG_FIRST, A_JOG_LAST, A_ACK, A_LISTEN, A_LANG = 0, 1, 2, 3, 8, 9, 10, 11
@@ -42,11 +42,12 @@ ALARMS = (("jetson_lost", 1), ("spi_link", 1), ("can_errors", 1), ("can_bus_off"
 (AL_JETSON, AL_SPI, AL_CAN_ERR, AL_CAN_OFF, AL_STOP_UNCONF, AL_MOTION, AL_ZONE_WARN, AL_ZONE_DANGER, AL_ZONE_INHIBIT, AL_ZONE_FAULT) = range(10)
 
 CONFIG_FIELDS = ("jetson_timeout_ms", "jetson_boot_grace_ms", "spi_fault_after_errors", "stop_confirm_ms", "stop_motion_ms", "release_hold_ms", "listen_off_hold_ms",
-                 "jog_arm_ms", "can_warn_errors", "degraded_allow_release", "degraded_allow_motion")
+                 "jog_arm_ms", "can_warn_errors", "degraded_allow_release", "degraded_allow_motion", "operator_pin_enabled", "pin_max_failures", "pin_lockout_ms", "pin_idle_ms")
 CONFIG_LIMITS = {
     "jetson_timeout_ms": (200, 60000), "jetson_boot_grace_ms": (0, 600000), "spi_fault_after_errors": (1, 1000), "stop_confirm_ms": (50, 10000),
     "stop_motion_ms": (50, 60000), "release_hold_ms": (500, 5000), "listen_off_hold_ms": (500, 5000), "jog_arm_ms": (1000, 60000),
-    "can_warn_errors": (1, 255), "degraded_allow_release": (0, 1), "degraded_allow_motion": (0, 1),
+    "can_warn_errors": (1, 255), "degraded_allow_release": (0, 1), "degraded_allow_motion": (0, 1), "operator_pin_enabled": (0, 1), "pin_max_failures": (1, 10),
+    "pin_lockout_ms": (1000, 600000), "pin_idle_ms": (5000, 3600000),
 }
 
 
@@ -85,7 +86,8 @@ def core_text_keys() -> set[str]:
     keys = {f"mode.{name}" for name in MODES} | {f"banner.{name}" for name in BANNERS} | {f"refused.{name}" for name in REFUSALS}
     keys |= {f"alarm.{name}" for name, _ in ALARMS} | {f"level.{name}" for name in ZONE_LEVELS}
     keys |= {"link.ok", "link.starting", "link.silent", "link.spi_fault", "link.bus_warn", "link.bus_off", "stop.sent", "stop.latched", "alarm.none",
-             "hint.hold_to_confirm", "action.jog_armed", "action.jog_not_armed", "settings.language_name", "sys.not_confirmed"}
+             "hint.hold_to_confirm", "action.jog_armed", "action.jog_not_armed", "settings.language_name", "sys.not_confirmed", "cam.needs_jetson",
+             "lock.wrong_pin", "lock.locked_out", "lock.state_locked", "lock.state_open", "lock.state_off"}
     return keys
 
 
@@ -113,6 +115,10 @@ class State:
     hold_action: int = -1
     hold_start: int = 0
     acked: int = 0
+    pin_unlocked: bool = False
+    pin_failures: int = 0
+    pin_lockout_until: int = 0
+    last_touch: int = 0
     # derived after every event
     link: int = 0
     bus: int = 0
@@ -123,6 +129,10 @@ class State:
     effects: list[str] = field(default_factory=list)
 
     # ------------------------------------------------------------ derived values
+    def locked(self) -> bool:
+        """The operator PIN is on and has not been given (or has expired). STOP never asks for it."""
+        return bool(self.cfg["operator_pin_enabled"]) and not self.pin_unlocked
+
     def jog_armed(self) -> bool:
         return self.jog_armed_until != 0 and self.now < self.jog_armed_until
 
@@ -190,6 +200,8 @@ class State:
             return 3
         if self.link == 0:
             return 1
+        if self.locked():
+            return 9
         if self.listen_only:
             return 6
         return 0
@@ -199,6 +211,8 @@ class State:
         """Why nothing may move now, or None."""
         if self.listen_only:
             return 0
+        if self.locked():
+            return 8
         if self.mode == 4:
             return 2
         if self.mode == 0:
@@ -216,6 +230,8 @@ class State:
         if action == A_RELEASE:
             if self.listen_only:
                 return 0
+            if self.locked():
+                return 8
             if self.bus == 2:
                 return 4
             if not self.latched:
@@ -236,6 +252,9 @@ class State:
 
     def _derive(self) -> None:
         before = self.alarms
+        if self.cfg["operator_pin_enabled"] and self.pin_unlocked and self.now - self.last_touch >= self.cfg["pin_idle_ms"]:
+            self.pin_unlocked = False
+            self.effects.append("locked")
         self.link = self._link()
         self.bus = self._bus()
         self.alarms = self._alarm_mask()
@@ -289,10 +308,16 @@ class State:
         elif name == "NAV":
             if 0 <= args[0] < len(SCREENS):
                 self.screen = args[0]
+        elif name == "PIN_OK":
+            self._pin_ok()
+        elif name == "PIN_BAD":
+            self._pin_bad()
         elif name == "DOWN":
-            self._derive()  # a touch is judged against the state of this moment, not of the last event
+            self._derive()
+            self.last_touch = self.now  # a touch is judged against the state of this moment, not of the last event
             self._down(args[0])
         elif name == "UP":
+            self.last_touch = self.now
             if 0 <= args[0] < len(ACTIONS) and self.hold_action == args[0]:
                 self.hold_action = -1
                 self.effects.append("hold_cancel")
@@ -340,7 +365,9 @@ class State:
             self.effects.append(f"lang:{self.language}")
             return
         if action == A_LISTEN:
-            if self.listen_only:
+            if self.listen_only and self.locked():
+                self.effects.append("refused:toggle_listen_only:locked")
+            elif self.listen_only:
                 self.hold_action, self.hold_start = A_LISTEN, self.now
             else:
                 self.listen_only = True
@@ -360,12 +387,34 @@ class State:
         else:
             self.effects.append("jog:" + ACTIONS[action][4:])
 
+    def _pin_ok(self) -> None:
+        """The port says the PIN typed was right. Ignored while a lock-out lasts or when the PIN is off."""
+        if not self.cfg["operator_pin_enabled"] or self.now < self.pin_lockout_until:
+            return
+        self.pin_failures = 0
+        self.last_touch = self.now
+        if not self.pin_unlocked:
+            self.pin_unlocked = True
+            self.effects.append("unlocked")
+
+    def _pin_bad(self) -> None:
+        """The port says the PIN typed was wrong: after pin_max_failures in a row the pad is locked out for pin_lockout_ms."""
+        if not self.cfg["operator_pin_enabled"] or self.now < self.pin_lockout_until:
+            return
+        self.pin_failures += 1
+        if self.pin_failures >= self.cfg["pin_max_failures"]:
+            self.pin_failures = 0
+            self.pin_lockout_until = self.now + self.cfg["pin_lockout_ms"]
+            self.effects.append("pin_lockout")
+        else:
+            self.effects.append("pin_wrong")
+
     # ------------------------------------------------------------ the line of the trace (the twin in C prints the same)
     def trace(self, now: int, name: str) -> str:
         hold = ACTIONS[self.hold_action] if self.hold_action >= 0 else "-"
         unacked = self.alarms & ~self.acked
         effects = ",".join(self.effects) if self.effects else "-"
-        return (f"t={now} ev={name} mode={MODES[self.mode]} link={LINKS[self.link]} bus={BUSES[self.bus]} lo={int(self.listen_only)} scr={self.screen} "
+        return (f"t={now} ev={name} mode={MODES[self.mode]} link={LINKS[self.link]} bus={BUSES[self.bus]} lo={int(self.listen_only)} lk={int(self.locked())} scr={self.screen} "
                 f"al={self.alarms:03x} un={unacked:03x} arm={int(self.jog_armed())} stop={int(self.latched)}{int(self.stop_pending)} hold={hold} "
                 f"ban={BANNERS[self.banner]} caps={self.caps:04x} fx={effects}")
 

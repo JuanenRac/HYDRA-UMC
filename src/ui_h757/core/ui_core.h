@@ -25,7 +25,7 @@ typedef enum { UI_LINK_STARTING = 0, UI_LINK_OK, UI_LINK_SILENT, UI_LINK_SPI_FAU
 typedef enum { UI_BUS_OK = 0, UI_BUS_WARN, UI_BUS_OFF } ui_bus_t;
 typedef enum {
     UI_BANNER_NORMAL = 0, UI_BANNER_BOOT, UI_BANNER_DEGRADED, UI_BANNER_SPI_FAULT, UI_BANNER_BUS_OFF, UI_BANNER_STOPPED, UI_BANNER_LISTEN_ONLY, UI_BANNER_ALARM,
-    UI_BANNER_STOP_UNCONFIRMED
+    UI_BANNER_STOP_UNCONFIRMED, UI_BANNER_LOCKED
 } ui_banner_t;
 
 typedef enum {
@@ -35,7 +35,7 @@ typedef enum {
 
 typedef enum {
     UI_REFUSED_LISTEN_ONLY = 0, UI_REFUSED_NOT_STOPPED, UI_REFUSED_STOPPED, UI_REFUSED_DEGRADED, UI_REFUSED_BUS_FAULT, UI_REFUSED_NOT_ARMED, UI_REFUSED_ALARM,
-    UI_REFUSED_STARTING
+    UI_REFUSED_STARTING, UI_REFUSED_LOCKED
 } ui_refusal_t;
 
 typedef enum {
@@ -44,7 +44,7 @@ typedef enum {
 } ui_alarm_t;
 
 typedef enum {
-    UI_EV_TICK = 0, UI_EV_HEARTBEAT, UI_EV_SPI_ERROR, UI_EV_SPI_OK, UI_EV_CAN, UI_EV_ESTOP, UI_EV_MOTION, UI_EV_NAV, UI_EV_TOUCH_DOWN, UI_EV_TOUCH_UP
+    UI_EV_TICK = 0, UI_EV_HEARTBEAT, UI_EV_SPI_ERROR, UI_EV_SPI_OK, UI_EV_CAN, UI_EV_ESTOP, UI_EV_MOTION, UI_EV_NAV, UI_EV_TOUCH_DOWN, UI_EV_TOUCH_UP, UI_EV_PIN_OK, UI_EV_PIN_BAD
 } ui_event_kind_t;
 
 typedef enum {
@@ -58,11 +58,15 @@ typedef enum {
     UI_FX_REFUSED,       /* a = the action, b = the reason (ui_refusal_t): show it */
     UI_FX_ALARM_ON,      /* a = ui_alarm_t */
     UI_FX_ALARM_OFF,     /* a = ui_alarm_t */
-    UI_FX_HOLD_CANCEL
+    UI_FX_HOLD_CANCEL,
+    UI_FX_UNLOCKED,      /* the operator PIN was right */
+    UI_FX_LOCKED,        /* the panel locked itself after the idle time */
+    UI_FX_PIN_WRONG,     /* a wrong PIN */
+    UI_FX_PIN_LOCKOUT    /* too many wrong PINs: the pad is locked out for pin_lockout_ms */
 } ui_effect_kind_t;
 
 #define UI_ZONE_UNKNOWN 5u
-#define UI_SCREEN_COUNT 8u
+#define UI_SCREEN_COUNT 9u
 #define UI_LANGUAGE_COUNT 8u
 #define UI_MAX_EFFECTS 24u
 #define UI_NO_ACTION (-1)
@@ -79,6 +83,10 @@ typedef struct {
     uint32_t can_warn_errors;
     uint32_t degraded_allow_release;
     uint32_t degraded_allow_motion;
+    uint32_t operator_pin_enabled; /* optional operator PIN, off by default; STOP never asks for it */
+    uint32_t pin_max_failures;
+    uint32_t pin_lockout_ms;
+    uint32_t pin_idle_ms;
 } ui_config_t;
 
 typedef struct {
@@ -110,6 +118,10 @@ typedef struct {
     int8_t hold_action;
     uint64_t hold_start;
     uint16_t acked;
+    uint8_t pin_unlocked;
+    uint32_t pin_failures;
+    uint64_t pin_lockout_until;
+    uint64_t last_touch;
     /* derived after every event */
     uint8_t link;
     uint8_t bus;
@@ -127,11 +139,14 @@ void ui_init(ui_state_t *s, const ui_config_t *cfg);
 /* Feeds one event; the effects are in s->fx[0 .. s->fx_count-1] until the next call. Time never goes back.
  *   TICK: nothing; HEARTBEAT: a = zone level (0-5, anything else reads as unknown); SPI_ERROR, SPI_OK: nothing;
  *   CAN: a = bus off, b = transmit errors, c = receive errors; ESTOP: a = latched; MOTION: a = moving; NAV: a = screen;
- *   TOUCH_DOWN, TOUCH_UP: a = the action. Returns the number of effects. */
+ *   TOUCH_DOWN, TOUCH_UP: a = the action; PIN_OK, PIN_BAD: the port says the PIN typed was right or wrong (the digits never enter the core). Returns the number of effects. */
 uint8_t ui_event(ui_state_t *s, uint64_t now, ui_event_kind_t kind, int32_t a, int32_t b, int32_t c);
 
 /* Why the action is refused now (a ui_refusal_t), or -1 when it is allowed. */
 int ui_refusal(const ui_state_t *s, int action);
+
+/* Whether the operator PIN is on and has not been given (or has expired). */
+int ui_locked(const ui_state_t *s);
 
 /* Whether the jog is armed now. */
 int ui_jog_armed(const ui_state_t *s);

@@ -19,6 +19,11 @@ static void push(ui_state_t *s, ui_effect_kind_t kind, uint8_t a, uint8_t b)
     }
 }
 
+int ui_locked(const ui_state_t *s)
+{
+    return s->cfg.operator_pin_enabled != 0u && !s->pin_unlocked;
+}
+
 int ui_jog_armed(const ui_state_t *s)
 {
     return s->jog_armed_until != 0u && s->now < s->jog_armed_until;
@@ -129,6 +134,9 @@ static uint8_t compute_banner(const ui_state_t *s)
     if (s->link == UI_LINK_STARTING) {
         return UI_BANNER_BOOT;
     }
+    if (ui_locked(s)) {
+        return UI_BANNER_LOCKED;
+    }
     return s->listen_only ? UI_BANNER_LISTEN_ONLY : UI_BANNER_NORMAL;
 }
 
@@ -137,6 +145,9 @@ static int motion_refusal(const ui_state_t *s)
 {
     if (s->listen_only) {
         return UI_REFUSED_LISTEN_ONLY;
+    }
+    if (ui_locked(s)) {
+        return UI_REFUSED_LOCKED;
     }
     if (s->mode == UI_MODE_STOPPED) {
         return UI_REFUSED_STOPPED;
@@ -162,6 +173,9 @@ int ui_refusal(const ui_state_t *s, int action)
         uint16_t blocking = (uint16_t)((1u << UI_AL_ZONE_DANGER) | (1u << UI_AL_ZONE_INHIBITED) | (1u << UI_AL_ZONE_FAULT));
         if (s->listen_only) {
             return UI_REFUSED_LISTEN_ONLY;
+        }
+        if (ui_locked(s)) {
+            return UI_REFUSED_LOCKED;
         }
         if (s->bus == UI_BUS_OFF) {
             return UI_REFUSED_BUS_FAULT;
@@ -193,6 +207,10 @@ int ui_refusal(const ui_state_t *s, int action)
 static void derive(ui_state_t *s)
 {
     uint16_t before = s->alarms;
+    if (s->cfg.operator_pin_enabled != 0u && s->pin_unlocked && (s->now - s->last_touch) >= s->cfg.pin_idle_ms) {
+        s->pin_unlocked = 0;
+        push(s, UI_FX_LOCKED, 0, 0);
+    }
     s->link = compute_link(s);
     s->bus = compute_bus(s);
     s->alarms = compute_alarms(s);
@@ -278,7 +296,9 @@ static void touch_down(ui_state_t *s, int action)
         return;
     }
     if (action == UI_ACT_TOGGLE_LISTEN_ONLY) {
-        if (s->listen_only) {
+        if (s->listen_only && ui_locked(s)) {
+            push(s, UI_FX_REFUSED, UI_ACT_TOGGLE_LISTEN_ONLY, UI_REFUSED_LOCKED);
+        } else if (s->listen_only) {
             s->hold_action = UI_ACT_TOGGLE_LISTEN_ONLY;
             s->hold_start = s->now;
         } else {
@@ -366,11 +386,35 @@ uint8_t ui_event(ui_state_t *s, uint64_t now, ui_event_kind_t kind, int32_t a, i
             s->screen = (uint8_t)a;
         }
         break;
+    case UI_EV_PIN_OK:
+        if (s->cfg.operator_pin_enabled != 0u && s->now >= s->pin_lockout_until) {
+            s->pin_failures = 0;
+            s->last_touch = s->now;
+            if (!s->pin_unlocked) {
+                s->pin_unlocked = 1;
+                push(s, UI_FX_UNLOCKED, 0, 0);
+            }
+        }
+        break;
+    case UI_EV_PIN_BAD:
+        if (s->cfg.operator_pin_enabled != 0u && s->now >= s->pin_lockout_until) {
+            s->pin_failures++;
+            if (s->pin_failures >= s->cfg.pin_max_failures) {
+                s->pin_failures = 0;
+                s->pin_lockout_until = s->now + s->cfg.pin_lockout_ms;
+                push(s, UI_FX_PIN_LOCKOUT, 0, 0);
+            } else {
+                push(s, UI_FX_PIN_WRONG, 0, 0);
+            }
+        }
+        break;
     case UI_EV_TOUCH_DOWN:
         derive(s); /* a touch is judged against the state of this moment, not of the last event */
+        s->last_touch = s->now;
         touch_down(s, (int)a);
         break;
     case UI_EV_TOUCH_UP:
+        s->last_touch = s->now;
         if (a >= 0 && a < (int32_t)UI_ACT_COUNT && s->hold_action == (int8_t)a) {
             s->hold_action = UI_NO_ACTION;
             push(s, UI_FX_HOLD_CANCEL, 0, 0);

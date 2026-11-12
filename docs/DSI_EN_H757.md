@@ -33,7 +33,7 @@ The DSI display of HYDRA-UMC hangs from the STM32H757, not from the host compute
 
 | Works | Does not work (shown as unavailable, never as good) |
 |---|---|
-| STOP, always | camera pictures |
+| STOP, always | the camera thumbnail (shown as unavailable) |
 | Status of the stack bus, errors, bus off | the safety-zones verdict (it reads "not confirmed") |
 | Stop latch, release of the stop (switch, off by default) | CPU load and temperature of the Jetson |
 | Position and motion flag of the brain | any command that needs vision or the server |
@@ -68,19 +68,20 @@ All the numbers are in the configuration file, none in the code. They are starti
 3. **Confirmations**: the release of the stop and leaving listen-only are long presses (the hold is cancelled if the finger lifts or the state stops allowing it). The jog has to be armed first and the arming expires.
 4. **Nothing is shown as good that was not confirmed**: a STOP the brain has not confirmed turns the banner into "do not rely on it, use the physical stop"; with the Jetson gone the safety verdict reads "not confirmed".
 5. **The panel never releases a stop by itself**: it only asks, and the brain still waits for every board (`docs/SPI_SYSTEM.md`, release request).
-6. **No remote session** (see the architecture). An optional operator PIN like the one of the app is not designed yet; it is listed as open.
+6. **No remote session** (see the architecture).
+7. **Operator PIN, optional** (decision of the owner): a switch of `config/ui.cfg` (`operator_pin_enabled`, **off by default**; it goes to the Studio with the conservative default). With it on the panel starts locked and locks again after `pin_idle_ms` without a touch: every command except STOP is refused with the reason "locked", the banner says so and touching it opens the PIN pad (a modal screen); leaving listen-only also needs the PIN (turning it on never does). **STOP never asks for the PIN**, nor do the screens that only show. After `pin_max_failures` wrong PINs in a row the pad is locked out for `pin_lockout_ms`. The view-model never sees the digits: the port that owns the pad checks the PIN and only tells the core "right" or "wrong". How and where the PIN is stored and compared (a hash in the F-RAM or the flash) is a task of the driver phase, not designed here.
 
 ## Relation to the Flutter DSI app
 
 `HYDRA-UMC-DSI` is today the app of the bench with the CM5: a Flutter program that talks to the HYDRA server over the network. In the target design the display is on the H757, so the app and the firmware are two renderers of the **same screens**:
 
 * `src/ui_h757/spec/ui_spec.json` (closed schema `src/ui_h757/spec/ui_spec.schema.json`) lists the screens, the widgets, their positions in the 1280×720 frame, the signals they show and the actions they carry; `src/ui_h757/spec/i18n.json` has every text in the eight languages. The firmware tables (`src/ui_h757/core/ui_screens.h`, `ui_texts.h`) are generated from them; the app reads the same files. The texts that are the same as the app's are linked to its keys and a tool compares them (`python tools/ui_spec.py arb <l10n folder>`).
-* Parity by screen: dashboard, control, camera, position (the 3D view of the app, without the 3D), metrics, system, alarms and settings. What the app has and the panel does not: the live camera video, the 3D scene, server options, the ecosystem restart, pairing and the audit view. These need the Jetson or the network and stay in the app.
-* The camera: a still image at a low rate would be possible over the SPI link; whether the screen shows one is an open decision (the video stays on the Jetson). Until then the screen says the camera needs the Jetson.
+* Parity by screen: dashboard, control, camera, position (the 3D view of the app, without the 3D), metrics, system, alarms, settings and the PIN pad (the app has its own, `lib/ui/widgets/pin_pad.dart`). What the app has and the panel does not: the live camera video (the panel has a still thumbnail), the 3D scene, server options, the ecosystem restart, pairing and the audit view. These need the Jetson or the network and stay in the app.
+* The camera: the panel shows a **still thumbnail** (decision of the owner): the Jetson sends a small JPEG a few times a second over the SPI link and the video stays on the Jetson. The memory and the link budget are in `docs/UI_STACK_H757.md` (273 KiB of the SDRAM, 4 % of the link). Without the Jetson the screen says the camera needs it. The exchange of the picture is still to be defined.
 
 ## Signals and contract
 
-Every signal of a widget points at the real contract or at a contract declared pending (`tools/ui_spec.py` checks both): the stop latch at `ESTOP_STATE` and the error counters at `HEALTH_FRAME` of `docs/can_ids.json`, the stack bus at `docs/bus_contract.json`. **Pending** (not invented): the position and motion flags the brain publishes to its own screen, the status frame the Jetson answers over the SPI link (safety verdict, CPU, temperature) and the camera still. Until they are fixed, the view-model takes them as plain inputs.
+Every signal of a widget points at the real contract or at a contract declared pending (`tools/ui_spec.py` checks both): the stop latch at `ESTOP_STATE` and the error counters at `HEALTH_FRAME` of `docs/can_ids.json`, the stack bus at `docs/bus_contract.json`. **Pending** (not invented): the position and motion flags the brain publishes to its own screen, the status frame the Jetson answers over the SPI link (safety verdict, CPU, temperature) and the camera thumbnail. Until they are fixed, the view-model takes them as plain inputs.
 
 ## Evidence
 
@@ -94,12 +95,14 @@ Every signal of a widget points at the real contract or at a contract declared p
 
 ### Physical tests pending (nothing was done)
 
-1. H757 board with the real display: the screen shows the dashboard in the eight languages with legible text and touch targets at arm's length; the 30 Hz refresh does not flicker; the orientation (the panel is portrait natively) and the rotation cost.
+1. H757 board with the real display (landscape only): the screen shows the dashboard in the eight languages with legible text and touch targets at arm's length; the 30 Hz refresh does not flicker; the orientation (the panel is portrait natively) and the rotation cost.
 2. Jetson hung on purpose (power it from a switchable supply and freeze it): the panel goes to the degraded mode within the timeout, STOP still stops, nothing moves.
 3. SPI link cut (logic analyser on SCK, MOSI, MISO, NSS and READY): the panel names the link as the cause after the configured number of failures.
 4. Stack bus with injected errors and a bus off: the banner and the refusals match the scenario of the same name.
 5. STOP during a jog with the real axes: the time from touch to the stop frame and to the drivers off, with the interface task loaded by drawing.
 6. Time to the first frame after power-up and during the Jetson start.
+7. The camera thumbnail with the real Jetson: its rate over the SPI link and the JPEG decode time on the H757.
+8. With the PIN switch on: the panel locks after the idle time, STOP works while locked and during the lock-out, and the PIN is not kept in clear.
 
 ## Phases of the firmware
 
@@ -115,9 +118,10 @@ Only in Actions, on temporary branches, behind the switch `HYDRA_UI_H757` that i
 
 | Decision | Default until the owner decides |
 |---|---|
-| CM7 application slot: 384 KiB today, the interface does not fit (`docs/UI_STACK_H757.md`); 768 KiB proposed (rest of the bank) | the interface is not built into the application |
+| CM7 application slot | decided: 768 KiB, the rest of bank 1 (`docs/UI_STACK_H757.md`); the CM7 linker script still has the 384 KiB of the earlier layout until the H757 script is generated from the profile |
 | Fonts and images in the SPI5 NOR, copied to the SDRAM after a hash check | as written |
-| Camera still on the panel | not shown |
+| Camera still on the panel | decided: a still thumbnail, not video; the exchange with the Jetson is to be defined |
 | Release of the stop and jog with the Jetson gone | refused (switches off) |
-| Operator PIN on the panel | none |
-| Landscape from a portrait panel: rotation in the library or in DMA2D | to settle with the bench |
+| Operator PIN on the panel | decided: optional, off by default, STOP never asks for it; the storage of the PIN is for the driver phase |
+| Model and size of the external SDRAM (the owner will add RAM) | **pending: to be confirmed by the owner**; `sdram_bytes` of `config/ui.cfg` (one bank of 128 MiB today, marked not confirmed) |
+| Orientation | decided: landscape only; how the rotation of the natively portrait panel is done (library or DMA2D) is for the bench |
