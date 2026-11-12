@@ -204,6 +204,7 @@ static void test_init_fault(void)
     InitFault_Clear(regs);
     TEST_ASSERT(regs[0] != 0u, "and leaves the registers alone");
     TEST_ASSERT(InitFault_HealthFlags(1u) == 0u, "and sets no health flag");
+    TEST_ASSERT(InitFault_SafeStateFlags() == 0u, "and the frame before the safe state carries no flag");
 #endif
 }
 

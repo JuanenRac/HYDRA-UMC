@@ -1,0 +1,46 @@
+# =============================================================================
+# HYDRA-UMC - line coverage of the firmware modules that the host tests run
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Builds the C host tests with gcc coverage and prints one figure per module (tools/host_coverage.py), each against its own floor in
+# tools/host_coverage_floor.json. Started by hand, by a push to a branch whose name starts with hy-cov-, and by a push to main that touches the firmware sources or the host tests.
+
+name: Host test coverage
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "hy-cov-**"
+      - main
+    paths:
+      - "src/**"
+      - "tests/*.c"
+      - "tests/*.h"
+      - "tools/host_tests.py"
+      - "tools/host_coverage.py"
+      - "tools/host_coverage_floor.json"
+      - ".github/workflows/host-coverage.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: Coverage per firmware module
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Measure the modules
+        run: python tools/host_coverage.py --check --missing

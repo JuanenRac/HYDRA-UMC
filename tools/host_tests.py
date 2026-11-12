@@ -88,7 +88,7 @@ def table() -> list[HostTest]:
         tests.append(HostTest(f"bootloader_h745_{core}_flash_layer", "tests/test_bootloader_h745_host.c", ("tests/stubs", f"{H7}/{core}/boot"), GNU,
                               defines=(f"HYDRA_TEST_{core}", "HYDRA_FLASH_LAYER=1")))
     for directory in BOOT_DIRS:
-        for name in ("test_image_header", "test_update_verify"):
+        for name in ("test_image_header", "test_update_verify", "test_format2_decision"):
             tests.append(HostTest(f"{name}@{directory}", f"tests/{name}.c", (directory, "tests"), STRICT + ("-Werror",)))
     for directory in BOOT_DIRS:
         for flavour, define in (("trust", "HYDRA_TRUST_DEV"), ("trust_release", "HYDRA_TEST_RELEASE")):

@@ -388,7 +388,7 @@ else
     # per-target copy in all three bootloaders: the same test sources are compiled and run once per target's own include path. The bytes come
     # from tests/image_header_vectors.h, which tools/gen_image_header_vectors.py makes with the host reference tools/image_header.py.
     for UPDATE_TARGET_DIR in "$ROOT/src/mcu_stm32g474/boot" "$ROOT/src/mcu_stm32h745/CM4/boot" "$ROOT/src/mcu_stm32h745/CM7/boot"; do
-        for UPDATE_TEST in test_image_header test_update_verify; do
+        for UPDATE_TEST in test_image_header test_update_verify test_format2_decision; do
             UPDATE_HOST_BIN="$ROOT/build/host_tests_$UPDATE_TEST"
             if "$HOST_CC" -std=c11 -Wall -Wextra -Werror -I"$UPDATE_TARGET_DIR" -I"$ROOT/tests" -o "$UPDATE_HOST_BIN" "$ROOT/tests/$UPDATE_TEST.c" && "$UPDATE_HOST_BIN" >/dev/null; then
                 pass "$UPDATE_TEST host logic tests passed for $UPDATE_TARGET_DIR"
