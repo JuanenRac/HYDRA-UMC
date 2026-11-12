@@ -228,6 +228,15 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # clock_tree.h: the clock tree of the H757 board (25 MHz crystal, PLL2 at 100 MHz) is checked at compile time and recomputed here; the stack bus is 1 Mbit/s at the FDCAN kernel clock.
+    CLOCK_TREE_HOST_BIN="$ROOT/build/host_tests_clock_tree"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -DHYDRA_PLATFORM_H757 -I"$ROOT/src/mcu_stm32h757/Common" -o "$CLOCK_TREE_HOST_BIN" "$ROOT/tests/test_clock_tree.c" && "$CLOCK_TREE_HOST_BIN"; then
+        pass "clock_tree host logic tests passed"
+    else
+        fail "clock_tree host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # ipc_mailbox.h: seal of the frame between the two cores, with the switch HYDRA_IPC_REQUIRE_CRC off and on, and the two semaphore channels modelled on the host.
     for IPC_REQUIRE in 0 1; do
         IPC_HOST_BIN="$ROOT/build/host_tests_ipc_mailbox_$IPC_REQUIRE"
