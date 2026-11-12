@@ -246,6 +246,17 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # sdram_init.h: the JEDEC start-up of the external SDRAM, run against a double of the FMC and compared with the golden plan of the model; the banks that are switched off are checked too.
+    SDRAM_HOST_BIN="$ROOT/build/host_tests_sdram_init"
+    for SDRAM_VARIANT in "" "-DHYDRA_SDRAM_BANK2_ENABLED=0" "-DHYDRA_SDRAM_BANK1_ENABLED=0"; do
+        if "$HOST_CC" -std=c11 -Wall -Wextra -DHYDRA_PLATFORM_H757 $SDRAM_VARIANT -I"$ROOT/src/mcu_stm32h757/Common" -I"$ROOT/tests" -o "$SDRAM_HOST_BIN" "$ROOT/tests/test_sdram_init.c" && "$SDRAM_HOST_BIN"; then
+            pass "sdram_init host logic tests passed ${SDRAM_VARIANT:-(both banks)}"
+        else
+            fail "sdram_init host logic tests FAILED ${SDRAM_VARIANT:-(both banks)}"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+    done
+
     # ipc_mailbox.h: seal of the frame between the two cores, with the switch HYDRA_IPC_REQUIRE_CRC off and on, and the two semaphore channels modelled on the host.
     for IPC_REQUIRE in 0 1; do
         IPC_HOST_BIN="$ROOT/build/host_tests_ipc_mailbox_$IPC_REQUIRE"
