@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | 版本 | `0.2.8` |
 | 成熟度 | 雏形 |
-| 测试 | 662 (`python -m unittest discover -s tests -p 'test_*.py'`) |
+| 测试 | 679 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | 技术栈 | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | 目标 | 微控制器板（固件）；在电脑上构建 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
@@ -52,7 +52,7 @@ GPL-3.0-or-later - see LICENSE
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 软件 | 🟠 | 目前只有结构和最初的部分，大部分工作尚未完成 |
-| 测试 | 🟡 | 662 项自动测试，每次变更都会运行 |
+| 测试 | 🟡 | 679 项自动测试，每次变更都会运行 |
 | 真实硬件 | 🔴 | 尚未：此版本没有在真实硬件上运行的记录 |
 | 文档 | 🟡 | 八种语言的 README，每次变更都会与清单核对 |
 
