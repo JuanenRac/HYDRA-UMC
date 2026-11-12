@@ -50,6 +50,10 @@ def _load_contract() -> dict:
 
 _CONTRACT = _load_contract()
 MESSAGES: tuple[CanMessage, ...] = tuple(CanMessage(m["name"], m["offset"], m["emitter"]) for m in _CONTRACT["messages"])
+# the frame of the emergency stop (bytes, kinds, reasons, sources) and the messages of the tool head bus of URTC, as the contract of the SDK has them
+ESTOP_FRAME: dict = _CONTRACT["estop_frame"]
+TOOL_HEAD_MESSAGES: dict[str, int] = {m["name"]: m["id"] for m in _CONTRACT["tool_head"]["messages"]}
+TOOL_HEAD_BIT_RATE_BPS: int = _CONTRACT["tool_head"]["bit_rate_bps"]
 
 # The emergency stop itself is not inside a slot window: one identifier for the whole stack, below every slot (docs/ESTOP_CAN.md).
 ESTOP_CAN_ID = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))["estop_id"]

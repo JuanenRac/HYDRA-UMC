@@ -53,6 +53,43 @@ class CanIdContractTests(unittest.TestCase):
         self.assertEqual(ours, theirs, "docs/can_ids.json differs from contracts/can_ids.json of the SDK: copy it again")
 
 
+class CanIdStopAndToolHeadTests(unittest.TestCase):
+    """The stop frame of the contract is the one tools/estop_can.py implements, and the tool head identifiers sit where the stack protocol says."""
+
+    def test_the_stop_frame_of_the_contract_is_the_reference_implementation(self):
+        import estop_can
+
+        frame = can_ids.ESTOP_FRAME
+        self.assertEqual(frame["kinds"], {"TRIP": estop_can.KIND_TRIP, "RELEASE": estop_can.KIND_RELEASE, "ALIVE": estop_can.KIND_ALIVE})
+        self.assertEqual(sorted(frame["trip_reasons"].values()), sorted(estop_can.REASONS))
+        self.assertEqual(frame["sources"], {"KINEMATIC_BRAIN": estop_can.SOURCE_BRAIN, "SLOT_BOARD_FIRST": estop_can.SOURCE_SLOT_FIRST, "SLOT_BOARD_LAST": estop_can.SOURCE_SLOT_LAST, "HOST_BRIDGE": estop_can.SOURCE_CM5})
+        self.assertEqual(can_ids.ESTOP_CAN_ID, estop_can.ESTOP_CAN_ID)
+
+    def test_the_stop_frame_agrees_with_the_bus_contract(self):
+        import json
+
+        bus = json.loads((Path(__file__).resolve().parents[1] / "docs" / "bus_contract.json").read_text(encoding="utf-8"))["emergency_stop"]
+        self.assertEqual(bus["frame"]["bytes"], can_ids.ESTOP_FRAME["bytes"])
+        self.assertEqual({name: int(value, 16) for name, value in bus["kinds"].items()}, can_ids.ESTOP_FRAME["kinds"])
+        self.assertEqual(bus["frame"]["dlc"], can_ids.ESTOP_FRAME["dlc"])
+
+    def test_the_tool_head_protocol_starts_above_the_stop_and_below_the_slot_windows_it_does_not_use(self):
+        self.assertEqual(min(can_ids.TOOL_HEAD_MESSAGES.values()), 0x095)
+        self.assertGreater(min(can_ids.TOOL_HEAD_MESSAGES.values()), can_ids.ESTOP_CAN_ID)
+        self.assertNotIn(can_ids.ESTOP_CAN_ID, can_ids.TOOL_HEAD_MESSAGES.values())
+        self.assertEqual(len(can_ids.TOOL_HEAD_MESSAGES), 106)
+        # the tool head bus is not STACK A: its identifiers may sit in the numbers of the slot windows
+        self.assertTrue(any(v >= can_ids.SLOT_BASE for v in can_ids.TOOL_HEAD_MESSAGES.values()))
+
+    def test_the_two_bit_rates_the_repository_gives_to_the_tool_head_bus_are_both_recorded(self):
+        import json
+
+        bus = json.loads((Path(__file__).resolve().parents[1] / "docs" / "bus_contract.json").read_text(encoding="utf-8"))["buses"]
+        # known disagreement, kept visible: the URTC protocol is 500 kbit/s and the downlink of the controller board is written for 1 Mbit/s
+        self.assertEqual(can_ids.TOOL_HEAD_BIT_RATE_BPS, 500_000)
+        self.assertEqual(bus["tool_head_downlink"]["nominal_bit_rate_bps"], 1_000_000)
+
+
 class CanIdTableTests(unittest.TestCase):
     def test_no_identifier_has_two_messages(self):
         offsets = [m.offset for m in can_ids.MESSAGES]
