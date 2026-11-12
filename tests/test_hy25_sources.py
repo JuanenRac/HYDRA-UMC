@@ -44,13 +44,15 @@ class SwitchesShipOff(unittest.TestCase):
             (H7 / "CM4" / "boot" / "bootloader_flash.c", "HYDRA_FLASH_LAYER"),
             (H7 / "CM7" / "boot" / "bootloader_flash.c", "HYDRA_FLASH_LAYER"),
             (G4 / "boot" / "adoption_guard.h", "HYDRA_READBACK_GATE"),
-            (G4 / "STM32G474RE_main.c", "HYDRA_QUIET_TICK_BEFORE_SCHEDULER"),
             (H7 / "CM4" / "spi_system.h", "HYDRA_SPI_SYSTEM"),
             (H7 / "CM4" / "spi_system.h", "HYDRA_SPI_STOP_COMMAND"),
             (H7 / "CM4" / "rcc_owner.h", "HYDRA_RCC_HSEM_HANDSHAKE"),
         )
         for path, name in cases:
             self.assertEqual(default_of(path, name), 0, f"{name} must ship off")
+
+    def test_the_quiet_tick_switch_ships_at_level_2_by_decision_of_the_owner(self):
+        self.assertEqual(default_of(G4 / "STM32G474RE_main.c", "HYDRA_QUIET_TICK_BEFORE_SCHEDULER"), 2)
 
     def test_the_fdcan_clock_switch_ships_on_by_decision_of_the_maintainer(self):
         self.assertEqual(default_of(G4 / "fdcan_clock.h", "HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT"), 1)
@@ -145,6 +147,28 @@ class SwitchesShipOff(unittest.TestCase):
         self.assertLess(main.index("#if HYDRA_QUIET_TICK_BEFORE_SCHEDULER == 2"), main.index("RobotControllerRelay_Init();"))
         self.assertGreater(main.index("#if HYDRA_QUIET_TICK_BEFORE_SCHEDULER == 1"), main.index("RobotControllerRelay_Init();"))
         self.assertLess(main.index("#if HYDRA_QUIET_TICK_BEFORE_SCHEDULER == 1"), main.index("vTaskStartScheduler();"))
+
+    def test_the_default_is_level_2_and_the_watchdog_is_armed_before_the_tick_is_quieted(self):
+        main = text(G4 / "STM32G474RE_main.c")
+        self.assertRegex(main, r"#ifndef HYDRA_QUIET_TICK_BEFORE_SCHEDULER\s+#define HYDRA_QUIET_TICK_BEFORE_SCHEDULER 2\s+#endif")
+        level_2 = main.index("#if HYDRA_QUIET_TICK_BEFORE_SCHEDULER == 2")
+        self.assertLess(main.index("HAL_IWDG_Init(&hiwdg)"), main.index("HAL_StatusTypeDef hal_status = HAL_Init();"))  # the watchdog first: the HAL time-outs rest on it once the tick is off
+        self.assertLess(main.index("HAL_StatusTypeDef hal_status = HAL_Init();"), level_2)
+        switches = text(ROOT / "docs" / "FIRMWARE_SWITCHES.md")
+        row = next(line for line in switches.splitlines() if "HYDRA_QUIET_TICK_BEFORE_SCHEDULER" in line)
+        self.assertIn("`2` by default", row)
+        self.assertIn("-DHYDRA_QUIET_TICK_BEFORE_SCHEDULER=0", row)  # the other levels stay reachable
+
+    def test_the_model_of_the_default_build_has_no_tick_before_the_scheduler(self):
+        sys.path.insert(0, str(ROOT / "tests"))
+        import sim_timing_models as models
+
+        main = text(G4 / "STM32G474RE_main.c")
+        default = int(re.search(r"#define HYDRA_QUIET_TICK_BEFORE_SCHEDULER (\d)", main).group(1))
+        ticks = {level: models.g474_start(level)["ticks_before_the_scheduler"] for level in (0, 1, 2)}
+        self.assertEqual(ticks[default], min(ticks.values()))
+        self.assertEqual(ticks[2], 0)
+        self.assertGreater(ticks[0], ticks[2])
 
     def test_the_flash_layer_is_the_same_file_in_the_three_boot_directories(self):
         copies = [text(G4 / "boot" / "flash_layer.h"), text(H7 / "CM4" / "boot" / "flash_layer.h"), text(H7 / "CM7" / "boot" / "flash_layer.h")]
