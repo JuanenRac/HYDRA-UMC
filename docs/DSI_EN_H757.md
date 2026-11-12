@@ -141,5 +141,5 @@ Only in Actions, on temporary branches, behind the switch `HYDRA_UI_H757` that i
 | Camera still on the panel | decided: a still thumbnail, not video; the exchange with the Jetson is proposed and tested in simulation (above) |
 | Release of the stop and jog with the Jetson gone | refused (switches off) |
 | Operator PIN on the panel | decided: optional, off by default, STOP never asks for it; the store and its C twin are tested in simulation (above); the cost of the hash on the Cortex-M7 is an estimate to measure |
-| Model and size of the external SDRAM (the owner will add RAM) | **pending: to be confirmed by the owner**; `sdram_bytes` of `config/ui.cfg` (one bank of 128 MiB today, marked not confirmed) |
+| Model and size of the external SDRAM (the owner will add RAM) | **pending: to be confirmed by the owner**; `sdram_bytes` of `config/ui.cfg` (default: the two banks of 128 MiB, 256 MiB, by decision of the owner; marked not confirmed) |
 | Orientation | decided: landscape only; how the rotation of the natively portrait panel is done (library or DMA2D) is for the bench |
