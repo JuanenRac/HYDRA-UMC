@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Screens of the on-board interface (closed schema)",
+  "description": "Every object is closed: a field that is not listed here is an error, so the Flutter app and the firmware tables cannot drift on an invented field. tools/ui_spec.py checks this schema and the cross-references that a schema cannot say (signals, actions, texts, the contract, the geometry).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "description", "display", "regions", "theme", "pending_contracts", "signals", "actions", "global_widgets", "screens"],
+  "properties": {
+    "schema": {"type": "integer", "enum": [1]},
+    "description": {"type": "string"},
+    "display": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "orientation", "min_touch_px", "min_font_px", "stop_min_px"],
+      "properties": {
+        "width": {"type": "integer", "minimum": 320, "maximum": 4096},
+        "height": {"type": "integer", "minimum": 240, "maximum": 4096},
+        "orientation": {"type": "string", "enum": ["landscape", "portrait"]},
+        "min_touch_px": {"type": "integer", "minimum": 48, "maximum": 400},
+        "min_font_px": {"type": "integer", "minimum": 16, "maximum": 100},
+        "stop_min_px": {"type": "array", "items": {"type": "integer", "minimum": 48}, "minItems": 2, "maxItems": 2}
+      }
+    },
+    "regions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status_bar", "tab_bar", "content", "footer"],
+      "properties": {
+        "status_bar": {"$ref": "#/$defs/rect"},
+        "tab_bar": {"$ref": "#/$defs/rect"},
+        "content": {"$ref": "#/$defs/rect"},
+        "footer": {"$ref": "#/$defs/rect"}
+      }
+    },
+    "theme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["background", "surface", "text", "text_muted", "ok", "ok_text", "warn", "warn_text", "danger", "danger_text", "stop", "stop_text", "disabled", "disabled_text"],
+      "properties": {
+        "background": {"$ref": "#/$defs/colour"}, "surface": {"$ref": "#/$defs/colour"}, "text": {"$ref": "#/$defs/colour"},
+        "text_muted": {"$ref": "#/$defs/colour"}, "ok": {"$ref": "#/$defs/colour"}, "ok_text": {"$ref": "#/$defs/colour"},
+        "warn": {"$ref": "#/$defs/colour"}, "warn_text": {"$ref": "#/$defs/colour"}, "danger": {"$ref": "#/$defs/colour"},
+        "danger_text": {"$ref": "#/$defs/colour"}, "stop": {"$ref": "#/$defs/colour"}, "stop_text": {"$ref": "#/$defs/colour"},
+        "disabled": {"$ref": "#/$defs/colour"}, "disabled_text": {"$ref": "#/$defs/colour"}
+      }
+    },
+    "pending_contracts": {"type": "object", "additionalProperties": {"type": "string"}},
+    "signals": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/signal"}},
+    "actions": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
+    "global_widgets": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/widget"}},
+    "screens": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/screen"}}
+  },
+  "$defs": {
+    "colour": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+    "rect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "w", "h"],
+      "properties": {
+        "x": {"type": "integer", "minimum": 0}, "y": {"type": "integer", "minimum": 0},
+        "w": {"type": "integer", "minimum": 1}, "h": {"type": "integer", "minimum": 1}
+      }
+    },
+    "signal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "source", "contract_ref", "max_age_ms", "needs_jetson", "note"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z]+(\\.[a-z0-9_]+)+$"},
+        "type": {"type": "string", "enum": ["bool", "int", "float", "enum", "list", "image"]},
+        "source": {"type": "string", "enum": ["stack_bus", "jetson_spi", "brain", "local", "derived"]},
+        "contract_ref": {"type": "string", "pattern": "^(local|can_message:[A-Z0-9_]+|bus_contract:[a-z_]+|spi_self:[A-Z0-9_]+|pending:[a-z_]+)$"},
+        "max_age_ms": {"type": "integer", "minimum": 0, "maximum": 60000},
+        "needs_jetson": {"type": "boolean"},
+        "note": {"type": "string"}
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "confirm", "hold_ms", "requires", "note"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "kind": {"type": "string", "enum": ["stop", "command", "local", "nav"]},
+        "confirm": {"type": "string", "enum": ["none", "hold", "hold_to_leave"]},
+        "hold_ms": {"type": "integer", "minimum": 0, "maximum": 5000},
+        "requires": {"type": "array", "items": {"type": "string", "enum": ["normal", "stopped", "jog_armed", "not_listen_only", "bus_ok", "jetson_or_degraded_release", "no_danger_alarm"]}},
+        "note": {"type": "string"}
+      }
+    },
+    "widget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "rect"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "kind": {"type": "string", "enum": ["value", "led", "button", "toggle", "banner", "tab", "list", "image", "text"]},
+        "label_key": {"type": "string"},
+        "hint_key": {"type": "string"},
+        "unit_key": {"type": "string"},
+        "signal": {"type": "string"},
+        "value_signal": {"type": "string"},
+        "action": {"type": "string"},
+        "hold": {"type": "boolean"},
+        "repeat": {"type": "boolean"},
+        "rect": {"$ref": "#/$defs/rect"}
+      }
+    },
+    "screen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title_key", "needs_jetson", "widgets"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "title_key": {"type": "string"},
+        "needs_jetson": {"type": "boolean"},
+        "widgets": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/widget"}}
+      }
+    }
+  }
+}

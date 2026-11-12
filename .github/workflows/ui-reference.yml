@@ -1,0 +1,67 @@
+# =============================================================================
+# HYDRA-UMC - the interface of the STM32H757 on the PC: tests, the C core, its size for the Cortex-M7 and the reference pictures
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Runs the tests of the view-model, of the screen data and of the budget, builds the C core for the PC (with the sanitizers) and for the Cortex-M7, and draws every screen in
+# every language with the reference renderer (tools/ui_render.py) so that a text that does not fit is found here. Started by hand, by a push to a branch whose name starts with
+# hy-ui-, and by a push to main that touches the interface. The pictures are an artifact of the run; nothing here runs on a board.
+
+name: Interface reference
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "hy-ui-**"
+      - main
+    paths:
+      - "src/ui_h757/**"
+      - "config/ui.cfg"
+      - "tools/ui_*.py"
+      - "tests/test_ui_*"
+      - ".github/workflows/ui-reference.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  interface:
+    name: Interface tests and reference pictures
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install the compilers, the fonts and Pillow
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gcc gcc-arm-none-eabi binutils-arm-none-eabi fonts-noto-cjk fonts-dejavu-core
+          python -m pip install pillow
+
+      - name: Check the generated tables are what the data says
+        run: python tools/ui_gen.py --check
+
+      - name: Run the tests of the interface
+        run: python -m unittest -v tests.test_ui_spec tests.test_ui_model tests.test_ui_budget tests.test_ui_core_c tests.test_ui_render
+
+      - name: Print the budget
+        run: python tools/ui_budget.py
+
+      - name: Draw every screen in every language
+        run: python tools/ui_render.py build/ui_pictures --all
+
+      - name: Keep the pictures
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-reference-pictures
+          path: build/ui_pictures
+          retention-days: 7
