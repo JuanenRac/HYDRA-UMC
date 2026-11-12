@@ -384,6 +384,8 @@ HYDRA-UMC/
 
 * [docs/SOURCE_MAP.md](docs/SOURCE_MAP.md) - 仓库的每个文件及一行说明
 * [docs/HARDWARE_SPECIFICATION.md](docs/HARDWARE_SPECIFICATION.md) - 设计规格：从主机到工具头共十一个子系统（每种语言一个文件）
+* [docs/DSI_EN_H757.md](docs/DSI_EN_H757.md) - STM32H757 上的显示屏：Jetson 无响应时仍能显示状态并停止机器的界面，及其模式、安全规则和阶段
+* [docs/UI_STACK_H757.md](docs/UI_STACK_H757.md) - 绘制界面的库的选择，以及对照 H757 内存映射的闪存、RAM 和 SDRAM 预算
 * [生态系统的安全基线](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
 * [生态系统的威胁模型](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
 * [本仓库的更新日志](CHANGELOG.md)

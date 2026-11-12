@@ -1,0 +1,1006 @@
+{
+ "schema": 1,
+ "description": "Texts of the on-board interface in the eight languages. Same keys in every language; `arb` names the key of the DSI app (lib/l10n) whose text is the same, so the parity tool can compare them. The C table is generated from this file.",
+ "languages": [
+  "en",
+  "es",
+  "de",
+  "fr",
+  "it",
+  "ja",
+  "zh",
+  "pt"
+ ],
+ "keys": {
+  "nav.dashboard": {
+   "en": "Dashboard",
+   "es": "Dashboard",
+   "de": "Dashboard",
+   "fr": "Tableau de bord",
+   "it": "Dashboard",
+   "ja": "ダッシュボード",
+   "zh": "仪表盘",
+   "pt": "Painel",
+   "arb": "navDashboard"
+  },
+  "nav.control": {
+   "en": "Control",
+   "es": "Control",
+   "de": "Steuerung",
+   "fr": "Contrôle",
+   "it": "Controllo",
+   "ja": "操作",
+   "zh": "控制",
+   "pt": "Controlo",
+   "arb": "navControl"
+  },
+  "nav.camera": {
+   "en": "Camera",
+   "es": "Cámara",
+   "de": "Kamera",
+   "fr": "Caméra",
+   "it": "Fotocamera",
+   "ja": "カメラ",
+   "zh": "摄像头",
+   "pt": "Câmara",
+   "arb": "navCamera"
+  },
+  "nav.position": {
+   "en": "Position",
+   "es": "Posición",
+   "de": "Position",
+   "fr": "Position",
+   "it": "Posizione",
+   "ja": "位置",
+   "zh": "位置",
+   "pt": "Posição"
+  },
+  "nav.metrics": {
+   "en": "Metrics",
+   "es": "Métricas",
+   "de": "Metriken",
+   "fr": "Métriques",
+   "it": "Metriche",
+   "ja": "メトリクス",
+   "zh": "指标",
+   "pt": "Métricas",
+   "arb": "navMetrics"
+  },
+  "nav.system": {
+   "en": "System",
+   "es": "Sistema",
+   "de": "System",
+   "fr": "Système",
+   "it": "Sistema",
+   "ja": "システム",
+   "zh": "系统",
+   "pt": "Sistema",
+   "arb": "navSystem"
+  },
+  "nav.alarms": {
+   "en": "Alarms",
+   "es": "Alarmas",
+   "de": "Alarme",
+   "fr": "Alarmes",
+   "it": "Allarmi",
+   "ja": "アラーム",
+   "zh": "报警",
+   "pt": "Alarmes"
+  },
+  "nav.settings": {
+   "en": "Settings",
+   "es": "Ajustes",
+   "de": "Einstellungen",
+   "fr": "Paramètres",
+   "it": "Impostazioni",
+   "ja": "設定",
+   "zh": "设置",
+   "pt": "Definições",
+   "arb": "navSettings"
+  },
+  "status.bus": {
+   "en": "Bus",
+   "es": "Bus",
+   "de": "Bus",
+   "fr": "Bus",
+   "it": "Bus",
+   "ja": "バス",
+   "zh": "总线",
+   "pt": "Barramento"
+  },
+  "stop.label": {
+   "en": "STOP",
+   "es": "STOP",
+   "de": "STOP",
+   "fr": "STOP",
+   "it": "STOP",
+   "ja": "STOP",
+   "zh": "STOP",
+   "pt": "PARAR"
+  },
+  "stop.sent": {
+   "en": "STOP sent",
+   "es": "STOP enviado",
+   "de": "STOP gesendet",
+   "fr": "STOP envoyé",
+   "it": "STOP inviato",
+   "ja": "STOP 送信済み",
+   "zh": "已发送 STOP",
+   "pt": "PARAR enviado"
+  },
+  "stop.latched": {
+   "en": "Stopped",
+   "es": "Parada activa",
+   "de": "Gestoppt",
+   "fr": "Arrêt actif",
+   "it": "Arresto attivo",
+   "ja": "停止中",
+   "zh": "已停止",
+   "pt": "Paragem ativa"
+  },
+  "mode.boot": {
+   "en": "Starting",
+   "es": "Arrancando",
+   "de": "Startet",
+   "fr": "Démarrage",
+   "it": "Avvio",
+   "ja": "起動中",
+   "zh": "启动中",
+   "pt": "A arrancar"
+  },
+  "mode.normal": {
+   "en": "Normal",
+   "es": "Normal",
+   "de": "Normal",
+   "fr": "Normal",
+   "it": "Normale",
+   "ja": "通常",
+   "zh": "正常",
+   "pt": "Normal"
+  },
+  "mode.degraded": {
+   "en": "Degraded",
+   "es": "Degradado",
+   "de": "Eingeschränkt",
+   "fr": "Dégradé",
+   "it": "Degradato",
+   "ja": "縮退",
+   "zh": "降级",
+   "pt": "Degradado"
+  },
+  "mode.alarm": {
+   "en": "Alarm",
+   "es": "Alarma",
+   "de": "Alarm",
+   "fr": "Alarme",
+   "it": "Allarme",
+   "ja": "アラーム",
+   "zh": "报警",
+   "pt": "Alarme"
+  },
+  "mode.stopped": {
+   "en": "Stopped",
+   "es": "Parado",
+   "de": "Gestoppt",
+   "fr": "Arrêté",
+   "it": "Fermo",
+   "ja": "停止",
+   "zh": "已停止",
+   "pt": "Parado"
+  },
+  "link.jetson": {
+   "en": "Jetson",
+   "es": "Jetson",
+   "de": "Jetson",
+   "fr": "Jetson",
+   "it": "Jetson",
+   "ja": "Jetson",
+   "zh": "Jetson",
+   "pt": "Jetson"
+  },
+  "link.stack_bus": {
+   "en": "Stack bus",
+   "es": "Bus de pila",
+   "de": "Stapelbus",
+   "fr": "Bus de pile",
+   "it": "Bus di pila",
+   "ja": "スタックバス",
+   "zh": "堆栈总线",
+   "pt": "Barramento da pilha"
+  },
+  "link.ok": {
+   "en": "OK",
+   "es": "OK",
+   "de": "OK",
+   "fr": "OK",
+   "it": "OK",
+   "ja": "正常",
+   "zh": "正常",
+   "pt": "OK"
+  },
+  "link.starting": {
+   "en": "Starting",
+   "es": "Arrancando",
+   "de": "Startet",
+   "fr": "Démarrage",
+   "it": "Avvio",
+   "ja": "起動中",
+   "zh": "启动中",
+   "pt": "A arrancar"
+  },
+  "link.silent": {
+   "en": "Not answering",
+   "es": "Sin respuesta",
+   "de": "Antwortet nicht",
+   "fr": "Ne répond pas",
+   "it": "Non risponde",
+   "ja": "応答なし",
+   "zh": "无响应",
+   "pt": "Sem resposta"
+  },
+  "link.spi_fault": {
+   "en": "Link fault",
+   "es": "Fallo de enlace",
+   "de": "Verbindungsfehler",
+   "fr": "Défaut de liaison",
+   "it": "Guasto di collegamento",
+   "ja": "リンク障害",
+   "zh": "链路故障",
+   "pt": "Falha de ligação"
+  },
+  "link.bus_warn": {
+   "en": "Errors",
+   "es": "Errores",
+   "de": "Fehler",
+   "fr": "Erreurs",
+   "it": "Errori",
+   "ja": "エラー",
+   "zh": "错误",
+   "pt": "Erros"
+  },
+  "link.bus_off": {
+   "en": "Bus off",
+   "es": "Bus caído",
+   "de": "Bus aus",
+   "fr": "Bus coupé",
+   "it": "Bus off",
+   "ja": "バスオフ",
+   "zh": "总线关闭",
+   "pt": "Barramento desligado"
+  },
+  "banner.boot": {
+   "en": "The Jetson is starting. STOP works already.",
+   "es": "El Jetson está arrancando. STOP ya funciona.",
+   "de": "Der Jetson startet. STOP funktioniert bereits.",
+   "fr": "Le Jetson démarre. STOP fonctionne déjà.",
+   "it": "Il Jetson si sta avviando. STOP funziona già.",
+   "ja": "Jetson を起動中です。STOP はすでに使えます。",
+   "zh": "Jetson 正在启动。STOP 已可使用。",
+   "pt": "O Jetson está a arrancar. O PARAR já funciona."
+  },
+  "banner.degraded": {
+   "en": "The Jetson does not answer: vision, AI and the server are off. Status, STOP and alarms still work.",
+   "es": "El Jetson no responde: visión, IA y servidor están apagados. El estado, STOP y las alarmas siguen funcionando.",
+   "de": "Der Jetson antwortet nicht: Bildverarbeitung, KI und Server sind aus. Status, STOP und Alarme funktionieren weiter.",
+   "fr": "Le Jetson ne répond pas : vision, IA et serveur sont arrêtés. L'état, STOP et les alarmes fonctionnent toujours.",
+   "it": "Il Jetson non risponde: visione, IA e server sono spenti. Stato, STOP e allarmi continuano a funzionare.",
+   "ja": "Jetson が応答しません。ビジョン、AI、サーバーは停止中です。状態表示、STOP、アラームは引き続き使えます。",
+   "zh": "Jetson 无响应：视觉、AI 和服务器已关闭。状态、STOP 和报警仍然可用。",
+   "pt": "O Jetson não responde: visão, IA e servidor estão desligados. O estado, o PARAR e os alarmes continuam a funcionar."
+  },
+  "banner.spi_fault": {
+   "en": "The link to the Jetson is faulty. Status, STOP and alarms still work.",
+   "es": "El enlace con el Jetson falla. El estado, STOP y las alarmas siguen funcionando.",
+   "de": "Die Verbindung zum Jetson ist gestört. Status, STOP und Alarme funktionieren weiter.",
+   "fr": "La liaison avec le Jetson est défectueuse. L'état, STOP et les alarmes fonctionnent toujours.",
+   "it": "Il collegamento con il Jetson è guasto. Stato, STOP e allarmi continuano a funzionare.",
+   "ja": "Jetson とのリンクに障害があります。状態表示、STOP、アラームは引き続き使えます。",
+   "zh": "与 Jetson 的链路故障。状态、STOP 和报警仍然可用。",
+   "pt": "A ligação ao Jetson falhou. O estado, o PARAR e os alarmes continuam a funcionar."
+  },
+  "banner.bus_off": {
+   "en": "Stack bus error: commands are disabled. STOP is still sent.",
+   "es": "Error del bus de pila: los comandos están desactivados. STOP se sigue enviando.",
+   "de": "Stapelbus-Fehler: Befehle sind deaktiviert. STOP wird weiterhin gesendet.",
+   "fr": "Erreur du bus de pile : les commandes sont désactivées. STOP est toujours envoyé.",
+   "it": "Errore del bus di pila: i comandi sono disattivati. STOP viene comunque inviato.",
+   "ja": "スタックバスのエラー：コマンドは無効です。STOP は引き続き送信されます。",
+   "zh": "堆栈总线错误：命令已禁用。STOP 仍会发送。",
+   "pt": "Erro do barramento da pilha: os comandos estão desativados. O PARAR continua a ser enviado."
+  },
+  "banner.stopped": {
+   "en": "Stopped. Hold the release button to end the stop.",
+   "es": "Parada activa. Mantén el botón de liberar para terminarla.",
+   "de": "Gestoppt. Zum Beenden die Freigabetaste halten.",
+   "fr": "Arrêt actif. Maintenir le bouton de libération pour l'annuler.",
+   "it": "Arresto attivo. Tieni premuto il pulsante di rilascio per terminarlo.",
+   "ja": "停止中です。解除ボタンを長押しすると停止を解除します。",
+   "zh": "已停止。长按解除按钮可结束停止。",
+   "pt": "Paragem ativa. Mantenha premido o botão de libertar para a terminar."
+  },
+  "banner.listen_only": {
+   "en": "Listen only: commands are disabled. STOP still works.",
+   "es": "Solo escucha: los comandos están desactivados. STOP sigue funcionando.",
+   "de": "Nur zuhören: Befehle sind deaktiviert. STOP funktioniert weiterhin.",
+   "fr": "Écoute seule : les commandes sont désactivées. STOP fonctionne toujours.",
+   "it": "Solo ascolto: i comandi sono disattivati. STOP continua a funzionare.",
+   "ja": "リッスン専用：コマンドは無効です。STOP は引き続き使えます。",
+   "zh": "仅监听：命令已禁用。STOP 仍然可用。",
+   "pt": "Só escuta: os comandos estão desativados. O STOP continua a funcionar.",
+   "arb": "controlListenOnlyBanner"
+  },
+  "banner.alarm": {
+   "en": "Alarm active. Open the alarms screen.",
+   "es": "Alarma activa. Abre la pantalla de alarmas.",
+   "de": "Alarm aktiv. Alarmbildschirm öffnen.",
+   "fr": "Alarme active. Ouvrez l'écran des alarmes.",
+   "it": "Allarme attivo. Apri la schermata degli allarmi.",
+   "ja": "アラームが有効です。アラーム画面を開いてください。",
+   "zh": "报警已触发。请打开报警界面。",
+   "pt": "Alarme ativo. Abra o ecrã de alarmes."
+  },
+  "banner.normal": {
+   "en": "Ready.",
+   "es": "Listo.",
+   "de": "Bereit.",
+   "fr": "Prêt.",
+   "it": "Pronto.",
+   "ja": "準備完了。",
+   "zh": "就绪。",
+   "pt": "Pronto."
+  },
+  "banner.stop_unconfirmed": {
+   "en": "STOP sent but not confirmed. Do not rely on it: use the physical stop.",
+   "es": "STOP enviado pero sin confirmar. No te fíes: usa la parada física.",
+   "de": "STOP gesendet, aber nicht bestätigt. Nicht darauf verlassen: den physischen Stopp benutzen.",
+   "fr": "STOP envoyé mais non confirmé. Ne vous y fiez pas : utilisez l'arrêt physique.",
+   "it": "STOP inviato ma non confermato. Non fidarti: usa l'arresto fisico.",
+   "ja": "STOP は送信されましたが確認されていません。頼らずに物理停止を使ってください。",
+   "zh": "STOP 已发送但未确认。请勿依赖：请使用物理急停。",
+   "pt": "PARAR enviado mas não confirmado. Não confie: use a paragem física."
+  },
+  "action.release": {
+   "en": "Release stop (hold)",
+   "es": "Liberar parada (mantener)",
+   "de": "Stopp aufheben (halten)",
+   "fr": "Lever l'arrêt (maintenir)",
+   "it": "Rilascia arresto (tieni premuto)",
+   "ja": "停止を解除（長押し）",
+   "zh": "解除停止（长按）",
+   "pt": "Libertar paragem (manter)"
+  },
+  "action.ack": {
+   "en": "Acknowledge",
+   "es": "Reconocer",
+   "de": "Quittieren",
+   "fr": "Acquitter",
+   "it": "Riconosci",
+   "ja": "確認",
+   "zh": "确认",
+   "pt": "Reconhecer"
+  },
+  "action.jog_arm": {
+   "en": "Arm jog",
+   "es": "Armar jog",
+   "de": "Jog scharfschalten",
+   "fr": "Armer le jog",
+   "it": "Arma jog",
+   "ja": "ジョグをアーム",
+   "zh": "启用点动",
+   "pt": "Armar jog",
+   "arb": "jogArm"
+  },
+  "action.jog_armed": {
+   "en": "Jog armed",
+   "es": "Jog armado",
+   "de": "Jog scharf",
+   "fr": "Jog armé",
+   "it": "Jog armato",
+   "ja": "ジョグ アーム中",
+   "zh": "点动已解锁",
+   "pt": "Jog armado"
+  },
+  "action.jog_not_armed": {
+   "en": "Jog not armed",
+   "es": "Jog sin armar",
+   "de": "Jog nicht scharf",
+   "fr": "Jog non armé",
+   "it": "Jog non armato",
+   "ja": "ジョグ未アーム",
+   "zh": "点动未解锁",
+   "pt": "Jog não armado",
+   "arb": "jogNotArmed"
+  },
+  "action.language": {
+   "en": "Language",
+   "es": "Idioma",
+   "de": "Sprache",
+   "fr": "Langue",
+   "it": "Lingua",
+   "ja": "言語",
+   "zh": "语言",
+   "pt": "Idioma",
+   "arb": "settingsLanguage"
+  },
+  "action.listen_only": {
+   "en": "Listen only",
+   "es": "Solo escucha",
+   "de": "Nur zuhören",
+   "fr": "Écoute seule",
+   "it": "Solo ascolto",
+   "ja": "リッスン専用",
+   "zh": "仅监听",
+   "pt": "Só escuta",
+   "arb": "settingsListenOnly"
+  },
+  "hint.hold_to_confirm": {
+   "en": "Hold to confirm",
+   "es": "Mantén para confirmar",
+   "de": "Zum Bestätigen halten",
+   "fr": "Maintenir pour confirmer",
+   "it": "Tieni premuto per confermare",
+   "ja": "長押しで確定",
+   "zh": "长按确认",
+   "pt": "Mantenha premido para confirmar"
+  },
+  "jog.x_plus": {
+   "en": "X +",
+   "es": "X +",
+   "de": "X +",
+   "fr": "X +",
+   "it": "X +",
+   "ja": "X +",
+   "zh": "X +",
+   "pt": "X +"
+  },
+  "jog.x_minus": {
+   "en": "X -",
+   "es": "X -",
+   "de": "X -",
+   "fr": "X -",
+   "it": "X -",
+   "ja": "X -",
+   "zh": "X -",
+   "pt": "X -"
+  },
+  "jog.y_plus": {
+   "en": "Y +",
+   "es": "Y +",
+   "de": "Y +",
+   "fr": "Y +",
+   "it": "Y +",
+   "ja": "Y +",
+   "zh": "Y +",
+   "pt": "Y +"
+  },
+  "jog.y_minus": {
+   "en": "Y -",
+   "es": "Y -",
+   "de": "Y -",
+   "fr": "Y -",
+   "it": "Y -",
+   "ja": "Y -",
+   "zh": "Y -",
+   "pt": "Y -"
+  },
+  "jog.z_plus": {
+   "en": "Z +",
+   "es": "Z +",
+   "de": "Z +",
+   "fr": "Z +",
+   "it": "Z +",
+   "ja": "Z +",
+   "zh": "Z +",
+   "pt": "Z +"
+  },
+  "jog.z_minus": {
+   "en": "Z -",
+   "es": "Z -",
+   "de": "Z -",
+   "fr": "Z -",
+   "it": "Z -",
+   "ja": "Z -",
+   "zh": "Z -",
+   "pt": "Z -"
+  },
+  "refused.listen_only": {
+   "en": "Refused: listen only is on",
+   "es": "Rechazado: la escucha sola está activa",
+   "de": "Abgelehnt: Nur-Zuhören ist an",
+   "fr": "Refusé : l'écoute seule est active",
+   "it": "Rifiutato: l'ascolto solo è attivo",
+   "ja": "拒否：リッスン専用が有効です",
+   "zh": "已拒绝：仅监听已开启",
+   "pt": "Recusado: a escuta apenas está ativa"
+  },
+  "refused.not_stopped": {
+   "en": "Refused: the machine is not stopped",
+   "es": "Rechazado: la máquina no está parada",
+   "de": "Abgelehnt: die Maschine ist nicht gestoppt",
+   "fr": "Refusé : la machine n'est pas arrêtée",
+   "it": "Rifiutato: la macchina non è ferma",
+   "ja": "拒否：機械は停止していません",
+   "zh": "已拒绝：机器未停止",
+   "pt": "Recusado: a máquina não está parada"
+  },
+  "refused.stopped": {
+   "en": "Refused: the machine is stopped",
+   "es": "Rechazado: la máquina está parada",
+   "de": "Abgelehnt: die Maschine ist gestoppt",
+   "fr": "Refusé : la machine est arrêtée",
+   "it": "Rifiutato: la macchina è ferma",
+   "ja": "拒否：機械は停止中です",
+   "zh": "已拒绝：机器已停止",
+   "pt": "Recusado: a máquina está parada"
+  },
+  "refused.degraded": {
+   "en": "Refused: the Jetson is not answering",
+   "es": "Rechazado: el Jetson no responde",
+   "de": "Abgelehnt: der Jetson antwortet nicht",
+   "fr": "Refusé : le Jetson ne répond pas",
+   "it": "Rifiutato: il Jetson non risponde",
+   "ja": "拒否：Jetson が応答しません",
+   "zh": "已拒绝：Jetson 无响应",
+   "pt": "Recusado: o Jetson não responde"
+  },
+  "refused.bus_fault": {
+   "en": "Refused: stack bus error",
+   "es": "Rechazado: error del bus de pila",
+   "de": "Abgelehnt: Stapelbus-Fehler",
+   "fr": "Refusé : erreur du bus de pile",
+   "it": "Rifiutato: errore del bus di pila",
+   "ja": "拒否：スタックバスのエラー",
+   "zh": "已拒绝：堆栈总线错误",
+   "pt": "Recusado: erro do barramento da pilha"
+  },
+  "refused.not_armed": {
+   "en": "Refused: arm the jog first",
+   "es": "Rechazado: arma antes el jog",
+   "de": "Abgelehnt: zuerst Jog scharfschalten",
+   "fr": "Refusé : armez d'abord le jog",
+   "it": "Rifiutato: arma prima il jog",
+   "ja": "拒否：先にジョグをアームしてください",
+   "zh": "已拒绝：请先启用点动",
+   "pt": "Recusado: arme primeiro o jog"
+  },
+  "refused.alarm": {
+   "en": "Refused: an alarm is active",
+   "es": "Rechazado: hay una alarma activa",
+   "de": "Abgelehnt: ein Alarm ist aktiv",
+   "fr": "Refusé : une alarme est active",
+   "it": "Rifiutato: un allarme è attivo",
+   "ja": "拒否：アラームが有効です",
+   "zh": "已拒绝：存在报警",
+   "pt": "Recusado: há um alarme ativo"
+  },
+  "refused.starting": {
+   "en": "Refused: still starting",
+   "es": "Rechazado: aún arrancando",
+   "de": "Abgelehnt: startet noch",
+   "fr": "Refusé : démarrage en cours",
+   "it": "Rifiutato: ancora in avvio",
+   "ja": "拒否：起動中です",
+   "zh": "已拒绝：仍在启动",
+   "pt": "Recusado: ainda a arrancar"
+  },
+  "dash.mode": {
+   "en": "Mode",
+   "es": "Modo",
+   "de": "Modus",
+   "fr": "Mode",
+   "it": "Modalità",
+   "ja": "モード",
+   "zh": "模式",
+   "pt": "Modo"
+  },
+  "dash.estop": {
+   "en": "Stop latch",
+   "es": "Enclavamiento de parada",
+   "de": "Stopp-Verriegelung",
+   "fr": "Verrouillage d'arrêt",
+   "it": "Blocco di arresto",
+   "ja": "停止ラッチ",
+   "zh": "停止锁定",
+   "pt": "Bloqueio de paragem"
+  },
+  "dash.alarms": {
+   "en": "Active alarms",
+   "es": "Alarmas activas",
+   "de": "Aktive Alarme",
+   "fr": "Alarmes actives",
+   "it": "Allarmi attivi",
+   "ja": "有効なアラーム",
+   "zh": "活动报警",
+   "pt": "Alarmes ativos"
+  },
+  "dash.uptime": {
+   "en": "Uptime",
+   "es": "Tiempo activo",
+   "de": "Laufzeit",
+   "fr": "Disponibilité",
+   "it": "Tempo di attività",
+   "ja": "稼働時間",
+   "zh": "运行时间",
+   "pt": "Tempo ativo",
+   "arb": "metricsUptime"
+  },
+  "dash.safety": {
+   "en": "Safety zones",
+   "es": "Zonas de seguridad",
+   "de": "Sicherheitszonen",
+   "fr": "Zones de sécurité",
+   "it": "Zone di sicurezza",
+   "ja": "安全ゾーン",
+   "zh": "安全区域",
+   "pt": "Zonas de segurança"
+  },
+  "cam.needs_jetson": {
+   "en": "The camera needs the Jetson. It is not available now.",
+   "es": "La cámara necesita el Jetson. No está disponible ahora.",
+   "de": "Die Kamera braucht den Jetson. Sie ist jetzt nicht verfügbar.",
+   "fr": "La caméra a besoin du Jetson. Elle n'est pas disponible maintenant.",
+   "it": "La fotocamera richiede il Jetson. Non è disponibile ora.",
+   "ja": "カメラには Jetson が必要です。現在は利用できません。",
+   "zh": "摄像头需要 Jetson，目前不可用。",
+   "pt": "A câmara precisa do Jetson. Não está disponível agora."
+  },
+  "cam.snapshot": {
+   "en": "Camera snapshot",
+   "es": "Imagen de la cámara",
+   "de": "Kamerabild",
+   "fr": "Image de la caméra",
+   "it": "Immagine della fotocamera",
+   "ja": "カメラ画像",
+   "zh": "摄像头图像",
+   "pt": "Imagem da câmara"
+  },
+  "pos.x": {
+   "en": "X",
+   "es": "X",
+   "de": "X",
+   "fr": "X",
+   "it": "X",
+   "ja": "X",
+   "zh": "X",
+   "pt": "X"
+  },
+  "pos.y": {
+   "en": "Y",
+   "es": "Y",
+   "de": "Y",
+   "fr": "Y",
+   "it": "Y",
+   "ja": "Y",
+   "zh": "Y",
+   "pt": "Y"
+  },
+  "pos.z": {
+   "en": "Z",
+   "es": "Z",
+   "de": "Z",
+   "fr": "Z",
+   "it": "Z",
+   "ja": "Z",
+   "zh": "Z",
+   "pt": "Z"
+  },
+  "pos.moving": {
+   "en": "Moving",
+   "es": "En movimiento",
+   "de": "In Bewegung",
+   "fr": "En mouvement",
+   "it": "In movimento",
+   "ja": "動作中",
+   "zh": "运动中",
+   "pt": "Em movimento"
+  },
+  "metrics.mcu_temp": {
+   "en": "Controller temperature",
+   "es": "Temperatura del controlador",
+   "de": "Reglertemperatur",
+   "fr": "Température du contrôleur",
+   "it": "Temperatura del controllore",
+   "ja": "コントローラー温度",
+   "zh": "控制器温度",
+   "pt": "Temperatura do controlador"
+  },
+  "metrics.can_tx": {
+   "en": "Bus transmit errors",
+   "es": "Errores de transmisión del bus",
+   "de": "Bus-Sendefehler",
+   "fr": "Erreurs d'émission du bus",
+   "it": "Errori di trasmissione del bus",
+   "ja": "バス送信エラー",
+   "zh": "总线发送错误",
+   "pt": "Erros de emissão do barramento"
+  },
+  "metrics.can_rx": {
+   "en": "Bus receive errors",
+   "es": "Errores de recepción del bus",
+   "de": "Bus-Empfangsfehler",
+   "fr": "Erreurs de réception du bus",
+   "it": "Errori di ricezione del bus",
+   "ja": "バス受信エラー",
+   "zh": "总线接收错误",
+   "pt": "Erros de receção do barramento"
+  },
+  "metrics.spi_errors": {
+   "en": "Jetson link errors",
+   "es": "Errores del enlace con el Jetson",
+   "de": "Fehler der Jetson-Verbindung",
+   "fr": "Erreurs de la liaison Jetson",
+   "it": "Errori del collegamento Jetson",
+   "ja": "Jetson リンクのエラー",
+   "zh": "Jetson 链路错误",
+   "pt": "Erros da ligação ao Jetson"
+  },
+  "metrics.jetson_age": {
+   "en": "Last Jetson answer",
+   "es": "Última respuesta del Jetson",
+   "de": "Letzte Jetson-Antwort",
+   "fr": "Dernière réponse du Jetson",
+   "it": "Ultima risposta del Jetson",
+   "ja": "Jetson の最終応答",
+   "zh": "Jetson 最近应答",
+   "pt": "Última resposta do Jetson"
+  },
+  "metrics.jetson_cpu": {
+   "en": "Jetson CPU load",
+   "es": "Carga de CPU del Jetson",
+   "de": "Jetson-CPU-Last",
+   "fr": "Charge CPU du Jetson",
+   "it": "Carico CPU del Jetson",
+   "ja": "Jetson の CPU 負荷",
+   "zh": "Jetson CPU 负载",
+   "pt": "Carga do CPU do Jetson"
+  },
+  "metrics.jetson_temp": {
+   "en": "Jetson temperature",
+   "es": "Temperatura del Jetson",
+   "de": "Jetson-Temperatur",
+   "fr": "Température du Jetson",
+   "it": "Temperatura del Jetson",
+   "ja": "Jetson の温度",
+   "zh": "Jetson 温度",
+   "pt": "Temperatura do Jetson"
+  },
+  "sys.safety_level": {
+   "en": "Safety verdict",
+   "es": "Veredicto de seguridad",
+   "de": "Sicherheitsurteil",
+   "fr": "Verdict de sécurité",
+   "it": "Verdetto di sicurezza",
+   "ja": "安全判定",
+   "zh": "安全判定",
+   "pt": "Veredicto de segurança"
+  },
+  "sys.not_confirmed": {
+   "en": "Not confirmed safe",
+   "es": "Sin confirmar como seguro",
+   "de": "Nicht als sicher bestätigt",
+   "fr": "Sécurité non confirmée",
+   "it": "Sicurezza non confermata",
+   "ja": "安全は確認されていません",
+   "zh": "未确认安全",
+   "pt": "Segurança não confirmada",
+   "arb": "safetyNotConfirmed"
+  },
+  "level.ready": {
+   "en": "Ready",
+   "es": "Listo",
+   "de": "Bereit",
+   "fr": "Prêt",
+   "it": "Pronto",
+   "ja": "準備完了",
+   "zh": "就绪",
+   "pt": "Pronto",
+   "arb": "safetyLevelReady"
+  },
+  "level.warning": {
+   "en": "Warning",
+   "es": "Aviso",
+   "de": "Warnung",
+   "fr": "Avertissement",
+   "it": "Avviso",
+   "ja": "警告",
+   "zh": "警告",
+   "pt": "Aviso",
+   "arb": "safetyLevelWarning"
+  },
+  "level.danger": {
+   "en": "Danger",
+   "es": "Peligro",
+   "de": "Gefahr",
+   "fr": "Danger",
+   "it": "Pericolo",
+   "ja": "危険",
+   "zh": "危险",
+   "pt": "Perigo",
+   "arb": "safetyLevelDanger"
+  },
+  "level.inhibited": {
+   "en": "Inhibited",
+   "es": "Inhibido",
+   "de": "Gesperrt",
+   "fr": "Inhibé",
+   "it": "Inibito",
+   "ja": "抑止中",
+   "zh": "已抑制",
+   "pt": "Inibido",
+   "arb": "safetyLevelInhibited"
+  },
+  "level.fault": {
+   "en": "Fault",
+   "es": "Fallo",
+   "de": "Fehler",
+   "fr": "Défaut",
+   "it": "Guasto",
+   "ja": "障害",
+   "zh": "故障",
+   "pt": "Falha",
+   "arb": "safetyLevelFault"
+  },
+  "level.unknown": {
+   "en": "Unknown",
+   "es": "Desconocido",
+   "de": "Unbekannt",
+   "fr": "Inconnu",
+   "it": "Sconosciuto",
+   "ja": "不明",
+   "zh": "未知",
+   "pt": "Desconhecido",
+   "arb": "safetyLevelUnknown"
+  },
+  "alarm.none": {
+   "en": "No active alarms",
+   "es": "Sin alarmas activas",
+   "de": "Keine aktiven Alarme",
+   "fr": "Aucune alarme active",
+   "it": "Nessun allarme attivo",
+   "ja": "有効なアラームはありません",
+   "zh": "没有活动报警",
+   "pt": "Sem alarmes ativos"
+  },
+  "alarm.jetson_lost": {
+   "en": "The Jetson does not answer",
+   "es": "El Jetson no responde",
+   "de": "Der Jetson antwortet nicht",
+   "fr": "Le Jetson ne répond pas",
+   "it": "Il Jetson non risponde",
+   "ja": "Jetson が応答しません",
+   "zh": "Jetson 无响应",
+   "pt": "O Jetson não responde"
+  },
+  "alarm.spi_link": {
+   "en": "Jetson link faulty",
+   "es": "Enlace con el Jetson defectuoso",
+   "de": "Jetson-Verbindung gestört",
+   "fr": "Liaison Jetson défectueuse",
+   "it": "Collegamento Jetson guasto",
+   "ja": "Jetson リンク障害",
+   "zh": "Jetson 链路故障",
+   "pt": "Ligação ao Jetson com falha"
+  },
+  "alarm.can_errors": {
+   "en": "Stack bus errors rising",
+   "es": "Los errores del bus de pila suben",
+   "de": "Stapelbus-Fehler nehmen zu",
+   "fr": "Les erreurs du bus de pile augmentent",
+   "it": "Gli errori del bus di pila aumentano",
+   "ja": "スタックバスのエラーが増加中",
+   "zh": "堆栈总线错误上升",
+   "pt": "Os erros do barramento da pilha aumentam"
+  },
+  "alarm.can_bus_off": {
+   "en": "Stack bus is off",
+   "es": "El bus de pila está caído",
+   "de": "Der Stapelbus ist aus",
+   "fr": "Le bus de pile est coupé",
+   "it": "Il bus di pila è spento",
+   "ja": "スタックバスがオフです",
+   "zh": "堆栈总线已关闭",
+   "pt": "O barramento da pilha está desligado"
+  },
+  "alarm.stop_unconfirmed": {
+   "en": "STOP not confirmed by the server: press it again or use the physical E-stop",
+   "es": "El servidor no confirmó el STOP: púlsalo de nuevo o usa la seta física",
+   "de": "STOP vom Server nicht bestätigt: erneut drücken oder den Hardware-Not-Aus benutzen",
+   "fr": "STOP non confirmé par le serveur : appuyez à nouveau ou utilisez l'arrêt d'urgence physique",
+   "it": "STOP non confermato dal server: premilo di nuovo o usa il pulsante di emergenza fisico",
+   "ja": "サーバーが停止を確認していません：もう一度押すか、物理の非常停止を使ってください",
+   "zh": "服务器未确认停止：请再按一次，或使用物理急停",
+   "pt": "STOP não confirmado pelo servidor: prima de novo ou use a paragem de emergência física",
+   "arb": "errStopNotConfirmed"
+  },
+  "alarm.motion_after_stop": {
+   "en": "Motion after STOP",
+   "es": "Movimiento tras STOP",
+   "de": "Bewegung nach STOP",
+   "fr": "Mouvement après STOP",
+   "it": "Movimento dopo STOP",
+   "ja": "STOP 後も動作中",
+   "zh": "STOP 后仍在运动",
+   "pt": "Movimento após PARAR"
+  },
+  "alarm.zone_warning": {
+   "en": "Safety zone warning",
+   "es": "Aviso de zona de seguridad",
+   "de": "Sicherheitszonen-Warnung",
+   "fr": "Avertissement de zone de sécurité",
+   "it": "Avviso di zona di sicurezza",
+   "ja": "安全ゾーン警告",
+   "zh": "安全区域警告",
+   "pt": "Aviso de zona de segurança"
+  },
+  "alarm.zone_danger": {
+   "en": "Object in a danger zone",
+   "es": "Objeto en zona de peligro",
+   "de": "Objekt in Gefahrenzone",
+   "fr": "Objet en zone de danger",
+   "it": "Oggetto in zona di pericolo",
+   "ja": "危険ゾーン内に物体",
+   "zh": "危险区域内有物体",
+   "pt": "Objeto em zona de perigo"
+  },
+  "alarm.zone_inhibited": {
+   "en": "Safety service inhibited",
+   "es": "Servicio de seguridad inhibido",
+   "de": "Sicherheitsdienst gesperrt",
+   "fr": "Service de sécurité inhibé",
+   "it": "Servizio di sicurezza inibito",
+   "ja": "安全サービスが抑止中",
+   "zh": "安全服务已抑制",
+   "pt": "Serviço de segurança inibido"
+  },
+  "alarm.zone_fault": {
+   "en": "Safety service fault",
+   "es": "Fallo del servicio de seguridad",
+   "de": "Fehler des Sicherheitsdienstes",
+   "fr": "Défaut du service de sécurité",
+   "it": "Guasto del servizio di sicurezza",
+   "ja": "安全サービスの障害",
+   "zh": "安全服务故障",
+   "pt": "Falha do serviço de segurança"
+  },
+  "settings.listen_only_hint": {
+   "en": "Turning it off needs a long press.",
+   "es": "Para desactivarla hay que mantener pulsado.",
+   "de": "Zum Ausschalten lange drücken.",
+   "fr": "Pour la désactiver, maintenez appuyé.",
+   "it": "Per disattivarla tieni premuto.",
+   "ja": "解除するには長押しが必要です。",
+   "zh": "关闭需要长按。",
+   "pt": "Para a desativar, mantenha premido."
+  },
+  "settings.language_name": {
+   "en": "English",
+   "es": "Español",
+   "de": "Deutsch",
+   "fr": "Français",
+   "it": "Italiano",
+   "ja": "日本語",
+   "zh": "中文",
+   "pt": "Português"
+  },
+  "unit.seconds": {
+   "en": "s",
+   "es": "s",
+   "de": "s",
+   "fr": "s",
+   "it": "s",
+   "ja": "秒",
+   "zh": "秒",
+   "pt": "s"
+  },
+  "unit.millimetres": {
+   "en": "mm",
+   "es": "mm",
+   "de": "mm",
+   "fr": "mm",
+   "it": "mm",
+   "ja": "mm",
+   "zh": "mm",
+   "pt": "mm"
+  }
+ }
+}

@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "description": "Scenarios for the view-model of the interface, one event per line: `<ms> <EVENT> <arguments>`. Events: TICK, HB <zone level 0-5> (a valid heartbeat of the Jetson), SPI_ERR, SPI_OK, CAN <bus off 0/1> <tx errors> <rx errors>, ESTOP <latched 0/1> (the brain reports the stop latch), MOTION <0/1>, NAV <screen>, DOWN <action> and UP <action> (a touch). `cfg` overrides values of config/ui.cfg for the scenario. tools/ui_model.py replays them; tests/test_ui_core.py replays the same text in the C twin and compares line by line. Evidence: simulator.",
+  "scenarios": [
+    {
+      "name": "boot_without_jetson_goes_degraded",
+      "note": "No heartbeat ever: starting during the grace, then degraded; STOP works in both, the jog is refused.",
+      "cfg": {"jetson_boot_grace_ms": 5000},
+      "events": ["0 TICK", "1000 DOWN jog_arm", "1100 UP jog_arm", "2000 DOWN stop", "2100 UP stop", "2200 ESTOP 1", "5000 TICK", "6000 DOWN release", "6100 UP release"]
+    },
+    {
+      "name": "normal_session",
+      "note": "Heartbeats every 100 ms, the jog is armed and used, the screens change, STOP stops and the stop is released with a long press.",
+      "cfg": {},
+      "events": ["0 HB 0", "100 HB 0", "200 NAV control", "300 DOWN jog_x_plus", "400 DOWN jog_arm", "500 UP jog_arm", "600 HB 0", "700 DOWN jog_x_plus", "800 DOWN jog_z_minus", "900 HB 0", "1000 DOWN stop", "1050 ESTOP 1", "1100 HB 0", "2000 DOWN release", "2600 HB 0", "3200 HB 0", "3500 HB 0", "3600 UP release", "3700 ESTOP 0", "3800 HB 0"]
+    },
+    {
+      "name": "jetson_hangs_then_recovers",
+      "note": "The Jetson stops answering with the machine armed: degraded after the timeout, the jog is disarmed, nothing moves, STOP works; the heartbeat returns and the machine is normal again.",
+      "cfg": {},
+      "events": ["0 HB 0", "100 HB 0", "200 DOWN jog_arm", "300 DOWN jog_y_plus", "400 HB 0", "1000 TICK", "1900 TICK", "2000 DOWN jog_y_plus", "2100 DOWN jog_arm", "2200 DOWN stop", "2300 ESTOP 1", "5000 HB 0", "5100 HB 0", "5200 DOWN release", "5900 HB 0", "6600 HB 0", "6700 TICK", "6800 UP release", "7000 ESTOP 0", "7100 HB 0", "7200 DOWN jog_arm"]
+    },
+    {
+      "name": "spi_link_is_cut",
+      "note": "Transactions fail one after another with no heartbeat: first the Jetson is not answering, then, after five failures, the cause shown is the link; a good transaction and a heartbeat bring it back.",
+      "cfg": {},
+      "events": ["0 HB 0", "100 HB 0", "200 SPI_ERR", "300 SPI_ERR", "400 SPI_ERR", "1700 SPI_ERR", "1800 SPI_ERR", "1900 SPI_ERR", "2500 SPI_OK", "2600 TICK", "2700 HB 0"]
+    },
+    {
+      "name": "can_errors_rise_to_bus_off",
+      "note": "The error counters climb past the warning level, the bus goes off (commands refused, alarm of fault level), STOP is still sent and, with no confirmation, the panel says so; the bus comes back.",
+      "cfg": {},
+      "events": ["0 HB 0", "100 CAN 0 10 10", "200 CAN 0 96 20", "300 DOWN jog_arm", "400 CAN 1 255 255", "500 DOWN jog_arm", "600 DOWN stop", "1200 TICK", "1300 CAN 0 0 0", "1400 ESTOP 1", "1500 HB 0"]
+    },
+    {
+      "name": "stop_while_moving",
+      "note": "STOP during a jog: the panel is stopped at once, the stop is confirmed by the brain, but the axis is still reported moving a second later: an alarm of fault level until it stops.",
+      "cfg": {},
+      "events": ["0 HB 0", "100 DOWN jog_arm", "200 MOTION 1", "300 DOWN jog_x_plus", "400 DOWN stop", "450 ESTOP 1", "500 HB 0", "1000 HB 0", "1500 HB 0", "1600 MOTION 0", "1700 HB 0"]
+    },
+    {
+      "name": "stop_is_never_confirmed",
+      "note": "STOP is touched and the brain never reports the latch: after the confirmation time the banner says not to rely on it; a later report clears it.",
+      "cfg": {},
+      "events": ["0 HB 0", "100 DOWN stop", "200 HB 0", "700 TICK", "1500 HB 0", "2000 ESTOP 1", "2100 HB 0"]
+    },
+    {
+      "name": "listen_only_refuses_everything_but_stop",
+      "note": "Listen-only on: the jog and the release are refused with their reason, STOP still goes out; leaving it needs a long press and a short touch does nothing.",
+      "cfg": {},
+      "events": ["0 HB 0", "100 DOWN toggle_listen_only", "200 UP toggle_listen_only", "300 DOWN jog_arm", "400 DOWN stop", "450 ESTOP 1", "500 DOWN release", "600 UP release", "700 DOWN toggle_listen_only", "900 UP toggle_listen_only", "1000 HB 0", "1100 DOWN toggle_listen_only", "1800 HB 0", "2500 HB 0", "2700 TICK", "2800 UP toggle_listen_only", "2900 DOWN release", "3500 HB 0", "4000 HB 0", "4400 TICK", "4500 UP release"]
+    },
+    {
+      "name": "release_needs_a_long_press",
+      "note": "A short touch on release does nothing; the full hold sends the release request once.",
+      "cfg": {},
+      "events": ["0 HB 0", "100 ESTOP 1", "200 DOWN release", "700 UP release", "800 DOWN release", "1400 HB 0", "2000 HB 0", "2300 HB 0", "2400 TICK", "2500 UP release", "2600 ESTOP 0"]
+    },
+    {
+      "name": "degraded_release_refused_by_default",
+      "note": "Stopped and the Jetson is gone: the panel does not release the stop on its own authority.",
+      "cfg": {},
+      "events": ["0 HB 0", "100 DOWN stop", "150 ESTOP 1", "200 HB 0", "2500 TICK", "2600 DOWN release", "2700 UP release"]
+    },
+    {
+      "name": "degraded_release_switch_on",
+      "note": "With degraded_allow_release on, the same hold releases the stop with the Jetson gone; motion is still refused.",
+      "cfg": {"degraded_allow_release": 1},
+      "events": ["0 HB 0", "100 DOWN stop", "150 ESTOP 1", "200 HB 0", "2500 TICK", "2600 DOWN release", "4200 TICK", "4300 UP release", "4400 ESTOP 0", "4500 DOWN jog_arm"]
+    },
+    {
+      "name": "degraded_motion_switch_on",
+      "note": "With degraded_allow_motion on the jog works with the Jetson gone, and the safety verdict reads unknown.",
+      "cfg": {"degraded_allow_motion": 1},
+      "events": ["0 HB 0", "100 HB 0", "2000 TICK", "2100 DOWN jog_arm", "2200 DOWN jog_x_plus"]
+    },
+    {
+      "name": "zone_verdicts_of_the_jetson",
+      "note": "The levels of the safety service become alarms; danger and inhibited stop the machine from moving, an acknowledge silences without clearing, and the stop cannot be released while a danger holds.",
+      "cfg": {},
+      "events": ["0 HB 0", "100 HB 1", "200 HB 2", "300 DOWN jog_arm", "400 DOWN ack_alarm", "500 HB 3", "600 HB 4", "700 DOWN stop", "750 ESTOP 1", "800 HB 2", "900 DOWN release", "950 UP release", "1000 HB 0", "1100 DOWN release", "1800 HB 0", "2500 HB 0", "2700 TICK", "2800 UP release"]
+    },
+    {
+      "name": "jog_arming_expires",
+      "note": "The armed jog lasts ten seconds and then the jog is refused again.",
+      "cfg": {},
+      "events": ["0 HB 0", "100 DOWN jog_arm", "1000 HB 0", "2000 HB 0", "3000 HB 0", "4000 HB 0", "5000 HB 0", "5100 DOWN jog_x_plus", "6000 HB 0", "7000 HB 0", "8000 HB 0", "9000 HB 0", "10000 HB 0", "10200 HB 0", "10300 DOWN jog_x_plus"]
+    },
+    {
+      "name": "worst_case_everything_fails",
+      "note": "Jetson silent, bus off and a stop pending at once: the panel still sends STOP and shows the stop banner that says not to rely on it.",
+      "cfg": {},
+      "events": ["0 HB 0", "100 CAN 1 255 255", "200 SPI_ERR", "300 SPI_ERR", "400 SPI_ERR", "500 SPI_ERR", "600 SPI_ERR", "2000 DOWN stop", "2600 TICK", "3000 DOWN jog_arm", "3100 DOWN release"]
+    },
+    {
+      "name": "settings_and_navigation",
+      "note": "Navigation and the language never depend on the state; hostile values (an unknown action, a level out of range, a screen out of range, time going back) change nothing they should not.",
+      "cfg": {},
+      "events": ["0 HB 0", "100 NAV settings", "200 DOWN next_language", "300 DOWN next_language", "400 NAV 9", "500 DOWN 99", "600 HB 9", "300 TICK", "700 NAV camera", "800 NAV alarms"]
+    }
+  ]
+}

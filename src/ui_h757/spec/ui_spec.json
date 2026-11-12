@@ -1,0 +1,1172 @@
+{
+ "schema": 1,
+ "description": "The screens of the interface that runs on the STM32H757 and of the Flutter DSI app, as data. Both read this file; the firmware gets generated tables from it. Positions are pixels of a 1280x720 landscape frame. Evidence: simulator (validated by tools/ui_spec.py); nothing here has run on a display.",
+ "display": {
+  "width": 1280,
+  "height": 720,
+  "orientation": "landscape",
+  "min_touch_px": 64,
+  "min_font_px": 20,
+  "stop_min_px": [
+   240,
+   88
+  ]
+ },
+ "regions": {
+  "status_bar": {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 56
+  },
+  "tab_bar": {
+   "x": 0,
+   "y": 56,
+   "w": 1280,
+   "h": 80
+  },
+  "content": {
+   "x": 0,
+   "y": 136,
+   "w": 1280,
+   "h": 476
+  },
+  "footer": {
+   "x": 0,
+   "y": 612,
+   "w": 1280,
+   "h": 108
+  }
+ },
+ "theme": {
+  "background": "#10151A",
+  "surface": "#1B232B",
+  "text": "#F2F5F7",
+  "text_muted": "#B7C2CC",
+  "ok": "#2E7D32",
+  "ok_text": "#FFFFFF",
+  "warn": "#FFB300",
+  "warn_text": "#101010",
+  "danger": "#C62828",
+  "danger_text": "#FFFFFF",
+  "stop": "#B71C1C",
+  "stop_text": "#FFFFFF",
+  "disabled": "#3A4550",
+  "disabled_text": "#C9D2DA"
+ },
+ "pending_contracts": {
+  "brain_kinematics": "position and motion flags the kinematic brain publishes to its own interface; the structure is not fixed yet",
+  "jetson_status": "the status frame the Jetson answers over the SPI link (safety verdict, CPU, temperature); the exchange is not fixed yet",
+  "jetson_snapshot": "a low-rate still image from the Jetson; not decided whether the screen shows one"
+ },
+ "signals": [
+  {
+   "id": "ui.mode",
+   "type": "enum",
+   "source": "derived",
+   "contract_ref": "local",
+   "max_age_ms": 0,
+   "needs_jetson": false,
+   "note": "mode of the interface (boot, normal, degraded, alarm, stopped), computed by the view-model"
+  },
+  {
+   "id": "ui.banner",
+   "type": "enum",
+   "source": "derived",
+   "contract_ref": "local",
+   "max_age_ms": 0,
+   "needs_jetson": false,
+   "note": "which banner the footer shows"
+  },
+  {
+   "id": "ui.listen_only",
+   "type": "bool",
+   "source": "local",
+   "contract_ref": "local",
+   "max_age_ms": 0,
+   "needs_jetson": false,
+   "note": "listen-only switch kept on the board"
+  },
+  {
+   "id": "ui.jog_armed",
+   "type": "bool",
+   "source": "derived",
+   "contract_ref": "local",
+   "max_age_ms": 0,
+   "needs_jetson": false,
+   "note": "the jog is armed for a few seconds"
+  },
+  {
+   "id": "ui.jog_arm_left_s",
+   "type": "int",
+   "source": "derived",
+   "contract_ref": "local",
+   "max_age_ms": 0,
+   "needs_jetson": false,
+   "note": "seconds left of the armed jog"
+  },
+  {
+   "id": "ui.alarm_count",
+   "type": "int",
+   "source": "derived",
+   "contract_ref": "local",
+   "max_age_ms": 0,
+   "needs_jetson": false,
+   "note": "number of active alarms"
+  },
+  {
+   "id": "ui.alarm_list",
+   "type": "list",
+   "source": "derived",
+   "contract_ref": "local",
+   "max_age_ms": 0,
+   "needs_jetson": false,
+   "note": "the active alarms, worst first"
+  },
+  {
+   "id": "ui.language",
+   "type": "enum",
+   "source": "local",
+   "contract_ref": "local",
+   "max_age_ms": 0,
+   "needs_jetson": false,
+   "note": "language shown"
+  },
+  {
+   "id": "estop.latched",
+   "type": "bool",
+   "source": "stack_bus",
+   "contract_ref": "can_message:ESTOP_STATE",
+   "max_age_ms": 100,
+   "needs_jetson": false,
+   "note": "the stop is latched (frame of docs/ESTOP_CAN.md)"
+  },
+  {
+   "id": "stack.can_state",
+   "type": "enum",
+   "source": "stack_bus",
+   "contract_ref": "bus_contract:stack_a",
+   "max_age_ms": 2000,
+   "needs_jetson": false,
+   "note": "ok, errors rising, bus off (FDCAN1 status of the brain)"
+  },
+  {
+   "id": "stack.can_tx_errors",
+   "type": "int",
+   "source": "stack_bus",
+   "contract_ref": "can_message:HEALTH_FRAME",
+   "max_age_ms": 2000,
+   "needs_jetson": false,
+   "note": "transmit error counter"
+  },
+  {
+   "id": "stack.can_rx_errors",
+   "type": "int",
+   "source": "stack_bus",
+   "contract_ref": "can_message:HEALTH_FRAME",
+   "max_age_ms": 2000,
+   "needs_jetson": false,
+   "note": "receive error counter"
+  },
+  {
+   "id": "robot.moving",
+   "type": "bool",
+   "source": "brain",
+   "contract_ref": "pending:brain_kinematics",
+   "max_age_ms": 500,
+   "needs_jetson": false,
+   "note": "the brain says an axis is moving"
+  },
+  {
+   "id": "robot.x_mm",
+   "type": "float",
+   "source": "brain",
+   "contract_ref": "pending:brain_kinematics",
+   "max_age_ms": 500,
+   "needs_jetson": false,
+   "note": "position X of the tool"
+  },
+  {
+   "id": "robot.y_mm",
+   "type": "float",
+   "source": "brain",
+   "contract_ref": "pending:brain_kinematics",
+   "max_age_ms": 500,
+   "needs_jetson": false,
+   "note": "position Y of the tool"
+  },
+  {
+   "id": "robot.z_mm",
+   "type": "float",
+   "source": "brain",
+   "contract_ref": "pending:brain_kinematics",
+   "max_age_ms": 500,
+   "needs_jetson": false,
+   "note": "position Z of the tool"
+  },
+  {
+   "id": "mcu.temperature_c",
+   "type": "float",
+   "source": "local",
+   "contract_ref": "local",
+   "max_age_ms": 2000,
+   "needs_jetson": false,
+   "note": "internal temperature sensor of the H757"
+  },
+  {
+   "id": "mcu.uptime_s",
+   "type": "int",
+   "source": "local",
+   "contract_ref": "local",
+   "max_age_ms": 0,
+   "needs_jetson": false,
+   "note": "seconds since the H757 started"
+  },
+  {
+   "id": "jetson.link",
+   "type": "enum",
+   "source": "derived",
+   "contract_ref": "local",
+   "max_age_ms": 0,
+   "needs_jetson": false,
+   "note": "starting, ok, not answering, link fault"
+  },
+  {
+   "id": "jetson.age_ms",
+   "type": "int",
+   "source": "derived",
+   "contract_ref": "local",
+   "max_age_ms": 0,
+   "needs_jetson": false,
+   "note": "milliseconds since the last valid heartbeat of the Jetson"
+  },
+  {
+   "id": "jetson.spi_errors",
+   "type": "int",
+   "source": "local",
+   "contract_ref": "local",
+   "max_age_ms": 0,
+   "needs_jetson": false,
+   "note": "transactions of the link with a bad check or a timeout"
+  },
+  {
+   "id": "jetson.safety_level",
+   "type": "enum",
+   "source": "jetson_spi",
+   "contract_ref": "pending:jetson_status",
+   "max_age_ms": 1500,
+   "needs_jetson": true,
+   "note": "verdict of the safety-zones service (ready, warning, danger, inhibited, fault, unknown)"
+  },
+  {
+   "id": "jetson.cpu_load_pct",
+   "type": "int",
+   "source": "jetson_spi",
+   "contract_ref": "pending:jetson_status",
+   "max_age_ms": 1500,
+   "needs_jetson": true,
+   "note": "CPU load of the Jetson"
+  },
+  {
+   "id": "jetson.temperature_c",
+   "type": "float",
+   "source": "jetson_spi",
+   "contract_ref": "pending:jetson_status",
+   "max_age_ms": 1500,
+   "needs_jetson": true,
+   "note": "temperature of the Jetson"
+  },
+  {
+   "id": "jetson.camera_snapshot",
+   "type": "image",
+   "source": "jetson_spi",
+   "contract_ref": "pending:jetson_snapshot",
+   "max_age_ms": 5000,
+   "needs_jetson": true,
+   "note": "low-rate still of a camera (the video stays on the Jetson)"
+  }
+ ],
+ "actions": [
+  {
+   "id": "stop",
+   "kind": "stop",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "single touch, always sent, never refused"
+  },
+  {
+   "id": "release",
+   "kind": "command",
+   "confirm": "hold",
+   "hold_ms": 1500,
+   "requires": [
+    "stopped",
+    "not_listen_only",
+    "bus_ok",
+    "jetson_or_degraded_release",
+    "no_danger_alarm"
+   ],
+   "note": "asks the brain to end the stop; the brain still waits for every board"
+  },
+  {
+   "id": "jog_arm",
+   "kind": "command",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [
+    "normal",
+    "not_listen_only",
+    "bus_ok"
+   ],
+   "note": "arms the jog for a few seconds"
+  },
+  {
+   "id": "jog_x_plus",
+   "kind": "command",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [
+    "jog_armed"
+   ],
+   "note": ""
+  },
+  {
+   "id": "jog_x_minus",
+   "kind": "command",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [
+    "jog_armed"
+   ],
+   "note": ""
+  },
+  {
+   "id": "jog_y_plus",
+   "kind": "command",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [
+    "jog_armed"
+   ],
+   "note": ""
+  },
+  {
+   "id": "jog_y_minus",
+   "kind": "command",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [
+    "jog_armed"
+   ],
+   "note": ""
+  },
+  {
+   "id": "jog_z_plus",
+   "kind": "command",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [
+    "jog_armed"
+   ],
+   "note": ""
+  },
+  {
+   "id": "jog_z_minus",
+   "kind": "command",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [
+    "jog_armed"
+   ],
+   "note": ""
+  },
+  {
+   "id": "ack_alarm",
+   "kind": "local",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "silences the alarm on the screen; a latched alarm stays until its source clears it"
+  },
+  {
+   "id": "toggle_listen_only",
+   "kind": "local",
+   "confirm": "hold_to_leave",
+   "hold_ms": 1500,
+   "requires": [],
+   "note": "turning it on is one touch, turning it off is a long press"
+  },
+  {
+   "id": "next_language",
+   "kind": "local",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": ""
+  },
+  {
+   "id": "nav_dashboard",
+   "kind": "nav",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "opens the screen"
+  },
+  {
+   "id": "nav_control",
+   "kind": "nav",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "opens the screen"
+  },
+  {
+   "id": "nav_camera",
+   "kind": "nav",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "opens the screen"
+  },
+  {
+   "id": "nav_position",
+   "kind": "nav",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "opens the screen"
+  },
+  {
+   "id": "nav_metrics",
+   "kind": "nav",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "opens the screen"
+  },
+  {
+   "id": "nav_system",
+   "kind": "nav",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "opens the screen"
+  },
+  {
+   "id": "nav_alarms",
+   "kind": "nav",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "opens the screen"
+  },
+  {
+   "id": "nav_settings",
+   "kind": "nav",
+   "confirm": "none",
+   "hold_ms": 0,
+   "requires": [],
+   "note": "opens the screen"
+  }
+ ],
+ "global_widgets": [
+  {
+   "id": "status_mode",
+   "kind": "value",
+   "label_key": "dash.mode",
+   "signal": "ui.mode",
+   "rect": {
+    "x": 16,
+    "y": 8,
+    "w": 260,
+    "h": 40
+   }
+  },
+  {
+   "id": "status_jetson",
+   "kind": "led",
+   "label_key": "link.jetson",
+   "signal": "jetson.link",
+   "rect": {
+    "x": 292,
+    "y": 8,
+    "w": 320,
+    "h": 40
+   }
+  },
+  {
+   "id": "status_bus",
+   "kind": "led",
+   "label_key": "status.bus",
+   "signal": "stack.can_state",
+   "rect": {
+    "x": 628,
+    "y": 8,
+    "w": 380,
+    "h": 40
+   }
+  },
+  {
+   "id": "status_alarms",
+   "kind": "value",
+   "label_key": "nav.alarms",
+   "signal": "ui.alarm_count",
+   "rect": {
+    "x": 1024,
+    "y": 8,
+    "w": 240,
+    "h": 40
+   }
+  },
+  {
+   "id": "banner",
+   "kind": "banner",
+   "signal": "ui.banner",
+   "rect": {
+    "x": 16,
+    "y": 620,
+    "w": 960,
+    "h": 92
+   }
+  },
+  {
+   "id": "stop_button",
+   "kind": "button",
+   "label_key": "stop.label",
+   "action": "stop",
+   "rect": {
+    "x": 992,
+    "y": 620,
+    "w": 272,
+    "h": 92
+   }
+  },
+  {
+   "id": "tab_dashboard",
+   "kind": "tab",
+   "label_key": "nav.dashboard",
+   "action": "nav_dashboard",
+   "rect": {
+    "x": 0,
+    "y": 56,
+    "w": 160,
+    "h": 80
+   }
+  },
+  {
+   "id": "tab_control",
+   "kind": "tab",
+   "label_key": "nav.control",
+   "action": "nav_control",
+   "rect": {
+    "x": 160,
+    "y": 56,
+    "w": 160,
+    "h": 80
+   }
+  },
+  {
+   "id": "tab_camera",
+   "kind": "tab",
+   "label_key": "nav.camera",
+   "action": "nav_camera",
+   "rect": {
+    "x": 320,
+    "y": 56,
+    "w": 160,
+    "h": 80
+   }
+  },
+  {
+   "id": "tab_position",
+   "kind": "tab",
+   "label_key": "nav.position",
+   "action": "nav_position",
+   "rect": {
+    "x": 480,
+    "y": 56,
+    "w": 160,
+    "h": 80
+   }
+  },
+  {
+   "id": "tab_metrics",
+   "kind": "tab",
+   "label_key": "nav.metrics",
+   "action": "nav_metrics",
+   "rect": {
+    "x": 640,
+    "y": 56,
+    "w": 160,
+    "h": 80
+   }
+  },
+  {
+   "id": "tab_system",
+   "kind": "tab",
+   "label_key": "nav.system",
+   "action": "nav_system",
+   "rect": {
+    "x": 800,
+    "y": 56,
+    "w": 160,
+    "h": 80
+   }
+  },
+  {
+   "id": "tab_alarms",
+   "kind": "tab",
+   "label_key": "nav.alarms",
+   "action": "nav_alarms",
+   "rect": {
+    "x": 960,
+    "y": 56,
+    "w": 160,
+    "h": 80
+   }
+  },
+  {
+   "id": "tab_settings",
+   "kind": "tab",
+   "label_key": "nav.settings",
+   "action": "nav_settings",
+   "rect": {
+    "x": 1120,
+    "y": 56,
+    "w": 160,
+    "h": 80
+   }
+  }
+ ],
+ "screens": [
+  {
+   "id": "dashboard",
+   "title_key": "nav.dashboard",
+   "needs_jetson": false,
+   "widgets": [
+    {
+     "id": "dash_mode",
+     "kind": "value",
+     "label_key": "dash.mode",
+     "signal": "ui.mode",
+     "rect": {
+      "x": 24,
+      "y": 152,
+      "w": 600,
+      "h": 80
+     }
+    },
+    {
+     "id": "dash_estop",
+     "kind": "led",
+     "label_key": "dash.estop",
+     "signal": "estop.latched",
+     "rect": {
+      "x": 656,
+      "y": 152,
+      "w": 600,
+      "h": 80
+     }
+    },
+    {
+     "id": "dash_jetson",
+     "kind": "led",
+     "label_key": "link.jetson",
+     "signal": "jetson.link",
+     "rect": {
+      "x": 24,
+      "y": 248,
+      "w": 600,
+      "h": 80
+     }
+    },
+    {
+     "id": "dash_bus",
+     "kind": "led",
+     "label_key": "link.stack_bus",
+     "signal": "stack.can_state",
+     "rect": {
+      "x": 656,
+      "y": 248,
+      "w": 600,
+      "h": 80
+     }
+    },
+    {
+     "id": "dash_alarms",
+     "kind": "value",
+     "label_key": "dash.alarms",
+     "signal": "ui.alarm_count",
+     "rect": {
+      "x": 24,
+      "y": 344,
+      "w": 600,
+      "h": 80
+     }
+    },
+    {
+     "id": "dash_safety",
+     "kind": "value",
+     "label_key": "dash.safety",
+     "signal": "jetson.safety_level",
+     "rect": {
+      "x": 656,
+      "y": 344,
+      "w": 600,
+      "h": 80
+     }
+    },
+    {
+     "id": "dash_uptime",
+     "kind": "value",
+     "label_key": "dash.uptime",
+     "signal": "mcu.uptime_s",
+     "rect": {
+      "x": 24,
+      "y": 440,
+      "w": 600,
+      "h": 80
+     },
+     "unit_key": "unit.seconds"
+    }
+   ]
+  },
+  {
+   "id": "control",
+   "title_key": "nav.control",
+   "needs_jetson": false,
+   "widgets": [
+    {
+     "id": "ctl_arm",
+     "kind": "button",
+     "label_key": "action.jog_arm",
+     "action": "jog_arm",
+     "rect": {
+      "x": 24,
+      "y": 152,
+      "w": 360,
+      "h": 96
+     }
+    },
+    {
+     "id": "ctl_armed",
+     "kind": "value",
+     "label_key": "action.jog_arm",
+     "signal": "ui.jog_armed",
+     "rect": {
+      "x": 416,
+      "y": 152,
+      "w": 400,
+      "h": 96
+     },
+     "value_signal": "ui.jog_arm_left_s",
+     "unit_key": "unit.seconds"
+    },
+    {
+     "id": "ctl_release",
+     "kind": "button",
+     "label_key": "action.release",
+     "action": "release",
+     "rect": {
+      "x": 848,
+      "y": 152,
+      "w": 408,
+      "h": 96
+     },
+     "hold": true
+    },
+    {
+     "id": "jog_x_plus",
+     "kind": "button",
+     "label_key": "jog.x_plus",
+     "action": "jog_x_plus",
+     "rect": {
+      "x": 24,
+      "y": 264,
+      "w": 256,
+      "h": 96
+     },
+     "repeat": true
+    },
+    {
+     "id": "jog_x_minus",
+     "kind": "button",
+     "label_key": "jog.x_minus",
+     "action": "jog_x_minus",
+     "rect": {
+      "x": 24,
+      "y": 376,
+      "w": 256,
+      "h": 96
+     },
+     "repeat": true
+    },
+    {
+     "id": "jog_y_plus",
+     "kind": "button",
+     "label_key": "jog.y_plus",
+     "action": "jog_y_plus",
+     "rect": {
+      "x": 296,
+      "y": 264,
+      "w": 256,
+      "h": 96
+     },
+     "repeat": true
+    },
+    {
+     "id": "jog_y_minus",
+     "kind": "button",
+     "label_key": "jog.y_minus",
+     "action": "jog_y_minus",
+     "rect": {
+      "x": 296,
+      "y": 376,
+      "w": 256,
+      "h": 96
+     },
+     "repeat": true
+    },
+    {
+     "id": "jog_z_plus",
+     "kind": "button",
+     "label_key": "jog.z_plus",
+     "action": "jog_z_plus",
+     "rect": {
+      "x": 568,
+      "y": 264,
+      "w": 256,
+      "h": 96
+     },
+     "repeat": true
+    },
+    {
+     "id": "jog_z_minus",
+     "kind": "button",
+     "label_key": "jog.z_minus",
+     "action": "jog_z_minus",
+     "rect": {
+      "x": 568,
+      "y": 376,
+      "w": 256,
+      "h": 96
+     },
+     "repeat": true
+    },
+    {
+     "id": "ctl_moving",
+     "kind": "value",
+     "label_key": "pos.moving",
+     "signal": "robot.moving",
+     "rect": {
+      "x": 880,
+      "y": 264,
+      "w": 376,
+      "h": 96
+     }
+    }
+   ]
+  },
+  {
+   "id": "camera",
+   "title_key": "nav.camera",
+   "needs_jetson": true,
+   "widgets": [
+    {
+     "id": "cam_view",
+     "kind": "image",
+     "label_key": "cam.snapshot",
+     "signal": "jetson.camera_snapshot",
+     "rect": {
+      "x": 24,
+      "y": 152,
+      "w": 800,
+      "h": 450
+     }
+    },
+    {
+     "id": "cam_note",
+     "kind": "text",
+     "label_key": "cam.needs_jetson",
+     "rect": {
+      "x": 848,
+      "y": 152,
+      "w": 408,
+      "h": 200
+     }
+    }
+   ]
+  },
+  {
+   "id": "position",
+   "title_key": "nav.position",
+   "needs_jetson": false,
+   "widgets": [
+    {
+     "id": "pos_x",
+     "kind": "value",
+     "label_key": "pos.x",
+     "signal": "robot.x_mm",
+     "rect": {
+      "x": 24,
+      "y": 168,
+      "w": 400,
+      "h": 96
+     },
+     "unit_key": "unit.millimetres"
+    },
+    {
+     "id": "pos_y",
+     "kind": "value",
+     "label_key": "pos.y",
+     "signal": "robot.y_mm",
+     "rect": {
+      "x": 24,
+      "y": 280,
+      "w": 400,
+      "h": 96
+     },
+     "unit_key": "unit.millimetres"
+    },
+    {
+     "id": "pos_z",
+     "kind": "value",
+     "label_key": "pos.z",
+     "signal": "robot.z_mm",
+     "rect": {
+      "x": 24,
+      "y": 392,
+      "w": 400,
+      "h": 96
+     },
+     "unit_key": "unit.millimetres"
+    },
+    {
+     "id": "pos_moving",
+     "kind": "led",
+     "label_key": "pos.moving",
+     "signal": "robot.moving",
+     "rect": {
+      "x": 456,
+      "y": 168,
+      "w": 400,
+      "h": 96
+     }
+    }
+   ]
+  },
+  {
+   "id": "metrics",
+   "title_key": "nav.metrics",
+   "needs_jetson": false,
+   "widgets": [
+    {
+     "id": "met_temp",
+     "kind": "value",
+     "label_key": "metrics.mcu_temp",
+     "signal": "mcu.temperature_c",
+     "rect": {
+      "x": 24,
+      "y": 152,
+      "w": 600,
+      "h": 64
+     }
+    },
+    {
+     "id": "met_tx",
+     "kind": "value",
+     "label_key": "metrics.can_tx",
+     "signal": "stack.can_tx_errors",
+     "rect": {
+      "x": 24,
+      "y": 232,
+      "w": 600,
+      "h": 64
+     }
+    },
+    {
+     "id": "met_rx",
+     "kind": "value",
+     "label_key": "metrics.can_rx",
+     "signal": "stack.can_rx_errors",
+     "rect": {
+      "x": 24,
+      "y": 312,
+      "w": 600,
+      "h": 64
+     }
+    },
+    {
+     "id": "met_spi",
+     "kind": "value",
+     "label_key": "metrics.spi_errors",
+     "signal": "jetson.spi_errors",
+     "rect": {
+      "x": 24,
+      "y": 392,
+      "w": 600,
+      "h": 64
+     }
+    },
+    {
+     "id": "met_age",
+     "kind": "value",
+     "label_key": "metrics.jetson_age",
+     "signal": "jetson.age_ms",
+     "rect": {
+      "x": 656,
+      "y": 152,
+      "w": 600,
+      "h": 64
+     }
+    },
+    {
+     "id": "met_jcpu",
+     "kind": "value",
+     "label_key": "metrics.jetson_cpu",
+     "signal": "jetson.cpu_load_pct",
+     "rect": {
+      "x": 656,
+      "y": 232,
+      "w": 600,
+      "h": 64
+     }
+    },
+    {
+     "id": "met_jtemp",
+     "kind": "value",
+     "label_key": "metrics.jetson_temp",
+     "signal": "jetson.temperature_c",
+     "rect": {
+      "x": 656,
+      "y": 312,
+      "w": 600,
+      "h": 64
+     }
+    }
+   ]
+  },
+  {
+   "id": "system",
+   "title_key": "nav.system",
+   "needs_jetson": false,
+   "widgets": [
+    {
+     "id": "sys_level",
+     "kind": "value",
+     "label_key": "sys.safety_level",
+     "signal": "jetson.safety_level",
+     "rect": {
+      "x": 24,
+      "y": 152,
+      "w": 800,
+      "h": 80
+     }
+    },
+    {
+     "id": "sys_jetson",
+     "kind": "led",
+     "label_key": "link.jetson",
+     "signal": "jetson.link",
+     "rect": {
+      "x": 24,
+      "y": 248,
+      "w": 800,
+      "h": 80
+     }
+    },
+    {
+     "id": "sys_bus",
+     "kind": "led",
+     "label_key": "link.stack_bus",
+     "signal": "stack.can_state",
+     "rect": {
+      "x": 24,
+      "y": 344,
+      "w": 800,
+      "h": 80
+     }
+    },
+    {
+     "id": "sys_estop",
+     "kind": "led",
+     "label_key": "dash.estop",
+     "signal": "estop.latched",
+     "rect": {
+      "x": 24,
+      "y": 440,
+      "w": 800,
+      "h": 80
+     }
+    }
+   ]
+  },
+  {
+   "id": "alarms",
+   "title_key": "nav.alarms",
+   "needs_jetson": false,
+   "widgets": [
+    {
+     "id": "alm_list",
+     "kind": "list",
+     "label_key": "alarm.none",
+     "signal": "ui.alarm_list",
+     "rect": {
+      "x": 24,
+      "y": 152,
+      "w": 1000,
+      "h": 440
+     }
+    },
+    {
+     "id": "alm_ack",
+     "kind": "button",
+     "label_key": "action.ack",
+     "action": "ack_alarm",
+     "rect": {
+      "x": 1040,
+      "y": 152,
+      "w": 216,
+      "h": 96
+     }
+    }
+   ]
+  },
+  {
+   "id": "settings",
+   "title_key": "nav.settings",
+   "needs_jetson": false,
+   "widgets": [
+    {
+     "id": "set_listen",
+     "kind": "toggle",
+     "label_key": "action.listen_only",
+     "signal": "ui.listen_only",
+     "action": "toggle_listen_only",
+     "hint_key": "settings.listen_only_hint",
+     "rect": {
+      "x": 24,
+      "y": 152,
+      "w": 800,
+      "h": 96
+     },
+     "hold": true
+    },
+    {
+     "id": "set_lang",
+     "kind": "button",
+     "label_key": "action.language",
+     "action": "next_language",
+     "rect": {
+      "x": 24,
+      "y": 280,
+      "w": 400,
+      "h": 96
+     },
+     "value_signal": "ui.language"
+    }
+   ]
+  }
+ ]
+}

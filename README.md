@@ -436,6 +436,8 @@ Where to read more:
 
 * [docs/SOURCE_MAP.md](docs/SOURCE_MAP.md) - every file of the repository with a line on what it does
 * [docs/HARDWARE_SPECIFICATION.md](docs/HARDWARE_SPECIFICATION.md) - the specification of the design: eleven subsystems, from the host computer to the tool head (one file per language)
+* [docs/DSI_EN_H757.md](docs/DSI_EN_H757.md) - the display on the STM32H757: the interface that keeps showing the state and stopping the machine when the Jetson does not answer, its modes, safety rules and phases
+* [docs/UI_STACK_H757.md](docs/UI_STACK_H757.md) - the choice of the library that draws the interface, with the flash, RAM and SDRAM budget against the memory map of the H757
 * [Security baseline of the ecosystem](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
 * [Threat model of the ecosystem](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
 * [Changelog of this repository](CHANGELOG.md)

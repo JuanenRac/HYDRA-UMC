@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "description": "Inputs of the memory and bandwidth budget of the interface on the STM32H757 (tools/ui_budget.py reads it together with docs/platform_profiles.json, src/ui_h757/spec/i18n.json and src/ui_h757/spec/ui_spec.json and computes the rest). Every number says where it comes from: `data` is computed from the files of this repository, `published` is the figure the project of the library states, `estimate` is a value of this design that a measurement in the CI or on the board replaces. Nothing here was measured on a board.",
+  "stack": {
+    "chosen": "LVGL",
+    "version_policy": "a release of the 9.x series, pinned by commit in the firmware build when the driver phase starts",
+    "license": "MIT",
+    "flash_bytes": {"value": 307200, "origin": "published", "note": "the project states about 200-300 kB of flash for a typical interface; the upper figure is used"},
+    "ram_bytes": {"value": 102400, "origin": "published", "note": "the project states about 100 kB of RAM for a typical interface, plus the render buffer"},
+    "render_buffer_fraction": {"value": 0.1, "origin": "published", "note": "the project asks for a render buffer of at least 1/10 of the screen"}
+  },
+  "display": {
+    "width": 1280,
+    "height": 720,
+    "layer_bytes_per_pixel": {"value": 2, "origin": "estimate", "note": "RGB565 layers; the DSI link carries the pixels of the panel in its own format"},
+    "refresh_hz": {"value": 30, "origin": "data", "note": "docs of the board: 60 Hz does not fit two lanes with margin, 30 Hz is the experimental candidate"},
+    "framebuffers": {"value": 2, "origin": "estimate", "note": "double buffer in the SDRAM"},
+    "panel_native_orientation": "portrait 720x1280, used as landscape: the rotation is a cost the driver phase has to settle (LTDC does not rotate)"
+  },
+  "sdram": {
+    "bus_bits": {"value": 32, "origin": "data", "note": "two x16 devices per bank (docs/H757_MEMORY_MAP.md)"},
+    "sdclk_hz": {"value": 100000000, "origin": "estimate", "note": "HCLK 200 MHz with SDCLK period 2 (the CubeMX values are starting values)"},
+    "sustained_fraction": {"value": 0.5, "origin": "estimate", "note": "share of the peak a mix of scan-out, DMA2D and CPU keeps"},
+    "scanout_max_fraction": {"value": 0.4, "origin": "estimate", "note": "the scan-out of the display may take at most this share of the sustained bandwidth"}
+  },
+  "fonts": {
+    "sizes_px": [24, 32],
+    "bits_per_pixel": 4,
+    "origin": "estimate",
+    "note": "uncompressed bitmap glyphs of full-width cell for the CJK scripts and half-width for the Latin ones: an upper bound; the glyphs counted are exactly the characters of src/ui_h757/spec/i18n.json"
+  },
+  "internal_flash": {
+    "cm7_app_reserve_bytes": {"value": 131072, "origin": "estimate", "note": "what the brain application of the CM7 needs besides the interface (CAN stack, kinematics, SPI link); replaced by the size of the real build"},
+    "proposed_cm7_app_slot_bytes": 786432,
+    "proposed_note": "bank 1 from 0x08040000 to the end of the bank (0x08100000): the profile gives the CM7 application 384 KiB and leaves the rest of the bank unassigned; the change belongs to the profile of the H757 and waits for its owner"
+  },
+  "ram": {
+    "axi_core_state_bytes": {"value": 2048, "origin": "estimate", "note": "ui_state_t, the render buffer bookkeeping and the stack of the interface task"},
+    "task_stack_bytes": {"value": 16384, "origin": "estimate", "note": "stack of the interface task; the stop path does not run in it"}
+  },
+  "external_assets": {
+    "nor_flash_bytes": 16777216,
+    "note": "the GD25Q128E on SPI5 is not memory mapped: fonts and images are copied from it into the SDRAM at start, after their hash is checked",
+    "images_bytes": {"value": 524288, "origin": "estimate", "note": "logo and icons"}
+  },
+  "measured_limits": {
+    "ui_core": {"flash_bytes_max": 12288, "ram_bytes_max": 256, "note": "limits the CI holds the build of src/ui_h757/core/ui_core.c for the Cortex-M7 to (arm-none-eabi-gcc -Os); the measured size is printed by the test"}
+  }
+}
