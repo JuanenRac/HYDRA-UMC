@@ -73,6 +73,7 @@ Concebido como uma **arquitetura heterogénea de anfitrião + coprocessador em t
 ### 🤖 Capacidades da microfábrica (objetivos de desenho):
 * 📡 **Rede distribuída multirrobô:** previsto: coordenar até 8 módulos robóticos escravos distribuídos (primeiro 3, 4, 5 e 6 GDL; com escala para 7, 8, 9 GDL e arquiteturas de duplo robô em versões futuras) ligados por um único barramento CAN físico.
 * 🧠 **Coprocessamento neuronal integrado:** a NVIDIA Jetson Orin NX de 16 GB (até 100 TOPS, valor da NVIDIA) executa as cargas de visão e de IA e gere três ranhuras M.2 com as suas próprias vias PCIe: um Hailo-8 (26 TOPS) numa ranhura Key-M PCIe x4 para deteção de objetos multifluxo YOLOv8/YOLO11 (previsto; ainda não corre nenhum detetor), inspeção de defeitos e alinhamento de fiduciais de PnP em todas as câmaras, uma unidade NVMe e um módulo Wi-Fi/Bluetooth numa ranhura Key-E. A variante Jetson não tem Hailo-10H: o raciocínio local e a GenAI (modelos LLM/VLA quantizados, previsto) correm na própria Jetson, sem ida e volta à nuvem.
+* 🖥️ **Modo degradado (desenho):** o ecrã tátil DSI destina-se a ligar-se ao STM32H757, que deverá executar a interface completa no ecrã, de modo que o H757 e o ecrã continuem a funcionar (paragem, estado, controlo) mesmo que a Jetson bloqueie; nada disto está construído nem validado.
 * 📐 **Estágio local de 6 eixos:** geração direta de pulsos step/dir/enable para 6 eixos locais (X, Y1, Y2, Z, E0, E1) para necessidades auxiliares: robôs adicionais, revólveres ATC (trocador automático de ferramentas), sincronização de tapete rolante ou pórticos de mesa XYZ.
 * 🎯 **Integração JuanenPNP e JuanenCNC:** compatível diretamente com sistemas Pick-and-Place (estruturas de hardware LumenPNP) e unidades CNC equipadas com módulos laser ópticos de 10 W para prototipagem de PCB e colocação de SMD.
 * 👁️ **Matriz de visão e inspeção com oito câmaras:** controladores USB 3.0 duplos integrados que alimentam 8 portas de câmara USB dedicadas para alinhamento ótico pick-and-place com OpenCV em tempo real, inspeção térmica e monitorização remota de transmissões.
@@ -110,6 +111,7 @@ flowchart TB
     end
     MEM["1 MB de SRAM / 2 MB de flash interna de duplo banco<br/>Interface I2C4 dedicada para a F-RAM externa (FM24CL64B)"]
     MCU --- MEM
+    MCU -- "Ecrã MIPI-DSI" --> DSIDISP["Ecrã tátil DSI<br/>interface completa executada pelo H757 (desenho)"]
 
     MCU -- "FDCAN1 - barramento STACK A" --> ROBOTS["Placas controladoras de robô A1...A8<br/>(até 8 módulos escravos)"]
 ```

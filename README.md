@@ -73,6 +73,7 @@ Designed as a **Heterogeneous Host + Real-Time Co-Processor Architecture**, HYDR
 ### 🤖 Micro-Factory Capabilities (design targets):
 * 📡 **Distributed Multi-Robot Network:** Planned: coordination of up to 8 distributed slave robotic modules (3, 4, 5, and 6-DOF first; scaling up to 7, 8, 9-DOF and Dual-Robot architectures in future releases) connected over a single physical CAN bus.
 * 🧠 **Embedded Neural Coprocessing:** The NVIDIA Jetson Orin NX 16 GB (up to 100 TOPS, NVIDIA's figure) runs the vision and AI workloads and drives three M.2 slots from its own PCIe lanes: a Hailo-8 (26 TOPS) in a PCIe x4 Key-M slot for multi-stream YOLOv8/YOLO11 (planned; no detector runs yet) object detection, defect inspection and PnP fiducial alignment across the cameras, an NVMe drive, and a Wi-Fi/Bluetooth module in a Key-E slot. The Jetson variant has no Hailo-10H: local reasoning and GenAI (quantized LLM/VLA models, planned) run on the Jetson itself, without a cloud round-trip.
+* 🖥️ **Degraded mode (design):** the DSI touch display is meant to hang from the STM32H757, which is meant to run the complete on-screen interface, so that the H757 and the display keep working (stop, status, control) even if the Jetson hangs; nothing of this is built or validated.
 * 📐 **Local 6-Axis Stage:** Direct step/dir/enable pulse generation for 6 local axes (X, Y1, Y2, Z, E0, E1) for auxiliary needs: additional robots, ATC (Automatic Tool Changer) revolvers, conveyor belt synchronization, or XYZ table gantries.
 * 🎯 **JuanenPNP & JuanenCNC Integration:** Directly compatible with Pick-and-Place systems (LumenPNP hardware structures) and CNC units equipped with 10W optical laser modules for PCB prototyping and SMD placement.
 * 👁️ **Octal Camera Vision & Inspection Matrix:** Integrated dual USB 3.0 controllers driving 8x dedicated USB camera ports for real-time OpenCV pick-and-place optical alignment, thermal inspection, and remote stream monitoring.
@@ -110,6 +111,7 @@ flowchart TB
     end
     MEM["1 MB SRAM / 2 MB dual-bank internal flash<br/>Dedicated I2C4 interface to the external F-RAM (FM24CL64B)"]
     MCU --- MEM
+    MCU -- "MIPI-DSI display" --> DSIDISP["DSI touch display<br/>full interface run by the H757 (design)"]
 
     MCU -- "FDCAN1 - STACK A bus" --> ROBOTS["Robot Controller Boards A1...A8<br/>(up to 8 slave modules)"]
 ```

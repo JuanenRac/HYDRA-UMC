@@ -73,6 +73,7 @@ Diseñada como una **Arquitectura Heterogénea de Host + Co-Procesador de Tiempo
 ### 🤖 Capacidades de la Micro-Fábrica (objetivos de diseño):
 * 📡 **Red Multi-Robot Distribuida:** Previsto: coordinar hasta 8 módulos robóticos esclavos distribuidos (primero 3, 4, 5 y 6 ejes; escalable a 7, 8, 9 ejes y arquitecturas de robots duales en futuras versiones) conectados a través de un único bus físico CAN.
 * 🧠 **Coprocesamiento Neuronal Embebido:** La NVIDIA Jetson Orin NX de 16 GB (hasta 100 TOPS, cifra de NVIDIA) ejecuta las cargas de visión e IA y maneja tres ranuras M.2 con sus propios carriles PCIe: un Hailo-8 (26 TOPS) en una ranura Key-M PCIe x4 para detección de objetos multiflujo YOLOv8/YOLO11 (previsto; aún no funciona ningún detector), inspección de defectos y alineación de fiduciales de PnP en todas las cámaras, una unidad NVMe y un módulo Wi-Fi/Bluetooth en una ranura Key-E. La variante Jetson no lleva Hailo-10H: el razonamiento local y la GenAI (modelos LLM/VLA cuantizados, previsto) se ejecutan en la propia Jetson, sin ida y vuelta a la nube.
+* 🖥️ **Modo degradado (diseño):** la pantalla táctil DSI está pensada para colgar del STM32H757, que debe ejecutar la interfaz completa en pantalla, de modo que el H757 y la pantalla sigan funcionando (parada, estado, control) aunque la Jetson se bloquee; nada de esto está construido ni validado.
 * 📐 **Etapa Local de 6 Ejes:** Generación directa de pulsos step/dir/enable para 6 ejes locales (X, Y1, Y2, Z, E0, E1) para necesidades auxiliares: robots adicionales, revólveres ATC (Cambiador Automático de Herramientas), sincronización de cintas transportadoras o pórticos de tablas XYZ.
 * 🎯 **Integración con JuanenPNP y JuanenCNC:** Directamente compatible con sistemas de Pick-and-Place (estructuras de hardware LumenPNP) y unidades CNC equipadas con módulos de láser óptico de 10W para prototipado de PCB y colocación SMD.
 * 👁️ **Matriz de Visión e Inspección Óctuple por Cámara:** Doble controlador USB 3.0 integrado que alimenta 8 puertos de cámara USB dedicados para alineación óptica pick-and-place con OpenCV en tiempo real, inspección térmica y monitorización remota de flujo de vídeo.
@@ -110,6 +111,7 @@ flowchart TB
     end
     MEM["1 MB SRAM / 2 MB flash interna de doble banco<br/>Interfaz I2C4 dedicada a la F-RAM externa (FM24CL64B)"]
     MCU --- MEM
+    MCU -- "Pantalla MIPI-DSI" --> DSIDISP["Pantalla táctil DSI<br/>interfaz completa ejecutada por el H757 (diseño)"]
 
     MCU -- "Bus FDCAN1 - STACK A" --> ROBOTS["Placas Robot Controller Board A1...A8<br/>(hasta 8 módulos esclavos)"]
 ```

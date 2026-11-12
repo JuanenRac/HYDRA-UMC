@@ -73,6 +73,7 @@ Progettata come **Architettura Ibrida Host + Co-Processore Real-Time**, HYDRA-UM
 ### 🤖 Capacità della Micro-Fabbrica (obiettivi di progetto):
 * 📡 **Rete Multi-Robot Distribuita:** Previsto: coordinare fino a 8 moduli robotici slave distribuiti (prima 3, 4, 5 e 6 assi; scalabile a 7, 8, 9 assi e architetture di robot duali nelle versioni future) collegati su un unico bus fisico CAN.
 * 🧠 **Coprocessore Neurale Embedded:** Il NVIDIA Jetson Orin NX da 16 GB (fino a 100 TOPS, dato di NVIDIA) esegue i carichi di visione e IA e gestisce tre slot M.2 con le proprie lane PCIe: un Hailo-8 (26 TOPS) in uno slot Key-M PCIe x4 per il rilevamento di oggetti multi-flusso YOLOv8/YOLO11 (previsto; nessun rilevatore gira ancora), l'ispezione dei difetti e l'allineamento dei fiduciali PnP su tutte le telecamere, un'unità NVMe e un modulo Wi-Fi/Bluetooth in uno slot Key-E. La variante Jetson non ha un Hailo-10H: il ragionamento locale e la GenAI (modelli LLM/VLA quantizzati, previsto) girano sul Jetson stesso, senza andata e ritorno verso il cloud.
+* 🖥️ **Modalità degradata (progetto):** il display touch DSI è pensato per essere collegato allo STM32H757, che dovrebbe eseguire l'interfaccia completa a schermo, in modo che H757 e display continuino a funzionare (arresto, stato, controllo) anche se il Jetson si blocca; nulla di questo è costruito o validato.
 * 📐 **Stadio Locale a 6 Assi:** Generazione diretta di impulsi step/dir/enable per 6 assi locali (X, Y1, Y2, Z, E0, E1) per esigenze ausiliarie: robot aggiuntivi, revolver ATC (Automatic Tool Changer), sincronizzazione di nastri trasportatori o portali di tavole XYZ.
 * 🎯 **Integrazione JuanenPNP e JuanenCNC:** Direttamente compatibile con sistemi Pick-and-Place (strutture hardware LumenPNP) e unità CNC dotate di moduli laser ottico da 10W per la prototipazione PCB e il posizionamento SMD.
 * 👁️ **Matrice di Visione e Ispezione Octal a Camera:** Doppio controller USB 3.0 integrato che alimenta 8 porte camera USB dedicate per l'allineamento ottico pick-and-place con OpenCV in tempo reale, l'ispezione termica e il monitoraggio remoto dello streaming.
@@ -110,6 +111,7 @@ flowchart TB
     end
     MEM["1 MB SRAM / 2 MB flash interna dual-bank<br/>Interfaccia I2C4 dedicata alla F-RAM esterna (FM24CL64B)"]
     MCU --- MEM
+    MCU -- "Display MIPI-DSI" --> DSIDISP["Display touch DSI<br/>interfaccia completa eseguita dall'H757 (progetto)"]
 
     MCU -- "Bus FDCAN1 - STACK A" --> ROBOTS["Schede Robot Controller Board A1...A8<br/>(fino a 8 moduli slave)"]
 ```

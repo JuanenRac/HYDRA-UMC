@@ -73,6 +73,7 @@ Entworfen als **heterogene Host + Echtzeit-Co-Prozessor-Architektur**, soll HYDR
 ### 🤖 Mikrofabrik-Fähigkeiten (Entwurfsziele):
 * 📡 **Verteiltes Multi-Roboter-Netzwerk:** Geplant: Koordination von bis zu 8 verteilten robotischen Slave-Modulen (zunächst 3, 4, 5 und 6 Achsen; Skalierung auf 7, 8, 9 Achsen und Dual-Roboter-Architekturen in zukünftigen Versionen), die über einen einzigen physischen CAN-Bus verbunden sind.
 * 🧠 **Eingebettetes neuronales Coprocessing:** Der NVIDIA Jetson Orin NX 16 GB (bis zu 100 TOPS, Angabe von NVIDIA) führt die Bildverarbeitungs- und KI-Lasten aus und bedient drei M.2-Steckplätze über seine eigenen PCIe-Lanes: einen Hailo-8 (26 TOPS) im PCIe-x4-Key-M-Steckplatz für Mehrstrom-Objekterkennung mit YOLOv8/YOLO11 (geplant; noch läuft kein Detektor), Defektprüfung und PnP-Fiducial-Ausrichtung über alle Kameras, ein NVMe-Laufwerk und ein WLAN/Bluetooth-Modul im Key-E-Steckplatz. Die Jetson-Variante hat keinen Hailo-10H: lokales Schlussfolgern und GenAI (quantisierte LLM/VLA-Modelle, geplant) laufen auf dem Jetson selbst, ohne Umweg über die Cloud.
+* 🖥️ **Degradierter Betrieb (Entwurf):** Das DSI-Touch-Display soll am STM32H757 hängen, der die vollständige Oberfläche auf dem Bildschirm ausführen soll, damit H757 und Display (Stopp, Status, Steuerung) auch bei einem Hänger des Jetson weiterarbeiten; nichts davon ist gebaut oder validiert.
 * 📐 **Lokale 6-Achsen-Stufe:** Direkte Step/Dir/Enable-Impulserzeugung für 6 lokale Achsen (X, Y1, Y2, Z, E0, E1) für Zusatzbedarfe: zusätzliche Roboter, ATC-Revolver (automatischer Werkzeugwechsler), Förderbandsynchronisation oder XYZ-Tischportale.
 * 🎯 **JuanenPNP- und JuanenCNC-Integration:** Direkt kompatibel mit Pick-and-Place-Systemen (LumenPNP-Hardwarestrukturen) und CNC-Einheiten, die mit 10W-optischen Lasermodulen für PCB-Prototyping und SMD-Bestückung ausgestattet sind.
 * 👁️ **Octal-Kamera-Vision- und Inspektionsmatrix:** Integrierte doppelte USB-3.0-Controller, die 8x dedizierte USB-Kameraports für Echtzeit-OpenCV-Pick-and-Place-optische Ausrichtung, Wärmeinspektion und Fernstream-Überwachung ansteuern.
@@ -110,6 +111,7 @@ flowchart TB
     end
     MEM["1 MB SRAM / 2 MB interner Dual-Bank-Flash<br/>Dedizierte I2C4-Schnittstelle zum externen F-RAM (FM24CL64B)"]
     MCU --- MEM
+    MCU -- "MIPI-DSI-Display" --> DSIDISP["DSI-Touch-Display<br/>vollständige Oberfläche vom H757 ausgeführt (Entwurf)"]
 
     MCU -- "FDCAN1 - STACK A Bus" --> ROBOTS["Robot-Controller-Boards A1...A8<br/>(bis zu 8 Slave-Module)"]
 ```
