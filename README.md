@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
   <img src="https://img.shields.io/badge/Platform-STM32H757-003551.svg" alt="Platform">
-  <img src="https://img.shields.io/badge/Tests-971%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-984%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
@@ -38,7 +38,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.2.8` |
 | Maturity | Scaffolding |
-| Tests | 971 (`python -m unittest discover -s tests -p 'test_*.py'`) |
+| Tests | 984 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | Stack | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | Target | A microcontroller board (the firmware); built on a PC |
 | On real hardware | Not yet: no run on real hardware is recorded for this version |
@@ -54,7 +54,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Area | State | What it means here |
 |---|---|---|
 | Software | 🟠 | Structure and first pieces only; most of the work is still to do |
-| Tests | 🟡 | 971 automated tests, run on every change |
+| Tests | 🟡 | 984 automated tests, run on every change |
 | Real hardware | 🔴 | Not yet: no run on real hardware is recorded for this version |
 | Documentation | 🟡 | README in eight languages, checked against the manifest on every change |
 
@@ -218,7 +218,7 @@ default targets, 0 errors) - not a theoretical list:
 
 ## 🧪 Testing
 
-971 automated tests run with `python -m unittest discover -s tests -p 'test_*.py'`. They are 187 tests of the CM5 SPI bridge plus 522 of the firmware sources, the signed image header and the CAN identifiers (the SPI bridge ones run with `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` and `-s src/cm5_host/spi_bridge/tests`). The C logic of the bootloaders and of the relay is checked by 50 more programs compiled with a plain host C compiler, in step 1b of `build_firmware.sh`. None of them needs a board.
+984 automated tests run with `python -m unittest discover -s tests -p 'test_*.py'`. They are 187 tests of the CM5 SPI bridge plus 522 of the firmware sources, the signed image header and the CAN identifiers (the SPI bridge ones run with `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` and `-s src/cm5_host/spi_bridge/tests`). The C logic of the bootloaders and of the relay is checked by 50 more programs compiled with a plain host C compiler, in step 1b of `build_firmware.sh`. None of them needs a board.
 
 The CI runs `HYDRA_UMC_CI=1 python tools/ci_validate.py`, which checks the manifest, the documents, the eight READMEs and the pictures.
 
