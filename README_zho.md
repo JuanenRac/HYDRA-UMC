@@ -1,5 +1,5 @@
 <!-- =============================================================================
-HYDRA-UMC - Universal Machines Controller: board design, bootloaders and the CM5 SPI bridge
+HYDRA-UMC - Universal Machines Controller: board design, bootloaders and the SPI bridge
 Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 GPL-3.0-or-later - see LICENSE
 ============================================================================= -->
@@ -18,7 +18,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
-  <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="Platform">
+  <img src="https://img.shields.io/badge/Platform-STM32H757-003551.svg" alt="Platform">
   <img src="https://img.shields.io/badge/Tests-709%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 | 版本 | `0.2.8` |
 | 成熟度 | 雏形 |
 | 测试 | 709 (`python -m unittest discover -s tests -p 'test_*.py'`) |
-| 技术栈 | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
+| 技术栈 | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | 目标 | 微控制器板（固件）；在电脑上构建 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
 
@@ -62,7 +62,9 @@ GPL-3.0-or-later - see LICENSE
 
 HYDRA-UMC 按 **异构主机 + 实时协处理器架构** 设计，目标是将高层用户界面渲染、计算机视觉、AI 推理与云端连接，同实时步进脉冲生成、现场总线管理及功率电子驱动解耦（计划中：步进脉冲生成与驱动尚未编写）。
 
-> **设计状态:**以下各节描述的是电路板及其固件的预期设计。目前实际存在的只有引导加载程序、CM4 与 G474 的通信应用,以及 CM5 一侧的 SPI 桥(参见靠后位置的“安全状态”提示框和 `docs/architecture.md` 中的状态表)。下文凡以现在时描述运动生成、S 曲线、PID 回路、安全联锁、E-STOP、掉电处理、目标检测或成品电路板其他行为的句子,均应理解为计划中:其中任何一项都没有在已组装的电路板上运行过。
+> **目标硬件:** 量产主板是 STM32H757(链路的 SPI 主设备),主机为 NVIDIA Jetson Orin NX 16 GB;Raspberry Pi Compute Module 5 保留为试点开发试验台。在 Jetson 底板上,Hailo-8 位于 PCIe x4 的 M.2 插槽中,旁边是 NVMe 插槽和 Wi-Fi/蓝牙插槽,没有 Hailo-10H。这些都没有在电路板上运行过。下面的框图、功能列表和硬件规格在重绘之前,仍然画的是带有 PCIe 交换芯片和 Hailo-10 的旧 Compute Module 5 载板。
+
+> **设计状态:**以下各节描述的是电路板及其固件的预期设计。目前实际存在的只有引导加载程序、CM4 与 G474 的通信应用,以及 为 CM5 试验台编写的 SPI 桥(参见靠后位置的“安全状态”提示框和 `docs/architecture.md` 中的状态表)。下文凡以现在时描述运动生成、S 曲线、PID 回路、安全联锁、E-STOP、掉电处理、目标检测或成品电路板其他行为的句子,均应理解为计划中:其中任何一项都没有在已组装的电路板上运行过。
 
 ### 🤖 微工厂能力（设计目标）：
 * 📡 **分布式多机器人网络：** 计划中：通过单一物理 CAN 总线，协调多达 8 个分布式从属机器人模块（先支持 3、4、5、6 自由度；未来版本将扩展至 7、8、9 自由度及双机器人架构）。
@@ -75,7 +77,7 @@ HYDRA-UMC 按 **异构主机 + 实时协处理器架构** 设计，目标是将�
 
 ## 🧩 在 HYDRA-UMC 中的角色
 
-**HYDRA-UMC** 是 Universal Machines Controller 的设计：一个 Compute Module 5 主机、一个 STM32H745 实时协处理器，以及同一 CAN 总线上最多八块 Robot Controller Board，用来运行机器人单元和微型工厂。目前已有的是三个引导程序（签名镜像、防回滚）、CM4 和 G474 的通信应用以及 CM5 一侧的 SPI 桥；其余都是设计，尚未制造任何电路板。
+**HYDRA-UMC** 是 Universal Machines Controller 的设计：一台 16 GB 的 NVIDIA Jetson Orin NX 主机、一个相对 Jetson 充当 SPI 主设备的双核实时控制器 STM32H757，以及同一 CAN 总线上最多八块 Robot Controller Board，用来运行机器人单元和微型工厂。Raspberry Pi Compute Module 5 保留为试点开发试验台。目前已有的是三个引导程序（签名镜像、防回滚）、大脑核心和 G474 的通信应用，以及为 Compute Module 5 试验台编写的 SPI 桥（在那里主板仍是 SPI 从设备）；相对 Jetson 的主设备角色、H757 的新外设以及所有真实硬件上的验证都还有待完成，尚未制造任何电路板。
 
 ## 🏛️ 架构
 
@@ -100,7 +102,7 @@ flowchart TB
 
     CM5 -- "高速 SPI 总线 + DMA + 中断引脚" --> MCU
 
-    subgraph MCU["STM32H745ZIT6 实时协处理器（LQFP-144）"]
+    subgraph MCU["STM32H757XIH6 实时协处理器（TFBGA240）"]
         direction LR
         CM7["<b>Cortex-M7 @ 480 MHz</b><br/>S 曲线运动学<br/>硬件定时器<br/>6 轴本地工作台"]
         CM4["<b>Cortex-M4 @ 240 MHz</b><br/>FDCAN1 控制器<br/>传感器滤波<br/>核间 IPC 通信"]
@@ -113,12 +115,12 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    FDCAN1["STM32H745<br/>FDCAN1 控制器"] --> XCVR["TCAN1044<br/>收发器"] --> BUS["STACK A 总线<br/>（机器人 A1 - A8）"]
+    FDCAN1["STM32H757<br/>FDCAN1 控制器"] --> XCVR["TCAN1044<br/>收发器"] --> BUS["STACK A 总线<br/>（机器人 A1 - A8）"]
 ```
 
 ```mermaid
 flowchart LR
-    MCU["STM32H745<br/>FDCAN1（STACK A）"] --> RCB["<b>机器人控制板</b><br/>每台机器人 1 块，最多 8 块<br/>6 路步进/方向/使能，限位开关"]
+    MCU["STM32H757<br/>FDCAN1（STACK A）"] --> RCB["<b>机器人控制板</b><br/>每台机器人 1 块，最多 8 块<br/>6 路步进/方向/使能，限位开关"]
     RCB -- CAN --> URTC["<b>URTC 工具头</b><br/>+ 可选扩展板"]
     URTC -- CAN --> RCB
 ```
@@ -157,8 +159,8 @@ flowchart LR
 
 | 主题或路由 | 内容 |
 |---|---|
-| CAN, FDCAN1 in classic mode | 从 STM32H745 到最多八块 Robot Controller Board 的一条总线（STACK A）；中继协议的标识符只在 `tools/can_ids.py` 中列出一次，由 `tests/test_can_ids.py` 检查 |
-| SPI + DMA + IRQ pin, 128-byte frames | 从 CM5 到 STM32H745：与 C 结构体逐字节一致的固定 `SpiOtaFrame` 帧；桥默认运行在 10 MHz |
+| CAN, FDCAN1 in classic mode | 从 STM32H757 到最多八块 Robot Controller Board 的一条总线（STACK A）；中继协议的标识符只在 `tools/can_ids.py` 中列出一次，由 `tests/test_can_ids.py` 检查 |
+| SPI + DMA + IRQ pin, 128-byte frames | 从 CM5 到 STM32H757：与 C 结构体逐字节一致的固定 `SpiOtaFrame` 帧；桥默认运行在 10 MHz |
 | `GET /version`, `GET /counters`, `POST /flash` on 127.0.0.1:8765 | SPI 桥的本地服务：电路板的版本、其 CAN 控制器的错误计数器，以及带 Ed25519 签名的镜像的流式刷写（按行分隔的 JSON）；`relay=1` 通过 Robot Controller Board 到达 URTC 工具头 |
 | `tools/image_header.py sign \| keygen \| pubkey` | 签名镜像头的主机参考实现：它生成引导程序所检查的签名和降级令牌，`tests/image_header_vectors.h` 由它生成，使 C 和 Python 两侧不会漂移 |
 
@@ -221,7 +223,7 @@ build_firmware.bat --clean  :: 先清空已缓存的 HAL/CMSIS
 
 **手动构建（任一操作系统，不使用脚本）：** 该脚本自动化的正是 `docs/COMPILE_STM32G474.md` 与 `docs/COMPILE_STM32H745.md` 中列出的步骤 —— 获取 `build_firmware.sh`/`build_firmware.bat` 顶部列出的固定版本 HAL/CMSIS/FreeRTOS 源码，用 `arm-none-eabi-gcc` 编译每个目标的 HAL 模块与启动/系统文件（编译参数/模块列表均列于该脚本中），然后为每个引导加载程序与应用程序分别链接其自身的链接脚本（`*.ld`，位于源码旁），使用 `arm-none-eabi-gcc`/`-Wl,--gc-sections`，并通过 `arm-none-eabi-objcopy` 转换为 `.bin`/`.hex`。如果你不想运行任一脚本，这两份 `docs/COMPILE_*.md` 文档就是权威的分步参考 —— 脚本的存在是为了自动化这些步骤，而非取代它们作为事实依据。
 
-构建产物存放于 `firmware/`，该目录会被提交并推送到本仓库（与 URTC 自身 `firmware/` 输出文件夹的约定一致），以便 HYDRA-UMC-STUDIO 的 GitHub 下载功能能够通过 `firmware_manifest.json` 真正找到实际存在的 `.bin` 文件 —— 该目录 **不会** 被 gitignore 排除。各步骤的具体内容与原因详见 `docs/COMPILE_STM32G474.md` 与 `docs/COMPILE_STM32H745.md`；当前状态详见各固件文件夹自身的 `README.md`。全部 3 个目标（G474、H745 CM7、H745 CM4）的 **引导加载程序** 均为真实可用的 CAN-OTA/SPI-OTA 实现（CRC32 + HMAC-SHA256 校验后先写入备份区再复制到主区，与 URTC 自身引导加载程序相同的防变砖机制）—— 端到端编译干净通过，但尚未在真实硬件上验证。**应用程序** 目前仍是经过编译验证的 FreeRTOS GPIO 闪烁烟雾测试代码，尚非真正的运动/视觉/中继固件。哪些内容属实、哪些仍待完成，详见 `docs/architecture.md`（尤其是第 6 节的状态表与第 8 节已知且已被接受的安全局限）。
+构建产物存放于 `firmware/`，该目录会被提交并推送到本仓库（与 URTC 自身 `firmware/` 输出文件夹的约定一致），以便 HYDRA-UMC-STUDIO 的 GitHub 下载功能能够通过 `firmware_manifest.json` 真正找到实际存在的 `.bin` 文件 —— 该目录 **不会** 被 gitignore 排除。各步骤的具体内容与原因详见 `docs/COMPILE_STM32G474.md` 与 `docs/COMPILE_STM32H745.md`；当前状态详见各固件文件夹自身的 `README.md`。全部 3 个目标（G474、H7 CM7、H7 CM4）的 **引导加载程序** 均为真实可用的 CAN-OTA/SPI-OTA 实现（CRC32 + HMAC-SHA256 校验后先写入备份区再复制到主区，与 URTC 自身引导加载程序相同的防变砖机制）—— 端到端编译干净通过，但尚未在真实硬件上验证。**应用程序** 目前仍是经过编译验证的 FreeRTOS GPIO 闪烁烟雾测试代码，尚非真正的运动/视觉/中继固件。哪些内容属实、哪些仍待完成，详见 `docs/architecture.md`（尤其是第 6 节的状态表与第 8 节已知且已被接受的安全局限）。
 
 > **安全状态：** 本仓库目前尚不包含 E-STOP 通路、软件限位、安全联锁、掉电（PVD）时向 FRAM 转储，也没有任何运动指令。上文各章节（或生态系统中其他项目）对这些功能的描述均属预期设计：在其实现并在真实电路板上测试之前，不得依赖它们来保障安全。目前各应用程序的实际行为：CM4 与 G474 的应用程序运行 STACK A 的 AXIS_STATUS 轮询/应答和 Tier 2/3 中继隧道；CM7 的应用程序仍只是 GPIO 翻转冒烟测试。
 
@@ -233,7 +235,7 @@ build_firmware.bat --clean  :: 先清空已缓存的 HAL/CMSIS
 |---|---|---|
 | “引导程序接受用公开的开发种子签名的更新” | 构建时没有 `HYDRA_FW_UPDATE_PUBKEY_HEX`（或没有 `HYDRA_FW_HMAC_KEY_HEX`） | 在工作台上没问题；对任何别人可能接触到的电路板，请用 `python tools/image_header.py keygen` 生成密钥对，用公钥构建，并用 `HYDRA_UMC_RELEASE=1` 构建发布版 |
 | “未找到 arm-none-eabi-gcc” | 未安装 Arm GNU 工具链，或它不在 `PATH` 中 | 安装它（脚本在 Linux 上会尝试 `apt`）并重新构建；1b 步骤的主机测试只需要普通的 C 编译器 |
-| SPI 桥无法打开设备，或出现 `SPI transfer returned ... bytes` | 真实传输需要在启用 SPI 设备的 CM5 上有 `spidev` 和 `gpiod`，另一端还要有 STM32H745；两者目前都不存在，因此桥只对模拟对象试过 | 在有电路板之前，使用测试中的模拟传输 |
+| SPI 桥无法打开设备，或出现 `SPI transfer returned ... bytes` | 真实传输需要在启用 SPI 设备的 CM5 上有 `spidev` 和 `gpiod`，另一端还要有 STM32H757；两者目前都不存在，因此桥只对模拟对象试过 | 在有电路板之前，使用测试中的模拟传输 |
 | `build_firmware.sh` 在某个主机测试处以 FAIL 结束 | 三个引导程序共用的某个源文件的副本已出现差异，或 `tests/image_header_vectors.h` 比 `tools/image_header.py` 旧 | 运行 `python tools/gen_image_header_vectors.py` 和 `python -m unittest discover -s tests`，看看是哪份副本不同 |
 
 ## 📂 仓库结构
@@ -291,8 +293,8 @@ HYDRA-UMC/
 
 **直接相关** —— 直接接入本固件的项目
 - **[URTC](https://github.com/JuanenRac/URTC)** —— 面向实体 Universal Robot Tool Controller 板卡的固件,通过 CAN 总线支持 25 种以上工具配置;本板卡驱动的每条机器人手臂所搭载的工具头固件,通过其自身的 CAN 下行链路再向前一跳。
-- **[HYDRA-UMC-OS](https://github.com/JuanenRac/HYDRA-UMC-OS)** —— 面向 CM5 的可复现 Raspberry Pi OS 产品层——只读代理、经过验证的配置/配置文件、WiFi 首次配网;本板卡自身 CM5 主机所运行的操作系统。
-- **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** —— 每个控制客户端真正通信的真实无头后端(REST/WebSocket);其自身的 `spi_bridge` 服务通过真实的 CM5↔STM32H745 SPI-OTA 连接与本固件通信。
+- **[HYDRA-UMC-OS](https://github.com/JuanenRac/HYDRA-UMC-OS)** —— 面向 CM5 的可复现 Raspberry Pi OS 产品层——只读代理、经过验证的配置/配置文件、WiFi 首次配网;CM5 试验台所运行的操作系统(Jetson 主机的镜像尚未定义)。
+- **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** —— 每个控制客户端真正通信的真实无头后端(REST/WebSocket);其自身的 `spi_bridge` 服务通过真实的 CM5↔STM32H757 SPI-OTA 连接与本固件通信。
 - **[HYDRA-UMC-VISION-NODE](https://github.com/JuanenRac/HYDRA-UMC-VISION-NODE)** —— 面向 Hailo-8 视觉流水线的集成中枢,具备逐阶段的真实硬件就绪检测;与本固件之间的感知/E-STOP 回路尚不存在。
 - **[HYDRA-UMC-SAFETY-ZONES](https://github.com/JuanenRac/HYDRA-UMC-SAFETY-ZONES)** —— 从文件读取物体位置的 v0 区域入侵、校准新鲜度与 E-STOP 请求逻辑;没有检测器为其供数,也尚未连接任何物理 E-STOP。
 - **[HYDRA-UMC-VISUAL-SERVOING-API](https://github.com/JuanenRac/HYDRA-UMC-VISUAL-SERVOING-API)** —— 以区域状态为授权条件的 Position-Based Visual Servoing 修正律;尚无摄像头位姿估计;将运动学修正直接发送给本固件。

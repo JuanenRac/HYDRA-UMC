@@ -1,6 +1,6 @@
 # Separating the signature from the image
 
-**Status: the formats are implemented in the three bootloaders (table, header format 2, signed counter, SHA-256 instead of the local HMAC, append-only metadata) and held by host tests; nothing has run on a board. Original status: design with a host reference. The formats below are fixed and implemented in Python (`tools/image_header2.py`, `tools/image_trust.py`) and held to shared vectors (`tests/image_format2_vectors.json`). Nothing is built for a board and no bootloader reads them yet.** It sets out how the official firmware of the three controllers (STM32G474 robot controller, STM32H745 CM7 and CM4) can be **compiled by a public build service with no private key leaving the maintainer's computer**.
+**Status: the formats are implemented in the three bootloaders (table, header format 2, signed counter, SHA-256 instead of the local HMAC, append-only metadata) and held by host tests; nothing has run on a board. Original status: design with a host reference. The formats below are fixed and implemented in Python (`tools/image_header2.py`, `tools/image_trust.py`) and held to shared vectors (`tests/image_format2_vectors.json`). Nothing is built for a board and no bootloader reads them yet.** It sets out how the official firmware of the three controllers (STM32G474 robot controller, STM32H757 CM7 and CM4) can be **compiled by a public build service with no private key leaving the maintainer's computer**.
 
 ## 1. The model today
 
@@ -49,7 +49,7 @@ The table lists `[current, next]`. Releases are signed with `current` until the 
 ### 3.4 Anti-rollback and metadata
 
 * The floor is the larger of the one kept in the metadata and the minimum compiled into the bootloader. An image with a counter below it is refused; after a good install the floor becomes the image's counter. Nothing overrides it.
-* The metadata is an **append-only log with a generation number** (record: magic, schema, type, length, generation, payload, CRC-32, padded to the programming unit: 8 bytes on the G474, 32 on the H745). The valid record with the highest generation wins; a record cut short fails its CRC and the previous one stays. On the G474 the gap before the application is 4 KB, i.e. two 2 KB pages, so two alternating units are possible there if the second is free (to be checked); on the H745 the metadata sector is a single 128 KB sector, so the log is used.
+* The metadata is an **append-only log with a generation number** (record: magic, schema, type, length, generation, payload, CRC-32, padded to the programming unit: 8 bytes on the G474, 32 on the H757). The valid record with the highest generation wins; a record cut short fails its CRC and the previous one stays. On the G474 the gap before the application is 4 KB, i.e. two 2 KB pages, so two alternating units are possible there if the second is free (to be checked); on the H757 the metadata sector is a single 128 KB sector, so the log is used.
 * This is a staged slot with an atomic commit, not an executable A/B: the application is linked for one address. There is no flash for a third slot; a known-good image and signed deltas live on the host side and the board always receives a complete image with its signature.
 
 ## 4. Cost

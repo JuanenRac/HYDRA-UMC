@@ -64,8 +64,10 @@ silently glossed over here.
   placeholders still need to exist once that reconciliation happens.
 - A real, tested boot chain: bootloader config, kernel/device-tree for CM5
   + this project's own custom hardware (the PCIe Gen3 switch fanning out to
-  the Hailo-8 + Hailo-10 M.2 sockets, dual GL3523, STM32H745 SPI link) —
+  the Hailo-8 + Hailo-10 M.2 sockets, dual GL3523, STM32H757 SPI link) —
   none of the device-tree overlays this custom board will need exist yet,
   in this folder or in HYDRA-UMC-OS.
+  This list is written for the Compute Module 5 pilot bench; the image and the boot
+  chain for the NVIDIA Jetson Orin NX host of the board are not defined yet.
 - Real systemd unit files once `cm5_host/`'s own components actually build
   and install somewhere.

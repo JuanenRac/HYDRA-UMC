@@ -6,7 +6,7 @@
   "role": "firmware",
   "stack": "firmware-c",
   "technologies": [
-    "STM32H745 (dual-core)",
+    "STM32H757 (dual-core)",
     "STM32G474",
     "FreeRTOS (AMP)",
     "CMSIS-DSP",
@@ -19,8 +19,8 @@
   "evidence": "none",
   "family": "Core Hardware",
   "parent": null,
-  "build": "6 independently-versioned components (G474 + H745 CM7 + H745 CM4, app + bootloader each). This registry tracks the G474 application as representative. Real install/build: bash build_firmware.sh.",
-  "notes": "The motion-control firmware for the robot arm boards of this ecosystem: 6 independently-versioned MCU targets (G474 + H745 CM7/CM4, app + bootloader each), plus a CM5-side SPI-OTA bridge (src/cm5_host/spi_bridge/, Python, unit-tested against fakes). The H745 CM4 application has the PLL1 clock configuration, the FDCAN1 master and the relay tunnel to Tier 2 (KinematicBrainCan.c); the G474 application has the AXIS_STATUS responder and the FDCAN2 relay tunnel to the URTC head (RobotControllerRelay.c). Not written yet: the 6-axis motion generation on both G474 and CM7 (the CM7 application is still a FreeRTOS smoke test). Nothing here has run on a populated board yet; the status table of the README says what has been checked and how.",
+  "build": "6 independently-versioned components (G474 + H7 CM7 + H7 CM4, app + bootloader each). This registry tracks the G474 application as representative. Real install/build: bash build_firmware.sh.",
+  "notes": "The motion-control firmware for the robot arm boards of this ecosystem: 6 independently-versioned MCU targets (G474 + H7 CM7/CM4, app + bootloader each), plus a CM5-side SPI-OTA bridge (src/cm5_host/spi_bridge/, Python, unit-tested against fakes). The H7 CM4 application has the PLL1 clock configuration, the FDCAN1 master and the relay tunnel to Tier 2 (KinematicBrainCan.c); the G474 application has the AXIS_STATUS responder and the FDCAN2 relay tunnel to the URTC head (RobotControllerRelay.c). Not written yet: the 6-axis motion generation on both G474 and CM7 (the CM7 application is still a FreeRTOS smoke test). Nothing here has run on a populated board yet; the status table of the README says what has been checked and how.",
   "native_version": {
     "file": "src/mcu_stm32g474/boot/bootloader_common.h",
     "pattern": {

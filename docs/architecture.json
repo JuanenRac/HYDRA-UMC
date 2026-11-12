@@ -2,7 +2,7 @@
   "repo": "HYDRA-UMC",
   "ecosystem": "hydra",
   "tagline": "A host, a real-time co-processor and up to eight robot boards: only the bootloaders and the SPI bridge exist as code today.",
-  "description": "HYDRA-UMC describes a CM5 host that talks to an STM32H745 over SPI, which drives up to eight Robot Controller Boards over one CAN bus; the repository holds the bootloaders with their signed-image rule, the SPI bridge on the CM5 and the host tools that sign and check images.",
+  "description": "HYDRA-UMC describes an NVIDIA Jetson Orin NX host that talks to an STM32H757 over SPI (the H757 is the master), which drives up to eight Robot Controller Boards over one CAN bus; the repository holds the bootloaders with their signed-image rule, the SPI bridge written for the CM5 pilot bench and the host tools that sign and check images.",
   "columns": [
     "WHO USES IT",
     "THIS REPOSITORY",
@@ -27,7 +27,7 @@
       "id": "h7",
       "column": 2,
       "level": "untested",
-      "title": "STM32H745 board",
+      "title": "STM32H757 board",
       "lines": [
         "not built; the bootloader",
         "and bridge were never on it"
@@ -74,7 +74,7 @@
       "level": "tested",
       "title": "bootloaders",
       "lines": [
-        "G474, H745 CM7 and CM4:",
+        "G474, H7 CM7 and CM4:",
         "signed image, anti-rollback"
       ],
       "code": [

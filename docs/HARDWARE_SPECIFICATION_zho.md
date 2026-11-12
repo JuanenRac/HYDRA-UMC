@@ -62,7 +62,7 @@
 
 主板作为主控制器，通过单一物理 CAN 总线管理最多 8 个独立的从属机器人模块：
 
-* 🔌 **硬件外设：** 1 路原生硬件 FDCAN 控制器（`FDCAN1`），直接内置于 STM32H745 中，由当前的真实引导加载程序实现以 **经典 CAN 模式** 运行（`FDCAN_FRAME_CLASSIC`，`BRS_OFF`）—— 该外设本身具备 FD 能力，但本项目目前实际采用的 CAN-OTA/SPI-OTA 协议（`docs/CANBUS_STM32H745.md`、`docs/CANBUS_STM32G474.md`）仅使用经典帧（最大 DLC 为 8），与其他各层级（G474 机器人控制板、URTC）保持一致。CAN FD 更大的 64 字节 BRS 载荷是为未来预留的真实硬件余量，目前协议尚未使用。
+* 🔌 **硬件外设：** 1 路原生硬件 FDCAN 控制器（`FDCAN1`），直接内置于 STM32H757 中，由当前的真实引导加载程序实现以 **经典 CAN 模式** 运行（`FDCAN_FRAME_CLASSIC`，`BRS_OFF`）—— 该外设本身具备 FD 能力，但本项目目前实际采用的 CAN-OTA/SPI-OTA 协议（`docs/CANBUS_STM32H745.md`、`docs/CANBUS_STM32G474.md`）仅使用经典帧（最大 DLC 为 8），与其他各层级（G474 机器人控制板、URTC）保持一致。CAN FD 更大的 64 字节 BRS 载荷是为未来预留的真实硬件余量，目前协议尚未使用。
 * ⚡ **物理层收发器：** 1 路高速 CAN FD 收发器（例如 TI `TCAN1044AVD` / NXP `TJA1443`）—— 出于与上述外设相同的未来余量考量而选用具备 FD 能力的硬件，尽管当前流量仍为经典帧。
 * 🔀 **总线拓扑：**
   * 🅰️ **STACK A（`FDCAN1`）：** 服务于从属模块 A1 至 A8。
@@ -71,7 +71,7 @@
 
 ```mermaid
 flowchart LR
-    FDCAN1["STM32H745<br/>FDCAN1 控制器"] --> XCVR["TCAN1044<br/>收发器"] --> BUS["STACK A 总线<br/>（机器人 A1 - A8）"]
+    FDCAN1["STM32H757<br/>FDCAN1 控制器"] --> XCVR["TCAN1044<br/>收发器"] --> BUS["STACK A 总线<br/>（机器人 A1 - A8）"]
 ```
 
 ## 7. 💾 超高速非易失性存储器（SPI FRAM）
@@ -112,9 +112,9 @@ flowchart LR
 
 ## 10. 🔄 处理器间通信（IPC）
 
-CM5（主机）与 STM32H745（协处理器）之间的通信，采用硬件辅助的零拷贝 SPI 链路：
+CM5（主机）与 STM32H757（协处理器）之间的通信，采用硬件辅助的零拷贝 SPI 链路：
 
-* 🔗 **物理传输层：** 全双工 SPI1，设计上限为 50 MHz —— STM32 端为从机模式，CM5 端为主机模式;不过 CM5 端的真实驱动(`src/cm5_host/ipc_driver/src/ipc_driver.c`)目前保守地使用 10 MHz,因为与之匹配的 STM32H745 SPI1 从机配置尚未在真实硬件上验证。
+* 🔗 **物理传输层：** 全双工 SPI1，设计上限为 50 MHz —— STM32 端为从机模式，CM5 端为主机模式;不过 CM5 端的真实驱动(`src/cm5_host/ipc_driver/src/ipc_driver.c`)目前保守地使用 10 MHz,因为与之匹配的 STM32H757 SPI1 从机配置尚未在真实硬件上验证。
 * 🤝 **握手信号线：** `HYDRA_DATA_READY` GPIO 信号线。
 * ⚡ **执行流程：** Cortex-M4 在共享的 AXI SRAM 中准备一个 128 字节的遥测数据帧，拉高 `HYDRA_DATA_READY` 信号，随后 CM5 通过高速 SPI DMA 获取该数据包，全程无需轮询开销。
 
@@ -127,7 +127,7 @@ CM5（主机）与 STM32H745（协处理器）之间的通信，采用硬件辅�
   * ⚡ **第 3 层（内层 2）：** 分割式电源层（`24V`、`5V_MAIN`、`5V_USB`、`3.3V`）。
   * 🔴 **第 4 层（底层）：** 次级信号走线及大电流电源分支。
 * 🛠️ **连接器与装配：**
-  * 🔲 STM32H745 采用 LQFP-144 封装（0.5 mm 间距），2 颗 GL3523 集线器芯片采用 QFN-88 封装，另有 2 个由板载 PCIe Gen3 交换芯片供电的 M.2 Key M 2242/2280 插槽（Hailo-8 + Hailo-10，第 3 节）。
+  * 🔲 STM32H757 采用 LQFP-144 封装（0.5 mm 间距），2 颗 GL3523 集线器芯片采用 QFN-88 封装，另有 2 个由板载 PCIe Gen3 交换芯片供电的 M.2 Key M 2242/2280 插槽（Hailo-8 + Hailo-10，第 3 节）。
   * 🔌 双 Hirose DF40 夹层连接器，用于 Compute Module 5。
   * 📌 40 针、2.54 mm 间距堆叠式排针，用于 STACK A 总线连接（机器人控制板物理堆叠的底座）—— `docs/PINOUT_STACKA_CONNECTOR.md`。
   * 🔌 8 路 USB 3.0 Type-A（或 Hirose 工业锁扣型）连接器，用于机器人摄像头。
@@ -138,14 +138,14 @@ STACK A（第 6 节）上最多 8 个从属模块中的每一个，都是一块 
 
 ```mermaid
 flowchart LR
-    MCU["STM32H745<br/>FDCAN1（STACK A）"] --> RCB["<b>机器人控制板</b><br/>每台机器人 1 块，最多 8 块<br/>6 路步进/方向/使能，限位开关"]
+    MCU["STM32H757<br/>FDCAN1（STACK A）"] --> RCB["<b>机器人控制板</b><br/>每台机器人 1 块，最多 8 块<br/>6 路步进/方向/使能，限位开关"]
     RCB -- CAN --> URTC["<b>URTC 工具头</b><br/>+ 可选扩展板"]
     URTC -- CAN --> RCB
 ```
 
-* 🎛️ **MCU：** STMicroelectronics **STM32G474RET6**（Cortex-M4 @ 170 MHz，LQFP-64，512 KB 闪存），使用其自带 3 路 FDCAN 外设中的 2 路 —— 一路作为连接 STM32H745 的 FDCAN 上行链路，另一路作为连接自身 URTC 头部的 CAN 下行链路。详见 `docs/architecture.md` §1。
+* 🎛️ **MCU：** STMicroelectronics **STM32G474RET6**（Cortex-M4 @ 170 MHz，LQFP-64，512 KB 闪存），使用其自带 3 路 FDCAN 外设中的 2 路 —— 一路作为连接 STM32H757 的 FDCAN 上行链路，另一路作为连接自身 URTC 头部的 CAN 下行链路。详见 `docs/architecture.md` §1。
 * 🔢 **地址分配：** `BOARD_ID[2:0]` —— 每块板上的本地 3 位 DIP 开关，安装时手动设置为 0-7，为每块板赋予自己的 FDCAN1 插槽基础地址 —— 并非由物理堆叠位置或 STACK A 连接器派生（每块板都是完全相同、可互换的 PCB）。详见 `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md` §1c。
 * 🧵 **RTOS：** **FreeRTOS**（其引导加载程序保持裸机运行 —— 接收/校验/跳转无需调度器）。真实应用：`src/mcu_stm32g474/STM32G474RE_main.c` 运行着真实的中继任务（`RobotControllerRelay.c`——通往 URTC Tool Head 的 FDCAN2 下行链路、一个 `AXIS_STATUS` 响应器，以及 `RELAY_SEND`/`RELAY_RECV` 隧道），与带看门狗刷新的闪烁任务并行运行。
-* 📡 **CAN-OTA 固件更新，深达 4 个层级：** STM32H745 自身（通过其与 CM5 之间既有的 SPI 链路）、本板、其 URTC 工具头（STM32F303CCT6），以及 —— 仅当已安装时 —— 该工具头自身的高级扩展板（STM32F303CBT6，`expansion_board_type` 为 3 或 4，详见 URTC 自身的 `docs/EXPANSION.TXT`），均可从 HYDRA-UMC-STUDIO 的烧录器/测试器中完成烧录与诊断，全程无需 JTAG/SWD 探针，也无需 USB-CAN 转接器。完整地址方案、无需任何新协议设计即可触达最后两个层级的中继隧道，以及当前实现状态：详见 `docs/architecture.md`。 **带签名的镜像头与防回滚(引导程序,已在主机上测试):** 更新带有 64 字节的头(完整版本 主.次.补丁、硬件 ID、大小、链接地址、向量字、CRC),Ed25519 签名覆盖头与镜像合在一起的摘要,因此旧的已签名镜像无法声称更高的版本;版本的三个数字会被比较,更旧的镜像只有在带有绑定该会话随机数、两个版本和该镜像的令牌时才会安装(令牌本身也是签名;旧的四字节魔术帧不再允许任何事)。该判定(`image_header.h`、`update_verify.h`)在三个引导程序中是同一个文件,用 `tools/image_header.py` 生成的字节测试,并且对 G474 从 START_UPDATE 到新应用做了端到端测试。板子上只有公钥(`tools/image_header.py` 生成密钥并签名;私钥种子永远不放到板子上,开发用种子是公开的,因此发布构建会拒绝开发用公钥);曲线运算使用内置的 TweetNaCl(公有领域,见 `THIRD_PARTY_NOTICES.md`)。这些都还没有为板子编译或在板子上运行过。
+* 📡 **CAN-OTA 固件更新，深达 4 个层级：** STM32H757 自身（通过其与 CM5 之间既有的 SPI 链路）、本板、其 URTC 工具头（STM32F303CCT6），以及 —— 仅当已安装时 —— 该工具头自身的高级扩展板（STM32F303CBT6，`expansion_board_type` 为 3 或 4，详见 URTC 自身的 `docs/EXPANSION.TXT`），均可从 HYDRA-UMC-STUDIO 的烧录器/测试器中完成烧录与诊断，全程无需 JTAG/SWD 探针，也无需 USB-CAN 转接器。完整地址方案、无需任何新协议设计即可触达最后两个层级的中继隧道，以及当前实现状态：详见 `docs/architecture.md`。 **带签名的镜像头与防回滚(引导程序,已在主机上测试):** 更新带有 64 字节的头(完整版本 主.次.补丁、硬件 ID、大小、链接地址、向量字、CRC),Ed25519 签名覆盖头与镜像合在一起的摘要,因此旧的已签名镜像无法声称更高的版本;版本的三个数字会被比较,更旧的镜像只有在带有绑定该会话随机数、两个版本和该镜像的令牌时才会安装(令牌本身也是签名;旧的四字节魔术帧不再允许任何事)。该判定(`image_header.h`、`update_verify.h`)在三个引导程序中是同一个文件,用 `tools/image_header.py` 生成的字节测试,并且对 G474 从 START_UPDATE 到新应用做了端到端测试。板子上只有公钥(`tools/image_header.py` 生成密钥并签名;私钥种子永远不放到板子上,开发用种子是公开的,因此发布构建会拒绝开发用公钥);曲线运算使用内置的 TweetNaCl(公有领域,见 `THIRD_PARTY_NOTICES.md`)。这些都还没有为板子编译或在板子上运行过。
 
 完整的分层架构详见 `docs/architecture.md`（本节仅为摘要），其中包括哪些内容是已确认的硬件事实、哪些仍是尚待实现的提议方案。该文档第 8 节还记录了当前引导加载程序已知且已被接受的安全局限（尚无读出保护、共享的防回滚绕过值、未经身份验证的回读）——这些均是硬件到位前的刻意留白，而非疏漏。

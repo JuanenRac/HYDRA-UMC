@@ -1,5 +1,7 @@
 # Build switches of the firmware that ship off
 
+> **Target hardware.** The board is an STM32H757 with an NVIDIA Jetson Orin NX 16 GB as host; the Compute Module 5 is the pilot development bench. The firmware in this repository still builds for an STM32H745 development target (names kept until the rename) and its SPI link is written with the board as the slave of the CM5 bench. Nothing here has been run on the board.
+
 Every switch below is `0` in a build as it ships, so the binary does not change until a build sets it (`-DNAME=1`), except `HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT`, which the maintainer decided to ship on (`1`; build with `-DHYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT=0` for the old behaviour). That one is not validated on a board: row 10 is still open. Each one has a host test that runs it on and off, and a row of `docs/BENCH_TESTS.md` that has to be run on a board before it is turned on in a release.
 
 | Switch | File | What it does when on | Bench row to pass first |
@@ -16,7 +18,7 @@ Every switch below is `0` in a build as it ships, so the binary does not change 
 | `HYDRA_SPI_APP`, `HYDRA_SPI_REQUIRE_CRC`, `HYDRA_SPI_ZONES_HEARTBEAT` | `src/mcu_stm32h745/CM4/spi_app.h`, `SpiApp.c` | the application of the CM4 starts the SPI slave service (SPI1 and one task) that answers the commands above; `HYDRA_SPI_REQUIRE_CRC` refuses frames without the seal; `HYDRA_SPI_ZONES_HEARTBEAT` stops the stack when the heartbeat of the safety-zones chain stops coming | 13 |
 | `HYDRA_SPI_SLOT_SCAN`, `HYDRA_SPI_SLOT_SCAN_WINDOW_MS` | `src/mcu_stm32h745/CM4/spi_app.h`, `SpiApp.c`, `slot_scan_sweep.h` | the scan asked for through the SPI link is the full scan of `docs/SLOT_SCAN.md` (the probe, the replies and the error frames of eight windows, the verdicts absent, ok, duplicate, misplaced and noisy) instead of the query of AXIS_STATUS that only tells present from absent; the window of each slot is 100 ms by default, so a scan takes about a second | 15 |
 | `HYDRA_FRAM_ERASE`, `HYDRA_FRAM_I2C_TIMING` | `src/mcu_stm32h745/CM4/fram_node.h`, `fram_i2c.h`, `SpiApp.c` | the application of the CM4 runs the F-RAM erase and self-test asked for over the SPI link (frame types `0x28` and `0x29`, `docs/FRAM_ERASE.md`) on the FM24CL64B (U7) of the main board, bus I2C4 (`PD12`, `PD13`, address `0x50`); with the switch off it answers `disabled`, and with no `HYDRA_FRAM_I2C_TIMING` (the `TIMINGR` value, no default on purpose) it answers `no-chip`. It needs `HYDRA_SPI_APP` and `HYDRA_SPI_SYSTEM` | 31 |
-| `HYDRA_RCC_HSEM_HANDSHAKE` | `src/mcu_stm32h745/CM4/rcc_owner.h` | one core of the H745 sets the clock tree up, chosen with a hardware semaphore; the other waits a bounded time or leaves it | 8 |
+| `HYDRA_RCC_HSEM_HANDSHAKE` | `src/mcu_stm32h745/CM4/rcc_owner.h` | one core of the H757 sets the clock tree up, chosen with a hardware semaphore; the other waits a bounded time or leaves it | 8 |
 
 `src/*/boot/flash_layer.h` (the same file in the three boot directories) is the common erase, program and read-back layer; the three bootloaders call it behind `HYDRA_FLASH_LAYER` (off). It is switched in chip by chip after rows 22 to 25 pass.
 

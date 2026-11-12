@@ -1,11 +1,13 @@
-> ⚠️ **SUPERSEDED / OUTDATED - DO NOT USE FOR NEW WORK.** This document describes an
-> earlier board revision (STM32H757BIT6, LQFP-208, 12x onboard TMC5160A drivers
-> wired directly to robots, ESP32-C3 Wi-Fi, USB2514B hub, LAN8720A Ethernet PHY,
-> external SDRAM/QSPI flash). The CURRENT architecture (STM32H745ZIT6, LQFP-144,
-> a single FDCAN1 bus to up to 8 external Robot Controller Boards - no onboard
-> motor drivers) is documented in `README.md` and `docs/architecture.md`. Kept
-> here for historical reference only. See `docs/architecture.md` for why the
-> design changed and what's confirmed vs. still pending on the current revision.
+> **HISTORICAL SNAPSHOT - not the source of truth for the current board.** This document
+> describes an earlier revision: an STM32H757BIT6 in LQFP-208 with twelve onboard
+> TMC5160A drivers wired directly to the robots, an ESP32-C3 Wi-Fi module, a
+> USB2514B hub, a LAN8720A Ethernet PHY, external SDRAM and QSPI flash, and a
+> Compute Module 5 host. The current board is an STM32H757 (XIH6, TFBGA240) that
+> is the SPI master towards an NVIDIA Jetson Orin NX 16 GB, with a single FDCAN1
+> bus to up to eight external Robot Controller Boards and no onboard motor
+> drivers; the Compute Module 5 stays only as the pilot development bench.
+> `docs/architecture.md` (section 0) says what is decided, what the code does
+> today and what is still open. Kept for reference only.
 
 # HYDRA Core Architecture Specifications
 

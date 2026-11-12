@@ -1,9 +1,10 @@
-> ⚠️ **SUPERSEDED / OUTDATED - DO NOT USE FOR NEW WORK.** This document describes
-> an intermediate board revision already on STM32H745ZIT6/LQFP-144 with a single
-> FDCAN1 bus, but still single-NPU (Hailo-8 only, no Hailo-10 cognitive
-> accelerator, no PCIe switch fan-out). The CURRENT architecture (dual Hailo-8 +
-> Hailo-10 over an onboard PCIe Gen3 switch) is documented in `README.md` and
-> `docs/architecture.md`. Kept here for historical reference only.
+> **HISTORICAL SNAPSHOT - not the source of truth for the current board.** This document
+> describes an intermediate revision with an STM32H745ZIT6 (LQFP-144), a single
+> FDCAN1 bus, a Compute Module 5 host and a single accelerator (Hailo-8 only).
+> The current board is an STM32H757 (XIH6, TFBGA240) that is the SPI master towards
+> an NVIDIA Jetson Orin NX 16 GB; the Compute Module 5 stays only as the pilot
+> development bench. See `README.md` and `docs/architecture.md` (section 0).
+> Kept here for reference only.
 
 # 🚀 HYDRA-UMC TECHNICAL SPECIFICATION
 ### 🤖 The Ultimate Dual-Core Micro-Factory & Multi-Robot Controller Platform (V2.2 - Single FDCAN Bus)
@@ -97,7 +98,7 @@ Built on a **Heterogeneous Host + Real-Time Co-Processor Architecture**, HYDRA-U
 
 The motherboard acts as a master controller for up to 8 individual slave robotic modules distributed across a single physical CAN FD network:
 
-* 🔌 **Hardware Peripheral:** 1x Native Hardware FDCAN Controller (`FDCAN1`) built directly into the STM32H745.
+* 🔌 **Hardware Peripheral:** 1x Native Hardware FDCAN Controller (`FDCAN1`) built directly into the STM32H757.
 * ⚡ **Physical Layer Transceiver:** 1x High-Speed CAN FD Transceiver (e.g., TI `TCAN1044AVD` / NXP `TJA1443`).
 * 🔀 **Bus Topology:**
   * 🅰️ **STACK A (`FDCAN1`):** Serves Slave Modules A1 through A8.
@@ -105,7 +106,7 @@ The motherboard acts as a master controller for up to 8 individual slave robotic
 
 ```text
                   +-----------------------------------+
-                  |     STM32H745 FDCAN1 CONTROLLER   |
+                  |     STM32H757 FDCAN1 CONTROLLER   |
                   +-----------------+-----------------+
                                     |
                                     v
@@ -154,13 +155,13 @@ The board operates from a single industrial **24V DC** input supply bus:
 
 * ⚡ **Main DC Input:** 24V DC $\pm 10\%$
 * 🔋 **5V Power Domain:** Step-down synchronous buck regulator supplying **5A continuous** for the CM5 module, touchscreen display backlight, and USB expansion.
-* 🎛️ **3.3V Power Domain:** Secondary low-noise regulator supplying **1.5A continuous** dedicated exclusively to the STM32H745 MCU, SPI FRAM, and CAN FD transceiver to prevent inductive noise coupling.
+* 🎛️ **3.3V Power Domain:** Secondary low-noise regulator supplying **1.5A continuous** dedicated exclusively to the STM32H757 MCU, SPI FRAM, and CAN FD transceiver to prevent inductive noise coupling.
 
 ---
 
 ## 8. 🔄 INTER-PROCESSOR COMMUNICATION (IPC)
 
-Communication between CM5 (Host) and STM32H745 (Co-Processor) utilizes a hardware-assisted, zero-copy SPI link:
+Communication between CM5 (Host) and STM32H757 (Co-Processor) utilizes a hardware-assisted, zero-copy SPI link:
 
 * 🔗 **Physical Transport:** Full-Duplex SPI1 running up to 50 MHz in Slave Mode on STM32 and Master Mode on CM5.
 * 🤝 **Handshake Line:** `HYDRA_DATA_READY` GPIO line.

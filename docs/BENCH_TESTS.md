@@ -1,5 +1,7 @@
 # Bench tests
 
+> **Target hardware.** The board is an STM32H757 with an NVIDIA Jetson Orin NX 16 GB as host; the Compute Module 5 is the pilot development bench. The firmware in this repository still builds for an STM32H745 development target (names kept until the rename) and its SPI link is written with the board as the slave of the CM5 bench. Nothing here has been run on the board.
+
 Every test below is **not executed**. The tunnel between the Robot Controller and the Tool Head (the CAN link to URTC), the FDCAN clock and bitrate and the over-the-air update of a URTC head exist as code and as host tests; none has been checked on a bus with a real URTC head. The architecture notes mark the tunnel "in code, not working yet" until these steps pass. Write a result only after a person ran the step.
 
 ## What the software already covers (no board needed)
@@ -7,7 +9,7 @@ Every test below is **not executed**. The tunnel between the Robot Controller an
 - `python tools/host_tests.py` builds and runs the C host tests with the compiler that is installed.
 - The simulated URTC head in HYDRA-UMC-DOCS (`fake_urtc.py`) answers the identification request and the bootloader identification frames with the bytes of the shared vectors, over a simulated bus and over a SocketCAN socket; it has not been run over a real `vcan` on Linux.
 
-- `tests/test_ipc_mailbox.c` seals, damages and replays the frame of the mailbox between the two cores of the H745 with the switch `HYDRA_IPC_REQUIRE_CRC` off and on, and models the two semaphore channels; `tests/test_fdcan_timing.py` checks that every FDCAN set-up of the firmware uses the same bit timing and that it gives 1 Mbit/s at the clock the bootloaders assume. The clock itself and the real semaphore timing are rows 10 and 8 of the table below.
+- `tests/test_ipc_mailbox.c` seals, damages and replays the frame of the mailbox between the two cores of the H757 with the switch `HYDRA_IPC_REQUIRE_CRC` off and on, and models the two semaphore channels; `tests/test_fdcan_timing.py` checks that every FDCAN set-up of the firmware uses the same bit timing and that it gives 1 Mbit/s at the clock the bootloaders assume. The clock itself and the real semaphore timing are rows 10 and 8 of the table below.
 
 ## Setup
 
@@ -29,16 +31,16 @@ Every test below is **not executed**. The tunnel between the Robot Controller an
 
 ## Controller board, kinematic brain and host link
 
-Every row below is **not executed** either; it needs the STM32G474 controller board, the STM32H745 kinematic brain, a CM5 host on the SPI link, a CAN analyser and a current-limited supply.
+Every row below is **not executed** either; it needs the STM32G474 controller board, the STM32H757 kinematic brain, a host on the SPI link (the CM5 pilot bench today; the Jetson Orin NX once the master role is written), a CAN analyser and a current-limited supply.
 
 | # | Step | Expected result | Result |
 |---|------|-----------------|--------|
-| 8 | Run the dual-core mailbox of the H745 (CM4 to CM7 commands) for one hour at the highest command rate, with the hardware semaphore checked on a scope or a counter. | No lost, torn or repeated command; the semaphore is never held across a reset of one core. | not executed |
+| 8 | Run the dual-core mailbox of the H757 (CM4 to CM7 commands) for one hour at the highest command rate, with the hardware semaphore checked on a scope or a counter. | No lost, torn or repeated command; the semaphore is never held across a reset of one core. | not executed |
 | 9 | Compare the CAN bitrate of the controller board with the one of the stack bus on the analyser. | Both buses show the same nominal and data bitrate; any mismatch is recorded. | not executed |
 | 10 | Start the G474 bootloader from a cold power-up and measure the FDCAN kernel clock. | The kernel clock is the one the bit timing assumes and the first frame is sent without an error counter rising. | not executed |
 | 11 | Wire the CAN standby pins as in the pinout note, boot, then read the option bytes. | The transceivers leave standby and the board boots from its application; the boot pin and option bytes read back as documented. | not executed |
 | 12 | Send frames at the maximum rate before the scheduler of the G474 starts (reset loop, 100 cycles). | No fault and no hang in the tick or the receive interrupt. | not executed |
-| 13 | Run the SPI link between the CM5 and the H745 at full rate with a frame generator, cutting a byte at random. | A damaged or repeated frame is detected and answered with a clean error; the link recovers on the next frame. | not executed |
+| 13 | Run the SPI link between the CM5 and the H757 at full rate with a frame generator, cutting a byte at random. | A damaged or repeated frame is detected and answered with a clean error; the link recovers on the next frame. | not executed |
 | 14 | Ask the application on a board to enter its bootloader over the stack bus and then flash it. | The board reboots into the bootloader and accepts the signed image; a board that does not answer is reported. | not executed |
 | 15 | Flash a batch of boards one after the other, with two boards sharing a board identifier. | The duplicate is reported before any write; the others finish and each reports its new version. | not executed |
 | 16 | Read the memory of a production-protected board and send a wrong adoption code. | The memory cannot be read out and the wrong code is refused. | not executed |
@@ -59,5 +61,5 @@ Every row below is **not executed** either; it needs the STM32G474 controller bo
 Bus load with all the nodes of a real machine, noise on long cables and the timing of the safe stop; measure them on the final wiring.
 | 22 | Update with a valid format 2 image, then with one bit changed in the image, the header, the key id and the signature; then with a key the table does not hold, a revoked one and (official bootloader) any key. | The valid one installs and the board resets; every other one is refused with the reason of the status frame and the installed application keeps running. The official bootloader with an empty release table refuses all. | not executed |
 | 23 | Install a counter 5 image, then a newer version with counter 3, then with a valid downgrade token; then counter 7. | Counter 3 is refused with the rollback reason also with the token; counter 7 installs and becomes the floor. | not executed |
-| 24 | Cut the power at several points of an update: during the data, the verification, the metadata record, the copy and the change of metadata page (G474) or sector (H745). | After every cut the board starts the old or the new application, never a damaged one. A cut at the erase of the full H745 sector loses the log (first-boot adoption with the compiled floor): record what happens. | not executed |
-| 25 | Read the flash words of the metadata that a cut left half written, on the G474 (double-word ECC) and the H745 (flash word ECC). | The read of a torn record does not raise a bus fault or NMI that stops the bootloader; if it does, the record reader must handle it. | not executed |
+| 24 | Cut the power at several points of an update: during the data, the verification, the metadata record, the copy and the change of metadata page (G474) or sector (H757). | After every cut the board starts the old or the new application, never a damaged one. A cut at the erase of the full H757 sector loses the log (first-boot adoption with the compiled floor): record what happens. | not executed |
+| 25 | Read the flash words of the metadata that a cut left half written, on the G474 (double-word ECC) and the H757 (flash word ECC). | The read of a torn record does not raise a bus fault or NMI that stops the bootloader; if it does, the record reader must handle it. | not executed |

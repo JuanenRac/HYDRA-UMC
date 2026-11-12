@@ -1,6 +1,6 @@
 # SPI system commands: stop, release, telemetry and probe
 
-Commands of the SPI link between the CM5 and the H745 that the CM4 answers itself. They are frames of the tier `SELF` and never go on a CAN bus. The frame types start at `0x20`. The tier of the frame decides where it goes before its type is read (the tier `STACKA` is relayed to the CAN bus, the tier `SELF` is answered by the CM4), so a type of this table is never put on a bus even though the window of a slot, 64 identifiers wide, also has offsets from `0x20` (the F-RAM requests of `docs/FRAM_ERASE.md`).
+Commands of the SPI link between the CM5 and the H757 that the CM4 answers itself. They are frames of the tier `SELF` and never go on a CAN bus. The frame types start at `0x20`. The tier of the frame decides where it goes before its type is read (the tier `STACKA` is relayed to the CAN bus, the tier `SELF` is answered by the CM4), so a type of this table is never put on a bus even though the window of a slot, 64 identifiers wide, also has offsets from `0x20` (the F-RAM requests of `docs/FRAM_ERASE.md`).
 
 | Type | Name | Length | Payload | Does |
 |---|---|---|---|---|

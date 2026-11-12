@@ -5,7 +5,7 @@
 full licensing split (firmware GPL-3.0-or-later, hardware CERN-OHL-S v2, docs CC BY-SA 4.0).
 
 This document is the missing piece between `README.md` (which stops at "the
-STM32H745 talks to up to 8 slave modules over FDCAN1") and the actual robot
+STM32H757 talks to up to 8 slave modules over FDCAN1") and the actual robot
 cell: what those 8 slaves *are*, how a URTC tool head (and its own optional
 expansion board) reaches the rest of the system, and how firmware gets onto
 any of these boards without a JTAG/SWD probe or a USB-CAN dongle physically
@@ -20,15 +20,29 @@ against real hardware.
 
 ---
 
+## 0. Target hardware and what the code does today
+
+The production board is an **STM32H757** (dual core, Cortex-M7 and Cortex-M4; part STM32H757XIH6 in a TFBGA240 package) with an **NVIDIA Jetson Orin NX 16 GB** as the host. The H757 is the SPI **master** of the link to the Jetson (SPI1, 8 bits, hardware chip select, 12.5 Mbit/s planned). The M7 core owns SPI1, FDCAN1 and I2C4 (the F-RAM). The CAN bus of the stack (STACK A) runs at 1 Mbit/s: with the 100 MHz kernel clock of the H757 that is a prescaler of 5 with 20 time quanta. The Raspberry Pi Compute Module 5 stays as the **pilot development bench**: it is where the services, the SPI bridge and the tests run today.
+
+What the code in this repository does today is different, and this document says so wherever it matters:
+
+- the firmware builds for an STM32H745 development target (the sources and the build target keep the names `mcu_stm32h745` and `h745` until they are renamed); the M4 core owns the SPI link, FDCAN1 and the F-RAM, and talks to the M7 through a mailbox;
+- the SPI link is written with the board as the **slave** and the CM5 (`src/cm5_host/spi_bridge`) as the master;
+- nothing of the master role towards the Jetson, of the new peripherals of the H757 (external memory, display, USB host, further SPI, CAN and I2C buses, converters) or of the changes of ownership has been written, and nothing has run on a board.
+
+Open decisions, none of them taken: the operating system and image for the Jetson, who starts an update or the telemetry when the board is the master, the ready/interrupt line, the RAM map of the H757, the bootloader in master mode, and what the CM5 does once the Jetson is the host. Whenever a section below speaks of "the CM5" it describes the pilot bench.
+
+---
+
 ## 1. The four flashable/testable tiers
 
 ```text
 +-------------------+     +-------------------+     +--------------------+     +-------------------+     +-------------------+
-|  COMPUTE MODULE 5  | SPI |   STM32H745ZIT6   |FDCAN|  ROBOT CONTROLLER  | CAN |    URTC TOOL HEAD  | I2C |  ADVANCED EXPANSION|
+|  JETSON ORIN NX    | SPI |   STM32H757XIH6   |FDCAN|  ROBOT CONTROLLER  | CAN |    URTC TOOL HEAD  | I2C |  ADVANCED EXPANSION|
 |  (HYDRA-UMC-STUDIO |---->|  "Kinematic Brain" |1    |  BOARD (x1-8, one  |---->|  STM32F303CCT6,    |---->|  (optional)        |
 |  dashboard, Linux) |<----|  S-curve motion,   |<----|  per robot; 6-axis |<----|  see URTC's own    |<----|  STM32F303CBT6     |
-|                     | 50  |  FDCAN1 STACK A    |STACK|  STEP/DIR/EN,     |     |  docs/CANBUS.TXT)  |     |  (only when         |
-|                     | MHz |  master (up to 8   |A    |  endstops. Own    |     |                    |     |  expansion_board_  |
+|                     |12.5 |  FDCAN1 STACK A    |STACK|  STEP/DIR/EN,     |     |  docs/CANBUS.TXT)  |     |  (only when         |
+|                     |Mb/s |  master (up to 8   |A    |  endstops. Own    |     |                    |     |  expansion_board_  |
 |                     |     |  robot slots)      |     |  STM32G474RET6,   |     |                    |     |  type is 3 or 4 -  |
 +-------------------+     +-------------------+     |  2x FDCAN - one    |     +-------------------+     |  see §5)           |
     Tier 0                     Tier 1                |  uplink (Tier 1->2)|          Tier 2                +-------------------+
@@ -40,18 +54,18 @@ against real hardware.
 Tier numbering here matches "how many hops from the CM5", which is what
 Flasher/Tester's own target picker uses (`canOta.ts`'s `CanOtaTier`):
 
-- **Tier 0 - Kinematic Brain (STM32H745ZIT6), reached directly over SPI:**
+- **Tier 0 - Kinematic Brain (STM32H757XIH6), reached directly over SPI:**
   CONFIRMED bus (Tier 1's own transport, see below), **PROPOSED** flashing
   protocol - see section 3.
 - **Tier 1 - Robot Controller Board (STM32G474RET6), reached over FDCAN1
-  "STACK A":** CONFIRMED bus (1x native FDCAN1 on the STM32H745, up to 8
+  "STACK A":** CONFIRMED bus (1x native FDCAN1 on the STM32H757, up to 8
   slaves, run in Classic CAN mode at ~1 Mbps, 8-byte max payload per frame
   - the real bootloader implementation uses FDCAN_FRAME_CLASSIC/BRS_OFF,
   not CAN FD's larger BRS payloads, see docs/CANBUS_STM32H745.md and
   README.md section 6 - TCAN1044/TJA1443 transceiver). MCU **CONFIRMED:
   STM32G474RET6** (Cortex-M4 @ 170
   MHz, LQFP-64, 512 KB flash, 3x FDCAN peripherals - 2 used: one uplink to
-  the STM32H745's own FDCAN1, one downlink to that robot's own URTC Tool
+  the STM32H757's own FDCAN1, one downlink to that robot's own URTC Tool
   Head). Addressing scheme **PROPOSED** - see section 4.
 - **Tier 2 - URTC Tool Head (STM32F303CCT6), reached one hop further, relayed
   through the Robot Controller Board:** CONFIRMED board/firmware (see the
@@ -77,7 +91,7 @@ Advanced Expansion Board) run an RTOS - both are CONFIRMED, already-shipping
 bare-metal superloop designs (see the sibling `URTC` repo) that this project
 doesn't change.
 
-- **Tier 0 - STM32H745, both cores:** CM7 and CM4 each run their OWN
+- **Tier 0 - STM32H757, both cores:** CM7 and CM4 each run their OWN
   FreeRTOS instance - this is a dual-core AMP (asymmetric multiprocessing)
   chip, not SMP, so there is no shared kernel state or scheduler between the
   two; each core's own tasks, queues, and heap are entirely private to it.
@@ -104,12 +118,12 @@ open).
 
 ---
 
-## 3. Tier 0: flashing the Kinematic Brain itself (STM32H745, over SPI)
+## 3. Tier 0: flashing the Kinematic Brain itself (STM32H757, over SPI)
 
-**PROPOSED** - no bootloader exists yet for the STM32H745 side of this link.
+**IMPLEMENTED** in code (the bootloader of the M4 core, with SPI1 as slave; see the status table in section 6), not run on a board; the master role towards the Jetson is not written.
 
-The STM32H745 isn't reached over CAN at all - it's wired directly to the CM5
-over the same SPI1 link Tier-1 telemetry already uses (`HYDRA_DATA_READY`
+The STM32H757 isn't reached over CAN at all - it's wired directly to the host
+(the CM5 of the pilot bench today, the Jetson Orin NX on the board) over the same SPI1 link Tier-1 telemetry already uses (`HYDRA_DATA_READY`
 handshake, 128-byte frames, README.md section 10). Proposal: reuse that same
 physical transport for firmware updates too, carrying the **same command
 vocabulary** Tiers 1-3 below reuse from URTC's own proven bootloader
@@ -126,7 +140,7 @@ crossing FDCAN1 at all, so it needs no STACK-A slot addressing.
 
 ## 4. Tier 1 addressing: which of 8 Robot Controller Boards is a frame for?
 
-**PROPOSED** - not yet implemented on the STM32H745 or any Robot Controller
+**PROPOSED** - not yet implemented on the STM32H757 or any Robot Controller
 Board firmware.
 
 FDCAN1 "STACK A" is one shared bus carrying up to 8 Robot Controller Boards.
@@ -194,7 +208,7 @@ SHA-256 digest of the image. The Ed25519 arithmetic is the vendored TweetNaCl (p
 milliseconds at the clock of the bootloaders and refreshes the watchdog while it runs. The CM5 holds no signing key: a flash arrives with
 the signature already made (`python tools/image_header.py sign`), or with a signer the deployment provides. The reasons the host
 is told are the VERIFY_FAIL_REASON_* codes, with 0x06 for a header that is missing, not ours or untrue. The byte layout is in
-tools/image_header.py and src/*/boot/image_header.h; the same SPI-OTA frame types reach the two H745 cores.
+tools/image_header.py and src/*/boot/image_header.h; the same SPI-OTA frame types reach the two H757 cores (written for the CM5 bench, where the board is the SPI slave).
 
 **Correction found during implementation** (src/mcu_stm32g474/boot/):
 the original version of this table conflated URTC's 0x7FE and 0x7FF into
@@ -277,9 +291,9 @@ that isn't there.
 
 | Piece | Status |
 |---|---|
-| CM5 <-> STM32H745 SPI transport | CONFIRMED, documented (README.md §10) |
-| STM32H745's own SPI firmware-update protocol (Tier 0) | **IMPLEMENTED** - `src/mcu_stm32h745/CM4/boot/` is a real bootloader: SPI1 slave, the frame-type-byte scheme this document's §3 describes, CRC-32 + Ed25519 signature verify-into-backup-before-copy-to-main. Compiles clean (`build_firmware.sh h745`). NOT yet verified against real hardware - see that folder's own README.md for the concrete gaps (clock tree, dual-core bring-up). |
-| STM32H745 <-> Robot Controller Board FDCAN1 bus (electrical) | CONFIRMED, documented (README.md §6) |
+| CM5 <-> STM32H757 SPI transport | CONFIRMED, documented (README.md §10) |
+| STM32H757's own SPI firmware-update protocol (Tier 0) | **IMPLEMENTED** - `src/mcu_stm32h745/CM4/boot/` is a real bootloader: SPI1 slave, the frame-type-byte scheme this document's §3 describes, CRC-32 + Ed25519 signature verify-into-backup-before-copy-to-main. Compiles clean (`build_firmware.sh h745`). NOT yet verified against real hardware - see that folder's own README.md for the concrete gaps (clock tree, dual-core bring-up). |
+| STM32H757 <-> Robot Controller Board FDCAN1 bus (electrical) | CONFIRMED, documented (README.md §6) |
 | Robot Controller Board slot addressing on that shared bus | **IMPLEMENTED** - `BOARD_ID[2:0]`, a LOCAL DIP switch on each Robot Controller Board (`docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md` §1c - CONFIRMED design, not derived from the STACK A connector or stack position, see `docs/PINOUT_STACKA_CONNECTOR.md` §1) feeds `ReadSlotBaseId()` in the G474 bootloader - this document's §4 formula is real code now, not just a formula. The CM4 gateway bootloader doesn't read this itself (it's the master, not a stack member) - it takes a target slot number from the SPI1 frame the CM5 sends (`SpiOtaFrame_t.target_slot`, `src/mcu_stm32h745/CM4/boot/bootloader_common.h`) instead. |
 | Robot Controller Board's own MCU identity | **CONFIRMED: STM32G474RET6** (LQFP-64, 512 KB flash, 3x FDCAN - 2 used, see §1). |
 | Robot Controller Board's own bootloader firmware | **IMPLEMENTED** - `src/mcu_stm32g474/boot/` is a real bootloader: FDCAN1, slot-addressed per §4's offset table, same CRC-32 + Ed25519 signature anti-bricking discipline. Compiles clean. NOT yet verified against real hardware. |
@@ -294,19 +308,19 @@ that isn't there.
 
 ---
 
-## 7. Superseded documents
+## 7. Historical documents
 
-`docs/HYDRA-UMC_TECHNICAL.md`, `docs/HYDRA-UMC_BOM.txt`, and
-`docs/HYDRA-UMC_PINOUT.txt` describe an earlier board revision
-(STM32H757BIT6/LQFP-208, onboard TMC5160A drivers wired directly to robots,
-ESP32-C3, USB hub, Ethernet PHY) that this document's tiered
-STM32H745/Robot-Controller-Board architecture replaced. `docs/HYDRA-UMC_README.md`
-is a second, later-but-still-superseded snapshot: already on STM32H745ZIT6/
-LQFP-144 with the single FDCAN1 bus, but still single-NPU (Hailo-8 only,
-predating the Hailo-10 cognitive accelerator and its PCIe switch fan-out).
-All four are marked superseded at the top of each file and kept for
-historical reference only - do not use them as a source of truth for new
-work.
+`docs/HYDRA-UMC_TECHNICAL.md`, `docs/HYDRA-UMC_BOM.txt` and
+`docs/HYDRA-UMC_PINOUT.txt` describe an earlier revision of the board
+(STM32H757BIT6 in LQFP-208, twelve onboard TMC5160A drivers wired directly to
+the robots, an ESP32-C3, a USB hub, an Ethernet PHY and a Compute Module 5 host).
+The current board keeps the STM32H757 but as the XIH6 part in a TFBGA240
+package, drives the robots through external Robot Controller Boards on one
+FDCAN1 bus, and hangs from an NVIDIA Jetson Orin NX instead. `docs/HYDRA-UMC_README.md`
+is a later snapshot of the design with an STM32H745ZIT6 (LQFP-144), the single
+FDCAN1 bus and the Compute Module 5, still with a single AI accelerator. Both
+describe hardware that is no longer the target and are kept for reference only:
+do not use them as a source of truth for new work.
 
 ---
 
@@ -373,7 +387,7 @@ stay visible before this project reaches real hardware.
   clean starts: they bring the count back to 0 and write nothing to flash, so a
   healthy board nobody confirms never reaches the limit. `OFS_CONFIRM_HEALTHY`
   (sent with `spi_bridge.bootloader_client.confirm_healthy`) lets a person clear a
-  parked board; so does the next power-up, which gives it another try. On the H745
+  parked board; so does the next power-up, which gives it another try. On the H757
   both cores read the same reset-cause register and the first to clear it hides the
   cause from the other, so a crash-looping application on the second core may not
   be parked; the board is never parked by mistake.

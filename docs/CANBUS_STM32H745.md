@@ -1,5 +1,7 @@
 # CANBUS_STM32H745
 
+> **Target hardware.** The board is an STM32H757 with an NVIDIA Jetson Orin NX 16 GB as host, and the Compute Module 5 is the pilot bench. This file keeps the name of the STM32H745 development target that the firmware sources still build for, and what it states about the CM4, the mailbox and the SPI slave describes that code as it is today.
+
 ```text
 =============================================================================
 CAN BUS / SPI-OTA COMMAND MAP - KINEMATIC BRAIN (STM32H745ZIT6, dual-core)

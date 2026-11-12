@@ -1,5 +1,5 @@
 <!-- =============================================================================
-HYDRA-UMC - Universal Machines Controller: board design, bootloaders and the CM5 SPI bridge
+HYDRA-UMC - Universal Machines Controller: board design, bootloaders and the SPI bridge
 Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 GPL-3.0-or-later - see LICENSE
 ============================================================================= -->
@@ -18,7 +18,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Hardware-CERN%20OHL--S-orange.svg" alt="Hardware">
   <img src="https://img.shields.io/badge/Language-C11-00599C.svg" alt="Language">
-  <img src="https://img.shields.io/badge/Platform-STM32H745-003551.svg" alt="Platform">
+  <img src="https://img.shields.io/badge/Platform-STM32H757-003551.svg" alt="Platform">
   <img src="https://img.shields.io/badge/Tests-709%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 | Version | `0.2.8` |
 | Maturity | Scaffolding |
 | Tests | 709 (`python -m unittest discover -s tests -p 'test_*.py'`) |
-| Stack | STM32H745 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
+| Stack | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | Target | A microcontroller board (the firmware); built on a PC |
 | On real hardware | Not yet: no run on real hardware is recorded for this version |
 
@@ -62,7 +62,9 @@ Each line is one part of this repository and the light says how far it is today.
 
 Designed as a **Heterogeneous Host + Real-Time Co-Processor Architecture**, HYDRA-UMC is meant to decouple high-level user interface rendering, computer vision, AI inference, and cloud connectivity from real-time step generation, fieldbus management, and power electronics actuation (planned: step generation and actuation are not written yet).
 
-> **Design status:** the sections below describe the intended design of the board and its firmware. What exists today is limited to the bootloaders, the CM4 and G474 communication applications and the CM5-side SPI bridge (see the *Safety status* box near the end and the status table in `docs/architecture.md`). Wherever a sentence below speaks in the present tense about motion generation, S-curve profiles, PID loops, safety interlocks, an E-STOP, power-loss handling, object detection or any other behaviour of the final board, read it as planned: none of it has run on a populated board.
+> **Target hardware:** the production board is an STM32H757 (the SPI master of the link) with an NVIDIA Jetson Orin NX 16 GB as host; the Raspberry Pi Compute Module 5 stays as the pilot development bench. On the Jetson baseboard the Hailo-8 sits on a PCIe x4 M.2 slot next to an NVMe slot and a Wi-Fi/Bluetooth slot, and there is no Hailo-10H. Nothing of this has run on a board. The block diagram, the feature list and the hardware specification below still draw the former Compute Module 5 carrier, with its PCIe switch and its Hailo-10, until they are redrawn.
+
+> **Design status:** the sections below describe the intended design of the board and its firmware. What exists today is limited to the bootloaders, the CM4 and G474 communication applications and the SPI bridge written for the CM5 pilot bench (see the *Safety status* box near the end and the status table in `docs/architecture.md`). Wherever a sentence below speaks in the present tense about motion generation, S-curve profiles, PID loops, safety interlocks, an E-STOP, power-loss handling, object detection or any other behaviour of the final board, read it as planned: none of it has run on a populated board.
 
 ### 🤖 Micro-Factory Capabilities (design targets):
 * 📡 **Distributed Multi-Robot Network:** Planned: coordination of up to 8 distributed slave robotic modules (3, 4, 5, and 6-DOF first; scaling up to 7, 8, 9-DOF and Dual-Robot architectures in future releases) connected over a single physical CAN bus.
@@ -75,7 +77,7 @@ Designed as a **Heterogeneous Host + Real-Time Co-Processor Architecture**, HYDR
 
 ## 🧩 Role in HYDRA-UMC
 
-**HYDRA-UMC** is the design of the Universal Machines Controller: a Compute Module 5 host, an STM32H745 real-time co-processor and up to eight Robot Controller Boards on one CAN bus, meant to run robot cells and micro-factories. What exists today is the three bootloaders (signed images, anti-rollback), the CM4 and G474 communication applications and the CM5-side SPI bridge; the rest is design, and no board has been built.
+**HYDRA-UMC** is the design of the Universal Machines Controller: an NVIDIA Jetson Orin NX 16 GB host, an STM32H757 dual-core real-time controller that is the SPI master towards the Jetson, and up to eight Robot Controller Boards on one CAN bus, meant to run robot cells and micro-factories. The Raspberry Pi Compute Module 5 stays as the pilot development bench. What exists today is the three bootloaders (signed images, anti-rollback), the communication applications of the brain core and of the G474, and the SPI bridge written for the Compute Module 5 bench, where the board is still the SPI slave; the master role towards the Jetson, the new peripherals of the H757 and every validation on real hardware are still to be done, and no board has been built.
 
 ## 🏛️ Architecture
 
@@ -100,7 +102,7 @@ flowchart TB
 
     CM5 -- "High-Speed SPI bus + DMA + IRQ pin" --> MCU
 
-    subgraph MCU["STM32H745ZIT6 Real-Time Co-Processor (LQFP-144)"]
+    subgraph MCU["STM32H757XIH6 Real-Time Co-Processor (TFBGA240)"]
         direction LR
         CM7["<b>Cortex-M7 @ 480 MHz</b><br/>S-Curve kinematics<br/>Hardware timers<br/>6-axis local stage"]
         CM4["<b>Cortex-M4 @ 240 MHz</b><br/>FDCAN1 controller<br/>Sensor filtering<br/>Inter-core IPC"]
@@ -113,12 +115,12 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    FDCAN1["STM32H745<br/>FDCAN1 Controller"] --> XCVR["TCAN1044<br/>Transceiver"] --> BUS["STACK A Bus<br/>(Robots A1 - A8)"]
+    FDCAN1["STM32H757<br/>FDCAN1 Controller"] --> XCVR["TCAN1044<br/>Transceiver"] --> BUS["STACK A Bus<br/>(Robots A1 - A8)"]
 ```
 
 ```mermaid
 flowchart LR
-    MCU["STM32H745<br/>FDCAN1 (STACK A)"] --> RCB["<b>Robot Controller Board</b><br/>x1 per robot, up to 8<br/>6x STEP/DIR/EN, endstops"]
+    MCU["STM32H757<br/>FDCAN1 (STACK A)"] --> RCB["<b>Robot Controller Board</b><br/>x1 per robot, up to 8<br/>6x STEP/DIR/EN, endstops"]
     RCB -- CAN --> URTC["<b>URTC Tool Head</b><br/>+ optional expansion board"]
     URTC -- CAN --> RCB
 ```
@@ -157,8 +159,8 @@ The detailed specification of the design (eleven subsystems, from the host compu
 
 | Topic or route | What it carries |
 |---|---|
-| CAN, FDCAN1 in classic mode | one bus (STACK A) from the STM32H745 to up to eight Robot Controller Boards; the identifiers of the relay protocol are listed once in `tools/can_ids.py` and checked by `tests/test_can_ids.py` |
-| SPI + DMA + IRQ pin, 128-byte frames | the CM5 to the STM32H745: fixed `SpiOtaFrame` frames that match the C struct byte for byte; the bridge runs at 10 MHz by default |
+| CAN, FDCAN1 in classic mode | one bus (STACK A) from the STM32H757 to up to eight Robot Controller Boards; the identifiers of the relay protocol are listed once in `tools/can_ids.py` and checked by `tests/test_can_ids.py` |
+| SPI + DMA + IRQ pin, 128-byte frames | the CM5 to the STM32H757: fixed `SpiOtaFrame` frames that match the C struct byte for byte; the bridge runs at 10 MHz by default |
 | `GET /version`, `GET /counters`, `POST /flash` on 127.0.0.1:8765 | the local service of the SPI bridge: a board's version, the error counters of its CAN controller, and a streamed flash (newline-delimited JSON) of an image with its Ed25519 signature; `relay=1` reaches a URTC tool head through its Robot Controller Board |
 | `tools/image_header.py sign \| keygen \| pubkey` | the host reference of the signed image header: it makes the signatures and downgrade tokens that the bootloaders check, and `tests/image_header_vectors.h` is generated from it so that the C and Python sides cannot drift |
 
@@ -266,7 +268,7 @@ HYDRA-UMC-STUDIO's GitHub-download feature can actually find real
 See `docs/COMPILE_STM32G474.md` and `docs/COMPILE_STM32H745.md` for
 exactly what each step does and why - and each firmware folder's own
 `README.md` for current status. The **bootloaders** for all 3 targets
-(G474, H745 CM7, H745 CM4) are real, working CAN-OTA/SPI-OTA
+(G474, H7 CM7, H7 CM4) are real, working CAN-OTA/SPI-OTA
 implementations (CRC-32 + Ed25519 signature verify-into-backup-before-copy-to-main,
 same anti-bricking discipline as URTC's own bootloader) - compiling clean
 end to end, not yet verified against real hardware. The **applications**
@@ -285,7 +287,7 @@ All six firmware components (three bootloaders and three applications, one pair 
 |---|---|---|
 | "bootloaders accept updates signed with the DEVELOPMENT seed, which is public" | The build had no `HYDRA_FW_UPDATE_PUBKEY_HEX` (or no `HYDRA_FW_HMAC_KEY_HEX`) | Fine for a bench; for any board that someone else can reach, make a key pair with `python tools/image_header.py keygen`, build with the public key and build releases with `HYDRA_UMC_RELEASE=1` |
 | "arm-none-eabi-gcc not found" | The Arm GNU Toolchain is not installed or not on `PATH` | Install it (the script tries `apt` on Linux) and run the build again; the host tests of step 1b need only a plain C compiler |
-| The SPI bridge fails to open the device, or `SPI transfer returned ... bytes` | The real transport needs `spidev` and `gpiod` on a CM5 with the SPI device enabled, and an STM32H745 on the other end; neither exists yet, so the bridge was only exercised against fakes | Use the fake transport of the tests until a board exists |
+| The SPI bridge fails to open the device, or `SPI transfer returned ... bytes` | The real transport needs `spidev` and `gpiod` on a CM5 with the SPI device enabled, and an STM32H757 on the other end; neither exists yet, so the bridge was only exercised against fakes | Use the fake transport of the tests until a board exists |
 | `build_firmware.sh` ends with FAIL at a host test | The copies of a source that the three bootloaders share have drifted apart, or `tests/image_header_vectors.h` is older than `tools/image_header.py` | Run `python tools/gen_image_header_vectors.py` and `python -m unittest discover -s tests` to see which copy differs |
 
 ## 📂 Repository Structure
@@ -343,8 +345,8 @@ This project is part of the HYDRA-UMC robotics ecosystem by the same author (Jua
 
 **Directly Related** — projects that plug straight into this firmware
 - **[URTC](https://github.com/JuanenRac/URTC)** — firmware for the physical Universal Robot Tool Controller PCB, 25+ tool profiles over CAN bus; the tool head firmware every robot arm this board drives mounts, one hop further over its own CAN downlink.
-- **[HYDRA-UMC-OS](https://github.com/JuanenRac/HYDRA-UMC-OS)** — reproducible Raspberry Pi OS product layer for the CM5: read-only agent, validated config/profiles, WiFi first-contact provisioning; the OS this board's own CM5 host runs.
-- **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — the real headless backend (REST/WebSocket) every control client actually talks to; its own `spi_bridge` service talks to this firmware over the real CM5↔STM32H745 SPI-OTA connection.
+- **[HYDRA-UMC-OS](https://github.com/JuanenRac/HYDRA-UMC-OS)** — reproducible Raspberry Pi OS product layer for the CM5: read-only agent, validated config/profiles, WiFi first-contact provisioning; the OS of the CM5 pilot bench (the image for the Jetson host is not defined yet).
+- **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — the real headless backend (REST/WebSocket) every control client actually talks to; its own `spi_bridge` service talks to this firmware over the real CM5↔STM32H757 SPI-OTA connection.
 - **[HYDRA-UMC-VISION-NODE](https://github.com/JuanenRac/HYDRA-UMC-VISION-NODE)** — integration hub for the Hailo-8 vision pipeline, with a real per-stage hardware-readiness check; no perception or E-STOP loop against this firmware exists yet.
 - **[HYDRA-UMC-SAFETY-ZONES](https://github.com/JuanenRac/HYDRA-UMC-SAFETY-ZONES)** — v0 zone-breach, calibration-freshness and E-STOP-request logic that takes object positions from a file; no detector feeds it and no physical E-STOP is wired to it yet.
 - **[HYDRA-UMC-VISUAL-SERVOING-API](https://github.com/JuanenRac/HYDRA-UMC-VISUAL-SERVOING-API)** — Position-Based Visual Servoing correction law with authorisation gated on the zone state; no camera pose estimation yet.

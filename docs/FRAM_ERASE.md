@@ -1,12 +1,14 @@
 # F-RAM erase and self-test of the kinematic brain
 
+> **Target hardware.** The chip sits on I2C4 (PD12 SCL, PD13 SDA) of the STM32H757, the processor of the board whose host is an NVIDIA Jetson Orin NX; the Compute Module 5 is the pilot bench. In this repository the request still travels over the SPI link as written for that bench, with the board as the slave, and the M4 core runs the driver; the new design gives I2C4 to the M7 core. The timing register `0x009034B6` of the file of the board design (100 MHz kernel clock) is a candidate that nobody has verified on a bench, and `HYDRA_FRAM_I2C_TIMING` keeps no default value.
+
 Status: **the requests, the answers, the logic of the brain, the driver of the chip on a fake I2C bus and the host side are written and tested on the host with a simulated chip. Nothing here has run on a board.** The brain answers `disabled` (the switch of the firmware, `HYDRA_FRAM_ERASE`, ships off) or `no-chip` (the build did not fix the I2C timing, `HYDRA_FRAM_I2C_TIMING`, which has no default on purpose) until bench rows 30 and 31 pass.
 
 ## The chip and where it is
 
-The F-RAM is the FM24CL64B (8 KiB, I2C, not SPI), U7 of the main board, on the local bus I2C4 of the H745 that nothing else shares:
+The F-RAM is the FM24CL64B (8 KiB, I2C, not SPI), U7 of the main board, on the local bus I2C4 of the H757 that nothing else shares:
 
-| Signal | Pin of the H745 | Pin of U7 |
+| Signal | Pin of the H757 | Pin of U7 |
 |---|---|---|
 | `FRAM_I2C_SCL` | `PD12` (I2C4_SCL, alternate function 4) | 6 |
 | `FRAM_I2C_SDA` | `PD13` (I2C4_SDA, alternate function 4) | 5 |

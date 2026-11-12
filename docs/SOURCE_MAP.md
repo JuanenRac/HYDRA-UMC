@@ -25,8 +25,8 @@ Every file of the repository with a line on what it does: the annotated tree tha
 │   ├── cm5_host/                # Linux userspace apps that run ON TOP of os/'s own image
 │   │   ├── ai_inference/        # Hailo-8 TAPPAS / YOLOv8 pipeline
 │   │   ├── video_streamer/      # Multi-camera RTSP/WebRTC server (MediaMTX)
-│   │   ├── ipc_driver/          # CM5 <-> STM32H745 SPI link (userspace) - unfinished C skeleton, kept for reference
-│   │   └── spi_bridge/          # Real CM5<->STM32H745 SPI-OTA bridge (Python) - replaces ipc_driver/,
+│   │   ├── ipc_driver/          # CM5 <-> STM32H757 SPI link (userspace) - unfinished C skeleton, kept for reference
+│   │   └── spi_bridge/          # Real CM5<->STM32H757 SPI-OTA bridge (Python) - replaces ipc_driver/,
 │   │                              adapts URTC-FLASHER's own proven CRC32/HMAC bootloader state machine
 │   ├── mcu_stm32h745/           # Kinematic Brain firmware (Tier 0) - dual-core
 │   │   ├── CM7/                 # Motion engine, hardware timers (+ its own boot/)

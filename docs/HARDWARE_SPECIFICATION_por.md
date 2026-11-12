@@ -62,7 +62,7 @@ Esta é a especificação do desenho previsto da placa e do seu firmware, passad
 
 A placa-mãe atua como controlador mestre de até 8 módulos robóticos escravos individuais distribuídos por um único barramento CAN físico:
 
-* 🔌 **Periférico de hardware:** 1x controlador FDCAN nativo (`FDCAN1`) integrado no STM32H745, executado em **modo CAN clássico** (`FDCAN_FRAME_CLASSIC`, `BRS_OFF`) pela implementação real do bootloader: o periférico é silício compatível com FD, mas o protocolo CAN-OTA/SPI-OTA que este projeto fala hoje (`docs/CANBUS_STM32H745.md`, `docs/CANBUS_STM32G474.md`) usa apenas tramas clássicas (DLC máximo 8), como todos os outros níveis (placas controladoras de robô G474, URTC). As cargas BRS maiores, de 64 bytes, do CAN FD são folga real de hardware para mais tarde, não algo que o protocolo use já.
+* 🔌 **Periférico de hardware:** 1x controlador FDCAN nativo (`FDCAN1`) integrado no STM32H757, executado em **modo CAN clássico** (`FDCAN_FRAME_CLASSIC`, `BRS_OFF`) pela implementação real do bootloader: o periférico é silício compatível com FD, mas o protocolo CAN-OTA/SPI-OTA que este projeto fala hoje (`docs/CANBUS_STM32H745.md`, `docs/CANBUS_STM32G474.md`) usa apenas tramas clássicas (DLC máximo 8), como todos os outros níveis (placas controladoras de robô G474, URTC). As cargas BRS maiores, de 64 bytes, do CAN FD são folga real de hardware para mais tarde, não algo que o protocolo use já.
 * ⚡ **Transcetor da camada física:** 1x transcetor CAN FD de alta velocidade (p. ex. TI `TCAN1044AVD` / NXP `TJA1443`); hardware compatível com FD escolhido pela mesma razão de folga futura que o periférico acima, mesmo que o tráfego de hoje sejam tramas clássicas.
 * 🔀 **Topologia do barramento:**
   * 🅰️ **STACK A (`FDCAN1`):** serve os módulos escravos A1 a A8.
@@ -71,7 +71,7 @@ A placa-mãe atua como controlador mestre de até 8 módulos robóticos escravos
 
 ```mermaid
 flowchart LR
-    FDCAN1["STM32H745<br/>Controlador FDCAN1"] --> XCVR["TCAN1044<br/>Transcetor"] --> BUS["Barramento STACK A<br/>(Robôs A1 - A8)"]
+    FDCAN1["STM32H757<br/>Controlador FDCAN1"] --> XCVR["TCAN1044<br/>Transcetor"] --> BUS["Barramento STACK A<br/>(Robôs A1 - A8)"]
 ```
 
 ## 7. 💾 MEMÓRIA NÃO VOLÁTIL ULTRARRÁPIDA (FRAM SPI)
@@ -112,9 +112,9 @@ A placa funciona a partir de um único barramento de alimentação industrial de
 
 ## 10. 🔄 COMUNICAÇÃO ENTRE PROCESSADORES (IPC)
 
-A comunicação entre o CM5 (anfitrião) e o STM32H745 (coprocessador) usa uma ligação SPI assistida por hardware e sem cópias:
+A comunicação entre o CM5 (anfitrião) e o STM32H757 (coprocessador) usa uma ligação SPI assistida por hardware e sem cópias:
 
-* 🔗 **Transporte físico:** SPI1 full-duplex, concebido até 50 MHz em modo escravo no STM32 e modo mestre no CM5; o controlador real do lado do CM5 (`src/cm5_host/ipc_driver/src/ipc_driver.c`) assume hoje por omissão um valor prudente de 10 MHz, porque a configuração de modo/ordem de bits do escravo SPI1 do STM32H745 com que tem de coincidir ainda não foi verificada em hardware real.
+* 🔗 **Transporte físico:** SPI1 full-duplex, concebido até 50 MHz em modo escravo no STM32 e modo mestre no CM5; o controlador real do lado do CM5 (`src/cm5_host/ipc_driver/src/ipc_driver.c`) assume hoje por omissão um valor prudente de 10 MHz, porque a configuração de modo/ordem de bits do escravo SPI1 do STM32H757 com que tem de coincidir ainda não foi verificada em hardware real.
 * 🤝 **Linha de handshake:** linha GPIO `HYDRA_DATA_READY`.
 * ⚡ **Fluxo de execução:** o Cortex-M4 prepara uma trama de telemetria de 128 bytes na SRAM AXI partilhada, ativa `HYDRA_DATA_READY` e o CM5 obtém o pacote por SPI DMA de alta velocidade sem custo de polling.
 
@@ -127,7 +127,7 @@ A comunicação entre o CM5 (anfitrião) e o STM32H745 (coprocessador) usa uma l
   * ⚡ **Camada 3 (interna 2):** planos de alimentação divididos (`24V`, `5V_MAIN`, `5V_USB`, `3.3V`).
   * 🔴 **Camada 4 (inferior):** pistas de sinal secundárias e saídas de potência de alta corrente.
 * 🛠️ **Conectores e montagem:**
-  * 🔲 Encapsulamento LQFP-144 (passo de 0,5 mm) para o STM32H745, encapsulamentos QFN-88 para os 2 hubs GL3523 e 2 ranhuras M.2 Key M 2242/2280 (Hailo-8 + Hailo-10, secção 3) alimentadas por um comutador PCIe Gen3 a bordo.
+  * 🔲 Encapsulamento LQFP-144 (passo de 0,5 mm) para o STM32H757, encapsulamentos QFN-88 para os 2 hubs GL3523 e 2 ranhuras M.2 Key M 2242/2280 (Hailo-8 + Hailo-10, secção 3) alimentadas por um comutador PCIe Gen3 a bordo.
   * 🔌 Dois conectores mezanino Hirose DF40 para o Compute Module 5.
   * 📌 Conector EMPILHÁVEL de 40 pinos e passo de 2,54 mm para a ligação do barramento STACK A (base da pilha física de placas controladoras de robô): `docs/PINOUT_STACKA_CONNECTOR.md`.
   * 🔌 8x conectores USB 3.0 Tipo-A (ou Hirose industriais com trava) para as câmaras dos robôs.
@@ -138,14 +138,14 @@ Cada um dos até 8 módulos escravos do STACK A (secção 6) é uma **placa cont
 
 ```mermaid
 flowchart LR
-    MCU["STM32H745<br/>FDCAN1 (STACK A)"] --> RCB["<b>Placa controladora de robô</b><br/>x1 por robô, até 8<br/>6x STEP/DIR/EN, fins de curso"]
+    MCU["STM32H757<br/>FDCAN1 (STACK A)"] --> RCB["<b>Placa controladora de robô</b><br/>x1 por robô, até 8<br/>6x STEP/DIR/EN, fins de curso"]
     RCB -- CAN --> URTC["<b>Cabeça de ferramenta URTC</b><br/>+ placa de expansão opcional"]
     URTC -- CAN --> RCB
 ```
 
-* 🎛️ **MCU:** STMicroelectronics **STM32G474RET6** (Cortex-M4 @ 170 MHz, LQFP-64, 512 KB de flash), que usa 2 dos seus 3 periféricos FDCAN a bordo: um como ligação FDCAN ascendente para o STM32H745 e outro como ligação CAN descendente para a sua própria cabeça URTC. Ver `docs/architecture.md` §1.
+* 🎛️ **MCU:** STMicroelectronics **STM32G474RET6** (Cortex-M4 @ 170 MHz, LQFP-64, 512 KB de flash), que usa 2 dos seus 3 periféricos FDCAN a bordo: um como ligação FDCAN ascendente para o STM32H757 e outro como ligação CAN descendente para a sua própria cabeça URTC. Ver `docs/architecture.md` §1.
 * 🔢 **Endereçamento:** `BOARD_ID[2:0]`, um interruptor DIP local de 3 posições em cada placa, ajustado manualmente de 0 a 7 na instalação, dá a cada placa o seu próprio ID base de ranhura FDCAN1; não se deriva da posição física na pilha nem do conector STACK A (todas as placas são a mesma PCB intercambiável). Ver `docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md` §1c.
 * 🧵 **RTOS:** **FreeRTOS** (o seu bootloader continua a ser bare-metal: não precisa de escalonador para receber/verificar/saltar). Aplicação real: `src/mcu_stm32g474/STM32G474RE_main.c` executa uma tarefa de relé real (`RobotControllerRelay.c`: ligação descendente FDCAN2 para a cabeça de ferramenta URTC, um respondedor de `AXIS_STATUS` e o túnel `RELAY_SEND`/`RELAY_RECV`) ao lado da tarefa que pisca e renova o watchdog.
-* 📡 **Atualizações de firmware CAN-OTA, 4 níveis de profundidade:** o próprio STM32H745 (pela sua ligação SPI existente ao CM5), esta placa, a sua cabeça de ferramenta URTC (STM32F303CCT6) e, só quando está instalada, a placa de expansão avançada dessa cabeça (STM32F303CBT6, `expansion_board_type` 3 ou 4, ver o `docs/EXPANSION.TXT` do URTC) podem ser gravados e diagnosticados a partir do Flasher/Tester do HYDRA-UMC-STUDIO, sem sonda JTAG/SWD nem dongle USB-CAN. O esquema de endereçamento completo, o túnel de relé que chega aos dois últimos níveis sem nenhum desenho de protocolo novo e o estado atual da implementação estão em `docs/architecture.md`. **Cabeçalho de imagem assinado e anti-rollback (bootloaders, testados no anfitrião):** a atualização leva um cabeçalho de 64 bytes (versão completa maior.menor.patch, id de hardware, tamanho, endereço de ligação, palavras de vetores, CRC) e uma assinatura Ed25519 cobre o resumo de cabeçalho e imagem em conjunto, pelo que uma imagem assinada antiga não pode declarar uma versão mais alta; os três números da versão são comparados e uma imagem mais antiga só se instala com um token (ele próprio uma assinatura) ligado ao nonce dessa sessão, às duas versões e a essa imagem (a antiga trama mágica de quatro bytes já não permite nada). A decisão (`image_header.h`, `update_verify.h`) é um só ficheiro nos três bootloaders, testado com bytes feitos por `tools/image_header.py` e, na G474, de ponta a ponta desde START_UPDATE até à nova aplicação. A placa guarda apenas a chave pública (`tools/image_header.py` cria as chaves e assina; a semente privada nunca vai para uma placa e a semente de desenvolvimento é pública, por isso uma compilação de lançamento recusa a chave pública de desenvolvimento); a aritmética da curva é o TweetNaCl incluído (domínio público, `THIRD_PARTY_NOTICES.md`). Nada disto foi compilado para uma placa nem correu numa.
+* 📡 **Atualizações de firmware CAN-OTA, 4 níveis de profundidade:** o próprio STM32H757 (pela sua ligação SPI existente ao CM5), esta placa, a sua cabeça de ferramenta URTC (STM32F303CCT6) e, só quando está instalada, a placa de expansão avançada dessa cabeça (STM32F303CBT6, `expansion_board_type` 3 ou 4, ver o `docs/EXPANSION.TXT` do URTC) podem ser gravados e diagnosticados a partir do Flasher/Tester do HYDRA-UMC-STUDIO, sem sonda JTAG/SWD nem dongle USB-CAN. O esquema de endereçamento completo, o túnel de relé que chega aos dois últimos níveis sem nenhum desenho de protocolo novo e o estado atual da implementação estão em `docs/architecture.md`. **Cabeçalho de imagem assinado e anti-rollback (bootloaders, testados no anfitrião):** a atualização leva um cabeçalho de 64 bytes (versão completa maior.menor.patch, id de hardware, tamanho, endereço de ligação, palavras de vetores, CRC) e uma assinatura Ed25519 cobre o resumo de cabeçalho e imagem em conjunto, pelo que uma imagem assinada antiga não pode declarar uma versão mais alta; os três números da versão são comparados e uma imagem mais antiga só se instala com um token (ele próprio uma assinatura) ligado ao nonce dessa sessão, às duas versões e a essa imagem (a antiga trama mágica de quatro bytes já não permite nada). A decisão (`image_header.h`, `update_verify.h`) é um só ficheiro nos três bootloaders, testado com bytes feitos por `tools/image_header.py` e, na G474, de ponta a ponta desde START_UPDATE até à nova aplicação. A placa guarda apenas a chave pública (`tools/image_header.py` cria as chaves e assina; a semente privada nunca vai para uma placa e a semente de desenvolvimento é pública, por isso uma compilação de lançamento recusa a chave pública de desenvolvimento); a aritmética da curva é o TweetNaCl incluído (domínio público, `THIRD_PARTY_NOTICES.md`). Nada disto foi compilado para uma placa nem correu numa.
 
 Ver `docs/architecture.md` para a arquitetura completa por níveis (esta secção é um resumo), incluindo o que é facto de hardware confirmado e o que ainda é um desenho proposto à espera de implementação. A secção 8 desse documento regista também as limitações de segurança conhecidas e aceites dos bootloaders atuais (ainda sem proteção de leitura, um valor de bypass de anti-rollback partilhado, leitura de volta sem autenticação): lacunas deliberadas antes do hardware, não descuidos.

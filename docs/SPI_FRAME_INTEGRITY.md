@@ -1,6 +1,6 @@
 # Integrity of the SPI link and the dual-core mailbox
 
-The 128-byte frame of the SPI link between the CM5 and the H745 carried 12 meaningful bytes and 116 bytes of `0xFF` padding. The first four bytes of that padding now seal the frame:
+The 128-byte frame of the SPI link between the CM5 and the H757 carried 12 meaningful bytes and 116 bytes of `0xFF` padding. The first four bytes of that padding now seal the frame:
 
 | Offset | Size | Field | Value |
 |--------|------|-------|-------|

@@ -1,5 +1,7 @@
 # The shared part of the three bootloaders
 
+> **Target hardware.** The board is an STM32H757 with an NVIDIA Jetson Orin NX 16 GB as host, and the Compute Module 5 is the pilot bench. This file keeps the name of the STM32H745 development target that the firmware sources still build for, and what it states about the CM4, the mailbox and the SPI slave describes that code as it is today.
+
 The controller board (STM32G474), the CM4 and the CM7 of the Nucleo (STM32H745) each have a bootloader. What is the same in all three lives once, in
 `firmware_base/boot`, and `tools/sync_firmware_base.py` keeps the copies in the three chip directories identical byte for byte (`check` runs with the
 tests; `sync` writes the base over the copies; the base is edited, never a copy). A copy stays in each chip directory because every chip has to build on

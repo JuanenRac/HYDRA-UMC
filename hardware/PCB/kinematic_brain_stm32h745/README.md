@@ -1,5 +1,7 @@
 # Kinematic Brain — PCB (STM32H745ZIT6 mainboard)
 
+> **Legacy.** This file describes the previous design of the board (STM32H745ZIT6 in LQFP-144, Compute Module 5 carrier). The board is now an STM32H757 (XIH6, TFBGA240) with an NVIDIA Jetson Orin NX 16 GB; a document for it does not exist yet. The file keeps its name until the rename of the firmware sources.
+
 **Status: 🚧 no schematic exists yet.** This is the main HYDRA-UMC
 motherboard described throughout the repo-root `README.md` (STM32H745,
 Compute Module 5 mezzanine connectors, dual GL3523 USB hubs, a PCIe Gen3

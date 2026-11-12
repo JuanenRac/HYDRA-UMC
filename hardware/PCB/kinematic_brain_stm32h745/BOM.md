@@ -1,5 +1,7 @@
 # BOM
 
+> **Legacy.** This file describes the previous design of the board (STM32H745ZIT6 in LQFP-144, Compute Module 5 carrier). The board is now an STM32H757 (XIH6, TFBGA240) with an NVIDIA Jetson Orin NX 16 GB; a document for it does not exist yet. The file keeps its name until the rename of the firmware sources.
+
 ```text
 ================================================================================
                   KINEMATIC BRAIN - BOM.md (STARTING LIST)

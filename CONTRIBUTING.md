@@ -4,7 +4,7 @@ We welcome contributions to the core firmware and hardware of the HYDRA-UMC plat
 
 ## Technology Stack
 - **Language**: C11.
-- **Hardware**: STM32H745 (Dual-Core), STM32G474.
+- **Hardware**: STM32H757 (Dual-Core), STM32G474.
 - **Protocol**: FDCAN, SPI (IPC).
 - **Environment**: ARM GNU Toolchain (`arm-none-eabi-gcc`).
 
