@@ -110,6 +110,12 @@ extern IWDG_HandleTypeDef hiwdg;
 #define OFS_SLOT_SCAN_PROBE                                   0x1E // host -> every board of the slot window, DLC=8
 #define OFS_SLOT_SCAN_REPLY                                   0x1F // sent BY a controller board (bootloader or application) after a delay taken from its unique identifier, DLC=8
 
+// F-RAM erase and self-test of the controller boards (docs/FRAM_ERASE.md): the brain relays them, the frame type is the offset. They need the window of 64 identifiers: the first 32 were all taken.
+#define OFS_FRAM_ERASE_REQUEST             0x20 // host -> bootloader, DLC=8: erase the whole F-RAM (writes zeros and reads them back)
+#define OFS_FRAM_ERASE_RESPONSE            0x21 // sent BY the bootloader, DLC=8: status and the bytes written
+#define OFS_FRAM_SELFTEST_REQUEST          0x22 // host -> bootloader, DLC=8: write two patterns over a scratch area, read them back and put the old bytes back
+#define OFS_FRAM_SELFTEST_RESPONSE         0x23 // sent BY the bootloader, DLC=8: status and the address that failed
+
 #define STATUS_LISTENING     0x01
 #define STATUS_ERASING       0x02
 #define STATUS_RECEIVING     0x03

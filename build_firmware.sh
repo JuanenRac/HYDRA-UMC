@@ -307,6 +307,17 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # fram_node.h: the F-RAM erase and self-test requests of a controller board, with a simulated chip, once with the switch off and once with it on (tests/test_fram_node.c).
+    for FRAM_SWITCH in 0 1; do
+        FRAM_HOST_BIN="$ROOT/build/host_tests_fram_node_$FRAM_SWITCH"
+        if "$HOST_CC" -std=c11 -Wall -Wextra -DHYDRA_FRAM_ERASE=$FRAM_SWITCH -DFRAM_TEST_SWITCH=$FRAM_SWITCH -I"$ROOT/src/mcu_stm32g474/boot" -o "$FRAM_HOST_BIN" "$ROOT/tests/test_fram_node.c" && "$FRAM_HOST_BIN" >/dev/null; then
+            pass "fram_node host logic tests passed (switch $FRAM_SWITCH)"
+        else
+            fail "fram_node host logic tests FAILED (switch $FRAM_SWITCH)"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+    done
+
     # slot_scan_master.h: the full verdict of the slot scan on the master side (every scenario of tests/slot_scan_vectors.json, a seeded fuzz).
     SLOT_SCAN_MASTER_HOST_BIN="$ROOT/build/host_tests_slot_scan_master"
     if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32g474/boot" -I"$ROOT/src/mcu_stm32h745/CM4" -o "$SLOT_SCAN_MASTER_HOST_BIN" "$ROOT/tests/test_slot_scan_master.c" && "$SLOT_SCAN_MASTER_HOST_BIN" >/dev/null; then

@@ -18,7 +18,7 @@ sent to that slot would reach both boards or the wrong one.
 | `0x1E` | `SLOT_SCAN_PROBE` | host (through the kinematic brain) | asks the boards of one slot window to identify themselves |
 | `0x1F` | `SLOT_SCAN_REPLY` | bootloader, or the relay layer of the application | the board says who it is |
 
-Both are classic frames of 8 bytes, sent as `slot_base + slot * 32 + offset` (`tools/can_ids.py`).
+Both are classic frames of 8 bytes, sent as `slot_base + slot * 64 + offset` (`tools/can_ids.py`).
 
 Probe: `0x5C`, scan id, four zero bytes, complement of `0x5C`, complement of the scan id.
 Reply: `0x5D`, board id (low nibble) and role (high nibble, 0 bootloader, 1 application), scan id, 32-bit unique identifier of the

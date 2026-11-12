@@ -192,7 +192,7 @@ decided here.
 5. CROSS-REFERENCES
 --------------------------------------------------------------------------------
 - docs/architecture.md section 4  - FDCAN1 slot-addressed protocol this bus
-  carries (CAN_ID_STACKA_BASE + N*0x20). "N" comes from BOARD_ID[2:0], a
+  carries (CAN_ID_STACKA_BASE + N*0x40). "N" comes from BOARD_ID[2:0], a
   LOCAL DIP switch on each Robot Controller Board (docs/PINOUT_STM32G474_
   ROBOT_CONTROLLER.md section 1c) - NOT from this connector, see section 1
   above.

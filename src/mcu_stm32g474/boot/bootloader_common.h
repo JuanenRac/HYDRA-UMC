@@ -90,10 +90,10 @@ extern IWDG_HandleTypeDef  hiwdg;
 // address its own switch is set to.
 // -----------------------------------------------------------------------
 #define CAN_ID_STACKA_BASE 0x600UL
-#define STACKA_SLOT_WINDOW 0x20UL
+#define STACKA_SLOT_WINDOW 0x40UL
 
 // Reads BOARD_ID[2:0] (PC0=LSB, PC1, PC2=MSB) and returns this board's own
-// 0x600+N*0x20 base - called once by bootloader_main.c at startup, result
+// 0x600+N*0x40 base - called once by bootloader_main.c at startup, result
 // cached and passed to every protocol function that needs it (not re-read
 // per frame - a DIP switch can't change while the board is powered).
 uint32_t ReadSlotBaseId(void);
@@ -160,6 +160,12 @@ uint32_t ReadSlotBaseId(void);
 #define OFS_ESTOP_STATE                    0x1D // sent BY the application of a controller board, DLC=4: latched or ready, epoch, last accepted sequence
 #define OFS_SLOT_SCAN_PROBE                0x1E // host -> every board of the slot window, DLC=8: who is there? (slot_scan_node.h)
 #define OFS_SLOT_SCAN_REPLY                0x1F // sent BY the bootloader or the application after a delay taken from its unique identifier, DLC=8
+
+// F-RAM erase and self-test (docs/FRAM_ERASE.md, boot/fram_node.h). They need the window of 64 identifiers: the first 32 were all taken.
+#define OFS_FRAM_ERASE_REQUEST             0x20 // host -> bootloader, DLC=8: erase the whole F-RAM (writes zeros and reads them back)
+#define OFS_FRAM_ERASE_RESPONSE            0x21 // sent BY the bootloader, DLC=8: status and the bytes written
+#define OFS_FRAM_SELFTEST_REQUEST          0x22 // host -> bootloader, DLC=8: write two patterns over a scratch area, read them back and put the old bytes back
+#define OFS_FRAM_SELFTEST_RESPONSE         0x23 // sent BY the bootloader, DLC=8: status and the address that failed
 
 // Status/verify-fail codes - identical values to URTC's own, so a shared
 // host-side decoder (HYDRA-UMC-STUDIO's canOta.ts) can use one status enum

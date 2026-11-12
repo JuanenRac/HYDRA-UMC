@@ -134,11 +134,11 @@ URTC's own protocol (`CANBUS.TXT`) assumes exactly one board per CAN segment,
 so its ID blocks (`0x0xx`-`0x2xx` runtime, `0x7Fx` bootloader) are fixed,
 un-addressed constants. STACK A needs a slot dimension URTC's protocol was
 never designed to carry. Proposal: give each slot `N` (0-7, corresponding to
-A1-A8) its own 32-ID window:
+A1-A8) its own 64-ID window:
 
 ```text
 CAN_ID_STACKA_BASE = 0x600
-Slot N window       = 0x600 + (N * 0x20)  ..  0x600 + (N * 0x20) + 0x1F
+Slot N window       = 0x600 + (N * 0x40)  ..  0x600 + (N * 0x40) + 0x3F
 ```
 
 Within each slot's window, the **same relative offsets URTC's own bootloader

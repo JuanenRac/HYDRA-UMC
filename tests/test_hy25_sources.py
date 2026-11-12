@@ -235,9 +235,15 @@ class SpiSystemReference(unittest.TestCase):
         for name in ("STOP_REQUEST", "RELEASE_REQUEST", "TELEMETRY_QUERY", "TELEMETRY_RESPONSE", "PROBE_REQUEST", "PROBE_RESPONSE"):
             value = int(re.search(rf"#define SPI_SYS_{name}\s+(0x[0-9A-Fa-f]+)u", header).group(1), 16)
             self.assertEqual(value, getattr(spi_system, name), name)
-            self.assertGreaterEqual(value, can_ids.SLOT_WINDOW, f"{name} must be above the identifier window of a slot")
+            self.assertGreaterEqual(value, 0x20, f"{name} must stay above the first 32 offsets of a slot, which the update protocol owns")
         for name, value in (("LINK_OK", spi_system.FLAG_LINK_OK), ("ESTOP_LATCHED", spi_system.FLAG_ESTOP_LATCHED), ("STOP_ENABLED", spi_system.FLAG_STOP_ENABLED)):
             self.assertEqual(int(re.search(rf"#define SPI_SYS_FLAG_{name}\s+(0x[0-9A-Fa-f]+)u", header).group(1), 16), value, name)
+
+    def test_the_tier_is_decided_before_the_type_so_a_self_type_never_reaches_the_bus(self):
+        main = text(H7 / "CM4" / "boot" / "bootloader_main.c")
+        dispatch = main[main.index("static uint8_t DispatchFrame"):]
+        self.assertLess(dispatch.index("SPI_TARGET_STACKA"), dispatch.index("SpiSys_IsCommand"))
+        self.assertLess(dispatch.index("Relay_ToStackA"), dispatch.index("SpiSys_IsCommand"))
 
     def test_the_verdict_codes_follow_the_slot_scan_names(self):
         self.assertEqual(set(spi_system.VERDICTS), {slot_scan.ABSENT, slot_scan.OK, slot_scan.DUPLICATE, slot_scan.MISPLACED, slot_scan.NOISY})

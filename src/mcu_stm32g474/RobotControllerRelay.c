@@ -122,8 +122,8 @@ static void RelayHalRequire(HAL_StatusTypeDef status)
     }
 }
 
-/* STACK A: the window of 32 identifiers of this slot (mask 0x7E0) and the emergency stop (0x001). */
-#define RELAY_SLOT_FILTER_MASK 0x7E0u
+/* STACK A: the window of 64 identifiers of this slot (mask 0x7C0) and the emergency stop (0x001). */
+#define RELAY_SLOT_FILTER_MASK 0x7C0u
 #define RELAY_ESTOP_CAN_ID     0x001u
 
 static void MX_FDCAN1_App_Init(void)
@@ -559,7 +559,7 @@ static void ServiceUplinkMessage(uint32_t rx_id, const uint8_t rx_data[8], uint8
         ServiceEstopFrame(rx_data, rx_dlc);
         return;
     }
-    if (rx_id < slot_base || rx_id > slot_base + 0x1F) return;
+    if (rx_id < slot_base || rx_id >= slot_base + STACKA_SLOT_WINDOW) return;
     uint32_t offset = rx_id - slot_base;
 
     if (offset == OFS_AXIS_STATUS) {

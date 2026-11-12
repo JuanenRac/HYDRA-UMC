@@ -66,6 +66,11 @@ OFS_AXIS_STATUS = 0x10
 OFS_AXIS_STATUS_RESPONSE = 0x16
 OFS_POLL_STATUS = 0x17  # host -> gateway, DLC 1: the frame type (PAGE_ACK or STATUS) to wait for; nothing is put on the CAN bus
 OFS_RELAY_RECV_RESPONSE = 0x18
+# F-RAM erase and self-test of a controller board (docs/FRAM_ERASE.md, tools/can_ids.py): the window of a slot is 64 identifiers wide since these four were added
+OFS_FRAM_ERASE_REQUEST = 0x20
+OFS_FRAM_ERASE_RESPONSE = 0x21
+OFS_FRAM_SELFTEST_REQUEST = 0x22
+OFS_FRAM_SELFTEST_RESPONSE = 0x23
 
 STATUS_LISTENING = 0x01
 STATUS_ERASING = 0x02

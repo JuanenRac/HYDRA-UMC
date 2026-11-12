@@ -50,9 +50,9 @@ static void Boot_WatchdogFailed(void) {
     for (;;) { }
 }
 
-// STACK A, seen from the kinematic brain: the windows of all 8 slots (0x600 .. 0x6FF, mask 0x700) and the emergency stop (0x001).
+// STACK A, seen from the kinematic brain: the windows of all 8 slots (0x600 .. 0x7FF, mask 0x600) and the emergency stop (0x001).
 #define BOOT_STACKA_FILTER_ID   0x600u
-#define BOOT_STACKA_FILTER_MASK 0x700u
+#define BOOT_STACKA_FILTER_MASK 0x600u
 #define BOOT_ESTOP_CAN_ID       0x001u
 
 #define HYDRA_DATA_READY_PORT GPIOA
@@ -156,7 +156,7 @@ static void MX_FDCAN1_Init(void) {
     sf.FilterIndex = 0;
     sf.FilterType = FDCAN_FILTER_MASK;
     sf.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-    sf.FilterID1 = BOOT_STACKA_FILTER_ID; // this core sees the traffic of all 8 STACK A slots, so the window is the whole 0x600..0x6FF range
+    sf.FilterID1 = BOOT_STACKA_FILTER_ID; // this core sees the traffic of all 8 STACK A slots, so the window is the whole 0x600..0x7FF range
     sf.FilterID2 = BOOT_STACKA_FILTER_MASK;
     BOOT_HAL_NOTE(HAL_FDCAN_ConfigFilter(&hfdcan1, &sf), BOOT_FAULT_CAN_FILTER);
     sf.FilterIndex = 1;

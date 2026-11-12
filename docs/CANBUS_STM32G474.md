@@ -41,7 +41,7 @@ board per CAN segment, so every ID below is a SLOT-RELATIVE OFFSET, not a
 fixed absolute ID:
 
     slot_base_id = CAN_ID_STACKA_BASE + (BOARD_ID * STACKA_SLOT_WINDOW)
-                 = 0x600 + (BOARD_ID * 0x20)
+                 = 0x600 + (BOARD_ID * 0x40)
 
 BOARD_ID (0-7) is NOT read from the bus or the STACK A connector - it's a
 LOCAL 3-position DIP switch on this board's own PCB (docs/PINOUT_
@@ -53,11 +53,11 @@ bootloader_main.c) computes the formula above once at boot.
 
 Every ID in sections 1-2 below is written as "+0xNN" - the actual wire ID
 for a given board is `slot_base_id + 0xNN`. Example: board with BOARD_ID=3
-has slot_base_id = 0x600 + 3*0x20 = 0x660, so its +0x01 (START_UPDATE) is
+has slot_base_id = 0x600 + 3*0x40 = 0x6C0, so its +0x01 (START_UPDATE) is
 wire ID 0x661.
 
 -----------------------------------------------------------------------------
-1. APPLICATION COMMANDS (+0x10 - +0x1F within a slot's 32-ID window) -
+1. APPLICATION COMMANDS (+0x10 - +0x1F within a slot's 64-ID window) -
    PROPOSED, no firmware implements any of this yet
 -----------------------------------------------------------------------------
 ONE EMITTER PER IDENTIFIER: the request of the Kinematic Brain and the answer of this board never share an identifier. The Kinematic Brain

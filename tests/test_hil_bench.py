@@ -207,8 +207,8 @@ class SafetyZonesFrame(unittest.TestCase):
 
     def test_the_native_heartbeat_identifier_is_not_in_the_filter_of_any_board(self):
         for slot in range(8):
-            base = 0x600 + slot * 0x20
-            self.assertNotEqual(0x002 & 0x7E0, base)
+            base = 0x600 + slot * can_ids.SLOT_WINDOW
+            self.assertNotEqual(0x002 & ~(can_ids.SLOT_WINDOW - 1), base)
         self.assertNotEqual(0x002, estop_can.ESTOP_CAN_ID)
 
     def test_through_the_bridge_a_stop_becomes_a_trip_of_reason_safety_zone_from_the_cm5(self):

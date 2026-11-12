@@ -104,12 +104,12 @@ When CM4's own SPI1 gateway (section 1) receives a frame with
 target_tier=STACKA, `Relay_ToStackA()` (src/mcu_stm32h745/CM4/boot/
 bootloader_protocol.c) computes:
 
-    slot_base_id = 0x600 + (target_slot * 0x20)
+    slot_base_id = 0x600 + (target_slot * 0x40)
     wire_id      = slot_base_id + frame_type
 
 ...sends that single FDCAN1 frame with the SPI frame's own dlc/payload
 unchanged, then waits up to 200ms for ANY FDCAN1 frame whose ID falls
-inside that same slot's 32-ID window (`slot_base_id` to `slot_base_id +
+inside that same slot's 64-ID window (`slot_base_id` to `slot_base_id +
 0x1F`) and relays it back over SPI1 as the response. This works for BOTH
 directions of the bootloader/application protocol without CM4 needing to
 know which specific command elicits which specific response - it just

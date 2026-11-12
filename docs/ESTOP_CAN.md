@@ -15,7 +15,7 @@ and no document of this repository may present it as one.
 - **0x001**, standard 11-bit identifier, classic data frame, 8 data bytes, no remote frame (the hardware filters already reject remote frames).
 - CAN arbitration lets the lowest identifier win, so 0x001 beats every other frame of the family: the slot windows start at 0x600 and
   the tool head protocol starts at 0x095. 0x000 is left unused on purpose.
-- It is one identifier for the whole stack, **not** inside a slot window (`slot_base + slot * 32 + offset`). The only slot message the
+- It is one identifier for the whole stack, **not** inside a slot window (`slot_base + slot * 64 + offset`). The only slot message the
   stop adds is `ESTOP_STATE` (offset 0x1D, sent by a controller board), see below.
 - It travels on STACK A (FDCAN1) and is forwarded unchanged by every controller board to its tool head on the Tier 2 downlink (FDCAN2).
   The forwarding is done in firmware, one frame in, one frame out, never inside the relay tunnel.

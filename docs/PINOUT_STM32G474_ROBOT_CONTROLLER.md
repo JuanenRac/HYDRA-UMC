@@ -54,7 +54,7 @@ use, e.g. a second relay hop if a robot ever needs more than one URTC head.)
 DIP switch (or 3 jumpers) on this board's own PCB, manually set by whoever
 installs the board, encoding which of the 8 FDCAN1 STACK A slots (0-7)
 this board answers as. Read once at boot so firmware can compute its own
-FDCAN1 slot base ID (CAN_ID_STACKA_BASE + N*0x20, docs/architecture.md
+FDCAN1 slot base ID (CAN_ID_STACKA_BASE + N*0x40, docs/architecture.md
 section 4) instead of needing N hand-programmed into a per-board firmware
 build. Deliberately NOT derived from the STACK A connector or from
 physical stack position (docs/PINOUT_STACKA_CONNECTOR.md section 1 has

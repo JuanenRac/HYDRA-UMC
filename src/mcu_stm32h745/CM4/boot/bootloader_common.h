@@ -78,7 +78,7 @@ extern IWDG_HandleTypeDef  hiwdg;
 // from the SPI1 frame's own target_slot field instead, see
 // bootloader_protocol.c's own Relay_ToStackA()).
 #define CAN_ID_STACKA_BASE 0x600UL
-#define STACKA_SLOT_WINDOW 0x20UL
+#define STACKA_SLOT_WINDOW 0x40UL
 
 // Same offset table as every other bootloader in this project (docs/
 // architecture.md section 4) - this core uses it 3 ways at once: as SPI1
@@ -125,6 +125,12 @@ extern IWDG_HandleTypeDef  hiwdg;
 #define OFS_ESTOP_STATE                                       0x1D // sent BY the application of a controller board, DLC=4: latched or ready, epoch, last accepted sequence
 #define OFS_SLOT_SCAN_PROBE                                   0x1E // host -> every board of the slot window, DLC=8
 #define OFS_SLOT_SCAN_REPLY                                   0x1F // sent BY a controller board (bootloader or application) after a delay taken from its unique identifier, DLC=8
+
+// F-RAM erase and self-test of the controller boards (docs/FRAM_ERASE.md): the brain relays them, the frame type is the offset. They need the window of 64 identifiers: the first 32 were all taken.
+#define OFS_FRAM_ERASE_REQUEST             0x20 // host -> bootloader, DLC=8: erase the whole F-RAM (writes zeros and reads them back)
+#define OFS_FRAM_ERASE_RESPONSE            0x21 // sent BY the bootloader, DLC=8: status and the bytes written
+#define OFS_FRAM_SELFTEST_REQUEST          0x22 // host -> bootloader, DLC=8: write two patterns over a scratch area, read them back and put the old bytes back
+#define OFS_FRAM_SELFTEST_RESPONSE         0x23 // sent BY the bootloader, DLC=8: status and the address that failed
 
 #define STATUS_LISTENING     0x01
 #define STATUS_ERASING       0x02

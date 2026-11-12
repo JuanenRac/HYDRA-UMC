@@ -34,9 +34,9 @@ static void BrainHalRequire(HAL_StatusTypeDef status)
     }
 }
 
-/* All 8 STACK A slots (0x600 .. 0x6FF, mask 0x700) and the emergency stop (0x001). */
+/* All 8 STACK A slots (0x600 .. 0x7FF, mask 0x600) and the emergency stop (0x001). */
 #define BRAIN_STACKA_FILTER_ID   0x600u
-#define BRAIN_STACKA_FILTER_MASK 0x700u
+#define BRAIN_STACKA_FILTER_MASK 0x600u
 #define BRAIN_ESTOP_CAN_ID       0x001u
 
 /* +0x10/+0x11 - new application-level offsets, architecture.md section 4's

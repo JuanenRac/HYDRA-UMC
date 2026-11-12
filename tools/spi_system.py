@@ -14,7 +14,7 @@
     0x25 PROBE_RESPONSE     scan id, then the verdicts of slots 0..7 in a nibble each
     0x26 ZONES_HEARTBEAT    'Z' 'O' 'N' 'E'                  the safety-zones chain is healthy; the application stops the stack when it stops coming
 
-None of these frames is a CAN message: the types are above the 32 identifiers of a slot window. The firmware answers them only when it is built
+None of these frames is a CAN message: the tier of the frame (SELF) decides where it goes before its type is read, although the types 0x20 and up are also offsets of the 64-identifier window of a slot (the F-RAM requests). The firmware answers them only when it is built
 with HYDRA_SPI_SYSTEM=1 (telemetry and probe) and HYDRA_SPI_STOP_COMMAND=1 (stop and release). Evidence of anything built on this file: simulator."""
 from __future__ import annotations
 

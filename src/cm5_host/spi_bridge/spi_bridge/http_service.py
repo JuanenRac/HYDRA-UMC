@@ -11,6 +11,11 @@ HTTP" pattern SERVER already uses for Voice UI/Datalake
 Real routes:
   GET  /version?tier=&slot=&relay=   -> query_version()
   GET  /counters?tier=&slot=&relay=  -> query_error_counters(): the transmit and receive error counters of the CAN controller of a board
+  POST /fram/erase?slot=&confirm=ERASE    -> erase_fram(): zeros over the whole F-RAM of the controller board of that slot (docs/FRAM_ERASE.md)
+  POST /fram/selftest?slot=               -> fram_selftest(): patterns over a scratch area of the F-RAM, the old bytes put back
+                                        Both answer 403 unless the service was started with fram_erase=True (--enable-fram-erase); `GET /version`
+                                        says so in `capabilities.fram_erase`, so an app offers the operation only when the bridge does. The board
+                                        has its own switch (HYDRA_FRAM_ERASE) and no driver for the chip yet: it then answers `disabled` or `no-chip`.
   POST /flash?tier=&slot=&hardware_id=&relay=&version_major=&version_minor=[&version_patch=][&downgrade_from=x.y.z][&signature=HEX][&target=NAME][&min_bootloader=x.y.z] -> SpiOtaFlasher.flash(),
                                         streamed as newline-delimited JSON. The HYDRA-UMC bootloaders verify an Ed25519 signature of the image
                                         (128 hexadecimal digits in `signature`, made with tools/image_header.py sign on the machine that holds the
@@ -46,6 +51,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
+from .fram_client import erase_fram, fram_selftest
 from .bootloader_client import SpiOtaFlasher, check_manifest_requirements, query_error_counters, query_version
 from .image_header import DowngradeSigner, ImageSigner, SIGNATURE_SIZE, is_signed_header_target
 from .relay_tunnel import RelayedTransport
@@ -72,6 +78,7 @@ def make_handler(
     *,
     image_signer: ImageSigner | None = None,
     downgrade_signer: DowngradeSigner | None = None,
+    fram_erase: bool = False,
 ) -> type[BaseHTTPRequestHandler]:
     """Builds a request handler bound to one already-open transport - kept
     as a factory (not a module-level handler) so tests can inject a fake
@@ -126,11 +133,15 @@ def make_handler(
                     "hardware_id": info.hardware_id,
                     "firmware_major": info.firmware_major,
                     "firmware_minor": info.firmware_minor,
+                    "capabilities": {"fram_erase": fram_erase},
                 },
             )
 
         def do_POST(self):  # noqa: N802 - BaseHTTPRequestHandler requires this name
             parsed = urlparse(self.path)
+            if parsed.path in ("/fram/erase", "/fram/selftest"):
+                self._fram(parsed)
+                return
             if parsed.path != "/flash":
                 self._send_json(404, {"error": "not found"})
                 return
@@ -211,6 +222,36 @@ def make_handler(
             finally:
                 lock.release()
 
+        def _fram(self, parsed) -> None:
+            """The F-RAM erase and self-test: off unless the service was started for it, and an erase needs the word `ERASE` as a confirmation."""
+            if not fram_erase:
+                self._send_json(403, {"error": "the F-RAM operations are switched off in this service (start it with --enable-fram-erase)"})
+                return
+            params = parse_qs(parsed.query)
+            try:
+                slot = int(params["slot"][0])
+            except (KeyError, ValueError):
+                self._send_json(400, {"error": "slot is required and must be an integer"})
+                return
+            if slot not in VALID_SLOTS:
+                self._send_json(400, {"error": "slot must be 0-7"})
+                return
+            is_erase = parsed.path == "/fram/erase"
+            if is_erase and params.get("confirm", [""])[0] != "ERASE":
+                self._send_json(400, {"error": "an erase needs confirm=ERASE"})
+                return
+            if not lock.acquire(blocking=False):
+                self._send_json(409, {"error": "the SPI link is busy with another operation"})
+                return
+            try:
+                result = (erase_fram if is_erase else fram_selftest)(transport, slot)
+            finally:
+                lock.release()
+            if result is None:
+                self._send_json(504, {"error": "the board did not answer (absent, or not in its bootloader)"})
+                return
+            self._send_json(200, result.as_json())
+
         def _write_progress(self, phase, pages_sent, pages_total, percent, error) -> None:
             line = json.dumps(
                 {
@@ -247,11 +288,12 @@ def serve(
     *,
     image_signer: ImageSigner | None = None,
     downgrade_signer: DowngradeSigner | None = None,
+    fram_erase: bool = False,
 ) -> ThreadingHTTPServer:
     """Starts the real local HTTP service. Caller owns the returned server's
     lifecycle (serve_forever()/shutdown()). Pass the same `bus_lock` to
     anything else that talks to the link (the counter publisher). The signers are for a deployment that keeps the
     private seed behind some other process; without them every HYDRA-UMC update must arrive already signed."""
 
-    handler = make_handler(transport, hmac_key, bus_lock, image_signer=image_signer, downgrade_signer=downgrade_signer)
+    handler = make_handler(transport, hmac_key, bus_lock, image_signer=image_signer, downgrade_signer=downgrade_signer, fram_erase=fram_erase)
     return ThreadingHTTPServer((host, port), handler)

@@ -51,6 +51,8 @@ Every row below is **not executed** either; it needs the STM32G474 controller bo
 | 27 | Make the FDCAN initialisation fail on a board (clock gated, peripheral held) and reset it with and without a valid application. | With a valid application it starts and takes no update; without one the watchdog resets the board in a loop and the lines of the drivers stay off. | not executed |
 | 28 | Send frames of the other slots, of the emergency stop and of random identifiers at the maximum rate to a controller board. | Only the frames of its own slot window and `0x001` reach the receive FIFO; the FIFO never overflows from foreign traffic. | not executed |
 | 29 | Stop the relay task of a board in a debugger while the blink task keeps running. | The watchdog is no longer refreshed and the board resets within its timeout. | not executed |
+| 30 | Flash the wider slot window (64 identifiers) to the controller boards and the kinematic brain together, then run the slot scan, an update of one board and the emergency stop with all eight slots fitted. | Every board answers on `0x600 + slot * 0x40 + offset`, only its own 64 identifiers and `0x001` reach its receive FIFO, and an update of one slot does not touch the neighbours. A board left on the old window is not seen. | not executed |
+| 31 | With the F-RAM chip fitted and its driver written: switch `HYDRA_FRAM_ERASE` on, send the self-test and then the erase to a board in its bootloader (and to the application, and during an update). | The self-test leaves the contents as they were; the erase leaves every cell at zero and answers the number of bytes; the application and a running update are not touched and the answer is `busy` or none. | not executed |
 
 ## What this bench cannot show
 

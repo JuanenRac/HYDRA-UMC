@@ -4,7 +4,7 @@
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
 """Row 28 of docs/BENCH_TESTS.md on the virtual bus: frames of the other slots, of random identifiers and of the emergency stop sent at the maximum rate
-to a controller board. The board is modelled with the two hardware filters of the firmware (the window of its own slot with mask 0x7E0, and the exact
+to a controller board. The board is modelled with the two hardware filters of the firmware (the window of its own slot with mask 0x7C0, and the exact
 emergency stop identifier 0x001) and a receive FIFO of the depth of tests/timing_models.json. Evidence: simulator; the row stays open until it is run on a
 board."""
 import json
@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import can_ids  # noqa: E402
 from sim_can_bus import Frame, SimNode, VirtualCanBus, slot_base  # noqa: E402
 
-SLOT_FILTER_MASK = 0x7E0
+SLOT_FILTER_MASK = 0x7C0
 FIFO_DEPTH = json.loads((Path(__file__).resolve().parent / "timing_models.json").read_text(encoding="utf-8"))["g474_start"]["rx_fifo_depth"]
 
 
@@ -76,7 +76,7 @@ def run_flood(identifiers, *, filtered=True, slot=3, milliseconds=60, drain_per_
 
 
 def foreign_identifiers(slot):
-    return [i for s in range(64) if s != slot for i in (slot_base(s), slot_base(s) + 0x1F)]
+    return [i for s in range(0x800 // can_ids.SLOT_WINDOW) if s != slot for i in (slot_base(s), slot_base(s) + can_ids.SLOT_WINDOW - 1)]
 
 
 class ForeignTrafficAtMaximumRate(unittest.TestCase):

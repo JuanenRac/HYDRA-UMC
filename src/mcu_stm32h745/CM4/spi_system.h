@@ -4,8 +4,9 @@
  * GPL-3.0-or-later - see LICENSE
  * =============================================================================
  * Commands of the SPI link that the CM4 answers itself and never puts on a CAN bus (HAL-free, host-testable). docs/SPI_SYSTEM.md is the contract and
- * tools/spi_system.py the reference in Python. All of them go to the tier SELF of the frame; the frame types start at 0x20, above the window of 32
- * identifiers a slot owns, so none of them can be mistaken for a CAN message.
+ * tools/spi_system.py the reference in Python. All of them go to the tier SELF of the frame; the frame types start at 0x20. The tier of the frame decides
+ * where it goes before its type is read (STACKA is relayed to the CAN bus, SELF is answered here), so none of them is ever put on a bus although the window of
+ * a slot, 64 identifiers wide, also has offsets from 0x20 (docs/FRAM_ERASE.md).
  *
  *   0x20 STOP_REQUEST       dlc 5   'S' 'T' 'O' 'P' reason     the CM5 asks the brain to put the whole stack in the emergency stop
  *   0x21 RELEASE_REQUEST    dlc 4   'R' 'E' 'L' 'S'            a person asked to end the stop; the brain still waits for every board to say READY

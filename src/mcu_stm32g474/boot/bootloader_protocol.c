@@ -95,6 +95,11 @@ void CAN_SendSlotScanReply(const uint8_t data[8]) {
     FDCAN_Send(g_slot_base + OFS_SLOT_SCAN_REPLY, data, 8);
 }
 
+// The answer to an F-RAM request leaves on the identifier next to the one it came in on (request + 1), the only emitter of that identifier (tools/can_ids.py).
+void CAN_SendFramResponse(uint8_t request_offset, const uint8_t data[8]) {
+    FDCAN_Send(g_slot_base + request_offset + 1, data, 8);
+}
+
 void CAN_SendHeartbeat(uint8_t status, uint8_t progress_percent) {
     if (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) == 0) return; // best-effort, never blocks - heartbeat missing one beat is harmless
     uint8_t d[2] = {status, progress_percent};

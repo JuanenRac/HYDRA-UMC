@@ -18,7 +18,7 @@
       "time_quanta_per_bit": 16,
       "nominal_bit_rate_bps": 1000000,
       "slot_base": "0x600",
-      "slot_window": 32,
+      "slot_window": 64,
       "slots": 8,
       "sources": [
         "src/mcu_stm32h745/CM4/boot/bootloader_main.c",
@@ -57,7 +57,7 @@
       ]
     }
   },
-  "slot_messages": "see tools/can_ids.py: each message is an offset inside the 32-identifier window of a slot; the identifier is slot_base + slot * slot_window + offset",
+  "slot_messages": "see tools/can_ids.py: each message is an offset inside the 64-identifier window of a slot; the identifier is slot_base + slot * slot_window + offset",
   "data_length_per_message": "not yet recorded: only the classic maximum of 8 bytes is a contract today",
   "emergency_stop": {
     "contract": "docs/ESTOP_CAN.md",

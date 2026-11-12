@@ -420,8 +420,8 @@ void Relay_ToStackA(uint8_t slot, const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
     // in->frame_type is also externally supplied (the CM5's own SPI1 frame,
     // byte 2 - no CRC on the raw wire frame, see bootloader_main.c's own
     // WireToFrame) and is used below as a raw ADDEND onto this slot's own
-    // base ID. Without this check, frame_type >= STACKA_SLOT_WINDOW (0x20)
-    // pushes target_id PAST this slot's own 32-ID window and into the NEXT
+    // base ID. Without this check, frame_type >= STACKA_SLOT_WINDOW (0x40)
+    // pushes target_id PAST this slot's own 64-ID window and into the NEXT
     // slot's (or a further slot's) command space - e.g. slot=0 with a
     // corrupted frame_type=0x21 computes the exact same ID as slot=1's own
     // +0x01 (START_UPDATE), silently addressing a DIFFERENT robot than the
@@ -447,7 +447,8 @@ void Relay_ToStackA(uint8_t slot, const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
                                         in->frame_type == OFS_PAGE_ACK || in->frame_type == OFS_STATUS || in->frame_type == OFS_HEARTBEAT ||
                                         in->frame_type == OFS_VERSION_RESPONSE || in->frame_type == OFS_BOOTLOADER_VERSION ||
                                         in->frame_type == OFS_ERROR_COUNTERS_RESPONSE || in->frame_type == OFS_BACKUP_READ_RESPONSE ||
-                                        in->frame_type == OFS_DOWNGRADE_NONCE_RESPONSE);
+                                        in->frame_type == OFS_DOWNGRADE_NONCE_RESPONSE ||
+                                        in->frame_type == OFS_FRAM_ERASE_RESPONSE || in->frame_type == OFS_FRAM_SELFTEST_RESPONSE);
     if (transmitted_by_the_board) {
         memset(out, 0, sizeof(*out));
         out->target_tier = SPI_TARGET_STACKA;

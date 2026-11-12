@@ -102,6 +102,7 @@ def make_parser() -> argparse.ArgumentParser:
     run.add_argument("--hmac-key-file", required=True)
     run.add_argument("--host", default="127.0.0.1")
     run.add_argument("--port", type=int, default=8765)
+    run.add_argument("--enable-fram-erase", action="store_true", help="offer the F-RAM erase and self-test of the controller boards (off by default; the board has its own switch and no chip driver yet)")
     run.add_argument("--collector-url", help="HYDRA-UMC-TELEMETRY-COLLECTOR base address, for example http://127.0.0.1:8092")
     run.add_argument("--collector-token-file")
     run.add_argument("--counter-target", action="append", default=[], help="tier:slot or tier:slot:relay; repeat for each board")
@@ -124,7 +125,7 @@ def main(argv: list[str] | None = None) -> int:
     except (ValueError, OSError, RuntimeError) as error:
         print(f"[spi-bridge] {error}", file=sys.stderr)
         return 2
-    server = serve(transport, key, host=args.host, port=args.port, bus_lock=bus_lock)
+    server = serve(transport, key, host=args.host, port=args.port, bus_lock=bus_lock, fram_erase=args.enable_fram_erase)
     stop = None
     if publisher is not None:
         _, stop = publisher.start()

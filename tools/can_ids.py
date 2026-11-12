@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-SLOT_WINDOW = 0x20  # identifiers per slot (mask 0x7E0 in the hardware filter)
+SLOT_WINDOW = 0x40  # identifiers per slot (mask 0x7C0 in the hardware filter)
 
 KINEMATIC_BRAIN = "kinematic-brain"
 CONTROLLER_BOARD = "controller-board"
@@ -57,6 +57,11 @@ MESSAGES: tuple[CanMessage, ...] = (
     # slot scan (docs/SLOT_SCAN.md): the host asks every slot window who is there; each board answers on its own window, so two boards with the same board identifier are seen
     CanMessage("SLOT_SCAN_PROBE", 0x1E, HOST),
     CanMessage("SLOT_SCAN_REPLY", 0x1F, BOOTLOADER),
+    # F-RAM erase and self-test (docs/FRAM_ERASE.md, src/mcu_stm32g474/boot/fram_node.h): the first 32 identifiers of the window were all taken, so these four are why the window is 64 wide
+    CanMessage("FRAM_ERASE_REQUEST", 0x20, HOST),
+    CanMessage("FRAM_ERASE_RESPONSE", 0x21, BOOTLOADER),
+    CanMessage("FRAM_SELFTEST_REQUEST", 0x22, HOST),
+    CanMessage("FRAM_SELFTEST_RESPONSE", 0x23, BOOTLOADER),
     # health frame (tools/health_frame.py, src/mcu_stm32g474/health_frame.h): the application of a controller board says once a second how it is doing; off until the build asks for it
     CanMessage("HEALTH_FRAME", 0x11, CONTROLLER_BOARD),
 )
