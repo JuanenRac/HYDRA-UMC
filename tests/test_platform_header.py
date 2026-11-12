@@ -92,7 +92,7 @@ class PlatformHeaderTests(unittest.TestCase):
             for path in (ROOT / "src").rglob("*.[ch]")
             if path.name != "platform_profile.h" and "platform_profile.h" in path.read_text(encoding="utf-8", errors="ignore")
         }
-        self.assertEqual(including, {"src/mcu_stm32h757/CM4/KinematicBrainCan.c", "src/mcu_stm32h757/CM4/boot/bootloader_main.c", "src/mcu_stm32h757/Common/clock_tree.h", "src/mcu_stm32h757/Common/sdram_init.h"})
+        self.assertEqual(including, {"src/mcu_stm32h757/CM4/KinematicBrainCan.c", "src/mcu_stm32h757/CM4/boot/bootloader_main.c", "src/mcu_stm32h757/Common/clock_tree.h", "src/mcu_stm32h757/Common/sdram_init.h", "src/mcu_stm32h757/Common/nor_flash.h"})
 
 
 if __name__ == "__main__":
