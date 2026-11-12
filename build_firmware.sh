@@ -284,6 +284,18 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # ipc_link.h: the operations on the mailbox between the two cores (post, take, answer, wait), for both platforms (the gateway is the CM4 on the H745 one and the CM7 on the H757 one)
+    # and with the seal switch off and on.
+    IPC_LINK_HOST_BIN="$ROOT/build/host_tests_ipc_link"
+    for IPC_LINK_VARIANT in "" "-DHYDRA_PLATFORM_H757" "-DHYDRA_IPC_REQUIRE_CRC=1" "-DHYDRA_PLATFORM_H757 -DHYDRA_IPC_REQUIRE_CRC=1"; do
+        if "$HOST_CC" -std=c11 -Wall -Wextra $IPC_LINK_VARIANT -I"$ROOT/src/mcu_stm32h757/Common" -o "$IPC_LINK_HOST_BIN" "$ROOT/tests/test_ipc_link.c" && "$IPC_LINK_HOST_BIN"; then
+            pass "ipc_link host logic tests passed [${IPC_LINK_VARIANT:-default}]"
+        else
+            fail "ipc_link host logic tests FAILED [${IPC_LINK_VARIANT:-default}]"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+    done
+
     # ipc_mailbox.h: seal of the frame between the two cores, with the switch HYDRA_IPC_REQUIRE_CRC off and on, and the two semaphore channels modelled on the host.
     for IPC_REQUIRE in 0 1; do
         IPC_HOST_BIN="$ROOT/build/host_tests_ipc_mailbox_$IPC_REQUIRE"
