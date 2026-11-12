@@ -59,6 +59,7 @@ def table() -> list[HostTest]:
         HostTest("relay_send_reassembly", "tests/test_relay_send_reassembly.c", (G4,)),
         HostTest("relay_ids", "tests/test_relay_ids.c", (G4,)),
         HostTest("spi_frame_crc", "tests/test_spi_frame_crc.c", (f"{H7}/CM4/boot",)),
+        HostTest("spi_boot_master", "tests/test_spi_boot_master.c", (f"{H7}/Common", "tests")),
         HostTest("ipc_mailbox", "tests/test_ipc_mailbox.c", (f"{H7}/Common", f"{H7}/CM4/boot")),
         HostTest("ipc_mailbox_require_crc", "tests/test_ipc_mailbox.c", (f"{H7}/Common", f"{H7}/CM4/boot"), defines=("HYDRA_IPC_REQUIRE_CRC=1",)),
         HostTest("app_support", "tests/test_app_support.c", (G4,), defines=("HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT=0",)),

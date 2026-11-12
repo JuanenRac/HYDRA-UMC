@@ -219,6 +219,15 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # spi_boot_master.h: the frames of the SPI link on which the bootloader is the master and asks the host for a signed image (vectors of the Python model).
+    SPI_BOOT_MASTER_HOST_BIN="$ROOT/build/host_tests_spi_boot_master"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h757/Common" -I"$ROOT/tests" -o "$SPI_BOOT_MASTER_HOST_BIN" "$ROOT/tests/test_spi_boot_master.c" && "$SPI_BOOT_MASTER_HOST_BIN"; then
+        pass "spi_boot_master host logic tests passed"
+    else
+        fail "spi_boot_master host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # ipc_mailbox.h: seal of the frame between the two cores, with the switch HYDRA_IPC_REQUIRE_CRC off and on, and the two semaphore channels modelled on the host.
     for IPC_REQUIRE in 0 1; do
         IPC_HOST_BIN="$ROOT/build/host_tests_ipc_mailbox_$IPC_REQUIRE"

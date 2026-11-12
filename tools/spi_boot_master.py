@@ -109,6 +109,35 @@ class Result:
     frames: int = 0
 
 
+def hello_payload(cfg: "BootConfig", nonce: bytes) -> bytes:
+    """The payload of HELLO: hardware identifier, link address, installed version, the nonce of the session and the version of the bootloader."""
+    return struct.pack("<IIHHH", cfg.hw_id, cfg.link_address, *cfg.installed_version) + nonce + struct.pack("<HHH", *cfg.bootloader_version)
+
+
+def offer_payload(size: int, version: tuple[int, int, int], min_bootloader: tuple[int, int, int] | None, target: str | None) -> bytes:
+    """The payload of OFFER: size, version, the minimum bootloader (0.0.0 for none) and the target name (16 bytes, zero padded)."""
+    return struct.pack("<IHHH", size, *version) + struct.pack("<HHH", *(min_bootloader or (0, 0, 0))) + (target or "").encode("ascii")[:16].ljust(16, b"\x00")
+
+
+OFFER_OK, OFFER_BAD_SIZE, OFFER_WRONG_TARGET, OFFER_BOOTLOADER_TOO_OLD = 0, 1, 2, 3
+OFFER_REASONS = {
+    OFFER_BAD_SIZE: "the size offered does not fit the application slot",
+    OFFER_WRONG_TARGET: "the image is for {target}, this board is {board}",
+    OFFER_BOOTLOADER_TOO_OLD: "this bootloader is older than the image requires",
+}
+
+
+def judge_offer(size: int, target: str, min_bootloader: tuple[int, int, int] | None, cfg: "BootConfig") -> int:
+    """What the bootloader decides about an offer before it fetches a byte (the firmware does the same in `SbmJudgeOffer`)."""
+    if size < ih.HEADER_SIZE + ih.SIGNATURE_SIZE or size > MAX_IMAGE_BYTES:
+        return OFFER_BAD_SIZE
+    if target and target != cfg.target:
+        return OFFER_WRONG_TARGET
+    if min_bootloader is not None and min_bootloader > cfg.bootloader_version:
+        return OFFER_BOOTLOADER_TOO_OLD
+    return OFFER_OK
+
+
 class SpiHost:
     """The Jetson side: serves an image blob page by page. It can be made to misbehave for the tests."""
 
@@ -138,9 +167,7 @@ class SpiHost:
         answer_sequence = sequence + 1 if self.wrong_sequence else sequence
         if kind == T_HELLO:
             size = len(self.blob) if self.oversize_offer is None else self.oversize_offer
-            offer = struct.pack("<IHHH", size, *self.version) + struct.pack("<HHH", *(self.min_bootloader or (0, 0, 0)))
-            offer += (self.target or "").encode("ascii")[:16].ljust(16, b"\x00")
-            return encode(T_OFFER, answer_sequence, offer)
+            return encode(T_OFFER, answer_sequence, offer_payload(size, self.version, self.min_bootloader, self.target))
         if kind == T_GET_PAGE:
             offset, length = struct.unpack("<II", payload)
             page = self.blob[offset : offset + length]
@@ -200,7 +227,7 @@ class SpiMasterBootloader:
         self.slot.reset()
         self.nonce = bytes(range(ih.NONCE_SIZE))  # a real bootloader draws it from its random source for each attempt
         try:
-            kind, body = self._exchange(host, T_HELLO, struct.pack("<IIHHH", cfg.hw_id, cfg.link_address, *cfg.installed_version) + self.nonce + struct.pack("<HHH", *cfg.bootloader_version))
+            kind, body = self._exchange(host, T_HELLO, hello_payload(cfg, self.nonce))
             if kind == T_REFUSE:
                 return Result(REFUSED, "the host has nothing to offer", frames=self.frames)
             if kind != T_OFFER or len(body) != 32:
@@ -208,13 +235,9 @@ class SpiMasterBootloader:
             size = struct.unpack_from("<I", body, 0)[0]
             target = body[16:32].rstrip(b"\x00").decode("ascii", "replace")
             # checks that refuse before a byte is fetched; none of them replaces the verification below
-            if size < ih.HEADER_SIZE + ih.SIGNATURE_SIZE or size > MAX_IMAGE_BYTES:
-                return Result(REFUSED, "the size offered does not fit the application slot", frames=self.frames)
-            if target and target != cfg.target:
-                return Result(REFUSED, f"the image is for {target}, this board is {cfg.target}", frames=self.frames)
-            offered_min = self._unpack_min(body)
-            if offered_min is not None and offered_min > cfg.bootloader_version:
-                return Result(REFUSED, "this bootloader is older than the image requires", frames=self.frames)
+            verdict = judge_offer(size, target, self._unpack_min(body), cfg)
+            if verdict != OFFER_OK:
+                return Result(REFUSED, OFFER_REASONS[verdict].format(target=target, board=cfg.target), frames=self.frames)
             blob = bytearray()
             pages = 0
             while len(blob) < size:

@@ -1,0 +1,266 @@
+{
+  "schema": 1,
+  "frames": [
+    {
+      "name": "hello",
+      "type": 1,
+      "sequence": 1,
+      "payload_hex": "3743374800000408000001000700000102030405060708090a0b0c0d0e0f000001000800",
+      "frame_hex": "5301010024003743374800000408000001000700000102030405060708090a0b0c0d0e0f0000010008001dc1fb85",
+      "host": false
+    },
+    {
+      "name": "get_page",
+      "type": 2,
+      "sequence": 2,
+      "payload_hex": "0002000000010000",
+      "frame_hex": "5302020008000002000000010000bf873c83",
+      "host": false
+    },
+    {
+      "name": "get_token",
+      "type": 3,
+      "sequence": 3,
+      "payload_hex": "",
+      "frame_hex": "530303000000c40ecd6e",
+      "host": false
+    },
+    {
+      "name": "done",
+      "type": 4,
+      "sequence": 65535,
+      "payload_hex": "",
+      "frame_hex": "5304ffff0000264fc5ae",
+      "host": false
+    },
+    {
+      "name": "offer",
+      "type": 129,
+      "sequence": 1,
+      "payload_hex": "94050000000001000800000001000800483735372d434d370000000000000000",
+      "frame_hex": "53810100200094050000000001000800000001000800483735372d434d3700000000000000003673c561",
+      "host": true
+    },
+    {
+      "name": "offer_no_min_no_target",
+      "type": 129,
+      "sequence": 1,
+      "payload_hex": "9405000000000100080000000000000000000000000000000000000000000000",
+      "frame_hex": "53810100200094050000000001000800000000000000000000000000000000000000000000005f6467a4",
+      "host": true
+    },
+    {
+      "name": "page",
+      "type": 130,
+      "sequence": 2,
+      "payload_hex": "000100000001020304050607",
+      "frame_hex": "538202000c0000010000000102030405060700b950f6",
+      "host": true
+    },
+    {
+      "name": "page_full",
+      "type": 130,
+      "sequence": 3,
+      "payload_hex": "00000000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+      "frame_hex": "53820300040100000000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff85d1dc0d",
+      "host": true
+    },
+    {
+      "name": "token",
+      "type": 131,
+      "sequence": 4,
+      "payload_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "frame_hex": "538304004000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f389cc3c9",
+      "host": true
+    },
+    {
+      "name": "refuse",
+      "type": 143,
+      "sequence": 5,
+      "payload_hex": "646f6e65",
+      "frame_hex": "538f05000400646f6e6566e95dea",
+      "host": true
+    }
+  ],
+  "bad_frames": [
+    {
+      "name": "short",
+      "frame_hex": "5382070006",
+      "host": true,
+      "status": 1
+    },
+    {
+      "name": "one_byte_short",
+      "frame_hex": "5382070006006162636465667f4842",
+      "host": true,
+      "status": 2
+    },
+    {
+      "name": "trailing_byte",
+      "frame_hex": "5382070006006162636465667f4842c100",
+      "host": true,
+      "status": 2
+    },
+    {
+      "name": "crc_flipped",
+      "frame_hex": "5382070006006162636465667f4842c0",
+      "host": true,
+      "status": 2
+    },
+    {
+      "name": "payload_flipped",
+      "frame_hex": "5382070006006162736465667f4842c1",
+      "host": true,
+      "status": 2
+    },
+    {
+      "name": "hello_where_host_expected",
+      "frame_hex": "5301010000002f9504be",
+      "host": true,
+      "status": 5
+    },
+    {
+      "name": "page_where_master_expected",
+      "frame_hex": "5382070006006162636465667f4842c1",
+      "host": false,
+      "status": 5
+    },
+    {
+      "name": "sync_not_0x53",
+      "frame_hex": "548201000000d56f4755",
+      "host": true,
+      "status": 3
+    },
+    {
+      "name": "length_field_disagrees",
+      "frame_hex": "53820100090078787867b175f4",
+      "host": true,
+      "status": 4
+    }
+  ],
+  "judge": {
+    "max_image_bytes": 393344,
+    "board_target": "H757-CM7",
+    "bootloader": [
+      0,
+      1,
+      8
+    ]
+  },
+  "offers": [
+    {
+      "name": "good",
+      "payload_hex": "94050000000001000800000001000800483735372d434d370000000000000000",
+      "size": 1428,
+      "target": "H757-CM7",
+      "verdict": 0
+    },
+    {
+      "name": "no_min_no_target",
+      "payload_hex": "9405000000000100080000000000000000000000000000000000000000000000",
+      "size": 1428,
+      "target": "",
+      "verdict": 0
+    },
+    {
+      "name": "size_too_small",
+      "payload_hex": "7f00000000000100080000000000000000000000000000000000000000000000",
+      "size": 127,
+      "target": "",
+      "verdict": 1
+    },
+    {
+      "name": "size_smallest",
+      "payload_hex": "8000000000000100080000000000000000000000000000000000000000000000",
+      "size": 128,
+      "target": "",
+      "verdict": 0
+    },
+    {
+      "name": "size_largest",
+      "payload_hex": "8000060000000100080000000000000000000000000000000000000000000000",
+      "size": 393344,
+      "target": "",
+      "verdict": 0
+    },
+    {
+      "name": "size_too_big",
+      "payload_hex": "8100060000000100080000000000000000000000000000000000000000000000",
+      "size": 393345,
+      "target": "",
+      "verdict": 1
+    },
+    {
+      "name": "wrong_target",
+      "payload_hex": "94050000000001000800000000000000473437342d4354524c00000000000000",
+      "size": 1428,
+      "target": "G474-CTRL",
+      "verdict": 2
+    },
+    {
+      "name": "target_is_a_prefix",
+      "payload_hex": "9405000000000100080000000000000048373537000000000000000000000000",
+      "size": 1428,
+      "target": "H757",
+      "verdict": 2
+    },
+    {
+      "name": "target_longer",
+      "payload_hex": "94050000000001000800000000000000483735372d434d375800000000000000",
+      "size": 1428,
+      "target": "H757-CM7X",
+      "verdict": 2
+    },
+    {
+      "name": "min_bootloader_newer_patch",
+      "payload_hex": "9405000000000100080000000100090000000000000000000000000000000000",
+      "size": 1428,
+      "target": "",
+      "verdict": 3
+    },
+    {
+      "name": "min_bootloader_newer_minor",
+      "payload_hex": "9405000000000100080000000200000000000000000000000000000000000000",
+      "size": 1428,
+      "target": "",
+      "verdict": 3
+    },
+    {
+      "name": "min_bootloader_newer_major",
+      "payload_hex": "9405000000000100080001000000000000000000000000000000000000000000",
+      "size": 1428,
+      "target": "",
+      "verdict": 3
+    },
+    {
+      "name": "min_bootloader_equal",
+      "payload_hex": "9405000000000100080000000100080000000000000000000000000000000000",
+      "size": 1428,
+      "target": "",
+      "verdict": 0
+    },
+    {
+      "name": "min_bootloader_older",
+      "payload_hex": "9405000000000100080000000000090000000000000000000000000000000000",
+      "size": 1428,
+      "target": "",
+      "verdict": 0
+    }
+  ],
+  "hello": {
+    "hw_id": 1211581239,
+    "link_address": 134479872,
+    "installed": [
+      0,
+      1,
+      7
+    ],
+    "nonce_hex": "000102030405060708090a0b0c0d0e0f",
+    "bootloader": [
+      0,
+      1,
+      8
+    ],
+    "sequence": 1
+  }
+}
