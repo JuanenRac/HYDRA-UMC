@@ -384,6 +384,8 @@ HYDRA-UMC/
 
 * [docs/SOURCE_MAP.md](docs/SOURCE_MAP.md) - リポジトリのすべてのファイルと、その役割を示す 1 行
 * [docs/HARDWARE_SPECIFICATION.md](docs/HARDWARE_SPECIFICATION.md) - 設計の仕様：ホストコンピューターからツールヘッドまでの 11 のサブシステム（言語ごとに 1 ファイル）
+* [docs/DSI_EN_H757.md](docs/DSI_EN_H757.md) - STM32H757 に接続したディスプレイ：Jetson が応答しなくても状態表示と機械の停止を続けるインターフェース、そのモード、安全規則、段階
+* [docs/UI_STACK_H757.md](docs/UI_STACK_H757.md) - インターフェースを描画するライブラリの選定と、H757 のメモリマップに対するフラッシュ・RAM・SDRAM の予算
 * [エコシステムのセキュリティ基準](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
 * [エコシステムの脅威モデル](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
 * [このリポジトリの変更履歴](CHANGELOG.md)
