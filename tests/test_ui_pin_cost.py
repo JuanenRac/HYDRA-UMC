@@ -38,6 +38,12 @@ class CostTests(unittest.TestCase):
         self.assertIn("estimates", text)
         self.assertEqual(cost.main(), 0)
 
+    def test_a_measurement_from_the_bench_gives_the_value_for_the_configuration(self):
+        n = cost.calibrate(measured_cycles=52_005_200, iterations=10000)
+        self.assertEqual(n["compressions"], 20002)
+        self.assertAlmostEqual(n["cycles_per_block"], 2600.0, places=1)
+        self.assertAlmostEqual(n["milliseconds"], 130.0130, places=3)
+
     def test_a_slower_core_or_a_heavier_hash_is_caught(self):
         original = cost.ui_pin.load_settings
         try:
