@@ -1076,8 +1076,8 @@ for H757_CORE in CM7 CM4; do
     H757_LOWER=$(echo "$H757_CORE" | tr 'A-Z' 'a-z')
     H757_OBJ="$H7/${H757_LOWER}_boot_h757_check_obj"
     mkdir -p "$H757_OBJ"
-    if [ "$H757_CORE" = "CM7" ]; then H757_FLAGS="$CFLAGS_CM7"; else H757_FLAGS="$CFLAGS_CM4"; fi
-    if compile_dir "$ROOT/src/mcu_stm32h757/$H757_CORE/boot" "$H757_OBJ" "$H757_FLAGS -DHYDRA_PLATFORM_H757" "$COMMON_INC"; then
+    if [ "$H757_CORE" = "CM7" ]; then H757_FLAGS="$CFLAGS_CM7"; H757_INC="$COMMON_INC"; else H757_FLAGS="$CFLAGS_CM4"; H757_INC="$COMMON_INC -I$ROOT/src/mcu_stm32h757/CM4"; fi
+    if compile_dir "$ROOT/src/mcu_stm32h757/$H757_CORE/boot" "$H757_OBJ" "$H757_FLAGS -DHYDRA_PLATFORM_H757" "$H757_INC"; then
         pass "$H757_CORE bootloader sources compile for the H757 platform"
     else
         fail "$H757_CORE bootloader sources do NOT compile for the H757 platform - see errors above"
