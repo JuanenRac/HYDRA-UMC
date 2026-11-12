@@ -21,6 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ui_model as model  # noqa: E402
+import ui_gen_io  # noqa: E402
 import ui_spec  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -195,6 +196,8 @@ def outputs() -> dict[Path, str]:
         ROOT / "src" / "ui_h757" / "core" / "ui_texts.h": render_texts(i18n),
         ROOT / "src" / "ui_h757" / "core" / "ui_screens.h": render_screens(spec, i18n),
         ROOT / "src" / "ui_h757" / "test" / "ui_core_vectors.h": render_vectors(),
+        ROOT / "src" / "ui_h757" / "test" / "ui_pin_vectors.h": ui_gen_io.render_pin_vectors(),
+        ROOT / "src" / "ui_h757" / "test" / "ui_link_vectors.h": ui_gen_io.render_link_vectors(),
     }
 
 

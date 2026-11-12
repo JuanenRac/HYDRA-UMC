@@ -312,6 +312,8 @@ class State:
             self._pin_ok()
         elif name == "PIN_BAD":
             self._pin_bad()
+        elif name == "PIN_FAILURES":
+            self._pin_failures(args[0])
         elif name == "DOWN":
             self._derive()
             self.last_touch = self.now  # a touch is judged against the state of this moment, not of the last event
@@ -396,6 +398,17 @@ class State:
         if not self.pin_unlocked:
             self.pin_unlocked = True
             self.effects.append("unlocked")
+
+    def _pin_failures(self, persisted: int) -> None:
+        """At start the port tells how many wrong PINs the store has counted since the last right one: a power cut is not a way to get new tries."""
+        if not self.cfg["operator_pin_enabled"]:
+            return
+        if persisted >= self.cfg["pin_max_failures"]:
+            self.pin_failures = 0
+            self.pin_lockout_until = self.now + self.cfg["pin_lockout_ms"]
+            self.effects.append("pin_lockout")
+        else:
+            self.pin_failures = max(0, persisted)
 
     def _pin_bad(self) -> None:
         """The port says the PIN typed was wrong: after pin_max_failures in a row the pad is locked out for pin_lockout_ms."""

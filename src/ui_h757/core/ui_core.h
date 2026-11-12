@@ -44,7 +44,7 @@ typedef enum {
 } ui_alarm_t;
 
 typedef enum {
-    UI_EV_TICK = 0, UI_EV_HEARTBEAT, UI_EV_SPI_ERROR, UI_EV_SPI_OK, UI_EV_CAN, UI_EV_ESTOP, UI_EV_MOTION, UI_EV_NAV, UI_EV_TOUCH_DOWN, UI_EV_TOUCH_UP, UI_EV_PIN_OK, UI_EV_PIN_BAD
+    UI_EV_TICK = 0, UI_EV_HEARTBEAT, UI_EV_SPI_ERROR, UI_EV_SPI_OK, UI_EV_CAN, UI_EV_ESTOP, UI_EV_MOTION, UI_EV_NAV, UI_EV_TOUCH_DOWN, UI_EV_TOUCH_UP, UI_EV_PIN_OK, UI_EV_PIN_BAD, UI_EV_PIN_FAILURES
 } ui_event_kind_t;
 
 typedef enum {
@@ -139,7 +139,8 @@ void ui_init(ui_state_t *s, const ui_config_t *cfg);
 /* Feeds one event; the effects are in s->fx[0 .. s->fx_count-1] until the next call. Time never goes back.
  *   TICK: nothing; HEARTBEAT: a = zone level (0-5, anything else reads as unknown); SPI_ERROR, SPI_OK: nothing;
  *   CAN: a = bus off, b = transmit errors, c = receive errors; ESTOP: a = latched; MOTION: a = moving; NAV: a = screen;
- *   TOUCH_DOWN, TOUCH_UP: a = the action; PIN_OK, PIN_BAD: the port says the PIN typed was right or wrong (the digits never enter the core). Returns the number of effects. */
+ *   TOUCH_DOWN, TOUCH_UP: a = the action; PIN_OK, PIN_BAD: the port says the PIN typed was right or wrong (the digits never enter the core);
+ *   PIN_FAILURES: a = the wrong PINs the store has counted since the last right one, told at start (at or above the limit the lock-out begins at once). Returns the number of effects. */
 uint8_t ui_event(ui_state_t *s, uint64_t now, ui_event_kind_t kind, int32_t a, int32_t b, int32_t c);
 
 /* Why the action is refused now (a ui_refusal_t), or -1 when it is allowed. */

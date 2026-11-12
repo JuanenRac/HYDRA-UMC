@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import ui_model as model  # noqa: E402
 import ui_pin as pin  # noqa: E402
 
-FAST = {"pin_hash_iterations": 1000, "pin_min_digits": 4, "pin_max_digits": 8}
+FAST = {"pin_hash_iterations": 1000, "pin_min_digits": 4, "pin_max_digits": 8, "pin_cycles_per_block": 2600, "pin_hw_cycles_per_block": 200, "pin_check_max_ms": 300}
 SALT = bytes(range(16))
 
 
@@ -29,7 +29,7 @@ def store(settings=None):
 class StoreTests(unittest.TestCase):
     def test_the_settings_come_from_the_configuration_file(self):
         values = pin.load_settings()
-        self.assertEqual(set(values), {"pin_hash_iterations", "pin_min_digits", "pin_max_digits"})
+        self.assertEqual(set(values), {"pin_hash_iterations", "pin_min_digits", "pin_max_digits", "pin_cycles_per_block", "pin_hw_cycles_per_block", "pin_check_max_ms"})
         self.assertGreaterEqual(values["pin_hash_iterations"], 1000)
 
     def test_a_new_store_has_no_pin_and_accepts_none(self):
@@ -164,6 +164,24 @@ class PadTests(unittest.TestCase):
         p.touch("pin_enter")
         self.assertEqual(p.digits, "")
         self.assertIsNone(p.touch("pin_nothing"))
+
+    def test_at_start_the_counted_failures_reach_the_view_model_and_a_power_cut_buys_no_tries(self):
+        cfg = model.load_config()
+        cfg["operator_pin_enabled"] = 1
+        state = model.State(cfg)
+        state._derive()
+        p, s = self.pad()
+        for _ in range(cfg["pin_max_failures"]):
+            s.verify("0000")
+        restarted = pin.PinPad(pin.PinStore(s.fram, FAST))  # the power was cut and came back
+        name, args = restarted.boot_event()
+        self.assertEqual((name, args), ("PIN_FAILURES", (cfg["pin_max_failures"],)))
+        effects = state.event(0, name, *args)
+        self.assertIn("pin_lockout", effects)
+        state.event(100, "PIN_OK")
+        self.assertTrue(state.locked())  # a right PIN is ignored during the lock-out
+        fresh, _ = self.pad()
+        self.assertEqual(fresh.boot_event(), ("PIN_FAILURES", (0,)))
 
     def test_a_store_that_cannot_be_read_reads_as_wrong_so_the_panel_stays_locked(self):
         p, _ = self.pad(set_pin=None)

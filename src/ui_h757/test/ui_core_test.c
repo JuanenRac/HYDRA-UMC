@@ -44,7 +44,7 @@ static ui_event_kind_t kind_of(const char *name)
     static const struct { const char *name; ui_event_kind_t kind; } table[] = {
         {"TICK", UI_EV_TICK}, {"HB", UI_EV_HEARTBEAT}, {"SPI_ERR", UI_EV_SPI_ERROR}, {"SPI_OK", UI_EV_SPI_OK}, {"CAN", UI_EV_CAN}, {"ESTOP", UI_EV_ESTOP},
         {"MOTION", UI_EV_MOTION}, {"NAV", UI_EV_NAV}, {"DOWN", UI_EV_TOUCH_DOWN}, {"UP", UI_EV_TOUCH_UP}, {"PIN_OK", UI_EV_PIN_OK},
-        {"PIN_BAD", UI_EV_PIN_BAD},
+        {"PIN_BAD", UI_EV_PIN_BAD}, {"PIN_FAILURES", UI_EV_PIN_FAILURES},
     };
     for (unsigned i = 0; i < sizeof(table) / sizeof(table[0]); i++) {
         if (strcmp(table[i].name, name) == 0) {
@@ -136,7 +136,7 @@ static int fuzz(int allow_release, int allow_motion, int pin)
     ui_init(&s, &cfg);
     for (unsigned step = 0; step < 200000u; step++) {
         uint32_t r = next_random();
-        ui_event_kind_t kind = (ui_event_kind_t)(r % 12u);
+        ui_event_kind_t kind = (ui_event_kind_t)(r % 13u);
         int32_t a = 0, b = 0, c = 0;
         int listen_before, latched_before, locked_before;
         now += (r >> 4) % 700u;
@@ -145,6 +145,7 @@ static int fuzz(int allow_release, int allow_motion, int pin)
         case UI_EV_CAN: a = (int32_t)((r >> 8) % 4u == 0u); b = (int32_t)((r >> 10) % 200u); c = (int32_t)((r >> 12) % 200u); break;
         case UI_EV_ESTOP: a = (int32_t)((r >> 8) % 3u == 0u); break;
         case UI_EV_MOTION: a = (int32_t)((r >> 8) & 1u); break;
+        case UI_EV_PIN_FAILURES: a = (int32_t)((r >> 8) % 6u); break;
         case UI_EV_NAV: a = (int32_t)((r >> 8) % 10u); break;
         case UI_EV_TOUCH_DOWN:
         case UI_EV_TOUCH_UP: a = (int32_t)((r >> 8) % 14u) - 1; break;
