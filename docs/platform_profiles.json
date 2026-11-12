@@ -239,7 +239,47 @@
         },
         "FMC": {
           "device": "SDRAM",
-          "status": "no driver yet"
+          "status": "model and host double; no driver on a board yet",
+          "sdram": {
+            "source": "HYDRA_UMC_H757_NETS.txt step 14 and the CubeMX project (FMC with two banks, CAS 3, 13 rows, 10 columns, SDCLK period 2, read burst, tMRD 2, tXSR 7, tRAS 5, tRC 7, tWR 2, tRP 3, tRCD 3); the memory chips are AS4C32M16SB-7BIN x2 (bank 1) and IS42S16320F-7TLI x2 (bank 2), each pair as 32 bits",
+            "status": "starting_values_from_the_cubemx_project_to_confirm_with_the_memory_datasheets",
+            "bus_width_bits": 32,
+            "internal_banks": 4,
+            "row_bits": 13,
+            "column_bits": 10,
+            "cas_latency": 3,
+            "sdclk_period_hclk": 2,
+            "read_burst": true,
+            "read_pipe_delay_hclk": 0,
+            "refresh_period_ms": 64,
+            "refresh_margin_cycles": 20,
+            "startup_delay_us": 100,
+            "auto_refresh_cycles": 8,
+            "timing_sdclk_cycles": {
+              "tmrd": 2,
+              "txsr": 7,
+              "tras": 5,
+              "trc": 7,
+              "twr": 2,
+              "trp": 3,
+              "trcd": 3
+            },
+            "banks": [
+              {
+                "region": "SDRAM_BANK1",
+                "fmc_bank": 1,
+                "enabled": true,
+                "size_bytes": 134217728
+              },
+              {
+                "region": "SDRAM_BANK2",
+                "fmc_bank": 2,
+                "enabled": true,
+                "size_bytes": 134217728
+              }
+            ],
+            "note": "size_bytes is the window the firmware uses and may be smaller than what the geometry holds (2^(rows+columns+2 bank bits) words of the bus width); a bank that is not enabled is not initialised and has no region"
+          }
         },
         "LTDC_DMA2D": {
           "status": "no driver yet"

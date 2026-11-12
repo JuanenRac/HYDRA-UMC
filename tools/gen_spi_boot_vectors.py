@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 JSON_PATH = ROOT / "tests" / "spi_boot_master_vectors.json"
 HEADER_PATH = ROOT / "tests" / "spi_boot_master_vectors.h"
 NONCE = bytes(range(16))
+SESSION_SIZE = 600  # three pages: 256 + 256 + 88
 STATUS = {"shorter": 1, "CRC": 2, "sync": 3, "length": 4, "type": 5}
 
 
@@ -97,7 +98,19 @@ def build() -> dict:
         payload = sbm.offer_payload(size, version, minimum, target)
         offers.append({"name": name, "payload_hex": payload.hex(), "size": size, "target": target or "", "verdict": sbm.judge_offer(size, target or "", minimum, cfg)})
     hello_args = {"hw_id": cfg.hw_id, "link_address": cfg.link_address, "installed": list(cfg.installed_version), "nonce_hex": NONCE.hex(), "bootloader": list(cfg.bootloader_version), "sequence": 1}
-    return {"schema": 1, "frames": good, "bad_frames": bad, "judge": judge_cfg, "offers": offers, "hello": hello_args}
+    # the requests of a clean session for an image of SESSION_SIZE bytes, as the model builds them: HELLO, one GET_PAGE per page, DONE; the sequence rises by one per request
+    sequence = 1
+    session_frames = [sbm.encode(sbm.T_HELLO, sequence, hello).hex()]
+    offset = 0
+    while offset < SESSION_SIZE:
+        length = min(sbm.MAX_PAGE, SESSION_SIZE - offset)
+        sequence += 1
+        session_frames.append(sbm.encode(sbm.T_GET_PAGE, sequence, struct.pack("<II", offset, length)).hex())
+        offset += length
+    sequence += 1
+    session_frames.append(sbm.encode(sbm.T_DONE, sequence, b"").hex())
+    session = {"size": SESSION_SIZE, "request_frames_hex": session_frames}
+    return {"schema": 1, "frames": good, "bad_frames": bad, "judge": judge_cfg, "offers": offers, "hello": hello_args, "session": session}
 
 
 def render_header(vectors: dict) -> str:
@@ -128,6 +141,13 @@ def render_header(vectors: dict) -> str:
     out.append(f'#define SBM_HELLO_SEQUENCE {h["sequence"]}u')
     out.append("static const uint16_t SBM_HELLO_INSTALLED[3] = {" + ", ".join(f"{v}u" for v in h["installed"]) + "};")
     out.append("static const uint16_t SBM_HELLO_BOOTLOADER[3] = {" + ", ".join(f"{v}u" for v in h["bootloader"]) + "};")
+    s = vectors["session"]
+    out.append(f'#define SBM_SESSION_SIZE {s["size"]}u')
+    out.append(f'#define SBM_SESSION_REQUESTS {len(s["request_frames_hex"])}u')
+    out.append("static const char *const SBM_SESSION_FRAMES[] = {")
+    for frame in s["request_frames_hex"]:
+        out.append(f'    "{frame}",')
+    out.append("};")
     out.append("")
     out.append("#endif")
     return "\n".join(out) + "\n"
