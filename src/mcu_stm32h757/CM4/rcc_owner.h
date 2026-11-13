@@ -25,7 +25,7 @@
 #define HYDRA_RCC_HSEM_HANDSHAKE 0
 #endif
 #ifndef HYDRA_HSEM_RCC
-#define HYDRA_HSEM_RCC 0u        /* the semaphore that stands for "the clock tree is being set up" */
+#define HYDRA_HSEM_RCC 4u        /* the semaphore that stands for "the clock tree is being set up"; 0 to 3 are the mailbox's (ipc_mailbox.h) */
 #endif
 #ifndef HYDRA_RCC_WAIT_MS
 #define HYDRA_RCC_WAIT_MS 200u   /* how long a core waits for the other one to set the tree up */
