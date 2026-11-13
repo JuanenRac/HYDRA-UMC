@@ -17,6 +17,20 @@ import subprocess
 import sys
 from pathlib import Path
 
+
+def _seconds_from_environment(name: str, default: float) -> float:
+    """A positive, finite number of seconds from the environment variable `name`; anything else means `default`."""
+    try:
+        value = float(os.environ.get(name, ""))
+    except ValueError:
+        return default
+    return value if 0 < value < float("inf") else default
+
+
+# Every child process of this tool has a time limit, so a stuck git or build step ends with a message instead of holding a runner for hours.
+GIT_TIMEOUT_S = _seconds_from_environment("HYDRA_UMC_GIT_TIMEOUT_S", 120.0)
+COMMAND_TIMEOUT_S = _seconds_from_environment("HYDRA_UMC_COMMAND_TIMEOUT_S", 3600.0)
+
 ROOT = Path(__file__).resolve().parent.parent
 EXCLUDED_PARTS = {".git", ".venv", "node_modules", "build", "dist", "target", "__pycache__"}
 
@@ -29,7 +43,9 @@ def fail(message: str) -> None:
 def run(*command: str, cwd: Path = ROOT, env: dict[str, str] | None = None) -> None:
     print("+", " ".join(command))
     try:
-        subprocess.run(command, cwd=cwd, env=env, check=True)
+        subprocess.run(command, cwd=cwd, env=env, check=True, timeout=COMMAND_TIMEOUT_S)
+    except subprocess.TimeoutExpired:
+        fail(f"command timed out after {COMMAND_TIMEOUT_S:g} s: {' '.join(command)}")
     except FileNotFoundError:
         fail(f"required command not found: {command[0]}")
     except subprocess.CalledProcessError as exc:
