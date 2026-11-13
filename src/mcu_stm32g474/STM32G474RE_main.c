@@ -68,11 +68,12 @@
 #include "stm32g4xx_hal.h"
 #include "RobotControllerRelay.h"
 
-/* The SysTick interrupt that HAL_Init() starts is the FreeRTOS tick handler, so it runs before the scheduler does. 0 (default): left as it is, the binary does
- * not change. 1: switched off after the set-up calls, which use HAL_GetTick() for their time-outs. 2: switched off right after HAL_Init(); the HAL time-outs
- * then rely on the independent watchdog, which is armed first and resets the board if a set-up call hangs. Bench row 12 decides which one is used. */
+/* The SysTick interrupt that HAL_Init() starts is the FreeRTOS tick handler, so it runs before the scheduler does. 2 (default, decision of the owner): switched off right
+ * after HAL_Init(); the HAL time-outs then rely on the independent watchdog, which is armed first (the first lines of main) and resets the board if a set-up call hangs.
+ * 1: switched off after the set-up calls, which use HAL_GetTick() for their time-outs. 0: left as it was before, the tick runs before the scheduler. Build with
+ * -DHYDRA_QUIET_TICK_BEFORE_SCHEDULER=0 or =1 for the others. Bench row 12 (100 reset cycles with frames at the maximum rate) is the check that remains for all three. */
 #ifndef HYDRA_QUIET_TICK_BEFORE_SCHEDULER
-#define HYDRA_QUIET_TICK_BEFORE_SCHEDULER 0
+#define HYDRA_QUIET_TICK_BEFORE_SCHEDULER 2
 #endif
 
 /* The six driver ENABLE outputs (PA0, PA1, PA3, PA4, PA5, PA15 - pinout section 2d). The TMC5160 input is ENN, active low: driving it HIGH
