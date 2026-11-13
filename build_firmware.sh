@@ -386,6 +386,15 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # enabling_device.h: the logic of the three-position enabling device (vectors of tests/enabling_device_vectors.h).
+    ENABLING_HOST_BIN="$ROOT/build/host_tests_enabling_device"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32h757/CM4" -o "$ENABLING_HOST_BIN" "$ROOT/tests/test_enabling_device.c" && "$ENABLING_HOST_BIN" >/dev/null; then
+        pass "enabling_device host logic tests passed"
+    else
+        fail "enabling_device host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # zones_frame.h: the filter of the brain for the frame of the safety-zones service on identifier 0x002 (vectors of tests/zones_frame_vectors.h), with the switch on and off.
     ZONES_HOST_BIN="$ROOT/build/host_tests_zones_frame"
     if "$HOST_CC" -std=c11 -Wall -Wextra -DHYDRA_ZONES_CAN_FILTER=1 -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32h757/CM4" -o "$ZONES_HOST_BIN" "$ROOT/tests/test_zones_frame.c" && "$ZONES_HOST_BIN" >/dev/null && \
