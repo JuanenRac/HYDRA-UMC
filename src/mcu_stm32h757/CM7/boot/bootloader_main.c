@@ -26,6 +26,7 @@
 #include "bootloader_flash.h"
 #include "bootloader_protocol.h"
 #include "ipc_mailbox.h"
+#include "ipc_hal.h"
 #include "boot_decision.h"
 
 IWDG_HandleTypeDef hiwdg;
@@ -108,14 +109,14 @@ int main(void) {
 
     while ((HAL_GetTick() - listen_start) < 600) {
         HAL_IWDG_Refresh(&hiwdg);
-        if (HAL_HSEM_IsSemTaken(IPC_HSEM_CMD_ID)) {
-            uint8_t ofs = IPC_MAILBOX->cmd.frame_type;
-            uint8_t dlc = IPC_MAILBOX->cmd.dlc;
+        IpcMessage cmd;
+        const IpcStatus cmd_status = Ipc_TakeCommand(&IPC_HAL_OPS, 0, IPC_MAILBOX, &cmd);   // also finishes the handshake of the last frame; this core releases only what it took
+        if (cmd_status == IPC_DAMAGED) continue;   // a damaged command is dropped (and acknowledged); the CM4 side times out and reports the error to the CM5
+        if (cmd_status == IPC_OK) {
+            uint8_t ofs = cmd.frame_type;
+            uint8_t dlc = cmd.dlc;
             uint8_t data[8];
-            memcpy(data, (const void*)IPC_MAILBOX->cmd.payload, 8);
-            const uint8_t ipc_valid = IpcFrame_Valid(&IPC_MAILBOX->cmd);
-            HAL_HSEM_Release(IPC_HSEM_CMD_ID, 0);
-            if (!ipc_valid) continue;   // a damaged command is dropped; the CM4 side times out and reports the error to the CM5
+            memcpy(data, cmd.payload, 8);
 
             if (ofs == OFS_START_UPDATE && dlc == 8) {
                 // Only an accepted request takes the core out of its normal
@@ -161,14 +162,14 @@ int main(void) {
     CAN_SendStatus(STATUS_LISTENING);
     while (1) {
         HAL_IWDG_Refresh(&hiwdg);
-        if (HAL_HSEM_IsSemTaken(IPC_HSEM_CMD_ID)) {
-            uint8_t ofs = IPC_MAILBOX->cmd.frame_type;
-            uint8_t dlc = IPC_MAILBOX->cmd.dlc;
+        IpcMessage cmd;
+        const IpcStatus cmd_status = Ipc_TakeCommand(&IPC_HAL_OPS, 0, IPC_MAILBOX, &cmd);
+        if (cmd_status == IPC_DAMAGED) continue;   // a damaged command is dropped (and acknowledged); the CM4 side times out and reports the error to the CM5
+        if (cmd_status == IPC_OK) {
+            uint8_t ofs = cmd.frame_type;
+            uint8_t dlc = cmd.dlc;
             uint8_t data[8];
-            memcpy(data, (const void*)IPC_MAILBOX->cmd.payload, 8);
-            const uint8_t ipc_valid = IpcFrame_Valid(&IPC_MAILBOX->cmd);
-            HAL_HSEM_Release(IPC_HSEM_CMD_ID, 0);
-            if (!ipc_valid) continue;   // a damaged command is dropped; the CM4 side times out and reports the error to the CM5
+            memcpy(data, cmd.payload, 8);
 
             if (ofs == OFS_START_UPDATE && dlc == 8) {
                 HandleStartUpdate(data);

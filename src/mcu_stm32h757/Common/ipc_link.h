@@ -143,6 +143,14 @@ static inline IpcStatus Ipc_PostResponse(const IpcOps *ops, void *ctx, IpcMailbo
     return Ipc_Post(ops, ctx, IPC_ROLE_BACKEND, &mailbox->resp, IPC_HSEM_RESP_ID, IPC_HSEM_RESP_DONE_ID, sequence, type, data, dlc, IPC_POST_RESPONSE_WAIT_MS);
 }
 
+/* backend: post an answer only if the channel is free right now (the heartbeat: best effort, it never blocks) */
+static inline IpcStatus Ipc_PostResponseNow(const IpcOps *ops, void *ctx, IpcMailbox_t *mailbox, uint8_t *sequence, uint8_t type, const uint8_t *data, uint8_t dlc)
+{
+    Ipc_Pump(ops, ctx, IPC_ROLE_BACKEND);
+    if (ops->sem_taken(ctx, IPC_HSEM_RESP_ID) || ops->sem_taken(ctx, IPC_HSEM_RESP_DONE_ID)) return IPC_BUSY;
+    return Ipc_Post(ops, ctx, IPC_ROLE_BACKEND, &mailbox->resp, IPC_HSEM_RESP_ID, IPC_HSEM_RESP_DONE_ID, sequence, type, data, dlc, 0u);
+}
+
 /* gateway: take an answer, if one is posted (does not wait) */
 static inline IpcStatus Ipc_TakeResponse(const IpcOps *ops, void *ctx, IpcMailbox_t *mailbox, IpcMessage *out)
 {
