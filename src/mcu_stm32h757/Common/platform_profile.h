@@ -130,7 +130,7 @@
 #endif
 #define HYDRA_SDRAM_BANK1_SIZE_BYTES 134217728UL /* the window the firmware uses, at most what the geometry holds */
 #ifndef HYDRA_SDRAM_BANK2_ENABLED
-#define HYDRA_SDRAM_BANK2_ENABLED 1 /* a bank that is not enabled is not initialised */
+#define HYDRA_SDRAM_BANK2_ENABLED 0 /* a bank that is not enabled is not initialised */
 #endif
 #define HYDRA_SDRAM_BANK2_SIZE_BYTES 134217728UL /* the window the firmware uses, at most what the geometry holds */
 #define HYDRA_MEM_FLASH_BOOT_CM7_ORIGIN 0x08000000UL
