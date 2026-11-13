@@ -33,9 +33,9 @@
 #endif
 
 // One core owns the three peripherals of the host side; the platform profile cannot split them between the cores without this file being changed on purpose.
-_Static_assert(HYDRA_OWNER_SPI1 == HYDRA_OWNER_FDCAN1 && HYDRA_OWNER_FDCAN1 == HYDRA_OWNER_I2C4, "one core owns SPI1, FDCAN1 and I2C4");
+_Static_assert(HYDRA_OWNER_HOST_SPI == HYDRA_OWNER_FDCAN1 && HYDRA_OWNER_FDCAN1 == HYDRA_OWNER_I2C4, "one core owns the host SPI, FDCAN1 and I2C4");
 
-#define HYDRA_BOOT_ROLE_GATEWAY (HYDRA_BOOT_THIS_CORE == HYDRA_OWNER_SPI1 ? 1 : 0)
-#define HYDRA_BOOT_ROLE_BACKEND (HYDRA_BOOT_THIS_CORE == HYDRA_OWNER_SPI1 ? 0 : 1)
+#define HYDRA_BOOT_ROLE_GATEWAY (HYDRA_BOOT_THIS_CORE == HYDRA_OWNER_HOST_SPI ? 1 : 0)
+#define HYDRA_BOOT_ROLE_BACKEND (HYDRA_BOOT_THIS_CORE == HYDRA_OWNER_HOST_SPI ? 0 : 1)
 
 #endif // HYDRA_BOOT_ROLES_H

@@ -104,9 +104,9 @@
         "module": "NVIDIA Jetson Orin NX 16 GB",
         "spi_role": "master"
       },
-      "host_link_note": "the board is the SPI master towards the Jetson; HYDRA_SPI_ROLE=slave keeps the CM5 path (the CM5 is the pilot bench)",
+      "host_link_note": "the board is the SPI master towards the Jetson on SPI3 (PB3, PB4, PB5, PA15 on the board); HYDRA_SPI_ROLE=slave keeps the CM5 path (the CM5 is the pilot bench and is wired to SPI1 on the earlier bench board, see h745_current)",
       "peripheral_owner": {
-        "SPI1": "CM7",
+        "SPI3": "CM7",
         "FDCAN1": "CM7",
         "I2C4": "CM7"
       },
@@ -126,10 +126,9 @@
         "pll3_r": 50000000,
         "kernel_fdcan": 100000000,
         "kernel_i2c4": 100000000,
-        "kernel_spi1": 200000000,
-        "kernel_spi4": 100000000,
         "kernel_spi5": 100000000,
-        "kernel_spi6": 100000000
+        "kernel_spi6": 100000000,
+        "kernel_spi3": 200000000
       },
       "pll": {
         "pll1": {
@@ -167,14 +166,15 @@
           "rx": "PB12",
           "tx": "PB13"
         },
-        "status": "present in the CubeMX project, not used by the firmware yet"
+        "status": "present in the CubeMX project, not used by the firmware yet",
+        "use": "CAN_FIELD, the field bus behind an isolated transceiver; there is no third FDCAN on the board V1.0"
       },
       "stack_can_pins": {
         "rx": "PB8",
         "tx": "PB9"
       },
       "host_spi": {
-        "peripheral": "SPI1",
+        "peripheral": "SPI3",
         "role": "master",
         "pins": {
           "sck": "PB3",
@@ -182,9 +182,18 @@
           "mosi": "PB5",
           "nss": "PA15"
         },
+        "alternate_function": {
+          "sck": 6,
+          "miso": 6,
+          "mosi": 7,
+          "nss": 6
+        },
+        "nss_mode": "software",
+        "shares_pins_with": "JTAG (JTDO, JTRST, JTDI): only SWD can be used on this board",
         "data_size": 8,
         "prescaler": 16,
-        "clock_hz": 12500000
+        "clock_hz": 12500000,
+        "kernel_clock_key": "kernel_spi3"
       },
       "fram_i2c": {
         "bus": "I2C4",
@@ -199,7 +208,8 @@
       "uart": {
         "USART1": {
           "tx": "PB14",
-          "rx": "PB15"
+          "rx": "PB15",
+          "note": "expansion cards (PCIe slots)"
         },
         "USART2": {
           "de": "PD4",
@@ -215,19 +225,29 @@
         },
         "SPI6": {
           "role": "master",
-          "clock_hz": 3125000
+          "clock_hz": 3125000,
+          "pins": {
+            "sck": "PG13",
+            "miso": "PG12",
+            "mosi": "PG14",
+            "cs": "PG3"
+          },
+          "alternate_function": 5,
+          "use": "the TMC5160 drivers of the expansion cards (PCIe slots); there are none on the base board"
         },
         "I2C1": {
           "pins": {
             "scl": "PB6",
             "sda": "PB7"
-          }
+          },
+          "use": "front panel and the I/O expander (status, error and update lights, enable and fault of the field side)"
         },
         "I2C3": {
           "pins": {
             "scl": "PA8",
             "sda": "PC9"
-          }
+          },
+          "use": "the expansion cards (PCIe slots)"
         },
         "USB_OTG_FS": {
           "pins": {
@@ -235,7 +255,8 @@
             "dp": "PA12",
             "vbus": "PA9"
           },
-          "mode": "host"
+          "mode": "host",
+          "note": "front USB; VBUS sense on PA9"
         },
         "FMC": {
           "device": "SDRAM",
@@ -278,7 +299,26 @@
                 "size_bytes": 134217728
               }
             ],
-            "note": "size_bytes is the window the firmware uses and may be smaller than what the geometry holds (2^(rows+columns+2 bank bits) words of the bus width); a bank that is not enabled is not initialised and has no region"
+            "note": "size_bytes is the window the firmware uses and may be smaller than what the geometry holds (2^(rows+columns+2 bank bits) words of the bus width); a bank that is not enabled is not initialised and has no region",
+            "bank_pins": {
+              "bank1": {
+                "chips": "U2 (D0-15) and U3 (D16-31)",
+                "cs": "PC2",
+                "cke": "PC3"
+              },
+              "bank2": {
+                "chips": "U4 and U5",
+                "cs": "PH6",
+                "cke": "PH7"
+              }
+            },
+            "byte_lanes": {
+              "nbl0": "PE0",
+              "nbl1": "PE1",
+              "nbl2": "PI4",
+              "nbl3": "PI5"
+            },
+            "population": "bank 1 is fitted; bank 2 (two more chips) is optional"
           }
         },
         "LTDC_DMA2D": {
@@ -295,6 +335,17 @@
           "sector_bytes": 4096,
           "jedec_id": "C84018",
           "busy_poll_limit": 2000000
+        },
+        "I2C2": {
+          "pins": {
+            "scl": "PH4",
+            "sda": "PH5"
+          },
+          "use": "touch controller of the display",
+          "display_lines": {
+            "interrupt": "PC14",
+            "reset": "PC15"
+          }
         }
       },
       "memory_map": {
@@ -406,7 +457,131 @@
           ]
         }
       },
-      "rcc_poll_limit": 200000
+      "rcc_poll_limit": 200000,
+      "host_control": {
+        "note": "control lines of the Jetson module, read from the netlist of the board; the SPI lines of the Jetson are not joined to its connector in the schematic yet",
+        "pins": {
+          "power_en": "PI11",
+          "pgood": "PI12",
+          "reset_n": "PI13",
+          "shutdown_req_n": "PI14",
+          "force_recovery_n": "PI15",
+          "fault": "PI8"
+        },
+        "ready": {
+          "pin": null,
+          "status": "PENDING-DECISION: the READY line of the host link is not drawn in the schematic V1.0; the firmware takes the pin from this entry and does not clock the link on READY while it is empty"
+        }
+      },
+      "expansion": {
+        "note": "three PCIe slots with the TMC5160 cards; read from the netlist V1.0; SPI6 and I2C3 are in new_peripherals",
+        "lines": {
+          "enable": "PK2",
+          "fault_n": "PK1",
+          "irq_n": "PK0",
+          "reset_n": "PK3",
+          "present_n": "PJ15",
+          "gpio1": "PE5",
+          "gpio2": "PE6",
+          "sync1": "PE2",
+          "sync2": "PE4",
+          "module_sync": "PD11"
+        },
+        "slots": {
+          "1": {
+            "enable": "PJ3",
+            "fault_n": "PJ2",
+            "irq": "PJ1",
+            "present_n": "PJ0",
+            "reset_n": "PJ4"
+          },
+          "2": {
+            "enable": "PJ8",
+            "fault_n": "PJ7",
+            "irq": "PJ6",
+            "present_n": "PJ5",
+            "reset_n": "PJ9"
+          },
+          "3": {
+            "enable": "PJ13",
+            "fault_n": "PJ12",
+            "irq": "PJ11",
+            "present_n": "PJ10",
+            "reset_n": "PJ14"
+          }
+        },
+        "slot_power": "each slot has its own fused 24 V (efuse) with the enable and fault lines above; 5 V and 3.3 V auxiliary",
+        "slot_identification": "EXP_SLOT_LINK0..3 on the three connectors",
+        "stack_bus_to_slots": "the stack bus (FDCAN1, transceiver U14) reaches the three slots and the expansion connector"
+      },
+      "board_io": {
+        "note": "read from the netlist V1.0; analog balls with the suffix _C are the separate analog pads of the same port pin",
+        "adc_voltage": {
+          "v24": "PA0_C",
+          "jetson": "PA1_C",
+          "usb5v": "PA0",
+          "m2_5v": "PA1",
+          "hailo": "PA2",
+          "nvme": "PA3",
+          "wifi": "PA6",
+          "fan5v": "PA7",
+          "ctrl3v3": "PC3_C",
+          "ctrl5v": "PC2_C"
+        },
+        "adc_current": {
+          "v24_total": "PB0",
+          "jetson": "PB1",
+          "usb": "PC1",
+          "m2": "PC4",
+          "ctrl": "PC5",
+          "fan": "PH3"
+        },
+        "adc_field": {
+          "ai1": "PH2",
+          "ai2": "PF10"
+        },
+        "dac": {
+          "ao1_0_10v": "PA4",
+          "ao2_0_10v": "PA5"
+        },
+        "fans": {
+          "pwm1": "PC6",
+          "pwm2": "PC7",
+          "pwm3": "PC8",
+          "tach1": "PA10",
+          "tach2": "PB10",
+          "tach3": "PB11"
+        },
+        "ssr": {
+          "ssr1": "PC10",
+          "ssr2": "PC11",
+          "ssr3": "PB2",
+          "ssr4": "PD3"
+        },
+        "digital_out": {
+          "do1": "PG11",
+          "do2": "PE3",
+          "do3": "PD7",
+          "do4": "PC13"
+        },
+        "digital_in": {
+          "di1": "PG6",
+          "di2": "PG7",
+          "di3": "PG9",
+          "di4": "PG10"
+        },
+        "safety": {
+          "interlock": "PK6",
+          "v24_present": "PK5",
+          "relay_status": "PK4",
+          "rearmed": "PK7"
+        },
+        "reserved_uart5": {
+          "tx": "PC12",
+          "rx": "PD2"
+        },
+        "not_on_the_board": "SPI1, SPI2 and SPI4 (PA4 and PA5 are the DAC outputs)"
+      }
     }
   },
   "controller_board": {

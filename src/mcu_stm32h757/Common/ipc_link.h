@@ -25,9 +25,9 @@
 #include "platform_profile.h"
 
 // The core that owns the host link is the gateway, the other one the backend: the owner of SPI1 in the platform profile.
-#define IPC_GATEWAY_CORE HYDRA_OWNER_SPI1
-#define IPC_BACKEND_CORE (HYDRA_OWNER_SPI1 == HYDRA_OWNER_CM7 ? HYDRA_OWNER_CM4 : HYDRA_OWNER_CM7)
-_Static_assert(HYDRA_OWNER_SPI1 == HYDRA_OWNER_FDCAN1 && HYDRA_OWNER_FDCAN1 == HYDRA_OWNER_I2C4, "one core owns SPI1, FDCAN1 and I2C4: it is the gateway");
+#define IPC_GATEWAY_CORE HYDRA_OWNER_HOST_SPI
+#define IPC_BACKEND_CORE (HYDRA_OWNER_HOST_SPI == HYDRA_OWNER_CM7 ? HYDRA_OWNER_CM4 : HYDRA_OWNER_CM7)
+_Static_assert(HYDRA_OWNER_HOST_SPI == HYDRA_OWNER_FDCAN1 && HYDRA_OWNER_FDCAN1 == HYDRA_OWNER_I2C4, "one core owns the host SPI, FDCAN1 and I2C4: it is the gateway");
 
 #define IPC_POST_COMMAND_WAIT_MS  50u
 #define IPC_WAIT_RESPONSE_MS      200u

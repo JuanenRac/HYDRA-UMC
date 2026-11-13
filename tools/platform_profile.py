@@ -57,7 +57,7 @@ PLL_DIVIDERS = {
 }
 
 
-PIN_NAME = re.compile(r"P([A-K])(\d{1,2})")
+PIN_NAME = re.compile(r"P([A-K])(\d{1,2})(_C)?")
 
 
 def pin_assignments(profile: dict) -> list[tuple[str, str, str]]:
