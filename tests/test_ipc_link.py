@@ -23,8 +23,9 @@ class IpcLinkTests(unittest.TestCase):
     def test_the_owner_of_the_host_link_is_the_gateway_on_each_platform(self):
         for name, gateway in (("h745_current", "CM4"), ("h757_target", "CM7")):
             owner = pp.profile(name)["peripheral_owner"]
-            self.assertEqual({owner["SPI1"], owner["FDCAN1"], owner["I2C4"]}, {gateway}, name)
-        self.assertIn("#define IPC_GATEWAY_CORE HYDRA_OWNER_SPI1", HEADER)
+            host_spi = "SPI1" if name == "h745_current" else "SPI3"
+            self.assertEqual({owner[host_spi], owner["FDCAN1"], owner["I2C4"]}, {gateway}, name)
+        self.assertIn("#define IPC_GATEWAY_CORE HYDRA_OWNER_HOST_SPI", HEADER)
 
     def test_the_header_is_free_of_the_hal(self):
         self.assertNotIn("HAL_", HEADER)

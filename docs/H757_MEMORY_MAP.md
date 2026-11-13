@@ -28,4 +28,14 @@ The GD25Q128E NOR flash (16 MiB) is on **SPI5** in standard SPI mode (6.25 Mbit/
 
 * The repository has no external memory; the board has 256 MiB of SDR SDRAM on FMC that no linker or driver uses yet.
 * The migration notes called the NOR flash QSPI; the board documents put it on SPI5, so no linker region and no QUADSPI driver.
-* The CubeMX project gives every pin to the CM7; the repository gave SPI1, FDCAN1 and I2C4 to the CM4 and let the CM7 reach them through the mailbox. The owner decided the CM7 owns them, so the mailbox is rewritten in the phase of the profile (`docs/SPI_BOOT_MASTER.md`).
+* The CubeMX project gives every pin to the CM7; the repository gave the host SPI (SPI1 on the bench board, SPI3 on this one), FDCAN1 and I2C4 to the CM4 and let the CM7 reach them through the mailbox. The owner decided the CM7 owns them, so the mailbox is rewritten in the phase of the profile (`docs/SPI_BOOT_MASTER.md`).
+
+## Pins and buses of the board
+
+The peripherals and their pins are in the profile too (`host_spi`, `host_control`, `expansion`, `board_io`, `new_peripherals`), read from the netlist of the board; `tools/platform_profile.py --check` refuses a pin that two functions claim. The documents of the earlier layout (LQFP-208, one SDRAM chip, twelve stepper drivers on the base board) do not describe this board.
+
+* **Host link**: SPI3 (PB3 SCK, PB4 MISO, PB5 MOSI, PA15 NSS), the H757 is the master. The pins are shared with JTAG, so only SWD can be used. The control lines of the Jetson module are `host_control` (power enable, power good, reset, shutdown request, force recovery, fault). The READY line is not drawn in the schematic yet: `host_control.ready.pin` is empty and the firmware does not clock the link on READY until it is filled.
+* **Expansion cards (three PCIe slots)**: the TMC5160 stepper drivers are on the cards, not on the base board. SPI6 (PG13 SCK, PG12 MISO, PG14 MOSI, PG3 chip select), I2C3 (PA8, PC9), USART1 (PB14, PB15), the shared lines of `expansion.lines` and, per slot, enable (efuse), fault, interrupt, present and reset in `expansion.slots`. The stack bus (FDCAN1) reaches the three slots.
+* **Other buses**: I2C1 front panel and I/O expander, I2C2 touch controller, I2C4 F-RAM, SPI5 NOR flash, FDCAN2 field bus (isolated), USART2 RS-485, USB full speed with VBUS sense.
+* **Not on the board**: SPI1, SPI2 and SPI4 (PA4 and PA5 are the DAC outputs) and a third FDCAN.
+* **SDRAM**: four chips on a 32-bit bus; bank 1 is fitted, bank 2 is optional. Chip select, clock enable and byte lanes per bank are in `new_peripherals.FMC.sdram`.

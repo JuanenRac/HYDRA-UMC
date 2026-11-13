@@ -411,6 +411,13 @@ else
         pass "expansion_slots host logic tests passed"
     else
         fail "expansion_slots host logic tests FAILED"
+
+    # host_link_master.h: the transport of the host link with the board as SPI master (vectors of tests/host_link_vectors.h).
+    HOST_LINK_HOST_BIN="$ROOT/build/host_tests_host_link_master"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h757/Common" -I"$ROOT/src/mcu_stm32h757/CM4/boot" -I"$ROOT/tests" -o "$HOST_LINK_HOST_BIN" "$ROOT/tests/test_host_link_master.c" && "$HOST_LINK_HOST_BIN" >/dev/null; then
+        pass "host_link_master host logic tests passed"
+    else
+        fail "host_link_master host logic tests FAILED"
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
