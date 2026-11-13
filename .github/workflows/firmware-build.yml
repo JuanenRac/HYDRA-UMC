@@ -104,8 +104,17 @@ jobs:
       - name: Work out the version and pin the commit
         id: plan
         shell: bash
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          FLAVOUR: ${{ inputs.flavour }}
         run: |
           set -euo pipefail
+          # The attestation of the artifact is verified against the commit of THIS run (github.sha). Anything that can become a release (a draft, or the official
+          # trust table) is therefore built from exactly that commit: another ref, even an older commit of main, is refused. Only a dry run with the dev table may
+          # compile another ref, and its artifact is not signed from.
+          if [ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ] && ! { [ "$DRY_RUN" = "true" ] && [ "$FLAVOUR" = "dev" ]; }; then
+            echo "::error::the ref is the commit $(git rev-parse --short HEAD) but this run is of $(echo "$GITHUB_SHA" | cut -c1-9): start the workflow from the commit to build (use the ref that is the tip of main); only a dry run with the dev trust table may build another ref"; exit 1
+          fi
           echo "version=$(python3 -c "import json; print(json.load(open('hydra-umc.project.json', encoding='utf-8'))['version'])")" >> "$GITHUB_OUTPUT"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
