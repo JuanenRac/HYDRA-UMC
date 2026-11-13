@@ -18,13 +18,13 @@ The DSI display of HYDRA-UMC hangs from the STM32H757, not from the host compute
           ┌────────────── STM32H757 ──────────────┐            ┌──────────────────┐
   touch ─▶│ CM7: interface task  ──▶ LTDC/DSI ───▶│─▶ display  │  NVIDIA Jetson   │
  (I2C)    │        ▲        │                      │            │  Orin NX 16 GB   │
-          │  view-model (ui_core)                  │◀──SPI1────▶│  vision, AI,     │
+          │  view-model (ui_core)                  │◀──SPI3────▶│  vision, AI,     │
           │        │        ▼                      │  (master)  │  server, safety  │
  stack ◀─▶│ CM7: FDCAN1 stack bus, stop chain      │            │  zones           │
   bus     └────────────────────────────────────────┘            └──────────────────┘
 ```
 
-* The CM7 owns the display peripherals (FMC with the SDRAM, LTDC, DSI host, DMA2D), the stack bus (FDCAN1) and the SPI link to the Jetson (SPI1, the H757 is the master). The view-model `src/ui_h757/core/ui_core.c` has no hardware in it: events in, effects out.
+* The CM7 owns the display peripherals (FMC with the SDRAM, LTDC, DSI host, DMA2D), the stack bus (FDCAN1) and the SPI link to the Jetson (SPI3, the H757 is the master). The view-model `src/ui_h757/core/ui_core.c` has no hardware in it: events in, effects out.
 * The framebuffers are in the external SDRAM; the fonts and images are in the NOR flash on SPI5 (not memory mapped) and are copied to the SDRAM after their hash is checked. The budget is in `docs/UI_STACK_H757.md`.
 * **The stop path does not run in the interface task.** A touch of STOP is turned into the stop request by the view-model, but the stack bus task that sends the stop frame (`docs/ESTOP_CAN.md`) and the physical input have priority over any drawing; a frozen drawing library must not delay a stop. The phase of the firmware that connects them has to prove this with the scheduler traces of the bench.
 * There is **no remote session**: the panel has no network stack, no sign-in and no way to be driven from outside. What it asks of the stack goes over the bus; what it asks of the Jetson goes over the SPI link.

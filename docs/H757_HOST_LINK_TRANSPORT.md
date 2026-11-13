@@ -1,8 +1,8 @@
 # H757 board: how the traffic of the host link travels with the board as SPI master
 
-Status: OPEN DESIGN QUESTION. Nothing in the firmware depends on the answer yet; the move of the host link to the CM7 does.
+Status: DECIDED, option A below. The link is **SPI3** of the H757 (SCK PB3, MISO PB4, MOSI PB5, NSS PA15 on the board), the H757 is the master, and the frame of `SpiOtaFrame_t` (128 bytes, sequence number and CRC-16) is kept.
 
-## The question
+## The question (answered)
 
 On the bench boards of today the host (a Raspberry Pi CM5) is the SPI master and the bootloader of the CM4 is the SPI slave: the host clocks a 128-byte frame
 (`SpiOtaFrame_t`, with a sequence number and a CRC-16) and the board answers in the same transaction. Every command goes through that one frame format: queries of the version and the
@@ -13,7 +13,7 @@ when it has something to say. What exists for that role today is `spi_boot_maste
 host for a signed image (HELLO, OFFER, GET_PAGE, PAGE, GET_TOKEN, TOKEN, DONE, REFUSE). That covers the download of an image and nothing else. The rest of the traffic above has no definition on a
 link where the board is the master. Which one of the three options below is used decides how the gateway of the CM7 is written.
 
-## Option A (recommended): keep the 128-byte frame, change only who clocks
+## Option A (chosen): keep the 128-byte frame, change only who clocks
 
 The frame `SpiOtaFrame_t` and its seal (sequence number and CRC-16) stay as they are. The board runs a master transaction when the host raises READY, and also when the board itself has something to send
 (a heartbeat, an answer); every transaction carries one frame in each direction, so the host's request arrives in the same transaction in which the board sends its last answer or an idle frame.
@@ -39,7 +39,7 @@ The image download uses the boot master; the rest of the traffic keeps the slave
 ## What is done while the question is open
 
 The pieces that do not depend on it are written and tested on the host: the frames and the state machine of the boot master, the operations on the mailbox between the cores (either core can be the gateway),
-the roles of the bootloaders read from the platform profile, the clock set-up of the CM7 and the start-up of the external memory. The gateway of the CM7 (the SPI1 master, the stack bus and the relay to the CM4) waits for this answer.
+the roles of the bootloaders read from the platform profile, the clock set-up of the CM7 and the start-up of the external memory. The gateway of the CM7 (the SPI3 master, the stack bus and the relay to the CM4) waits for this answer.
 After it: the transport layer with a double of the host (master with READY, slave as today), the gateway of the CM7 under the H757 profile reusing the dispatch of the CM4, the backend of the CM4, and the default platform.
 
 Nothing described here has run on a board.

@@ -23,11 +23,14 @@ class BootRolesTests(unittest.TestCase):
     def test_the_profile_gives_one_owner_for_the_three_host_side_peripherals(self):
         for name in ("h745_current", "h757_target"):
             owner = pp.profile(name)["peripheral_owner"]
-            self.assertEqual(len({owner["SPI1"], owner["FDCAN1"], owner["I2C4"]}), 1, name)
+            host_spi = "SPI1" if name == "h745_current" else "SPI3"
+            self.assertEqual(len({owner[host_spi], owner["FDCAN1"], owner["I2C4"]}), 1, name)
 
     def test_the_default_platform_keeps_the_cm4_as_gateway_and_the_h757_one_makes_the_cm7_the_gateway(self):
         self.assertEqual(pp.profile("h745_current")["peripheral_owner"]["SPI1"], "CM4")
-        self.assertEqual(pp.profile("h757_target")["peripheral_owner"]["SPI1"], "CM7")
+        self.assertNotIn("SPI3", pp.profile("h745_current")["peripheral_owner"])
+        self.assertEqual(pp.profile("h757_target")["peripheral_owner"]["SPI3"], "CM7")
+        self.assertNotIn("SPI1", pp.profile("h757_target")["peripheral_owner"])
 
     def test_the_header_defines_only_the_role_macros(self):
         defined = set(re.findall(r"#define (\w+)", HEADER))

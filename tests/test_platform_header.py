@@ -77,9 +77,20 @@ class PlatformHeaderTests(unittest.TestCase):
     def test_the_cm7_owns_the_host_peripherals_of_the_production_board_and_the_cm4_those_of_today(self):
         h757 = block(self.text, "HYDRA_PLATFORM_H757")
         h745 = block(self.text, "HYDRA_PLATFORM_H745")
-        for peripheral in ("SPI1", "FDCAN1", "I2C4"):
+        for peripheral in ("HOST_SPI", "FDCAN1", "I2C4"):
             self.assertEqual(h757[f"HYDRA_OWNER_{peripheral}"], "HYDRA_OWNER_CM7")
             self.assertEqual(h745[f"HYDRA_OWNER_{peripheral}"], "HYDRA_OWNER_CM4")
+
+    def test_the_host_link_is_spi1_on_the_bench_board_and_spi3_on_the_production_board(self):
+        h757 = block(self.text, "HYDRA_PLATFORM_H757")
+        h745 = block(self.text, "HYDRA_PLATFORM_H745")
+        self.assertEqual(h745["HYDRA_HOST_SPI_INSTANCE"], "1")
+        self.assertEqual(h757["HYDRA_HOST_SPI_INSTANCE"], "3")
+        self.assertIn("HYDRA_OWNER_SPI3", h757)
+        self.assertNotIn("HYDRA_OWNER_SPI1", h757)
+        self.assertNotIn("HYDRA_OWNER_SPI3", h745)
+        self.assertEqual(h757["HYDRA_HOST_SPI_CLOCK_HZ"], "12500000UL")
+        self.assertNotIn("HYDRA_HOST_SPI_CLOCK_HZ", h745)
 
     def test_a_second_platform_or_a_wrong_role_does_not_compile(self):
         self.assertIn("#error \"choose one platform", self.text)
