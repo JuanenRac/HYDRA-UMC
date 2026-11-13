@@ -187,5 +187,46 @@ class PlatformProfileTests(unittest.TestCase):
         self.assertEqual(pp.main([]), 0)
 
 
+class PinTests(unittest.TestCase):
+    def setUp(self):
+        self.document = pp.load()
+        self.h757 = self.document["profiles"]["h757_target"]
+
+    def test_the_pins_of_the_board_do_not_clash_and_exist(self):
+        for name, profile in self.document["profiles"].items():
+            self.assertEqual(pp.pin_problems(name, profile), [], name)
+
+    def test_every_pin_of_the_profile_is_found_with_the_function_that_uses_it(self):
+        found = {pin: (path, signal) for pin, path, signal in pp.pin_assignments(self.h757)}
+        self.assertEqual(found["PB6"], ("/new_peripherals/I2C1/pins", "scl"))
+        self.assertEqual(found["PD12"], ("/fram_i2c/pins", "scl"))
+        self.assertEqual(found["PD4"], ("/uart/USART2", "de"))
+        self.assertEqual(found["PB12"], ("/second_can/pins", "rx"))
+        self.assertGreaterEqual(len(found), 22)
+
+    def test_a_pin_claimed_by_two_functions_is_reported(self):
+        import copy
+
+        profile = copy.deepcopy(self.h757)
+        profile["new_peripherals"]["I2C1"]["pins"]["scl"] = "PD12"   # the pin of the FRAM bus
+        problems = pp.pin_problems("h757_target", profile)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("PD12", problems[0])
+
+    def test_a_pin_that_the_package_does_not_have_is_reported(self):
+        import copy
+
+        profile = copy.deepcopy(self.h757)
+        profile["new_peripherals"]["I2C3"]["pins"]["sda"] = "PK9"
+        self.assertTrue(any("PK9" in p and "not a pin" in p for p in pp.pin_problems("h757_target", profile)))
+        profile["new_peripherals"]["I2C3"]["pins"]["sda"] = "PK7"
+        self.assertEqual(pp.pin_problems("h757_target", profile), [])
+
+    def test_the_default_platform_lists_no_pins_and_the_check_is_part_of_the_profile_tool(self):
+        self.assertEqual(pp.pin_assignments(self.document["profiles"]["h745_current"]), [])
+        source = (ROOT / "tools/platform_profile.py").read_text(encoding="utf-8")
+        self.assertIn("bad += pin_problems(name, p)", source)
+
+
 if __name__ == "__main__":
     unittest.main()
