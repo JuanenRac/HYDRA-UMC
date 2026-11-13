@@ -405,6 +405,15 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # expansion_slots.h: the power sequence and fault handling of the three expansion slots (vectors of tests/expansion_slots_vectors.h).
+    EXP_SLOTS_HOST_BIN="$ROOT/build/host_tests_expansion_slots"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h757/Common" -I"$ROOT/tests" -o "$EXP_SLOTS_HOST_BIN" "$ROOT/tests/test_expansion_slots.c" && "$EXP_SLOTS_HOST_BIN" >/dev/null; then
+        pass "expansion_slots host logic tests passed"
+    else
+        fail "expansion_slots host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # host_link_master.h: the transport of the host link with the board as SPI master (vectors of tests/host_link_vectors.h).
     HOST_LINK_HOST_BIN="$ROOT/build/host_tests_host_link_master"
     if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h757/Common" -I"$ROOT/src/mcu_stm32h757/CM4/boot" -I"$ROOT/tests" -o "$HOST_LINK_HOST_BIN" "$ROOT/tests/test_host_link_master.c" && "$HOST_LINK_HOST_BIN" >/dev/null; then
