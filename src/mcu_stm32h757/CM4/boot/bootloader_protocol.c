@@ -25,6 +25,7 @@
 #include "bootloader_trust.h"
 #include "dlc_to_fdcan_data_length.h"
 #include "ipc_mailbox.h"
+#include "ipc_hal.h"   // the operations on the mailbox (ipc_link.h) over the hardware semaphores
 
 // -----------------------------------------------------------------------
 // Pending-response buffer - see bootloader_protocol.h's own comment on
@@ -508,62 +509,24 @@ void Relay_ToStackA(uint8_t slot, const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
 // Relay to CM7 over the IPC mailbox (../../Common/ipc_mailbox.h)
 // -----------------------------------------------------------------------
 void Relay_ToCM7(const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
-    uint32_t wait_start = HAL_GetTick();
-    while (HAL_HSEM_IsSemTaken(IPC_HSEM_CMD_ID)) {
-        // previous command not yet consumed by CM7 - give it a little room
-        // before giving up. Unlike the original version of this loop,
-        // giving up here means returning an honest error WITHOUT touching
-        // .cmd - ipc_mailbox.h's own single-writer invariant only holds if
-        // CM4 never writes .cmd while CM7 might still be mid-read of the
-        // previous frame, and this struct has no sequence number CM7 could
-        // use to detect a torn read. A possibly-corrupted command reaching
-        // CM7's protocol handler is worse than an honest "CM7 busy" status
-        // relayed back to the CM5.
-        HAL_IWDG_Refresh(&hiwdg);
-        if (HAL_GetTick() - wait_start > 50) {
-            memset(out, 0, sizeof(*out));
-            out->target_tier = SPI_TARGET_CM7;
-            out->frame_type = OFS_STATUS;
-            out->dlc = 1;
-            out->payload[0] = STATUS_ERROR;
-            return;
-        }
-    }
-    IPC_MAILBOX->cmd.frame_type = in->frame_type;
-    IPC_MAILBOX->cmd.dlc = in->dlc;
-    memset((void*)IPC_MAILBOX->cmd.payload, 0, 8);
-    memcpy((void*)IPC_MAILBOX->cmd.payload, (const void*)in->payload, in->dlc > 8 ? 8 : in->dlc);
-    static uint8_t ipc_cmd_seq;
-    IpcFrame_Seal(&IPC_MAILBOX->cmd, ipc_cmd_seq++);
-    // SRAM4 writes above are Normal (bufferable) memory; the HSEM take just
-    // below is a peripheral (Device) write - the two bus types have no
-    // ordering guarantee relative to each other without an explicit
-    // barrier. Without this __DSB(), the store buffer could let the HSEM
-    // take reach CM7 before the .cmd field writes have actually landed in
-    // SRAM4, so CM7 could observe the semaphore taken and read a stale or
-    // torn command frame. Same "flush shared data before signaling"
-    // pattern ST's own dual-core HSEM application notes require for this
-    // exact producer/consumer shape.
-    __DSB();
-    HAL_HSEM_FastTake(IPC_HSEM_CMD_ID);
-
+    // The honest error comes first: whatever goes wrong below leaves it in `out` and relays it to the CM5.
     memset(out, 0, sizeof(*out));
     out->target_tier = SPI_TARGET_CM7;
     out->frame_type = OFS_STATUS;
     out->dlc = 1;
     out->payload[0] = STATUS_ERROR;
 
-    wait_start = HAL_GetTick();
-    while ((HAL_GetTick() - wait_start) < 200) {
-        HAL_IWDG_Refresh(&hiwdg);
-        if (HAL_HSEM_IsSemTaken(IPC_HSEM_RESP_ID)) {
-            if (IpcFrame_Valid(&IPC_MAILBOX->resp)) {   // a damaged answer leaves the STATUS_ERROR set above
-                out->frame_type = IPC_MAILBOX->resp.frame_type;
-                out->dlc = IPC_MAILBOX->resp.dlc;
-                memcpy(out->payload, (const void*)IPC_MAILBOX->resp.payload, 8);
-            }
-            HAL_HSEM_Release(IPC_HSEM_RESP_ID, 0);
-            return;
-        }
+    // The post waits up to 50 ms for the channel to be free; if it is not, it returns WITHOUT touching .cmd (ipc_mailbox.h's single-writer
+    // rule: .cmd is written only while the other core cannot be reading it). Every core releases only the semaphore it took itself
+    // (ipc_mailbox.h, ipc_link.h): the old protocol had the CM7 release the one this core took, which the hardware ignores.
+    static uint8_t ipc_cmd_seq;
+    if (Ipc_PostCommand(&IPC_HAL_OPS, 0, IPC_MAILBOX, &ipc_cmd_seq, in->frame_type, (const uint8_t *)in->payload, in->dlc) != IPC_OK) return;
+
+    // Up to 200 ms for the answer; a damaged one (bad seal) leaves the STATUS_ERROR set above.
+    IpcMessage answer;
+    if (Ipc_WaitResponse(&IPC_HAL_OPS, 0, IPC_MAILBOX, &answer) == IPC_OK) {
+        out->frame_type = answer.frame_type;
+        out->dlc = answer.dlc;
+        memcpy(out->payload, answer.payload, 8);
     }
 }
