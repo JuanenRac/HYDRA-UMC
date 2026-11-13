@@ -82,6 +82,52 @@ class InvarianceTests(unittest.TestCase):
             self.assertIn("RCB_APP", err.getvalue())
 
 
+class ExpectedChangeTests(unittest.TestCase):
+    BASE = {c: "a" * 64 for c in inv.COMPONENTS}
+
+    def head_with(self, *changed):
+        return {c: ("b" if c in changed else "a") * 64 for c in inv.COMPONENTS}
+
+    def test_a_declared_change_is_a_warning_and_does_not_fail(self):
+        expected = inv.parse_expected("KB_CM4_BOOTLOADER,KB_CM7_BOOTLOADER")
+        head = self.head_with("KB_CM4_BOOTLOADER", "KB_CM7_BOOTLOADER")
+        self.assertEqual(inv.compare(self.BASE, head, expected), [])
+        self.assertEqual(len(inv.expected_changes(self.BASE, head, expected)), 2)
+
+    def test_a_change_that_was_not_declared_still_fails(self):
+        expected = inv.parse_expected("KB_CM4_BOOTLOADER")
+        head = self.head_with("KB_CM4_BOOTLOADER", "RCB_APP")
+        failing = inv.compare(self.BASE, head, expected)
+        self.assertEqual(len(failing), 1)
+        self.assertIn("RCB_APP", failing[0])
+
+    def test_a_declared_component_that_did_not_change_fails_because_the_declaration_is_wrong(self):
+        expected = inv.parse_expected("KB_CM4_BOOTLOADER,KB_CM7_BOOTLOADER")
+        failing = inv.compare(self.BASE, self.head_with("KB_CM4_BOOTLOADER"), expected)
+        self.assertEqual(len(failing), 1)
+        self.assertIn("KB_CM7_BOOTLOADER", failing[0])
+        self.assertIn("declared", failing[0])
+
+    def test_an_unknown_component_in_the_declaration_is_refused(self):
+        with self.assertRaises(ValueError):
+            inv.parse_expected("KB_CM4_BOOTLOADER,NOT_A_COMPONENT")
+        self.assertEqual(inv.parse_expected(""), set())
+        self.assertEqual(inv.parse_expected(" RCB_APP , "), {"RCB_APP"})
+
+    def test_the_command_line_exits_zero_with_the_declared_change_and_says_so(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base, head = Path(tmp) / "b.txt", Path(tmp) / "h.txt"
+            base.write_text(inv.render(self.BASE), encoding="utf-8")
+            head.write_text(inv.render(self.head_with("KB_CM4_BOOTLOADER")), encoding="utf-8")
+            out, err = io.StringIO(), io.StringIO()
+            with redirect_stdout(out), redirect_stderr(err):
+                self.assertEqual(inv.main(["compare", str(base), str(head), "--expected", "KB_CM4_BOOTLOADER"]), 0)
+                self.assertEqual(inv.main(["compare", str(base), str(head)]), 1)
+                self.assertEqual(inv.main(["compare", str(base), str(head), "--expected", "NOT_A_COMPONENT"]), 1)
+            self.assertIn("H745_INVARIANCE=PASS-WITH-EXPECTED-CHANGES", out.getvalue())
+            self.assertIn("EXPECTED KB_CM4_BOOTLOADER", out.getvalue())
+
+
 class WorkflowTests(unittest.TestCase):
     def test_it_is_started_by_hand_and_only_by_the_owner(self):
         self.assertIn("workflow_dispatch:", WORKFLOW)
@@ -108,6 +154,12 @@ class WorkflowTests(unittest.TestCase):
     def test_the_build_runs_in_ci_mode_without_a_version_bump(self):
         self.assertIn('HYDRA_UMC_CI: "1"', WORKFLOW)
         self.assertIn('HYDRA_UMC_RELEASE: "0"', WORKFLOW)
+
+    def test_the_workflow_can_declare_the_components_a_change_is_meant_to_alter(self):
+        self.assertIn("expected_change:", WORKFLOW)
+        self.assertIn('--expected "$EXPECTED"', WORKFLOW)
+        self.assertEqual(WORKFLOW.count("[[ \"$EXPECTED\" =~ ^[A-Z0-9_,]{0,200}$ ]]"), 2)   # checked in the planning job and again before use
+        self.assertIn("::warning::the images of $EXPECTED were declared", WORKFLOW)
 
     def test_the_comparison_fails_the_job_on_a_difference(self):
         compare = WORKFLOW.split("name: Compare\n", 1)[1]
