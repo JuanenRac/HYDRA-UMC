@@ -257,6 +257,15 @@ else
         fi
     done
 
+    # tmc_card.h: the datagrams of the TMC5160 cards and the choice of the card on SPI6, run against a double of the peripheral and of the select lines.
+    TMC_CARD_HOST_BIN="$ROOT/build/host_tests_tmc_card"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h757/Common" -o "$TMC_CARD_HOST_BIN" "$ROOT/tests/test_tmc_card.c" && "$TMC_CARD_HOST_BIN" >/dev/null; then
+        pass "tmc_card host logic tests passed"
+    else
+        fail "tmc_card host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # nor_flash.h: the driver of the SPI NOR flash of the H757 board, run against a double of the chip (ranges, pages, erase, write enable, busy time-out, verify).
     NOR_HOST_BIN="$ROOT/build/host_tests_nor_flash"
     if "$HOST_CC" -std=c11 -Wall -Wextra -DHYDRA_PLATFORM_H757 -I"$ROOT/src/mcu_stm32h757/Common" -o "$NOR_HOST_BIN" "$ROOT/tests/test_nor_flash.c" && "$NOR_HOST_BIN"; then
