@@ -97,6 +97,13 @@ class BudgetTests(unittest.TestCase):
         self.assertTrue(any("NOT confirmed" in line for line in b.report(self.numbers)))
         self.assertNotIn('"sdram_bytes":', json.dumps(self.budget))  # not a figure of the budget file
 
+    def test_the_default_size_is_the_two_banks_of_the_board_documents(self):
+        reg = b.regions()
+        both = reg["SDRAM_BANK1"]["length"] + reg["SDRAM_BANK2"]["length"]
+        self.assertEqual(int(b.load_inputs()["sdram_bytes"]), both)
+        self.assertEqual(both, 256 * 1024 * 1024)
+        self.assertEqual(self.numbers["sdram_region_bytes"], both)
+
     def test_the_camera_thumbnail_fits_the_memory_and_the_spi_link(self):
         n = self.numbers
         self.assertEqual(n["thumb_buffers_bytes"], 2 * 320 * 180 * 2 + 2 * 24576)
