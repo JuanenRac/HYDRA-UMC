@@ -1149,6 +1149,9 @@ def main(argv: Sequence[str] | None = None, runner: Runner = default_runner) -> 
     parser.add_argument("--compile-only", action="store_true", help="run the compilation and linking of the boards (steps 2 to 10b) and stop")
     parser.add_argument("--root", default=str(Path(__file__).resolve().parent.parent), help="the repository (default: the one this script is in)")
     args = parser.parse_args(argv)
+    # what the programs it runs print must come out in the order of the lines of this script, as it does with the shell script
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(line_buffering=True)
     root = Path(args.root)
     report = Report()
     print("Building does not change any version. Raise one explicitly with: python3 bump_firmware_versions.py")
