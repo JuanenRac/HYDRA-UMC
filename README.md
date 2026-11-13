@@ -41,7 +41,7 @@ GPL-3.0-or-later - see LICENSE
 | Tests | 1056 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | Stack | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | Target | A microcontroller board (the firmware); built on a PC |
-| On real hardware | Not yet: no run on real hardware is recorded for this version |
+| On real hardware | Simulated only: tested against emulators, fakes or simulators; no run on real hardware is recorded for this version |
 
 **Jump to:** [Overview](#-overview) · [Architecture](#-architecture) · [Features](#-features) · [Security & Safety](#-security--safety) · [Interfaces](#-interfaces) · [Configuration](#-configuration) · [Quick start](#-quick-start) · [Testing](#-testing) · [Troubleshooting](#-troubleshooting) · [Repository Structure](#-repository-structure) · [Related Projects](#-related-projects)
 
@@ -55,7 +55,7 @@ Each line is one part of this repository and the light says how far it is today.
 |---|---|---|
 | Software | 🟠 | Structure and first pieces only; most of the work is still to do |
 | Tests | 🟡 | 1056 automated tests, run on every change |
-| Real hardware | 🔴 | Not yet: no run on real hardware is recorded for this version |
+| Real hardware | 🟠 | Simulated only: tested against emulators, fakes or simulators; no run on real hardware is recorded for this version |
 | Documentation | 🟡 | README in eight languages, checked against the manifest on every change |
 
 ## 🎯 Overview
