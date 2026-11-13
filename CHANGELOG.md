@@ -2,6 +2,10 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
+## [Unreleased]
+
+- **Fix: the firmware build workflow builds exactly the commit that its attestation covers (`.github/workflows/firmware-build.yml`):** anything that can become a release (a draft pre-release or the official trust table) is built from the commit of the run itself; another ref, even an older commit of main, is refused. Only a dry run with the dev trust table may compile another ref. The signing tool now also refuses an artifact whose built commit is not the commit of the attested run, that belongs to another run or repository, or that is not in main.
+
 ## [0.2.9] - The display interface of the STM32H757 with its PIN and Jetson link, the enabling device, the safety-zones filter, the task watchdog, the SDRAM plan and the SPI boot master in simulation
 
 - **The images-unchanged workflow can declare which images a change is meant to alter (`expected_change` of `.github/workflows/h745-invariance.yml`, `--expected` of `tools/h745_invariance.py`):** a fix that changes the firmware of the default platform on purpose (the bootloaders, for instance) names the components it alters; those differences are reported as warnings and the run is green, so a failure that was intended no longer shows up as a red run. Anything else that differs still fails, a name that is not a component is refused, and so is a declared component whose image did NOT change (the declaration would be wrong). 6 more tests cover the declaration and the guards of the new input.
