@@ -39,7 +39,7 @@ The firmware part does not exist yet: the library is pinned by commit when the d
 
 Computed by `python tools/ui_budget.py` from `docs/platform_profiles.json` (profile `h757_target`), the texts and the screens, `src/ui_h757/budget.json` and the `[budget]` section of `config/ui.cfg`; `tests/test_ui_budget.py` pins the verdicts. Origin of each figure: *data* is counted from the files, *published* is the figure of the library's project, *estimate* is replaced by a measurement.
 
-**The size of the SDRAM is not a figure of this design.** The board documents give two banks of 128 MiB; the owner will add RAM, and the exact model and size are **to be confirmed by the owner (pending decision)**. The budget reads `sdram_bytes` from `config/ui.cfg` (today one bank, 128 MiB, marked "not confirmed"); the framebuffers, the fonts copied from the NOR and the camera thumbnail all live there, so changing the value re-runs the budget with no change of code.
+**The size of the SDRAM is not a figure of this design.** The board documents give two banks of 128 MiB; the owner will add RAM, and the exact model and size are **to be confirmed by the owner (pending decision)**. The budget reads `sdram_bytes` from `config/ui.cfg` (by default the two banks of 128 MiB, 256 MiB, as the owner decided; marked "not confirmed" until the model and the size are); the framebuffers, the fonts copied from the NOR and the camera thumbnail all live there, so changing the value re-runs the budget with no change of code.
 
 | Item | Figure | Origin |
 |---|---|---|
