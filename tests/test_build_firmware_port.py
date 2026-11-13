@@ -197,6 +197,8 @@ class BuildFirmwarePortTests(unittest.TestCase):
             shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns(".git", "build", "firmware", "__pycache__"))
             env = dict(os.environ)
             env.pop("HYDRA_UMC_SKIP_HOST_TESTS", None)
+            # the last step of both scripts runs every test of the copy, this one included: without this it would start the comparison again
+            env.pop("HYDRA_BUILD_PORT_REAL", None)
             if command is None:
                 script = copy / "trimmed.sh"
                 script.write_text(trimmed_script((ROOT / "build_firmware.sh").read_text(encoding="utf-8")), encoding="utf-8")
