@@ -405,6 +405,15 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # expansion_slots.h: the power sequence and fault handling of the three expansion slots (vectors of tests/expansion_slots_vectors.h).
+    EXP_SLOTS_HOST_BIN="$ROOT/build/host_tests_expansion_slots"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h757/Common" -I"$ROOT/tests" -o "$EXP_SLOTS_HOST_BIN" "$ROOT/tests/test_expansion_slots.c" && "$EXP_SLOTS_HOST_BIN" >/dev/null; then
+        pass "expansion_slots host logic tests passed"
+    else
+        fail "expansion_slots host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # task_watchdog.h: the supervision of liveness by task (vectors of tests/task_watchdog_vectors.h).
     TASKWD_HOST_BIN="$ROOT/build/host_tests_task_watchdog"
     if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32h757/CM4" -o "$TASKWD_HOST_BIN" "$ROOT/tests/test_task_watchdog.c" && "$TASKWD_HOST_BIN" >/dev/null; then

@@ -2,6 +2,10 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
+## [Unreleased]
+
+- **The power sequence and fault handling of the three expansion slots (`src/mcu_stm32h757/Common/expansion_slots.h`, `tools/expansion_slots.py`, `config/expansion_slots.cfg`, `docs/EXPANSION_SLOTS.md`):** everything starts cut with the cards held in reset, and a slot is powered only when it is named in the allowed mask of the configuration (empty by default) and a card is present. Power comes first; the fault line is ignored during the inrush, reset is released only after the supply has been quiet for the power-good time, and the slot is ready a little later, so a card is never out of reset without power. A fault cuts the slot and holds the card in reset until a person clears it and the fuse is quiet; a slot that faults too often is locked until a person unlocks it; pulling the card cuts the slot. A Python reference and a C twin run the same scenarios, four of them long runs of a fixed seed, with the two safety rules checked at every step. Nothing ran on a board.
+
 ## [0.2.9] - The display interface of the STM32H757 with its PIN and Jetson link, the enabling device, the safety-zones filter, the task watchdog, the SDRAM plan and the SPI boot master in simulation
 
 - **The images-unchanged workflow can declare which images a change is meant to alter (`expected_change` of `.github/workflows/h745-invariance.yml`, `--expected` of `tools/h745_invariance.py`):** a fix that changes the firmware of the default platform on purpose (the bootloaders, for instance) names the components it alters; those differences are reported as warnings and the run is green, so a failure that was intended no longer shows up as a red run. Anything else that differs still fails, a name that is not a component is refused, and so is a declared component whose image did NOT change (the declaration would be wrong). 6 more tests cover the declaration and the guards of the new input.
