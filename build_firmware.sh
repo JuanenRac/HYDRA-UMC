@@ -411,6 +411,8 @@ else
         pass "expansion_slots host logic tests passed"
     else
         fail "expansion_slots host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
 
     # host_link_master.h: the transport of the host link with the board as SPI master (vectors of tests/host_link_vectors.h).
     HOST_LINK_HOST_BIN="$ROOT/build/host_tests_host_link_master"
