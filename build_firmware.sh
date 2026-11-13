@@ -1119,6 +1119,14 @@ else
     fail "CM4 CAN application code does NOT compile for the H757 platform - see errors above"
     H757_CHECK_FAILED=1
 fi
+H757_HOST_LINK_OBJ="$H7/cm7_host_link_h757_check_obj"
+mkdir -p "$H757_HOST_LINK_OBJ"
+if arm-none-eabi-gcc $CFLAGS_CM7 -DHYDRA_PLATFORM_H757 -DHYDRA_HOST_LINK_MASTER=1 -I"$ROOT/src/mcu_stm32h757/CM7" -I"$ROOT/src/mcu_stm32h757/CM4/boot" $COMMON_INC -x c -c "$ROOT/src/mcu_stm32h757/CM7/HostLinkSpi3.c" -o "$H757_HOST_LINK_OBJ/HostLinkSpi3.o"; then
+    pass "CM7 driver of the host link (SPI3 master) compiles for the H757 platform"
+else
+    fail "CM7 driver of the host link (SPI3 master) does NOT compile for the H757 platform - see errors above"
+    H757_CHECK_FAILED=1
+fi
 if [ "$H757_CHECK_FAILED" = "1" ]; then
     echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
 fi
