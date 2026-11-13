@@ -2,7 +2,7 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
-## [Unreleased]
+## [0.2.9] - The display interface of the STM32H757 with its PIN and Jetson link, the enabling device, the safety-zones filter, the task watchdog, the SDRAM plan and the SPI boot master in simulation
 
 - **The supervision of liveness by task, with a bound on the time from a hang to the cut (`tools/task_watchdog.py`, `src/mcu_stm32h757/CM4/task_watchdog.h`, `config/task_watchdog.cfg`, `docs/TASK_WATCHDOG.md`):** each task checks in, the supervisor refreshes the hardware watchdog only while no mandatory task is late, and a hung mandatory task asks for the stop once and latches so the refresh never comes back; a task that is not mandatory only degrades. The configuration is refused when the worst time to the cut (longest mandatory deadline, one period, the timeout of the hardware watchdog) is longer than the time required. A Python reference and a C twin run the same eight scenarios, and a simulation freezes the control task at every phase and checks the bound. Nothing ran on a board.
 
