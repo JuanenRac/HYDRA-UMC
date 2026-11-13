@@ -50,17 +50,21 @@
 
 #define IPC_MAILBOX_BASE 0x38000000UL
 
-// HSEM channel indices (of this chip's 32 available) - HSEM0 signals a
-// fresh command is waiting in .cmd (CM4 -> CM7), HSEM1 signals a fresh
-// response is waiting in .resp (CM7 -> CM4). Taking a channel (HAL_HSEM_
-// FastTake) is how the WRITER claims exclusive access to post a new frame;
-// the READER never takes it, only checks HAL_HSEM_IsSemTaken() and, once
-// it's done consuming the frame, calls HAL_HSEM_Release() to both free the
-// channel for the next post AND signal "consumed" back implicitly (the
-// writer's own next FastTake attempt succeeding IS the consumed signal -
-// no separate ack field needed for a single-producer/single-consumer pair).
+// HSEM channels (of this chip's 32 available). A hardware semaphore can be released ONLY by the core that took it (the release is a write with the
+// core identifier of the writer; a write from the other core changes nothing). So each direction uses a PAIR of semaphores, one owned by each core:
+//
+//   command  direction (gateway -> backend): IPC_HSEM_CMD_ID (taken by the gateway: "a command is posted") and IPC_HSEM_CMD_DONE_ID (taken by the backend: "I have read it")
+//   response direction (backend -> gateway): IPC_HSEM_RESP_ID (taken by the backend: "an answer is posted") and IPC_HSEM_RESP_DONE_ID (taken by the gateway: "I have read it")
+//
+// The handshake of one frame, with P the core that posts and C the core that consumes: P writes the frame, executes a data barrier and takes POSTED; C sees POSTED taken and DONE free,
+// copies the frame and takes DONE; P sees DONE taken and releases POSTED; C sees POSTED free and releases DONE; the channel is free again when both are free. P may post only while both
+// are free, so a frame is never written while C may still read it. The operations are in ipc_link.h. The gateway is the core that owns the host link (CM4 on the H745 platform, CM7 on
+// the H757 one); the semaphore numbers do not depend on that.
 #define IPC_HSEM_CMD_ID  0
 #define IPC_HSEM_RESP_ID 1
+#define IPC_HSEM_CMD_DONE_ID  2
+#define IPC_HSEM_RESP_DONE_ID 3
+#define IPC_HSEM_CHANNELS 4   /* the first four semaphores are the mailbox's; HYDRA_HSEM_RCC (rcc_owner.h) is another one */
 
 // 16 bytes each - deliberately the same frame_type/dlc/payload[8] shape as
 // every other tier's protocol frame (SPI1 to the CM5, FDCAN1 to STACK A),

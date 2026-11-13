@@ -67,30 +67,67 @@ carried in an SPI frame instead of an FDCAN frame with ID slot_base+0x01.
    its own)
 -----------------------------------------------------------------------------
 Physical: SRAM4 (D3 domain, 64KB @ 0x38000000, the only RAM region both
-cores can see) + 2 hardware semaphore (HSEM) channels for synchronization -
-src/mcu_stm32h757/Common/ipc_mailbox.h.
+cores can see) + 4 hardware semaphore (HSEM) channels for synchronization -
+src/mcu_stm32h757/Common/ipc_mailbox.h (the channels) and ipc_link.h (the
+operations).
 
 Frame: `IpcFrame_t`, 16 bytes, single-producer/single-consumer per
-direction (CM4 only ever writes `.cmd` / reads `.resp`; CM7 only ever reads
-`.cmd` / writes `.resp` - no locking beyond the 2 HSEM channels is needed
-since each field has exactly one writer):
+direction (the gateway only ever writes `.cmd` / reads `.resp`; the backend
+only ever reads `.cmd` / writes `.resp`), sealed with a sequence number and
+a CRC-16 in the reserved bytes:
 
     Byte 0    : frame_type (OFS_* - same numeric space as section 1)
     Byte 1    : dlc (0-8)
     Bytes 2-9 : payload (up to 8 bytes)
-    Bytes 10-15: reserved
+    Byte 10   : sequence number
+    Bytes 11-12: CRC-16/CCITT-FALSE over bytes 0-10
+    Byte 13   : marker 0xA1 (a frame without it is an unsealed one)
+    Bytes 14-15: reserved
 
-Protocol: CM4 writes an `IpcFrame_t` into `mailbox->cmd`, then takes
-`IPC_HSEM_CMD_ID` (signals "new command posted"). CM7's own bootloader main
-loop polls that semaphore, reads `.cmd` once taken, releases it (frees the
-slot for CM4's next post), runs the command through the SAME protocol
-handler functions every other bootloader in this project uses
+A hardware semaphore can be released ONLY by the core that took it (the
+release is a write with the core identifier of the writer; a write from the
+other core changes nothing). Every direction therefore uses a PAIR of
+semaphores, one owned by each core, and every core releases only the
+semaphore it took itself:
+
+    command  direction : IPC_HSEM_CMD_ID (0, taken by the gateway: "posted")
+                         IPC_HSEM_CMD_DONE_ID (2, taken by the backend: "read")
+    response direction : IPC_HSEM_RESP_ID (1, taken by the backend: "posted")
+                         IPC_HSEM_RESP_DONE_ID (3, taken by the gateway: "read")
+
+The semaphore of the clock-tree handshake (HYDRA_HSEM_RCC in
+CM4/rcc_owner.h) is a different one (4).
+
+Handshake of one frame, P being the core that posts and C the core that
+consumes: P waits until POSTED and DONE are both free, writes the frame,
+executes a data barrier and takes POSTED; C sees POSTED taken and DONE free,
+copies the frame, checks the seal and takes DONE (a damaged frame is
+reported and dropped, and acknowledged all the same so the link does not
+stall); P sees DONE taken and releases POSTED; C sees POSTED free and
+releases DONE. The channel is free again when both are free. The last two
+steps are done by `Ipc_Pump`, which every operation calls and which the
+main loop of each core calls too, so a core that polls keeps its half of the
+handshake moving. A post that does not find the channel free within its time
+(50 ms for a command, 100 ms for an answer) returns "busy" without touching
+the frame: a frame is written only while the other core cannot be reading it.
+
+The gateway is the core that owns SPI1, FDCAN1 and I2C4 in the platform
+profile: the CM4 on the H745 platform (as described here), the CM7 on the
+H757 board. On the H745 platform the CM4's own `Relay_ToCM7()` (src/
+mcu_stm32h757/CM4/boot/bootloader_protocol.c) posts the command, waits up to
+200 ms for the answer and relays whatever landed in `.resp` back to the CM5
+over SPI1 (section 1) as the next `SpiOtaFrame_t`; the CM7's bootloader main
+loop takes the command with `Ipc_TakeCommand`, runs it through the SAME
+protocol handler functions every other bootloader in this project uses
 (HandleStartUpdate/HandleData/etc. - src/mcu_stm32h757/CM7/boot/
-bootloader_protocol.c), writes the result into `mailbox->resp`, and takes
-`IPC_HSEM_RESP_ID`. CM4's own `Relay_ToCM7()` (src/mcu_stm32h757/CM4/
-boot/bootloader_protocol.c) blocks up to 200ms waiting for that semaphore,
-then relays whatever landed in `.resp` back to the CM5 over SPI1 (section 1)
-as the next `SpiOtaFrame_t`.
+bootloader_protocol.c) and posts the result with `Ipc_PostResponse`.
+
+An earlier version of the firmware had the reader release the semaphore the
+writer had taken; on the hardware that release has no effect, so a second
+frame could never be sent. The host test tests/test_ipc_link.c runs the
+operations against a double that behaves like the hardware semaphores; the
+exchange on the real semaphores is still to be tried on a board (bench
+list: HSEM).
 
 -----------------------------------------------------------------------------
 3. FDCAN1 "STACK A" - CM4 as the bus MASTER (this chip is always the one
