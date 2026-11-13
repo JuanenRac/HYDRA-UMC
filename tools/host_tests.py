@@ -72,6 +72,7 @@ def table() -> list[HostTest]:
         HostTest("ipc_link@h757_crc1", "tests/test_ipc_link.c", (f"{H7}/Common",), defines=("HYDRA_PLATFORM_H757", "HYDRA_IPC_REQUIRE_CRC=1",)),
         HostTest("clock_config@h757", "tests/test_clock_config.c", (f"{H7}/Common", "tests"), defines=("HYDRA_PLATFORM_H757",)),
         HostTest("nor_flash@h757", "tests/test_nor_flash.c", (f"{H7}/Common",), defines=("HYDRA_PLATFORM_H757",)),
+        HostTest("tmc_card", "tests/test_tmc_card.c", (f"{H7}/Common",)),
         HostTest("memtest", "tests/test_memtest.c", (f"{H7}/Common",)),
         HostTest("sdram_init@both_banks", "tests/test_sdram_init.c", (f"{H7}/Common", "tests"), defines=("HYDRA_PLATFORM_H757",)),
         HostTest("sdram_init@bank2_off", "tests/test_sdram_init.c", (f"{H7}/Common", "tests"), defines=("HYDRA_PLATFORM_H757", "HYDRA_SDRAM_BANK2_ENABLED=0")),
