@@ -36,6 +36,7 @@
 #include "boot_decision.h"
 #include "dlc_to_fdcan_data_length.h"
 #include "slot_scan_node.h"
+#include "can_standby.h"       // the pins of the CAN transceiver standby lines (PC5, PC8)
 #include "fdcan_clock.h"        // the explicit kernel clock of the FDCAN (off by default)
 #include "app_boot_request.h"  // an application asking to be updated (off by default)
 #include "boot_report.h"        // what this start found, handed to the application for its health frame (off by default)
@@ -117,12 +118,12 @@ uint32_t ReadSlotBaseId(void) {
 // (FDCAN_FRAME_CLASSIC, BRS off) so every frame this protocol sends/
 // receives has the same 11-bit-ID/0-8-byte-DLC shape URTC's own bxCAN
 // protocol already assumes - this bootloader deliberately never uses any
-// FD-only feature. PG7 (CAN1_STBY) driven low to bring the transceiver out
+// FD-only feature. CAN1_STBY (can_standby.h) driven low to bring the transceiver out
 // of standby before FDCAN1 itself starts.
 // -----------------------------------------------------------------------
 static void MX_FDCAN1_Init(uint32_t slot_base) {
     __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOG_CLK_ENABLE();
+    HYDRA_CAN_STBY_CLK_ENABLE();
 #if HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT
     // The selector of the FDCAN kernel clock resets to the HSE, which is not running here: take the APB1 clock (the HSI at divider 1, 16 MHz), the
     // clock the bit timing below assumes (fdcan_clock.h). Off by default; turn it on after bench row 10.
@@ -144,12 +145,12 @@ static void MX_FDCAN1_Init(uint32_t slot_base) {
     HAL_GPIO_Init(GPIOB, &gi);
 
     GPIO_InitTypeDef gi_stby = {0};
-    gi_stby.Pin = GPIO_PIN_7;
+    gi_stby.Pin = HYDRA_CAN1_STBY_PIN;
     gi_stby.Mode = GPIO_MODE_OUTPUT_PP;
     gi_stby.Pull = GPIO_NOPULL;
     gi_stby.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOG, &gi_stby);
-    HAL_GPIO_WritePin(GPIOG, GPIO_PIN_7, GPIO_PIN_RESET); // active-low standby, per typical CAN transceiver STB convention (e.g. TCAN1044AVD)
+    HAL_GPIO_Init(HYDRA_CAN1_STBY_PORT, &gi_stby);
+    HAL_GPIO_WritePin(HYDRA_CAN1_STBY_PORT, HYDRA_CAN1_STBY_PIN, GPIO_PIN_RESET); // active-low standby, per typical CAN transceiver STB convention (e.g. TCAN1044AVD)
 
     hfdcan1.Instance = FDCAN1;
     hfdcan1.Init.FrameFormat = FDCAN_FRAME_CLASSIC;

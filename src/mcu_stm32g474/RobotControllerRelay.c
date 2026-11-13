@@ -30,6 +30,7 @@
 #include "estop_can.h"               /* the emergency stop on identifier 0x001 (docs/ESTOP_CAN.md) */
 #include "estop_input.h"             /* the physical stop input and the stop category of each axis */
 #include "machine_config.h"          /* generated from config/machine.cfg */
+#include "can_standby.h"           /* the pins of the CAN transceiver standby lines (PC5, PC8) */
 #include "fdcan_clock.h"            /* the explicit kernel clock of the FDCAN (off by default) */
 #include "app_boot_request.h"      /* ENTER_BOOTLOADER answered by the application (off by default) */
 #include "health_frame.h"           /* the once-a-second health frame (off by default) */
@@ -85,7 +86,7 @@ static uint32_t ReadSlotBaseId_App(void)
     return CAN_ID_STACKA_BASE + (n * STACKA_SLOT_WINDOW);
 }
 
-/* Real FDCAN1 init - PB8=RX/PB9=TX (AF9), PG7=CAN1_STBY - byte-for-byte
+/* Real FDCAN1 init - PB8=RX/PB9=TX (AF9), CAN1_STBY (can_standby.h) - byte-for-byte
  * the bootloader's own MX_FDCAN1_Init() (see this file's own header). */
 static uint8_t init_fault_prior;      /* failed set-ups recorded before this start (init_fault.h) */
 static uint8_t uplink_ready;          /* FDCAN1 is started: a frame can still leave if a later set-up call fails */
@@ -129,7 +130,7 @@ static void RelayHalRequire(HAL_StatusTypeDef status)
 static void MX_FDCAN1_App_Init(void)
 {
     __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOG_CLK_ENABLE();
+    HYDRA_CAN_STBY_CLK_ENABLE();
 #if HYDRA_FDCAN_KERNEL_CLOCK_EXPLICIT
     {   /* the selector resets to the HSE, which does not run: take the APB1 clock the bit timing assumes (fdcan_clock.h) */
         RCC_PeriphCLKInitTypeDef fdcan_clock = {0};
@@ -149,12 +150,12 @@ static void MX_FDCAN1_App_Init(void)
     HAL_GPIO_Init(GPIOB, &gi);
 
     GPIO_InitTypeDef gi_stby = {0};
-    gi_stby.Pin = GPIO_PIN_7;
+    gi_stby.Pin = HYDRA_CAN1_STBY_PIN;
     gi_stby.Mode = GPIO_MODE_OUTPUT_PP;
     gi_stby.Pull = GPIO_NOPULL;
     gi_stby.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOG, &gi_stby);
-    HAL_GPIO_WritePin(GPIOG, GPIO_PIN_7, GPIO_PIN_RESET);
+    HAL_GPIO_Init(HYDRA_CAN1_STBY_PORT, &gi_stby);
+    HAL_GPIO_WritePin(HYDRA_CAN1_STBY_PORT, HYDRA_CAN1_STBY_PIN, GPIO_PIN_RESET);
 
     hfdcan1_app.Instance = FDCAN1;
     hfdcan1_app.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
@@ -192,7 +193,7 @@ static void MX_FDCAN1_App_Init(void)
     RelayHalRequire(HAL_FDCAN_Start(&hfdcan1_app));
 }
 
-/* Real FDCAN2 init - PB5=RX/PB6=TX (AF9), PG8=CAN2_STBY, the downlink to
+/* Real FDCAN2 init - PB5=RX/PB6=TX (AF9), CAN2_STBY (can_standby.h), the downlink to
  * this robot's own URTC Tool Head (docs/PINOUT_STM32G474_ROBOT_CONTROLLER.md
  * section 1b - "standard G474 mapping - re-verify in CubeMX", unlike
  * FDCAN1's Table-12-confirmed pins). Same Classic-CAN bit timing as
@@ -207,7 +208,7 @@ static void MX_FDCAN1_App_Init(void)
 static void MX_FDCAN2_Init(void)
 {
     __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOG_CLK_ENABLE();
+    HYDRA_CAN_STBY_CLK_ENABLE();
     __HAL_RCC_FDCAN_CLK_ENABLE();
 
     GPIO_InitTypeDef gi = {0};
@@ -219,12 +220,12 @@ static void MX_FDCAN2_Init(void)
     HAL_GPIO_Init(GPIOB, &gi);
 
     GPIO_InitTypeDef gi_stby = {0};
-    gi_stby.Pin = GPIO_PIN_8;
+    gi_stby.Pin = HYDRA_CAN2_STBY_PIN;
     gi_stby.Mode = GPIO_MODE_OUTPUT_PP;
     gi_stby.Pull = GPIO_NOPULL;
     gi_stby.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOG, &gi_stby);
-    HAL_GPIO_WritePin(GPIOG, GPIO_PIN_8, GPIO_PIN_RESET);
+    HAL_GPIO_Init(HYDRA_CAN2_STBY_PORT, &gi_stby);
+    HAL_GPIO_WritePin(HYDRA_CAN2_STBY_PORT, HYDRA_CAN2_STBY_PIN, GPIO_PIN_RESET);
 
     hfdcan2_app.Instance = FDCAN2;
     hfdcan2_app.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
