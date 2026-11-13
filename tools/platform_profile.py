@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -54,6 +55,44 @@ PLL_DIVIDERS = {
     "pll2": {"pll2_p": 5, "pll2_q": 4, "pll2_r": 4},
     "pll3": {"pll3_p": 2, "pll3_q": 2, "pll3_r": 3},
 }
+
+
+PIN_NAME = re.compile(r"P([A-K])(\d{1,2})")
+
+
+def pin_assignments(profile: dict) -> list[tuple[str, str, str]]:
+    """Every pin the profile gives to a function: (pin, where in the profile, signal). A pin is a value like "PB6" in a table of signals, wherever that table sits."""
+    found: list[tuple[str, str, str]] = []
+
+    def walk(node: object, path: str) -> None:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if isinstance(value, str) and PIN_NAME.fullmatch(value):
+                    found.append((value, path, key))
+                else:
+                    walk(value, f"{path}/{key}")
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                walk(value, f"{path}[{index}]")
+
+    walk({k: v for k, v in profile.items() if k not in ("memory_map", "clocks_hz", "pll")}, "")
+    return found
+
+
+def pin_problems(name: str, profile: dict) -> list[str]:
+    """Pins that two functions claim, and pin names that no pin of the package has (ports A to K, 16 pins each; port K has 8)."""
+    found: list[str] = []
+    seen: dict[str, tuple[str, str]] = {}
+    for pin, path, signal in pin_assignments(profile):
+        match = PIN_NAME.fullmatch(pin)
+        assert match is not None
+        port, number = match.group(1), int(match.group(2))
+        if number > (7 if port == "K" else 15):
+            found.append(f"{name}: {pin} ({path} {signal}) is not a pin of the package")
+        if pin in seen and seen[pin][0] != path:
+            found.append(f"{name}: {pin} is claimed by {seen[pin][0]} ({seen[pin][1]}) and by {path} ({signal})")
+        seen.setdefault(pin, (path, signal))
+    return found
 
 
 def problems(name: str, p: dict) -> list[str]:
@@ -150,6 +189,7 @@ def main(argv: list[str] | None = None) -> int:
         bus = p["stack_bus"]
         print(f"{name}: {p['device']}; host {p['host']['module']} (SPI {p['host']['spi_role']}); stack bus {bit_rate(bus):,.0f} bit/s, sample point {sample_point(bus) * 100:.1f} %")
         bad += problems(name, p)
+        bad += pin_problems(name, p)
         if "sdram" in p.get("new_peripherals", {}).get("FMC", {}):
             import sdram_plan  # here and not at the top: that module imports this one
 
