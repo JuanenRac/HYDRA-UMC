@@ -296,6 +296,17 @@ else
         fi
     done
 
+    # boot_roles.h: the role (gateway or backend) of the bootloader of each core on each platform, built for the CM4 and the CM7 on the default platform and on the H757 one.
+    BOOT_ROLES_HOST_BIN="$ROOT/build/host_tests_boot_roles"
+    for BOOT_ROLES_VARIANT in "-DCORE_CM4" "-DCORE_CM7" "-DCORE_CM4 -DHYDRA_PLATFORM_H757" "-DCORE_CM7 -DHYDRA_PLATFORM_H757"; do
+        if "$HOST_CC" -std=c11 -Wall -Wextra $BOOT_ROLES_VARIANT -I"$ROOT/src/mcu_stm32h757/Common" -o "$BOOT_ROLES_HOST_BIN" "$ROOT/tests/test_boot_roles.c" && "$BOOT_ROLES_HOST_BIN"; then
+            pass "boot_roles host logic tests passed [$BOOT_ROLES_VARIANT]"
+        else
+            fail "boot_roles host logic tests FAILED [$BOOT_ROLES_VARIANT]"
+            echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+        fi
+    done
+
     # ipc_mailbox.h: seal of the frame between the two cores, with the switch HYDRA_IPC_REQUIRE_CRC off and on, and the two semaphore channels modelled on the host.
     for IPC_REQUIRE in 0 1; do
         IPC_HOST_BIN="$ROOT/build/host_tests_ipc_mailbox_$IPC_REQUIRE"
@@ -372,6 +383,15 @@ else
         pass "estop_can host logic tests passed (controller board node, kinematic brain)"
     else
         fail "estop_can host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
+    # enabling_device.h: the logic of the three-position enabling device (vectors of tests/enabling_device_vectors.h).
+    ENABLING_HOST_BIN="$ROOT/build/host_tests_enabling_device"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32h757/CM4" -o "$ENABLING_HOST_BIN" "$ROOT/tests/test_enabling_device.c" && "$ENABLING_HOST_BIN" >/dev/null; then
+        pass "enabling_device host logic tests passed"
+    else
+        fail "enabling_device host logic tests FAILED"
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
@@ -1052,6 +1072,37 @@ build_bin_hex "$H7/cm4_app_obj/$CM4_APP_NAME.elf"
 cp "$H7/cm4_app_obj/$CM4_APP_NAME."{elf,bin,hex} "$FIRMWARE_OUT/"
 pass "$CM4_APP_NAME.bin/.hex/.elf built ($(arm-none-eabi-size "$H7/cm4_app_obj/$CM4_APP_NAME.elf" | tail -1 | awk '{print $1}') bytes text) - real PLL1 clock config + real FDCAN1 STACK A + Tier 2/3 relay tunnel, still no CM7<->CM4 scheduler sync"
 
+fi
+
+# -----------------------------------------------------------------------
+step "10b. Kinematic Brain bootloaders and CAN code compiled for the H757 platform (compile check only, nothing is linked or shipped)"
+# -----------------------------------------------------------------------
+# The images above are those of the default platform and are not touched by this step. Here the same sources are compiled once more with -DHYDRA_PLATFORM_H757, into objects
+# that are never linked, so that a change made for the H757 platform behind the platform profile is known to compile before it is merged. The comparison that shows the images
+# of the default platform did not change is the workflow h745-invariance.yml.
+H757_CHECK_FAILED=0
+for H757_CORE in CM7 CM4; do
+    H757_LOWER=$(echo "$H757_CORE" | tr 'A-Z' 'a-z')
+    H757_OBJ="$H7/${H757_LOWER}_boot_h757_check_obj"
+    mkdir -p "$H757_OBJ"
+    if [ "$H757_CORE" = "CM7" ]; then H757_FLAGS="$CFLAGS_CM7"; H757_INC="$COMMON_INC"; else H757_FLAGS="$CFLAGS_CM4"; H757_INC="$COMMON_INC -I$ROOT/src/mcu_stm32h757/CM4"; fi
+    if compile_dir "$ROOT/src/mcu_stm32h757/$H757_CORE/boot" "$H757_OBJ" "$H757_FLAGS -DHYDRA_PLATFORM_H757" "$H757_INC"; then
+        pass "$H757_CORE bootloader sources compile for the H757 platform"
+    else
+        fail "$H757_CORE bootloader sources do NOT compile for the H757 platform - see errors above"
+        H757_CHECK_FAILED=1
+    fi
+done
+H757_APP_OBJ="$H7/cm4_app_h757_check_obj"
+mkdir -p "$H757_APP_OBJ"
+if arm-none-eabi-gcc $CFLAGS_CM4_APP -DHYDRA_PLATFORM_H757 -I"$ROOT/src/mcu_stm32h757/CM4" -I"$ROOT/src/mcu_stm32h757/CM4/boot" $COMMON_INC -x c -c "$ROOT/src/mcu_stm32h757/CM4/KinematicBrainCan.c" -o "$H757_APP_OBJ/KinematicBrainCan.o"; then
+    pass "CM4 CAN application code compiles for the H757 platform"
+else
+    fail "CM4 CAN application code does NOT compile for the H757 platform - see errors above"
+    H757_CHECK_FAILED=1
+fi
+if [ "$H757_CHECK_FAILED" = "1" ]; then
+    echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
 fi
 
 # -----------------------------------------------------------------------
