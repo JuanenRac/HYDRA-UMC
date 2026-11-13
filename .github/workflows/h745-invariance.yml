@@ -23,6 +23,11 @@ on:
         description: "The commit or branch that is checked against it"
         type: string
         required: true
+      expected_change:
+        description: "Components the change is MEANT to alter, comma separated (for example KB_CM4_BOOTLOADER,KB_CM7_BOOTLOADER); empty when no image may change"
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -54,11 +59,13 @@ jobs:
         env:
           BASE: ${{ inputs.base }}
           HEAD_REF: ${{ inputs.head }}
+          EXPECTED: ${{ inputs.expected_change }}
         run: |
           set -euo pipefail
           for value in "$BASE" "$HEAD_REF"; do
             [[ "$value" =~ ^[A-Za-z0-9._/-]{1,100}$ ]] || { echo "::error::a ref has characters that a branch, tag or commit does not have"; exit 1; }
           done
+          [[ "$EXPECTED" =~ ^[A-Z0-9_,]{0,200}$ ]] || { echo "::error::expected_change has characters that a list of component names does not have"; exit 1; }
 
       - name: Check out this repository with its history
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -161,8 +168,11 @@ jobs:
 
       - name: Compare
         shell: bash
+        env:
+          EXPECTED: ${{ inputs.expected_change }}
         run: |
           set -euo pipefail
+          [[ "$EXPECTED" =~ ^[A-Z0-9_,]{0,200}$ ]] || { echo "::error::expected_change has characters that a list of component names does not have"; exit 1; }
           {
             echo "### Images of the default platform, base against head"
             echo '```'
@@ -171,4 +181,5 @@ jobs:
             cat sums/sums-head/sums-head.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          python3 tools/h745_invariance.py compare sums/sums-base/sums-base.txt sums/sums-head/sums-head.txt 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          python3 tools/h745_invariance.py compare sums/sums-base/sums-base.txt sums/sums-head/sums-head.txt --expected "$EXPECTED" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ -n "$EXPECTED" ]; then echo "::warning::the images of $EXPECTED were declared as expected to change in this run; nothing else changed"; fi
