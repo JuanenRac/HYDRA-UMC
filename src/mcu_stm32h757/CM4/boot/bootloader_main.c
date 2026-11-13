@@ -25,6 +25,7 @@
 #include "bootloader_flash.h"
 #include "bootloader_protocol.h"
 #include "ipc_mailbox.h"
+#include "ipc_hal.h"
 #include "platform_profile.h" /* the bit timing of the stack bus comes from the platform profile, not from numbers here */
 #include "boot_decision.h"
 #include "spi_frame_crc.h"
@@ -359,6 +360,7 @@ int main(void) {
     // single transaction attempt).
     while (link_ok && (HAL_GetTick() - listen_start) < 600) {
         HAL_IWDG_Refresh(&hiwdg);
+        Ipc_Pump(&IPC_HAL_OPS, 0, IPC_ROLE_GATEWAY);   // finish the handshake of the last frame exchanged with the CM7
         HAL_GPIO_WritePin(HYDRA_DATA_READY_PORT, HYDRA_DATA_READY_PIN, GPIO_PIN_SET);
         if (HAL_SPI_TransmitReceive(&hspi1, tx_wire, rx_wire, SPI_FRAME_SIZE, 20) == HAL_OK) {
             SpiOtaFrame_t in;
@@ -410,6 +412,7 @@ int main(void) {
     CAN_SendStatus(STATUS_LISTENING);
     while (1) {
         HAL_IWDG_Refresh(&hiwdg);
+        Ipc_Pump(&IPC_HAL_OPS, 0, IPC_ROLE_GATEWAY);   // finish the handshake of the last frame exchanged with the CM7
         HAL_GPIO_WritePin(HYDRA_DATA_READY_PORT, HYDRA_DATA_READY_PIN, GPIO_PIN_SET);
         if (HAL_SPI_TransmitReceive(&hspi1, tx_wire, rx_wire, SPI_FRAME_SIZE, 20) == HAL_OK) {
             SpiOtaFrame_t in;

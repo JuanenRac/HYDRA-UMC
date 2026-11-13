@@ -4,8 +4,8 @@
  * GPL-3.0-or-later - see LICENSE
  * =============================================================================
  * Built twice: with the default (an unsealed frame is accepted) and with -DHYDRA_IPC_REQUIRE_CRC=1 (an unsealed frame is refused), so both
- * settings of the switch are exercised. The second half models the two cores and the two semaphore channels with the real seal functions:
- * simulator evidence only, the timing of the real semaphore hardware stays a bench row.
+ * settings of the switch are exercised. This test is about the SEAL of the frame. The semaphore handshake between the two cores (every core
+ * releases only the semaphore it took) is tested in tests/test_ipc_link.c, with a double that behaves like the hardware semaphores.
  */
 #include <stdio.h>
 #include <string.h>
@@ -72,105 +72,9 @@ static void seal_tests(void)
     CHECK(h._reserved[1] != f._reserved[1] || h._reserved[2] != f._reserved[2], "the sequence changes the CRC");
 }
 
-/* The two cores and the two channels. The writer of a channel takes it after the frame is complete; the reader releases it after it has copied
- * the frame. A writer that finds its channel taken waits (it does not overwrite). */
-typedef struct {
-    IpcMailbox_t box;
-    int taken[2];
-    uint8_t cmd_seq, resp_seq;
-} Model;
-
-static int model_post_cmd(Model *m, uint8_t type, uint8_t seed)
-{
-    if (m->taken[IPC_HSEM_CMD_ID]) return 0;
-    fill(&m->box.cmd, type, 8, seed);
-    IpcFrame_Seal(&m->box.cmd, m->cmd_seq++);
-    m->taken[IPC_HSEM_CMD_ID] = 1;
-    return 1;
-}
-
-static int model_take_cmd(Model *m, IpcFrame_t *out)
-{
-    if (!m->taken[IPC_HSEM_CMD_ID]) return 0;
-    *out = m->box.cmd;
-    const int ok = IpcFrame_Valid(&m->box.cmd);
-    m->taken[IPC_HSEM_CMD_ID] = 0;
-    return ok ? 1 : -1;
-}
-
-static int model_post_resp(Model *m, uint8_t type, uint8_t seed)
-{
-    if (m->taken[IPC_HSEM_RESP_ID]) return 0;
-    fill(&m->box.resp, type, 8, seed);
-    IpcFrame_Seal(&m->box.resp, m->resp_seq++);
-    m->taken[IPC_HSEM_RESP_ID] = 1;
-    return 1;
-}
-
-static int model_take_resp(Model *m, IpcFrame_t *out)
-{
-    if (!m->taken[IPC_HSEM_RESP_ID]) return 0;
-    *out = m->box.resp;
-    const int ok = IpcFrame_Valid(&m->box.resp);
-    m->taken[IPC_HSEM_RESP_ID] = 0;
-    return ok ? 1 : -1;
-}
-
-static unsigned lcg(unsigned *state)
-{
-    *state = *state * 1664525u + 1013904223u;
-    return *state >> 16;
-}
-
-static void protocol_tests(void)
-{
-    Model m;
-    memset(&m, 0, sizeof m);
-    IpcFrame_t got;
-
-    /* a second command while the first is not consumed waits and does not overwrite it */
-    CHECK(model_post_cmd(&m, 1, 10) == 1, "first command posted");
-    CHECK(model_post_cmd(&m, 2, 20) == 0, "a second command waits");
-    CHECK(model_take_cmd(&m, &got) == 1 && got.frame_type == 1 && got.payload[0] == 10, "the first command arrives intact");
-    CHECK(model_take_cmd(&m, &got) == 0, "nothing is left to take twice");
-    CHECK(model_post_cmd(&m, 2, 20) == 1, "the next command goes once the channel is free");
-
-    /* several answers to one command: each waits for the reader, none is lost or overwritten */
-    CHECK(model_take_cmd(&m, &got) == 1 && got.frame_type == 2, "second command consumed");
-    CHECK(model_post_resp(&m, 0x10, 1) == 1, "first answer posted");
-    CHECK(model_post_resp(&m, 0x11, 2) == 0, "second answer waits for the reader");
-    CHECK(model_take_resp(&m, &got) == 1 && got.frame_type == 0x10 && got.payload[0] == 1, "first answer arrives intact");
-    CHECK(model_post_resp(&m, 0x11, 2) == 1, "second answer goes after the first is read");
-    CHECK(model_take_resp(&m, &got) == 1 && got.frame_type == 0x11 && got.payload[0] == 2, "second answer arrives intact");
-
-    /* a frame damaged in the shared memory after the take is refused, and the channel is still freed so the link does not stall */
-    CHECK(model_post_cmd(&m, 3, 30) == 1, "command posted");
-    m.box.cmd.payload[4] ^= 0x40u;
-    CHECK(model_take_cmd(&m, &got) == -1, "a damaged command is refused");
-    CHECK(m.taken[IPC_HSEM_CMD_ID] == 0, "the channel is free after a refused frame");
-
-    /* many random interleavings of the two cores: the answers come in the order they were posted, none repeats, none is lost */
-    unsigned state = 12345u;
-    unsigned posted = 0, read = 0;
-    uint8_t next_post = 0, next_read = 0;
-    memset(&m, 0, sizeof m);
-    for (unsigned step = 0; step < 20000u; step++) {
-        if (lcg(&state) & 1u) {
-            if (model_post_resp(&m, next_post, next_post)) { next_post++; posted++; }
-        } else if (model_take_resp(&m, &got) == 1) {
-            CHECK(got.frame_type == next_read && got.payload[0] == next_read, "answers keep their order");
-            next_read++;
-            read++;
-        }
-    }
-    while (model_take_resp(&m, &got) == 1) { CHECK(got.frame_type == next_read, "last answer in order"); next_read++; read++; }
-    CHECK(posted == read && posted > 1000u, "every posted answer was read exactly once");
-}
-
 int main(void)
 {
     seal_tests();
-    protocol_tests();
     if (failures) {
         printf("%d failure(s)\n", failures);
         return 1;

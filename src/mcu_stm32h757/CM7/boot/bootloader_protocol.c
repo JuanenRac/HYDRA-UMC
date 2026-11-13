@@ -24,36 +24,14 @@
 #include "update_verify.h"
 #include "bootloader_trust.h"
 #include "ipc_mailbox.h"
+#include "ipc_hal.h"
 
-// Blocks (with IWDG refresh) until CM4 has taken IPC_HSEM_RESP_ID's slot -
-// i.e. until the PREVIOUS response this core posted has actually been
-// consumed - before writing a new one. Single-producer/single-consumer:
-// this core is the only writer of .resp, CM4 is the only reader, so "the
-// semaphore is free to take" is equivalent to "CM4 finished reading the
-// last one", the same one-shot-per-post handshake every other bootloader's
-// CAN_WaitForFreeMailbox() provides for a hardware TX FIFO slot instead.
+// Posts one answer for the gateway (the CM4) to relay onward. The post waits up to 100 ms for the answer channel to be free, i.e. for the previous answer to have been read and
+// both halves of its handshake finished; when it is not free the answer is DROPPED rather than blocking indefinitely (the same "best-effort" reasoning as every other tier's own send
+// helpers), and the frame is not touched. Single-producer/single-consumer: this core is the only writer of .resp. Every core releases only the semaphore it took itself (ipc_link.h).
+static uint8_t ipc_resp_seq;
 static void IPC_SendResponse(uint8_t frame_type, const uint8_t *data, uint8_t dlc) {
-    uint32_t wait_start = HAL_GetTick();
-    while (HAL_HSEM_IsSemTaken(IPC_HSEM_RESP_ID)) {
-        HAL_IWDG_Refresh(&hiwdg);
-        if (HAL_GetTick() - wait_start > 100) return; // CM4 not draining - drop rather than block indefinitely, same "best-effort" reasoning as every other tier's own send helpers
-    }
-    IPC_MAILBOX->resp.frame_type = frame_type;
-    IPC_MAILBOX->resp.dlc = dlc;
-    memset((void*)IPC_MAILBOX->resp.payload, 0, 8);
-    if (dlc > 0) memcpy((void*)IPC_MAILBOX->resp.payload, data, dlc);
-    static uint8_t ipc_resp_seq;
-    IpcFrame_Seal(&IPC_MAILBOX->resp, ipc_resp_seq++);
-    // SRAM4 writes above are Normal (bufferable) memory; the HSEM take just
-    // below is a peripheral (Device) write, with no ordering guarantee
-    // between the two bus types without an explicit barrier. Without this
-    // __DSB(), CM4 could observe IPC_HSEM_RESP_ID taken and read a stale or
-    // torn .resp frame before the writes above have actually landed in
-    // SRAM4 - same "flush shared data before signaling" requirement as
-    // CM4's own Relay_ToCM7() write side (../../CM4/boot/bootloader_
-    // protocol.c), mirrored here for this mailbox's other direction.
-    __DSB();
-    HAL_HSEM_FastTake(IPC_HSEM_RESP_ID); // claims the slot - CM4 reads it, then releases, which is what the wait loop above watches for next time
+    (void)Ipc_PostResponse(&IPC_HAL_OPS, 0, IPC_MAILBOX, &ipc_resp_seq, frame_type, data, dlc);
 }
 
 void CAN_SendStatus(uint8_t status) {
@@ -75,9 +53,8 @@ static void CAN_SendPageAck(uint32_t page_index) {
 }
 
 void CAN_SendHeartbeat(uint8_t status, uint8_t progress_percent) {
-    if (HAL_HSEM_IsSemTaken(IPC_HSEM_RESP_ID)) return; // best-effort, never blocks - same as every other tier's own heartbeat sender
     uint8_t d[2] = {status, progress_percent};
-    IPC_SendResponse(OFS_HEARTBEAT, d, 2);
+    (void)Ipc_PostResponseNow(&IPC_HAL_OPS, 0, IPC_MAILBOX, &ipc_resp_seq, OFS_HEARTBEAT, d, 2); // best-effort, never blocks - same as every other tier's own heartbeat sender
 }
 
 void HandleVersionQuery(void) {
@@ -240,20 +217,13 @@ static uint8_t WaitForReadbackPageAck(uint32_t page_index) {
     uint32_t wait_start = HAL_GetTick();
     while ((HAL_GetTick() - wait_start) < 3000) {
         HAL_IWDG_Refresh(&hiwdg);
-        if (HAL_HSEM_IsSemTaken(IPC_HSEM_CMD_ID)) {
-            const uint8_t ipc_valid = IpcFrame_Valid(&IPC_MAILBOX->cmd);
-            uint8_t frame_type = IPC_MAILBOX->cmd.frame_type;
-            uint8_t dlc = IPC_MAILBOX->cmd.dlc;
-            uint32_t acked = ((uint32_t)IPC_MAILBOX->cmd.payload[0] << 24) | ((uint32_t)IPC_MAILBOX->cmd.payload[1] << 16)
-                            | ((uint32_t)IPC_MAILBOX->cmd.payload[2] << 8) | IPC_MAILBOX->cmd.payload[3];
-            // Always release once read, even when this isn't the ACK we're
-            // waiting for - leaving the semaphore held here (the original
-            // bug) makes HAL_HSEM_IsSemTaken keep reporting the same stale
-            // frame on every loop iteration, so this function just spins
-            // until the 3s timeout and aborts the whole readback instead of
-            // discarding the unrelated frame and continuing to wait.
-            HAL_HSEM_Release(IPC_HSEM_CMD_ID, 0);
-            if (ipc_valid && frame_type == OFS_BACKUP_READ_PAGE_ACK && dlc == 4) {
+        IpcMessage ack;
+        const IpcStatus ack_status = Ipc_TakeCommand(&IPC_HAL_OPS, 0, IPC_MAILBOX, &ack);   // the command is always acknowledged once read, even when it is not the ACK we wait for:
+        if (ack_status == IPC_OK) {                                                          // leaving it unread would make the same stale frame show up on every pass
+            const uint8_t frame_type = ack.frame_type;
+            const uint8_t dlc = ack.dlc;
+            const uint32_t acked = ((uint32_t)ack.payload[0] << 24) | ((uint32_t)ack.payload[1] << 16) | ((uint32_t)ack.payload[2] << 8) | ack.payload[3];
+            if (frame_type == OFS_BACKUP_READ_PAGE_ACK && dlc == 4) {
                 if (acked == page_index) return 1;
                 return 0; // desynced ack for the wrong page - abandon rather than guess
             }
