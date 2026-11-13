@@ -385,6 +385,15 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # task_watchdog.h: the supervision of liveness by task (vectors of tests/task_watchdog_vectors.h).
+    TASKWD_HOST_BIN="$ROOT/build/host_tests_task_watchdog"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32h757/CM4" -o "$TASKWD_HOST_BIN" "$ROOT/tests/test_task_watchdog.c" && "$TASKWD_HOST_BIN" >/dev/null; then
+        pass "task_watchdog host logic tests passed"
+    else
+        fail "task_watchdog host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # slot_scan_node.h: how a controller board answers the slot scan probe (vectors of tests/slot_scan_vectors.json).
     SLOT_SCAN_HOST_BIN="$ROOT/build/host_tests_slot_scan_node"
     if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32g474/boot" -o "$SLOT_SCAN_HOST_BIN" "$ROOT/tests/test_slot_scan_node.c" && "$SLOT_SCAN_HOST_BIN" >/dev/null; then
