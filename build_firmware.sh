@@ -405,6 +405,15 @@ else
         echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
     fi
 
+    # host_link_master.h: the transport of the host link with the board as SPI master (vectors of tests/host_link_vectors.h).
+    HOST_LINK_HOST_BIN="$ROOT/build/host_tests_host_link_master"
+    if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/src/mcu_stm32h757/Common" -I"$ROOT/src/mcu_stm32h757/CM4/boot" -I"$ROOT/tests" -o "$HOST_LINK_HOST_BIN" "$ROOT/tests/test_host_link_master.c" && "$HOST_LINK_HOST_BIN" >/dev/null; then
+        pass "host_link_master host logic tests passed"
+    else
+        fail "host_link_master host logic tests FAILED"
+        echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
+    fi
+
     # task_watchdog.h: the supervision of liveness by task (vectors of tests/task_watchdog_vectors.h).
     TASKWD_HOST_BIN="$ROOT/build/host_tests_task_watchdog"
     if "$HOST_CC" -std=c11 -Wall -Wextra -I"$ROOT/tests" -I"$ROOT/src/mcu_stm32h757/CM4" -o "$TASKWD_HOST_BIN" "$ROOT/tests/test_task_watchdog.c" && "$TASKWD_HOST_BIN" >/dev/null; then
