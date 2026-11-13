@@ -67,6 +67,14 @@ def render(document: dict | None = None) -> str:
         w("#endif")
         for peripheral, owner in profile["peripheral_owner"].items():
             w(f"#define HYDRA_OWNER_{_macro(peripheral)} HYDRA_OWNER_{owner}")
+            if peripheral.startswith("SPI"):
+                # the SPI of the host link has another number on each board (SPI1 on the earlier bench board, SPI3 on the H757 board): the sources use these two names
+                w(f"#define HYDRA_OWNER_HOST_SPI HYDRA_OWNER_{owner}")
+                w(f"#define HYDRA_HOST_SPI_INSTANCE {int(peripheral[3:])}")
+        host_spi = profile.get("host_spi")
+        if host_spi:
+            w(f"#define HYDRA_HOST_SPI_PRESCALER {host_spi['prescaler']}U")
+            w(f"#define HYDRA_HOST_SPI_CLOCK_HZ {host_spi['clock_hz']}UL")
         bus = profile["stack_bus"]
         w(f"#define HYDRA_STACK_BUS_KERNEL_CLOCK_HZ {bus['kernel_clock_hz']}UL")
         w(f"#define HYDRA_STACK_BUS_PRESCALER {bus['prescaler']}U")

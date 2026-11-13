@@ -72,7 +72,7 @@ class PlatformProfileTests(unittest.TestCase):
 
     def test_the_peripheral_owners_follow_the_decision_of_the_owner(self):
         p = self.document["profiles"]["h757_target"]
-        self.assertEqual(p["peripheral_owner"], {"SPI1": "CM7", "FDCAN1": "CM7", "I2C4": "CM7"})
+        self.assertEqual(p["peripheral_owner"], {"SPI3": "CM7", "FDCAN1": "CM7", "I2C4": "CM7"})
         self.assertEqual(p["host"]["spi_role"], "master")
         self.assertEqual(pp.profile("h745_current")["host"]["spi_role"], "slave")
 
@@ -219,7 +219,7 @@ class PinTests(unittest.TestCase):
         profile = copy.deepcopy(self.h757)
         profile["new_peripherals"]["I2C3"]["pins"]["sda"] = "PK9"
         self.assertTrue(any("PK9" in p and "not a pin" in p for p in pp.pin_problems("h757_target", profile)))
-        profile["new_peripherals"]["I2C3"]["pins"]["sda"] = "PK7"
+        profile["new_peripherals"]["I2C3"]["pins"]["sda"] = "PI0"
         self.assertEqual(pp.pin_problems("h757_target", profile), [])
 
     def test_the_default_platform_lists_no_pins_and_the_check_is_part_of_the_profile_tool(self):
