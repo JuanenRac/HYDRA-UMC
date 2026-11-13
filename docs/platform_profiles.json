@@ -295,7 +295,7 @@
               {
                 "region": "SDRAM_BANK2",
                 "fmc_bank": 2,
-                "enabled": true,
+                "enabled": false,
                 "size_bytes": 134217728
               }
             ],
@@ -318,7 +318,7 @@
               "nbl2": "PI4",
               "nbl3": "PI5"
             },
-            "population": "bank 1 is fitted; bank 2 (two more chips) is optional"
+            "population": "bank 1 is fitted; bank 2 (two more chips) is optional and OFF by default: HYDRA_SDRAM_BANK2_ENABLED=1 switches it on"
           }
         },
         "LTDC_DMA2D": {

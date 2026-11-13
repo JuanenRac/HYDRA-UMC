@@ -8,11 +8,11 @@ static const SdramGoldenStep SDRAM_GOLDEN[] = {
     {0, 1, 35742817UL}, /* SDTR1 */
     {0, 2, 490UL}, /* SDCR2 */
     {0, 3, 33621089UL}, /* SDTR2 */
-    {0, 4, 25UL}, /* SDCMR */
+    {0, 4, 17UL}, /* SDCMR */
     {1, 0, 100UL}, /* wait in microseconds */
-    {0, 4, 26UL}, /* SDCMR */
-    {0, 4, 251UL}, /* SDCMR */
-    {0, 4, 286748UL}, /* SDCMR */
+    {0, 4, 18UL}, /* SDCMR */
+    {0, 4, 243UL}, /* SDCMR */
+    {0, 4, 286740UL}, /* SDCMR */
     {0, 5, 1522UL}, /* SDRTR */
 };
 
