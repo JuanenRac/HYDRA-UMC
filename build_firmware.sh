@@ -248,11 +248,11 @@ else
 
     # sdram_init.h: the JEDEC start-up of the external SDRAM, run against a double of the FMC and compared with the golden plan of the model; the banks that are switched off are checked too.
     SDRAM_HOST_BIN="$ROOT/build/host_tests_sdram_init"
-    for SDRAM_VARIANT in "" "-DHYDRA_SDRAM_BANK2_ENABLED=0" "-DHYDRA_SDRAM_BANK1_ENABLED=0"; do
+    for SDRAM_VARIANT in "" "-DHYDRA_SDRAM_BANK2_ENABLED=1" "-DHYDRA_SDRAM_BANK1_ENABLED=0 -DHYDRA_SDRAM_BANK2_ENABLED=1"; do
         if "$HOST_CC" -std=c11 -Wall -Wextra -DHYDRA_PLATFORM_H757 $SDRAM_VARIANT -I"$ROOT/src/mcu_stm32h757/Common" -I"$ROOT/tests" -o "$SDRAM_HOST_BIN" "$ROOT/tests/test_sdram_init.c" && "$SDRAM_HOST_BIN"; then
-            pass "sdram_init host logic tests passed ${SDRAM_VARIANT:-(both banks)}"
+            pass "sdram_init host logic tests passed ${SDRAM_VARIANT:-(bank 1 only, the default)}"
         else
-            fail "sdram_init host logic tests FAILED ${SDRAM_VARIANT:-(both banks)}"
+            fail "sdram_init host logic tests FAILED ${SDRAM_VARIANT:-(bank 1 only, the default)}"
             echo ""; echo "$PASS passed, $WARN warnings, $FAIL failed"; exit 1
         fi
     done
