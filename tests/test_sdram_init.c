@@ -4,7 +4,7 @@
  * GPL-3.0-or-later - see LICENSE
  * =============================================================================
  * The FMC is a double that logs every register write and every wait. The sequence is compared with the golden plan of the Python model (tests/sdram_plan_golden.h),
- * and the bits of the registers are decoded here with the layout of the FMC. Build with -DHYDRA_PLATFORM_H757; the variants -DHYDRA_SDRAM_BANK2_ENABLED=0 and
+ * and the bits of the registers are decoded here with the layout of the FMC. Build with -DHYDRA_PLATFORM_H757; the variants -DHYDRA_SDRAM_BANK2_ENABLED=1 (both banks) and
  * -DHYDRA_SDRAM_BANK1_ENABLED=0 check the banks that are switched off. Nothing here touches a memory controller.
  */
 #include <stdio.h>
@@ -49,12 +49,15 @@ int main(void)
     Fmc fmc = {{{0, 0, 0}}, 0, 0, 0};
     CHECK(Sdram_Start(&OPS, &fmc) == SDRAM_OK, "the start-up succeeds");
 
-#if HYDRA_SDRAM_BANK1_ENABLED && HYDRA_SDRAM_BANK2_ENABLED
-    /* both banks on: the log is the golden plan of the model, step by step */
+#if HYDRA_SDRAM_BANK1_ENABLED && !HYDRA_SDRAM_BANK2_ENABLED
+    /* the default of the board, bank 1 only: the log is the golden plan of the model, step by step */
     CHECK(fmc.count == sizeof SDRAM_GOLDEN / sizeof SDRAM_GOLDEN[0], "as many steps as the plan");
     for (unsigned i = 0; i < fmc.count && i < sizeof SDRAM_GOLDEN / sizeof SDRAM_GOLDEN[0]; i++) {
         CHECK(fmc.log[i].is_wait == SDRAM_GOLDEN[i].is_wait && fmc.log[i].reg == SDRAM_GOLDEN[i].reg && fmc.log[i].value == SDRAM_GOLDEN[i].value, "the step is the golden one");
     }
+    CHECK(SDRAM_SDCMR(SDRAM_MODE_CLOCK_ENABLE, 1U, 0U) == 17UL, "clock enable goes to bank 1 only");
+#endif
+#if HYDRA_SDRAM_BANK1_ENABLED && HYDRA_SDRAM_BANK2_ENABLED
     CHECK(SDRAM_SDCMR(SDRAM_MODE_CLOCK_ENABLE, 1U, 0U) == 25UL, "clock enable goes to both banks");
 #endif
 
