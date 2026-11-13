@@ -31,11 +31,11 @@ PB9  | FDCAN1_TX   | AF9  | PA11/PA12 (also valid FDCAN1 pins on this chip)
      |             |      | to keep PA11/PA12 free for USB/other use and to
      |             |      | leave PA8-PA11 as one contiguous TIM1 block for
      |             |      | STEP generation - section 3 below.
-PG7  | CAN1_STBY   | GPIO | INVALID ON THIS CHIP - see section 1d. Transceiver
+PC5  | CAN1_STBY   | GPIO | Firmware pin (src/mcu_stm32g474/can_standby.h); PG7 does not
+     |             |      | exist on this chip - see section 1d. Transceiver
      |             |      | standby/enable (matches the Kinematic Brain's own
      |             |      | CAN1_STBY convention, docs/
-     |             |      | PINOUT_STM32H745_KINEMATIC_BRAIN.md §2). The
-     |             |      | proposed replacement is PC5 (section 1d).
+     |             |      | PINOUT_STM32H745_KINEMATIC_BRAIN.md §2). Low = awake.
 
 1b. FDCAN2 - downlink relay to this robot's own URTC Tool Head (README.md
 section 12, docs/architecture.md section 5)
@@ -43,9 +43,9 @@ Pin  | Signal      | AF   | Notes
 -----+-------------+------+-------------------------------------------------
 PB5  | FDCAN2_RX   | AF9  | Standard G474 mapping - re-verify in CubeMX
 PB6  | FDCAN2_TX   | AF9  | Standard G474 mapping - re-verify in CubeMX
-PG8  | CAN2_STBY   | GPIO | INVALID ON THIS CHIP - see section 1d. Transceiver
-     |             |      | standby/enable, second transceiver. The proposed
-     |             |      | replacement is PC8 (section 1d).
+PC8  | CAN2_STBY   | GPIO | Firmware pin (can_standby.h); PG8 does not exist on this
+     |             |      | chip - see section 1d. Transceiver
+     |             |      | standby/enable, second transceiver. Low = awake.
 
 (The 3rd onboard FDCAN peripheral, FDCAN3, is unused - reserved for future
 use, e.g. a second relay hop if a robot ever needs more than one URTC head.)
@@ -78,8 +78,8 @@ encode a '1' bit; an open position leaves the internal pulldown in charge,
 reading as '0'. An unpopulated/all-open switch therefore reads as slot 0 -
 a safe, defined default rather than a floating/undefined input.
 
-1d. CAN STANDBY PINS AND BOOT0 - PROPOSED CHANGE, PENDING BOARD REVIEW
-This is a proposal for the schematic, not a manufactured or tested board.
+1d. CAN STANDBY PINS AND BOOT0 - THE FIRMWARE USES PC5/PC8; THE SCHEMATIC REVIEW IS PENDING
+This is a change for the schematic, not a manufactured or tested board; the firmware already follows it.
 Nothing is ordered or fabricated until the schematic is reviewed.
   - Problem 1: the LQFP-64 package of the STM32G474RET6 has no PG7 or PG8.
     The only port G pin on it is PG10, which is shared with NRST (section
@@ -105,8 +105,11 @@ Nothing is ordered or fabricated until the schematic is reviewed.
     PA11/PA12 and release PB8. PA11 is the STEP pin of axis 4 (section 2b),
     so this needs a second move (STEP 4 to another timer pin) and is not
     proposed here.
-  - Firmware follow-up (not done here): the bootloader and RobotControllerRelay
-    still name PG7/PG8; they change together with the schematic decision.
+  - Firmware: the bootloader and RobotControllerRelay take both standby pins from
+    src/mcu_stm32g474/can_standby.h (PC5, PC8). tests/test_g474_can_standby.py
+    keeps that header, the sources and this document in agreement. The option
+    bytes above are set when the board is programmed, not by this firmware, and
+    the transceivers waking on a real board is a bench check.
 
 --------------------------------------------------------------------------------
 2. 6x TMC5160A STEPPER DRIVERS - one per robot axis (axis numbering is
@@ -229,7 +232,7 @@ the eventual real spec has somewhere to land.
     PB0 PB1 PB2 PB3 PB5 PB6 PB7 PB8 PB9 PB10 PB11 PB12 PB13 PB14 PB15
     PC0 PC1 PC2 PC3 PC4 PC6 PC7 PC10 PC11 PC12 PC13
     PD2
-    PG7 PG8   (invalid on this package - to be replaced by PC5 and PC8, section 1d)
+    PC5 PC8   (CAN standby lines, section 1d; PG7/PG8 do not exist on this package)
 
 6b. FREE / UNASSIGNED - standard-population LQFP-64 pins not claimed by
     any signal above (NOT individually re-verified against Table 12 the
@@ -238,11 +241,10 @@ the eventual real spec has somewhere to land.
 
     PA7   PA12  - free, general-purpose
     PB4         - free, general-purpose
-    PC5 PC8     - free, general-purpose (proposed for the CAN standby lines, section 1d)
     PC9         - default pin of the physical emergency stop input (normally closed loop; the pin
                   is set in config/machine.cfg and may be moved to PA7, PA12 or PB4)
 
-    6 pins total. This is the margin available if the eventual Micro-Fit
+    4 pins total. This is the margin available if the eventual Micro-Fit
     3.0 connector spec (section 5) turns out to need MCU-side signals
     beyond what sections 2-3 already provide (e.g. a per-connector
     present/ID line, matching the BOARD_PRESENT pattern already used on
