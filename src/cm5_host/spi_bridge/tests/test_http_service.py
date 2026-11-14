@@ -18,6 +18,7 @@ from fake_transport import FakeBootloaderTransport
 from test_relay_tunnel import FakeRelayingTier1Transport
 
 from spi_bridge.http_service import serve
+from test_system_client import make
 
 # The Hydra bootloaders verify an Ed25519 signature; the service holds no key, so a flash arrives with the 64 bytes already made. The
 # fake transport under these tests does not check it (tests/test_signed_flash.py does, against the reference).
@@ -282,6 +283,58 @@ class HttpServiceRelayTests(unittest.TestCase):
         with urlopen(request) as response:
             lines = [json.loads(line) for line in response.read().decode("utf-8").splitlines()]
         self.assertEqual(lines[-1]["phase"], "done")
+
+
+
+class NodeHealthRouteTests(unittest.TestCase):
+    """GET /node-health against the twin of the firmware service: off unless the service says so, read only, and nothing invented."""
+
+    def start(self, node_health, firmware_health=True):
+        app, _brain, transport = make(health=firmware_health)
+        app.publish_health(2, bytes((0x48, 7, 0x11, 1, 2, 0, 3, 0xFB)), 25)
+        server = serve(transport, hmac_key=b"\x00" * 32, port=0, node_health=node_health)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(lambda: (server.shutdown(), thread.join(), server.server_close()))
+        return f"http://127.0.0.1:{server.server_port}", transport
+
+    def get(self, url):
+        try:
+            with urlopen(url) as response:
+                return response.status, json.loads(response.read())
+        except Exception as error:  # urllib.error.HTTPError
+            code = error.code
+            error.close()
+            return code, None
+
+    def test_it_is_off_unless_the_service_was_started_with_it(self):
+        base, transport = self.start(node_health=False)
+        self.assertEqual(self.get(f"{base}/node-health?slot=2"), (404, None))
+        self.assertEqual(transport.sent, [], "and nothing went to the link")
+
+    def test_it_reports_the_last_frame_and_its_age(self):
+        base, _transport = self.start(node_health=True)
+        status, body = self.get(f"{base}/node-health?slot=2")
+        self.assertEqual(status, 200)
+        self.assertEqual((body["online"], body["heard"], body["age_ms"], body["sequence"], body["uptime_s"], body["source"]), (True, True, 2500, 7, 48, "brain-health"))
+        self.assertEqual((body["tx_errors"], body["rx_errors"], body["stalls"], body["flags"]), (1, 2, 0, 0x11))
+        self.assertEqual(body["flag_names"], ["estop_latched", "application_confirmed"])
+
+    def test_a_slot_never_heard_says_so(self):
+        base, _transport = self.start(node_health=True)
+        status, body = self.get(f"{base}/node-health?slot=5")
+        self.assertEqual((status, body["online"], body["heard"], body["age_ms"]), (200, True, False, None))
+
+    def test_a_firmware_without_the_switch_is_offline_not_invented(self):
+        base, _transport = self.start(node_health=True, firmware_health=False)
+        status, body = self.get(f"{base}/node-health?slot=2")
+        self.assertEqual((status, body["online"], body["heard"]), (200, False, None))
+
+    def test_a_wrong_slot_is_refused(self):
+        base, transport = self.start(node_health=True)
+        for query in ("slot=8", "slot=-1", "slot=x", "", "slot="):
+            self.assertEqual(self.get(f"{base}/node-health?{query}")[0], 400, query)
+        self.assertEqual(transport.sent, [])
 
 
 if __name__ == "__main__":
