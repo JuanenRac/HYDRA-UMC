@@ -62,6 +62,8 @@ def table() -> list[HostTest]:
         HostTest("spi_boot_master", "tests/test_spi_boot_master.c", (f"{H7}/Common", "tests")),
         HostTest("expansion_slots", "tests/test_expansion_slots.c", (f"{H7}/Common", "tests")),
         HostTest("host_link_master", "tests/test_host_link_master.c", (f"{H7}/Common", f"{H7}/CM4/boot", "tests")),
+        HostTest("gateway_dispatch@h745", "tests/test_gateway_dispatch.c", (f"{H7}/Common", f"{H7}/CM4/boot", "tests")),
+        HostTest("gateway_dispatch@h757", "tests/test_gateway_dispatch.c", (f"{H7}/Common", f"{H7}/CM4/boot", "tests"), defines=("HYDRA_PLATFORM_H757",)),
         HostTest("spi_boot_master_fsm", "tests/test_spi_boot_master_fsm.c", (f"{H7}/Common", "tests")),
         HostTest("clock_tree@h757", "tests/test_clock_tree.c", (f"{H7}/Common",), defines=("HYDRA_PLATFORM_H757",)),
         HostTest("boot_roles@cm4_h745", "tests/test_boot_roles.c", (f"{H7}/Common",), defines=("CORE_CM4",)),
