@@ -48,6 +48,8 @@ An access is the device address `0x50`, two address bytes (high first) and then 
 
 `HYDRA_FRAM_I2C_TIMING` is the `TIMINGR` value for the kernel clock of I2C4 and the speed the build chooses. It has no default: a value that was never checked could run the bus out of its specification.
 
+On the H757 board the CM7 owns I2C4, and `src/mcu_stm32h757/CM7/FramI2c4.c` (switch `HYDRA_FRAM_I2C4_CM7`, off by default) is the bus of the F-RAM there: it starts I2C4 on `PD12` and `PD13` with a `TIMINGR` word that `src/mcu_stm32h757/Common/i2c_plan.h` works out from `config/i2c4.cfg` (the kernel clock of the clock tree, the speed, the rise and fall times of the lines and the filters) and hands `fram_i2c.h` the same `transfer` as the glue of the CM4. The plan picks the smallest prescaler for which the set-up and hold times of the data and the low and high times of the clock all fit the I2C specification of the mode, never makes the bus faster than asked, and gives no word at all when nothing fits; a word of 0 is refused by the bus, as the build of the CM4 refuses a timing of 0. The rise and fall times in the file are starting values for 4.7 kOhm pull-ups: bench row 31 replaces them with the scope measurement.
+
 ## Host side
 
 `src/cm5_host/spi_bridge/spi_bridge/fram_client.py` sends the request to the brain and waits for the answer. The local service offers, only when started with `--enable-fram-erase`:
