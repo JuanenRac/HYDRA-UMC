@@ -184,8 +184,8 @@ The firmware is configured when it is built, through environment variables; the 
 Building the firmware needs the Arm GNU Toolchain (`arm-none-eabi-gcc` 10.3 or newer), `git` and `python`; the host tests need only a plain C compiler and Python. The same script runs on Linux, macOS and Windows.
 
 ```bash
-python3 tools/build_firmware.py                                  # builds every MCU target and runs the host tests (step 1b)
-python3 tools/build_firmware.py g474                             # only the Robot Controller Board; h745 builds only the Kinematic Brain
+python3 tools/build_firmware.py                      # builds every MCU target and runs the host tests (step 1b)
+python3 tools/build_firmware.py g474                 # only the Robot Controller Board; h745 builds only the Kinematic Brain
 python tools/verify_firmware_inventory.py            # read-only check of the committed six-component firmware inventory
 python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the firmware sources, the image header and the CAN identifiers
 ```
