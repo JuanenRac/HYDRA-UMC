@@ -103,6 +103,72 @@ A build with `flavour` = `dev` carries the public development table, whose seed 
 `tools/publish_release_assets.py --allow-dev-key` accepts such a set as a pre-release only (the printed command carries `--prerelease`); the release
 workflow refuses it.
 
+## Commands for the maintainer (PowerShell)
+
+Everything below runs on the signing machine, from the root of the HYDRA-UMC checkout, and prints no key. `$keys` is the folder that holds the two
+private files (the image seed `hydra_image_ed25519.seed` and the release key `hydra_release_ed25519.pem`); neither file is ever opened by hand, copied,
+committed or sent to GitHub.
+
+**1. What the build holds, before any key is read.** Download the artifact of the build run and verify it:
+
+```powershell
+$run = gh run list --workflow "Firmware build (manual)" --branch main --status success --limit 1 --json databaseId --jq ".[0].databaseId"
+$work = Join-Path $env:TEMP "hydra-release"
+New-Item -ItemType Directory -Force $work | Out-Null
+gh run download $run --dir $work
+Get-ChildItem -Recurse $work -File | ForEach-Object { gh attestation verify $_.FullName --repo JuanenRac/HYDRA-UMC }
+```
+
+**2. The image signature (STM32 firmware, header format 2).** One header and one signature per application image, made with the image key and the
+rollback counter of the release. The signing tool pins the trust table that the bootloaders of the same build carry before it reads the seed, signs
+every image, decides each result the way the bootloader decides it, and writes `<image>.hdr2` and `<image>.sig2` only if all of them pass. What it
+writes is checked by `tests/test_image_format2.py` and by the host test of the bootloader against fixed bytes (`tests/image_format2_vectors.json`):
+the board receives `header || image || signature`.
+
+**3. The release signature (every file, including the two lists).** `SHA256SUMS` and `build-manifest.json` are the manifest of the set: signing them
+signs what each image is called and what its digest is. Build `hydra-sign` from HYDRA-UMC-TOOL-CLI and sign the whole folder:
+
+```powershell
+$cli = "<path to>\HYDRA-UMC-TOOL-CLI\src"
+Push-Location $cli
+go build -o "$work\hydra-sign.exe" ./cmd/hydra-sign
+Pop-Location
+$files = Get-ChildItem $set -File | Where-Object { $_.Extension -notin ".sha256", ".sig" } | ForEach-Object FullName
+& "$work\hydra-sign.exe" sign --key "$keys\hydra_release_ed25519.pem" @files
+```
+
+`$set` is the folder with the six components, `SHA256SUMS`, `build-manifest.json` and the `.hdr2` / `.sig2` files. Each file gets `<file>.sha256` and
+`<file>.sig`.
+
+**4. Check the set, then the draft** (public keys only, the very check the workflow repeats):
+
+```powershell
+python tools/release_sign.py verify (Get-ChildItem $set -File | Where-Object { $_.Extension -notin ".sha256", ".sig" }).FullName
+python tools/verify_release_set.py $set --tag v<version>
+python tools/publish_release_assets.py --firmware-dir $set --draft
+```
+
+The last command prints the `gh release create ... --draft` command; run it as printed, then start *HYDRA-UMC firmware release* on `main` and approve
+the `release` environment.
+
+**5. A single file signed by hand** (an APK, an archive, a manifest of another program of the ecosystem):
+
+```powershell
+& "$work\hydra-sign.exe" sign --key "$keys\hydra_release_ed25519.pem" .ile.bin
+python tools/release_sign.py verify .ile.bin
+```
+
+## How the programs check a release
+
+The Android phone app checks the digest of what it downloads (rule 1). The watch, iOS and DSI apps apply both rules to a release asset, in this order:
+
+1. **Digest.** The release feed publishes `sha256:<hex>` for the asset; the bytes must match it. A feed without a digest cannot be compared.
+2. **Release signature** (off by default, switched on in the settings of the watch, iOS and DSI apps). `<asset>.sig` is the base64 Ed25519 signature
+   of the exact bytes of the asset; it must verify against the pinned key of the releases above. With the switch on, a release without a signature, with
+   a malformed one or with one that does not verify is refused. The key is compiled into the application: replacing it is a new version of the app.
+
+The checks use no network and no private key; their tests make throwaway keys at run time.
+
 ## Losing or replacing the key
 
 Publish a new public key in a release signed with the old one and on this page, and ship it with the next version of every program that pins it. The

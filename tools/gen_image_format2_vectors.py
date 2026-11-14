@@ -33,6 +33,16 @@ INSTALLED = (0, 2, 2)
 NONCE = bytes(range(16))
 
 
+# A fixed image, header and signature as the signing step writes them: the header on its own (<image>.hdr2), the image (<image>.bin) and the
+# 64-byte signature on its own (<image>.sig2); what is sent to a board is header || image || signature. The key is a throwaway derived from a label.
+# These bytes are literal on purpose: if the reference ever changed what it makes for the same inputs, a bootloader would stop accepting what the
+# signing step produces and this case (and tests/test_image_format2.py) would say so.
+TOOL_PUBLIC = "2929b7d49484c911bb0edac47f9c910b4669c92c196b89f20ac5a7e4e77a1cc5"
+TOOL_IMAGE = "000001204190000805121f2c394653606d7a8794a1aebbc8d5e2effc091623303d4a5764717e8b98a5b2bfccd9e6f3000d1a2734414e5b6875828f9ca9b6c3d0"
+TOOL_HDR2 = "4859445202000000313034470000030000000000400000000090000800000120419000083345190d07000000c8a8dd12d580ffca000000000000000000000000"
+TOOL_SIG2 = "9a9b85226eba67f4938c026356438eb2e2c43446a2ced20d984c5c368c1ebb02c2ca17f2b4e65c7abdd10956d806cdf96593991f9856cb4f15dc0666e36f7a0a"
+
+
 def seed(label: str) -> bytes:
     return hashlib.sha256(b"hydra-umc throwaway test key format2 " + label.encode()).digest()
 
@@ -92,6 +102,7 @@ def cases() -> list[dict]:
         ("too short", {"blob": good[:100]}),
         ("a byte more than the header says", {"blob": good + b"\x00"}),
         ("a signature of format 1 does not pass for format 2", {"blob": good[:-64] + ed25519.sign(seed("current"), ih.image_message(digest))}),
+        ("an image assembled from the .hdr2, .bin and .sig2 files of the signing step", {"blob": bytes.fromhex(TOOL_HDR2 + TOOL_IMAGE + TOOL_SIG2), "trusted": [bytes.fromhex(TOOL_PUBLIC)]}),
     ]
     out = []
     for name, over in spec:
