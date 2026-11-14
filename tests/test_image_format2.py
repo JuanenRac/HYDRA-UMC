@@ -1,6 +1,7 @@
 """Header format 2, the trust table and its public source file: the host reference held to the shared vectors and to hand-written verdicts.
 Every key made here is a throwaway: derived from a label or generated at random for the test, never stored."""
 import copy
+import hashlib
 import json
 import os
 import struct
@@ -20,7 +21,7 @@ import image_trust as tr  # noqa: E402
 DOC = json.loads((ROOT / "tests" / "image_format2_vectors.json").read_text(encoding="utf-8"))
 HAND_WRITTEN = ["ok", "ok", "unknown_key", "unknown_key", "unknown_key", "ok", "rollback_counter", "bad_signature", "bad_signature", "bad_signature",
                 "unknown_key", "bad_signature", "unknown_format", "hardware_mismatch", "link_mismatch", "rollback_version", "rollback_version", "ok",
-                "rollback_version", "rollback_counter", "too_short", "size_mismatch", "bad_signature"]
+                "rollback_version", "rollback_counter", "too_short", "size_mismatch", "bad_signature", "ok"]
 
 
 class VectorTests(unittest.TestCase):
@@ -95,6 +96,51 @@ class EphemeralKeyTests(unittest.TestCase):
         header = h2.make_header2(maker.seed("current"), body, maker.HW_ID, (0, 3, 0), maker.LINK, 1)
         with self.assertRaises(ih.ImageError):
             h2.sign_image2(maker.seed("next"), header, body)
+
+
+class SigningStepOutputTests(unittest.TestCase):
+    """What the signing step writes for an image (<image>.hdr2 and <image>.sig2 next to <image>.bin) is accepted by the decision a bootloader takes.
+    The bytes are fixed in tools/gen_image_format2_vectors.py (a throwaway key), so a change of the reference that would make a bootloader refuse
+    the files of the signing step shows here before anything is signed for real."""
+
+    seed = hashlib.sha256(b"hydra-umc throwaway test key signing tool output").digest()
+    image = bytes.fromhex(maker.TOOL_IMAGE)
+    hdr2 = bytes.fromhex(maker.TOOL_HDR2)
+    sig2 = bytes.fromhex(maker.TOOL_SIG2)
+    public = bytes.fromhex(maker.TOOL_PUBLIC)
+
+    def decide(self, blob, **over):
+        args = {"hw_id": maker.HW_ID, "link_address": maker.LINK, "floor": 0, "installed_version": (0, 2, 2)}
+        args.update(over)
+        return h2.decide2(blob, [self.public], **args)
+
+    def test_the_fixed_bytes_are_what_the_reference_makes_for_the_same_inputs(self):
+        header = h2.make_header2(self.seed, self.image, maker.HW_ID, (0, 3, 0), maker.LINK, 7)
+        self.assertEqual(header.pack(), self.hdr2)
+        self.assertEqual(h2.sign_image2(self.seed, header, self.image), self.sig2)
+        self.assertEqual(ed25519.public_key(self.seed), self.public)
+
+    def test_the_files_have_the_sizes_the_updater_expects(self):
+        self.assertEqual((len(self.hdr2), len(self.sig2)), (64, 64))
+        self.assertEqual(h2.parse_header2(self.hdr2).image_size, len(self.image))
+
+    def test_header_then_image_then_signature_is_accepted(self):
+        self.assertEqual(self.decide(self.hdr2 + self.image + self.sig2), "ok")
+
+    def test_the_rollback_counter_of_the_files_is_the_floor(self):
+        self.assertEqual(self.decide(self.hdr2 + self.image + self.sig2, floor=7), "ok")
+        self.assertEqual(self.decide(self.hdr2 + self.image + self.sig2, floor=8), "rollback_counter")
+
+    def test_the_files_are_refused_for_another_board_or_a_key_that_is_not_in_the_table(self):
+        blob = self.hdr2 + self.image + self.sig2
+        self.assertEqual(self.decide(blob, hw_id=0x48374337), "hardware_mismatch")
+        self.assertEqual(h2.decide2(blob, [maker.public("current")], hw_id=maker.HW_ID, link_address=maker.LINK, floor=0, installed_version=(0, 2, 2)), "unknown_key")
+
+    def test_any_changed_byte_of_the_three_files_is_refused(self):
+        blob = self.hdr2 + self.image + self.sig2
+        for index in range(0, len(blob), 7):
+            changed = maker.flip(blob, index)
+            self.assertNotEqual(self.decide(changed), "ok", index)
 
 
 class TrustFileTests(unittest.TestCase):
