@@ -204,6 +204,16 @@ def host_cases(root: str) -> list[Case]:
             )
         )
     cases.append(_t("tmc_card host logic tests passed", "host_tests_tmc_card", "test_tmc_card", [H757_COMMON]))
+    cases.append(
+        _t(
+            "tmc_card_spi6 host logic tests passed",
+            "host_tests_tmc_card_spi6",
+            "test_tmc_card_spi6",
+            ["tests/stubs/h7spi6", "src/mcu_stm32h757/CM7", H757_COMMON],
+            ["-DHYDRA_PLATFORM_H757", "-DHYDRA_TMC_CARD_SPI6=1"],
+            sources=("src/mcu_stm32h757/CM7/TmcCardSpi6.c",),
+        )
+    )
     cases.append(_t("nor_flash host logic tests passed", "host_tests_nor_flash", "test_nor_flash", [H757_COMMON], ["-DHYDRA_PLATFORM_H757"], quiet=False))
     cases.append(_t("memtest host logic tests passed", "host_tests_memtest", "test_memtest", [H757_COMMON], quiet=False))
     cases.append(_t("clock_config host logic tests passed", "host_tests_clock_config", "test_clock_config", [H757_COMMON, "tests"], ["-DHYDRA_PLATFORM_H757"], quiet=False))
@@ -1082,6 +1092,16 @@ class Stage2:
             r.ok("CM7 driver of the host link (SPI3 master) compiles for the H757 platform")
         else:
             r.fail("CM7 driver of the host link (SPI3 master) does NOT compile for the H757 platform - see errors above")
+            failed = True
+        tmc_obj = f"{h7}/cm7_tmc_card_spi6_h757_check_obj"
+        self.makedirs(tmc_obj)
+        if self.gcc(
+            self.cflags_cm7, "-DHYDRA_PLATFORM_H757", "-DHYDRA_TMC_CARD_SPI6=1", f"-I{root}/src/mcu_stm32h757/CM7", *self.common_inc,
+            "-x", "c", "-c", f"{root}/src/mcu_stm32h757/CM7/TmcCardSpi6.c", "-o", f"{tmc_obj}/TmcCardSpi6.o",
+        ) == 0:
+            r.ok("CM7 driver of the TMC5160 cards (SPI6 master) compiles for the H757 platform")
+        else:
+            r.fail("CM7 driver of the TMC5160 cards (SPI6 master) does NOT compile for the H757 platform - see errors above")
             failed = True
         if failed:
             self.stop()
