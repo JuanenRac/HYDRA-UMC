@@ -33,6 +33,10 @@ A failure of the peripheral keeps the staged frame and counts; `down_after_failu
 
 `tests/test_host_link_master.c` runs the C code against the scenarios of `tools/gen_host_link_vectors.py`, among them four long runs of a fixed seed, all written from the Python reference: the poll result, the verdict of the frame that came in, the type and sequence that went out, every counter and the state, after every call. Both sides refuse a configuration that cannot work. Nothing here has run on a board.
 
+## What the CM7 does with a request
+
+`src/mcu_stm32h757/Common/gateway_dispatch.h` is the `dispatch` of the link on the H757 board, where the CM7 owns SPI3, FDCAN1 and I2C4 and is therefore the gateway that the CM4 is on the H745 board. It reads the tier of the request (byte 0 of the frame) and sends it to the same three targets as the gateway of the H745 board: tier 0 to the handlers of the gateway core itself, tier 1 to the other core through the mailbox (the CM4 here; the tier is named CM7 on the H745 board and has the same number on the wire), tier 2 to the stack of controller boards on FDCAN1 (the slot is byte 1). When the other core or the stack gives no answer, or a damaged one, the host receives a status frame with `STATUS_ERROR` instead of silence; a tier that is none of the three is not run and not answered, and every case is counted. `tests/test_gateway_dispatch.c` runs it against a double of the mailbox with a backend that answers, stays silent or damages its answer, and feeds it through `HostLink_Take`. The handlers of the core and the transmission on FDCAN1 are given as callbacks: wiring them to the real peripherals of the CM7 is the next step, and nothing here has run on a board.
+
 ## Physical test (not done)
 
 A Jetson Orin NX and an H757 board with a logic analyser on SPI3 (SCK PB3, MOSI PB5, MISO PB4, NSS PA15) and the READY line: the board clocks an idle frame every idle interval; the host raises READY with a request and the answer arrives in the next transaction; a frame with one byte changed on the host side is not run and is counted; unplugging the host makes the link go quiet (silence) without an error.

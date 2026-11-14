@@ -65,6 +65,7 @@
     "src/mcu_stm32h757/CM7/boot/update_verify.h": 100,
     "src/mcu_stm32h757/Common/clock_config.h": 100,
     "src/mcu_stm32h757/Common/expansion_slots.h": 100,
+    "src/mcu_stm32h757/Common/gateway_dispatch.h": 100,
     "src/mcu_stm32h757/Common/host_link_master.h": 100,
     "src/mcu_stm32h757/Common/ipc_link.h": 100,
     "src/mcu_stm32h757/Common/ipc_mailbox.h": 100,
