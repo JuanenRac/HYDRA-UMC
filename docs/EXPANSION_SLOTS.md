@@ -13,6 +13,10 @@ The board has three expansion slots (PCIe connectors) that hold the cards with t
 
 `tests/test_expansion_slots.c` runs the C code against the scenarios of `tools/gen_expansion_slots_vectors.py`, among them four long runs of a fixed seed, all written from the Python reference, and checks at every step that no card is out of reset without power and that no slot outside the mask is powered. The configuration limits are checked on both sides. Nothing here has run on a board.
 
+## Driver of the cards on SPI6
+
+`src/mcu_stm32h757/CM7/TmcCardSpi6.c` is the HAL driver of SPI6 under the datagrams of `Common/tmc_card.h`: master, 8 bits, SPI mode 3 (the TMC5160 clocks on the second edge of an idle-high clock), prescaler 32 on the 100 MHz kernel clock (3.125 MHz, the clock of the profile), software chip select. PG3 is the strobe, PE5 and PE6 carry the slot number, PG12 to PG14 are the bus on alternate function 5. It ships off (`HYDRA_TMC_CARD_SPI6 0`: the unit is empty and no pin is touched). The settling time of the select lines and the transfer time-out are in `config/tmc_card.cfg` and the driver refuses values outside 1 to 1000. `tests/test_tmc_card_spi6.c` compiles the driver with a double of the HAL and checks the configuration it gives the peripheral, the order of the pins, the refusals and the abort of a failed datagram; a build step compiles it against the real HAL. Nothing has run on a board.
+
 ## Physical test (not done)
 
 A board with a card in each slot and a logic analyser on the enable, fault, present and reset lines of the three slots: with `allowed_mask = 0` nothing is powered whatever is plugged in; with a slot allowed, the order is enable, a pause, reset released; shorting the output of a slot's fuse makes the fault line go low, the slot is cut and stays cut until it is cleared; the third fault locks it.

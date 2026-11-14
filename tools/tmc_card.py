@@ -10,7 +10,9 @@ The select lines EXP_GPIO1 (bit 0) and EXP_GPIO2 (bit 1) carry the number of the
 the register address (bit 7 set for a write) and 32 bits of data; the answer carries the status byte, and the data of a read comes with the NEXT datagram. Evidence: simulator."""
 from __future__ import annotations
 
+import configparser
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Callable
 
 WRITE_BIT = 0x80
@@ -18,6 +20,19 @@ SLOTS = 3
 STATUS_RESET_FLAG, STATUS_DRIVER_ERROR, STATUS_STALLGUARD, STATUS_STANDSTILL = 1, 2, 4, 8
 
 OK, ERR_SLOT, ERR_NOT_READY, ERR_TRANSFER = 0, 1, 2, 3
+
+CFG_PATH = Path(__file__).resolve().parents[1] / "config" / "tmc_card.cfg"
+
+
+def load_config(path: Path = CFG_PATH) -> dict:
+    """The settings of the SPI6 driver (src/mcu_stm32h757/CM7/TmcCardSpi6.c refuses the same limits)."""
+    parser = configparser.ConfigParser(inline_comment_prefixes=None)
+    parser.read_string(path.read_text(encoding="utf-8"))
+    section = parser["spi6"]
+    cfg = {name: int(section[name]) for name in ("settle_us", "transfer_timeout_ms")}
+    if not 1 <= cfg["settle_us"] <= 1000 or not 1 <= cfg["transfer_timeout_ms"] <= 1000:
+        raise ValueError("config/tmc_card.cfg: settle_us 1..1000 and transfer_timeout_ms 1..1000")
+    return cfg
 
 
 def encode_write(reg: int, value: int) -> bytes:

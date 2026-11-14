@@ -1068,6 +1068,16 @@ class Stage2:
         else:
             r.fail("CM7 driver of the host link (SPI3 master) does NOT compile for the H757 platform - see errors above")
             failed = True
+        tmc_obj = f"{h7}/cm7_tmc_card_spi6_h757_check_obj"
+        self.makedirs(tmc_obj)
+        if self.gcc(
+            self.cflags_cm7, "-DHYDRA_PLATFORM_H757", "-DHYDRA_TMC_CARD_SPI6=1", f"-I{root}/src/mcu_stm32h757/CM7", *self.common_inc,
+            "-x", "c", "-c", f"{root}/src/mcu_stm32h757/CM7/TmcCardSpi6.c", "-o", f"{tmc_obj}/TmcCardSpi6.o",
+        ) == 0:
+            r.ok("CM7 driver of the TMC5160 cards (SPI6 master) compiles for the H757 platform")
+        else:
+            r.fail("CM7 driver of the TMC5160 cards (SPI6 master) does NOT compile for the H757 platform - see errors above")
+            failed = True
         if failed:
             self.stop()
 
