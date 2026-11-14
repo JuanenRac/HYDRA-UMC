@@ -13,6 +13,10 @@ Real routes:
   GET  /estop                        -> read_telemetry(): the emergency stop as the brain holds it (the frame on identifier 0x001 latches it): `latched`,
                                         `link_ok`, `stop_enabled`; `online` is false (and the rest null) when the brain did not answer. The SERVER reads
                                         this to show one stop state in the apps; nothing is invented when the brain is silent.
+  GET  /node-health?slot=            -> read_health(): the last health frame the brain heard from the board in a slot (docs/SPI_SYSTEM.md, types 0x27 and 0x2A):
+                                        `heard`, `age_ms`, `sequence`, `flags` and `flag_names`, `tx_errors`, `rx_errors`, `stalls`, `uptime_s`; `online` is false
+                                        when the brain did not answer. Read only. Answers 404 unless the service was started with node_health=True (--enable-node-health);
+                                        the firmware needs HYDRA_SPI_HEALTH=1 and the boards HYDRA_HEALTH_FRAME=1.
   GET  /counters?tier=&slot=&relay=  -> query_error_counters(): the transmit and receive error counters of the CAN controller of a board
   POST /fram/erase?confirm=ERASE     -> erase_fram(): zeros over the whole F-RAM of the brain (the FM24CL64B on I2C4 of the main board; docs/FRAM_ERASE.md)
   POST /fram/selftest                -> fram_selftest(): patterns over a scratch area of the F-RAM, the old bytes put back
@@ -55,7 +59,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from .fram_client import erase_fram, fram_selftest
-from .system_client import read_telemetry
+from .system_client import read_health, read_telemetry
 from .bootloader_client import SpiOtaFlasher, check_manifest_requirements, query_error_counters, query_version
 from .image_header import DowngradeSigner, ImageSigner, SIGNATURE_SIZE, is_signed_header_target
 from .relay_tunnel import RelayedTransport
@@ -83,6 +87,7 @@ def make_handler(
     image_signer: ImageSigner | None = None,
     downgrade_signer: DowngradeSigner | None = None,
     fram_erase: bool = False,
+    node_health: bool = False,
 ) -> type[BaseHTTPRequestHandler]:
     """Builds a request handler bound to one already-open transport - kept
     as a factory (not a module-level handler) so tests can inject a fake
@@ -101,6 +106,9 @@ def make_handler(
             parsed = urlparse(self.path)
             if parsed.path == "/estop":
                 self._estop()
+                return
+            if parsed.path == "/node-health":
+                self._node_health(parsed)
                 return
             if parsed.path not in ("/version", "/counters"):
                 self._send_json(404, {"error": "not found"})
@@ -143,6 +151,45 @@ def make_handler(
                     "capabilities": {"fram_erase": fram_erase},
                 },
             )
+
+        def _node_health(self, parsed) -> None:
+            """The last health frame the brain heard from the board in a slot (read only; off unless the service was started with --enable-node-health)."""
+            if not node_health:
+                self._send_json(404, {"error": "the node health is off in this service (start it with --enable-node-health)"})
+                return
+            try:
+                slot = int(parse_qs(parsed.query).get("slot", [""])[0])
+            except ValueError:
+                self._send_json(400, {"error": "slot must be an integer"})
+                return
+            if slot not in VALID_SLOTS:
+                self._send_json(400, {"error": "slot must be 0 to 7"})
+                return
+            if not lock.acquire(blocking=False):
+                self._send_json(409, {"error": "the SPI link is busy with another operation"})
+                return
+            try:
+                health = read_health(transport, slot)
+            finally:
+                lock.release()
+            if health is None:
+                # no answer: the firmware was built without HYDRA_SPI_HEALTH, the link is down, or the answer was damaged
+                self._send_json(200, {"online": False, "slot": slot, "heard": None, "source": "brain-health"})
+                return
+            self._send_json(200, {
+                "online": True,
+                "slot": health.slot,
+                "heard": health.heard,
+                "age_ms": health.age_ms,
+                "sequence": health.sequence,
+                "flags": health.flags,
+                "flag_names": list(health.flag_names),
+                "tx_errors": health.tx_errors,
+                "rx_errors": health.rx_errors,
+                "stalls": health.stalls,
+                "uptime_s": health.uptime_s,
+                "source": "brain-health",
+            })
 
         def _estop(self) -> None:
             if not lock.acquire(blocking=False):
@@ -301,11 +348,12 @@ def serve(
     image_signer: ImageSigner | None = None,
     downgrade_signer: DowngradeSigner | None = None,
     fram_erase: bool = False,
+    node_health: bool = False,
 ) -> ThreadingHTTPServer:
     """Starts the real local HTTP service. Caller owns the returned server's
     lifecycle (serve_forever()/shutdown()). Pass the same `bus_lock` to
     anything else that talks to the link (the counter publisher). The signers are for a deployment that keeps the
     private seed behind some other process; without them every HYDRA-UMC update must arrive already signed."""
 
-    handler = make_handler(transport, hmac_key, bus_lock, image_signer=image_signer, downgrade_signer=downgrade_signer, fram_erase=fram_erase)
+    handler = make_handler(transport, hmac_key, bus_lock, image_signer=image_signer, downgrade_signer=downgrade_signer, fram_erase=fram_erase, node_health=node_health)
     return ThreadingHTTPServer((host, port), handler)
