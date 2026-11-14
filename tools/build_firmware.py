@@ -188,6 +188,21 @@ def host_cases(root: str) -> list[Case]:
                 quiet=False,
             )
         )
+    for variant, label in (
+        ((), "(bank 1 only, the default)"),
+        (("-DHYDRA_SDRAM_BANK2_ENABLED=1",), "-DHYDRA_SDRAM_BANK2_ENABLED=1"),
+        (("-DHYDRA_SDRAM_BANK2_ENABLED=1", "-DHYDRA_SDRAM_BANK2_PROBE=1"), "-DHYDRA_SDRAM_BANK2_ENABLED=1 -DHYDRA_SDRAM_BANK2_PROBE=1"),
+    ):
+        cases.append(
+            _t(
+                f"sdram_banks host logic tests passed {label}",
+                "host_tests_sdram_banks",
+                "test_sdram_banks",
+                [H757_COMMON],
+                ["-DHYDRA_PLATFORM_H757", *variant],
+                quiet=False,
+            )
+        )
     cases.append(_t("tmc_card host logic tests passed", "host_tests_tmc_card", "test_tmc_card", [H757_COMMON]))
     cases.append(_t("nor_flash host logic tests passed", "host_tests_nor_flash", "test_nor_flash", [H757_COMMON], ["-DHYDRA_PLATFORM_H757"], quiet=False))
     cases.append(_t("memtest host logic tests passed", "host_tests_memtest", "test_memtest", [H757_COMMON], quiet=False))
