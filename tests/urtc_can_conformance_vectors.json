@@ -1,0 +1,1216 @@
+{
+ "format": 1,
+ "about": "Cross-implementation CAN protocol vectors. Every URTC client that implements a vector must reproduce it byte for byte. Hex strings have no separators; ids are written 0xNNN. A vector may carry a note when the readers are allowed to differ.",
+ "identifiers": [
+  {
+   "id": "0x095",
+   "names": {
+    "tester": "CAN_ID_IMPACT_EVENT",
+    "web": "CAN_ID_IMPACT_EVENT"
+   }
+  },
+  {
+   "id": "0x100",
+   "names": {
+    "tester": "CAN_ID_GLOBAL_STATUS",
+    "web": "CAN_ID_STATUS_LED_CMD"
+   }
+  },
+  {
+   "id": "0x110",
+   "names": {
+    "tester": "CAN_ID_QUERY_ACTIVE_TOOL",
+    "web": "CAN_ID_QUERY_ACTIVE_TOOL"
+   }
+  },
+  {
+   "id": "0x111",
+   "names": {
+    "tester": "CAN_ID_ACTIVE_TOOL_RESP",
+    "web": "CAN_ID_ACTIVE_TOOL_RESP"
+   }
+  },
+  {
+   "id": "0x120",
+   "names": {
+    "tester": "CAN_ID_MOTION_CMD",
+    "web": "CAN_ID_MOTION_CMD"
+   }
+  },
+  {
+   "id": "0x130",
+   "names": {
+    "tester": "CAN_ID_SOLDER_SETPOINT",
+    "web": "CAN_ID_SOLDER_SETPOINT"
+   }
+  },
+  {
+   "id": "0x131",
+   "names": {
+    "tester": "CAN_ID_SOLDER_FEEDER_RESET",
+    "web": "CAN_ID_SOLDER_FEEDER_RESET"
+   }
+  },
+  {
+   "id": "0x132",
+   "names": {
+    "tester": "CAN_ID_SOLDER_FEEDER_POS",
+    "web": "CAN_ID_SOLDER_FEEDER_QUERY"
+   }
+  },
+  {
+   "id": "0x135",
+   "names": {
+    "tester": "CAN_ID_SOLDER_TELEMETRY",
+    "web": "CAN_ID_SOLDER_TELEMETRY"
+   }
+  },
+  {
+   "id": "0x140",
+   "names": {
+    "tester": "CAN_ID_DRILL_CMD",
+    "web": "CAN_ID_DRILL_CMD"
+   }
+  },
+  {
+   "id": "0x145",
+   "names": {
+    "tester": "CAN_ID_VACUUM_TELEMETRY",
+    "web": "CAN_ID_VACUUM_TELEMETRY"
+   }
+  },
+  {
+   "id": "0x147",
+   "names": {
+    "tester": "CAN_ID_DRILL_TELEMETRY",
+    "web": "CAN_ID_DRILL_TELEMETRY"
+   }
+  },
+  {
+   "id": "0x150",
+   "names": {
+    "tester": "CAN_ID_AOI_CMD",
+    "web": "CAN_ID_AOI_CMD"
+   }
+  },
+  {
+   "id": "0x155",
+   "names": {
+    "tester": "CAN_ID_AOI_TELEMETRY",
+    "web": "CAN_ID_AOI_TELEMETRY"
+   }
+  },
+  {
+   "id": "0x160",
+   "names": {
+    "tester": "CAN_ID_LASER_CMD",
+    "web": "CAN_ID_LASER_CMD"
+   }
+  },
+  {
+   "id": "0x165",
+   "names": {
+    "tester": "CAN_ID_LASER_TELEMETRY",
+    "web": "CAN_ID_LASER_TELEMETRY"
+   }
+  },
+  {
+   "id": "0x170",
+   "names": {
+    "tester": "CAN_ID_3DP_THERMAL_MOTION",
+    "web": "CAN_ID_3DP_THERMAL_MOTION"
+   }
+  },
+  {
+   "id": "0x173",
+   "names": {
+    "tester": "CAN_ID_3DP_LAYER_FAN_CMD",
+    "web": "CAN_ID_3DP_LAYERFAN_CMD"
+   }
+  },
+  {
+   "id": "0x175",
+   "names": {
+    "tester": "CAN_ID_3DP_HOTEND_TELEM",
+    "web": "CAN_ID_3DP_HOTEND_TELEMETRY"
+   }
+  },
+  {
+   "id": "0x177",
+   "names": {
+    "tester": "CAN_ID_3DP_LAYER_FAN_RPM",
+    "web": "CAN_ID_3DP_LAYERFAN_TELEMETRY"
+   }
+  },
+  {
+   "id": "0x178",
+   "names": {
+    "tester": "CAN_ID_3DP_HOTEND_FAN_CMD",
+    "web": "CAN_ID_3DP_HOTENDFAN_CMD"
+   }
+  },
+  {
+   "id": "0x179",
+   "names": {
+    "tester": "CAN_ID_3DP_HOTEND_FAN_RPM",
+    "web": "CAN_ID_3DP_HOTENDFAN_TELEMETRY"
+   }
+  },
+  {
+   "id": "0x180",
+   "names": {
+    "tester": "CAN_ID_EXP_SPI_CMD",
+    "web": "CAN_ID_EXPANSION_SPI_REQ"
+   }
+  },
+  {
+   "id": "0x181",
+   "names": {
+    "tester": "CAN_ID_EXP_SPI_RESP",
+    "web": "CAN_ID_EXPANSION_SPI_RESP"
+   }
+  },
+  {
+   "id": "0x182",
+   "names": {
+    "tester": "CAN_ID_QUERY_DIAG0",
+    "web": "CAN_ID_EXPANSION_DIAG0_REQ"
+   }
+  },
+  {
+   "id": "0x183",
+   "names": {
+    "tester": "CAN_ID_DIAG0_RESP",
+    "web": "CAN_ID_EXPANSION_DIAG0_RESP"
+   }
+  },
+  {
+   "id": "0x190",
+   "names": {
+    "flasher": "CAN_ID_QUERY_FRAM_STATE",
+    "tester": "CAN_ID_QUERY_FRAM_STATE",
+    "web": "CAN_ID_FRAM_QUERY"
+   }
+  },
+  {
+   "id": "0x191",
+   "names": {
+    "flasher": "CAN_ID_FRAM_STATE_RESP",
+    "tester": "CAN_ID_FRAM_STATE_RESP",
+    "web": "CAN_ID_FRAM_STATE_RESP"
+   }
+  },
+  {
+   "id": "0x192",
+   "names": {
+    "flasher": "CAN_ID_ERASE_FRAM",
+    "tester": "CAN_ID_ERASE_FRAM",
+    "web": "CAN_ID_ERASE_FRAM"
+   }
+  },
+  {
+   "id": "0x1A0",
+   "names": {
+    "flasher": "CAN_ID_SET_EXPANSION_TYPE",
+    "web": "CAN_ID_SET_EXPANSION_TYPE"
+   }
+  },
+  {
+   "id": "0x1A1",
+   "names": {
+    "flasher": "CAN_ID_EXPANSION_TYPE_RESP",
+    "tester": "CAN_ID_EXPANSION_TYPE_RESP",
+    "web": "CAN_ID_EXPANSION_TYPE_RESP"
+   }
+  },
+  {
+   "id": "0x1A2",
+   "names": {
+    "flasher": "CAN_ID_SET_FREE_TOOL",
+    "web": "CAN_ID_SET_FREE_TOOL"
+   }
+  },
+  {
+   "id": "0x1A3",
+   "names": {
+    "flasher": "CAN_ID_FREE_TOOL_CONFIG_RESP",
+    "tester": "CAN_ID_FREE_TOOL_CONFIG_RESP",
+    "web": "CAN_ID_FREE_TOOL_CONFIG_RESP"
+   }
+  },
+  {
+   "id": "0x1A4",
+   "names": {
+    "flasher": "CAN_ID_SET_DEVICE_SERIAL",
+    "web": "CAN_ID_SET_DEVICE_SERIAL"
+   }
+  },
+  {
+   "id": "0x1A5",
+   "names": {
+    "flasher": "CAN_ID_PERIPHERAL_INFO_RESP",
+    "tester": "CAN_ID_PERIPHERAL_INFO_RESP",
+    "web": "CAN_ID_PERIPHERAL_INFO_RESP"
+   }
+  },
+  {
+   "id": "0x1A6",
+   "names": {
+    "flasher": "CAN_ID_SET_MLX_VARIANT",
+    "web": "CAN_ID_SET_MLX_VARIANT"
+   }
+  },
+  {
+   "id": "0x1A7",
+   "names": {
+    "flasher": "CAN_ID_MLX_VARIANT_RESP",
+    "tester": "CAN_ID_MLX_VARIANT_RESP",
+    "web": "CAN_ID_MLX_VARIANT_RESP"
+   }
+  },
+  {
+   "id": "0x1B0",
+   "names": {
+    "tester": "CAN_ID_ELECTROMAGNET_CMD",
+    "web": "CAN_ID_ELECTROMAGNET_CMD"
+   }
+  },
+  {
+   "id": "0x1C0",
+   "names": {
+    "tester": "CAN_ID_SPOT_WELD_CMD",
+    "web": "CAN_ID_WELD_SPOT_CMD"
+   }
+  },
+  {
+   "id": "0x1D0",
+   "names": {
+    "tester": "CAN_ID_UV_CURING_CMD",
+    "web": "CAN_ID_UV_CURING_CMD"
+   }
+  },
+  {
+   "id": "0x1E0",
+   "names": {
+    "tester": "CAN_ID_HOTAIR_CMD",
+    "web": "CAN_ID_HOTAIR_CMD"
+   }
+  },
+  {
+   "id": "0x1F0",
+   "names": {
+    "tester": "CAN_ID_CRIMPING_CMD",
+    "web": "CAN_ID_CRIMPING_CMD"
+   }
+  },
+  {
+   "id": "0x200",
+   "names": {
+    "tester": "CAN_ID_ULTRASONIC_WELD_CMD",
+    "web": "CAN_ID_WELD_ULTRASONIC_CMD"
+   }
+  },
+  {
+   "id": "0x210",
+   "names": {
+    "flasher": "CAN_ID_SLAVE_ENTER_BOOTLOADER",
+    "web": "CAN_ID_SLAVE_ENTER_BOOTLOADER"
+   }
+  },
+  {
+   "id": "0x211",
+   "names": {
+    "flasher": "CAN_ID_SLAVE_START_UPDATE",
+    "web": "CAN_ID_SLAVE_START_UPDATE"
+   }
+  },
+  {
+   "id": "0x212",
+   "names": {
+    "flasher": "CAN_ID_SLAVE_DIGEST_CHUNK",
+    "web": "CAN_ID_SLAVE_DIGEST_CHUNK"
+   }
+  },
+  {
+   "id": "0x213",
+   "names": {
+    "flasher": "CAN_ID_SLAVE_DATA",
+    "web": "CAN_ID_SLAVE_DATA"
+   }
+  },
+  {
+   "id": "0x214",
+   "names": {
+    "flasher": "CAN_ID_SLAVE_END_UPDATE",
+    "web": "CAN_ID_SLAVE_END_UPDATE"
+   }
+  },
+  {
+   "id": "0x215",
+   "names": {
+    "flasher": "CAN_ID_SLAVE_STATUS",
+    "web": "CAN_ID_SLAVE_STATUS"
+   }
+  },
+  {
+   "id": "0x216",
+   "names": {
+    "flasher": "CAN_ID_SLAVE_PROGRESS",
+    "web": "CAN_ID_SLAVE_PROGRESS"
+   }
+  },
+  {
+   "id": "0x217",
+   "names": {
+    "flasher": "CAN_ID_SLAVE_VERSION_RESP_1",
+    "web": "CAN_ID_SLAVE_VERSION_RESP_1"
+   }
+  },
+  {
+   "id": "0x218",
+   "names": {
+    "flasher": "CAN_ID_SLAVE_VERSION_RESP_2",
+    "web": "CAN_ID_SLAVE_VERSION_RESP_2"
+   }
+  },
+  {
+   "id": "0x219",
+   "names": {
+    "flasher": "CAN_ID_SLAVE_VERIFY_FAIL_REASON",
+    "web": "CAN_ID_SLAVE_VERIFY_FAIL_REASON"
+   }
+  },
+  {
+   "id": "0x230",
+   "names": {
+    "tester": "CAN_ID_PASTE_JETTING_CONFIG",
+    "web": "CAN_ID_PASTE_JETTING_CONFIG"
+   }
+  },
+  {
+   "id": "0x231",
+   "names": {
+    "tester": "CAN_ID_PASTE_JETTING_PULSE",
+    "web": "CAN_ID_PASTE_JETTING_PULSE"
+   }
+  },
+  {
+   "id": "0x240",
+   "names": {
+    "tester": "CAN_ID_ADS1115_CONFIG",
+    "web": "CAN_ID_FLYING_PROBE_ADS_CONFIG"
+   }
+  },
+  {
+   "id": "0x241",
+   "names": {
+    "tester": "CAN_ID_ADS1115_TRIGGER",
+    "web": "CAN_ID_FLYING_PROBE_ADS_TRIGGER"
+   }
+  },
+  {
+   "id": "0x242",
+   "names": {
+    "tester": "CAN_ID_ADS1115_RESULT",
+    "web": "CAN_ID_FLYING_PROBE_ADS_RESULT"
+   }
+  },
+  {
+   "id": "0x243",
+   "names": {
+    "tester": "CAN_ID_FLYING_PROBE_BASIC",
+    "web": "CAN_ID_FLYING_PROBE_BASIC"
+   }
+  },
+  {
+   "id": "0x250",
+   "names": {
+    "tester": "CAN_ID_THERMAL_TRIGGER",
+    "web": "CAN_ID_THERMAL_TRIGGER"
+   }
+  },
+  {
+   "id": "0x251",
+   "names": {
+    "tester": "CAN_ID_THERMAL_STATUS",
+    "web": "CAN_ID_THERMAL_STATUS"
+   }
+  },
+  {
+   "id": "0x252",
+   "names": {
+    "tester": "CAN_ID_THERMAL_RAW_CHUNK_REQ",
+    "web": "CAN_ID_THERMAL_RAW_CHUNK_REQ"
+   }
+  },
+  {
+   "id": "0x253",
+   "names": {
+    "tester": "CAN_ID_THERMAL_RAW_CHUNK",
+    "web": "CAN_ID_THERMAL_RAW_CHUNK_RESP"
+   }
+  },
+  {
+   "id": "0x254",
+   "names": {
+    "tester": "CAN_ID_THERMAL_CALIB_CHUNK_REQ",
+    "web": "CAN_ID_THERMAL_CAL_CHUNK_REQ"
+   }
+  },
+  {
+   "id": "0x255",
+   "names": {
+    "tester": "CAN_ID_THERMAL_CALIB_CHUNK",
+    "web": "CAN_ID_THERMAL_CAL_CHUNK_RESP"
+   }
+  },
+  {
+   "id": "0x7E9",
+   "names": {
+    "flasher": "CAN_ID_VERSION_PATCH_RESPONSE",
+    "web": "CAN_ID_VERSION_PATCH_RESPONSE"
+   }
+  },
+  {
+   "id": "0x7F0",
+   "names": {
+    "flasher": "CAN_ID_ENTER_BOOTLOADER",
+    "web": "CAN_ID_ENTER_BOOTLOADER"
+   }
+  },
+  {
+   "id": "0x7F1",
+   "names": {
+    "flasher": "CAN_ID_START_UPDATE",
+    "web": "CAN_ID_START_UPDATE"
+   }
+  },
+  {
+   "id": "0x7F2",
+   "names": {
+    "flasher": "CAN_ID_DATA",
+    "web": "CAN_ID_DATA"
+   }
+  },
+  {
+   "id": "0x7F3",
+   "names": {
+    "flasher": "CAN_ID_PAGE_ACK",
+    "web": "CAN_ID_PAGE_ACK"
+   }
+  },
+  {
+   "id": "0x7F4",
+   "names": {
+    "flasher": "CAN_ID_END_UPDATE",
+    "web": "CAN_ID_END_UPDATE"
+   }
+  },
+  {
+   "id": "0x7F5",
+   "names": {
+    "flasher": "CAN_ID_STATUS",
+    "web": "CAN_ID_STATUS"
+   }
+  },
+  {
+   "id": "0x7F6",
+   "names": {
+    "flasher": "CAN_ID_HEARTBEAT",
+    "web": "CAN_ID_HEARTBEAT"
+   }
+  },
+  {
+   "id": "0x7F7",
+   "names": {
+    "flasher": "CAN_ID_HMAC_CHUNK",
+    "web": "CAN_ID_HMAC_CHUNK"
+   }
+  },
+  {
+   "id": "0x7F8",
+   "names": {
+    "flasher": "CAN_ID_QUERY_VERSION",
+    "tester": "CAN_ID_QUERY_VERSION",
+    "web": "CAN_ID_QUERY_VERSION"
+   }
+  },
+  {
+   "id": "0x7F9",
+   "names": {
+    "flasher": "CAN_ID_VERSION_RESPONSE",
+    "tester": "CAN_ID_VERSION_RESPONSE",
+    "web": "CAN_ID_VERSION_RESPONSE"
+   }
+  },
+  {
+   "id": "0x7FA",
+   "names": {
+    "flasher": "CAN_ID_BOOTLOADER_VERSION_RESPONSE",
+    "web": "CAN_ID_BOOTLOADER_VERSION_RESPONSE"
+   }
+  },
+  {
+   "id": "0x7FB",
+   "names": {
+    "flasher": "CAN_ID_QUERY_ERROR_COUNTERS",
+    "web": "CAN_ID_QUERY_ERROR_COUNTERS"
+   }
+  },
+  {
+   "id": "0x7FC",
+   "names": {
+    "flasher": "CAN_ID_ERROR_COUNTERS_RESPONSE",
+    "web": "CAN_ID_ERROR_COUNTERS_RESPONSE"
+   }
+  },
+  {
+   "id": "0x7FD",
+   "names": {
+    "flasher": "CAN_ID_AUTHORIZE_DOWNGRADE",
+    "web": "CAN_ID_AUTHORIZE_DOWNGRADE"
+   }
+  },
+  {
+   "id": "0x7FE",
+   "names": {
+    "flasher": "CAN_ID_READBACK",
+    "web": "CAN_ID_READBACK"
+   }
+  },
+  {
+   "id": "0x7FF",
+   "names": {
+    "flasher": "CAN_ID_READBACK_PAGE_ACK",
+    "web": "CAN_ID_READBACK_PAGE_ACK"
+   }
+  }
+ ],
+ "magic_payloads": [
+  {
+   "name": "enter_bootloader",
+   "id": "0x7F0",
+   "data": "B0071D5A"
+  },
+  {
+   "name": "authorize_downgrade",
+   "id": "0x7FD",
+   "data": "D09E12AD"
+  },
+  {
+   "name": "erase_fram",
+   "id": "0x192",
+   "data": "E3A5E0FF"
+  },
+  {
+   "name": "solder_feeder_reset",
+   "id": "0x131",
+   "data": "52535030"
+  },
+  {
+   "name": "clear_error",
+   "id": "0x1B2",
+   "data": "434C4552"
+  }
+ ],
+ "slcan_encode": [
+  {
+   "id": "0x7F8",
+   "data": "00",
+   "line": "t7F8100"
+  },
+  {
+   "id": "0x7F0",
+   "data": "B0071D5A",
+   "line": "t7F04B0071D5A"
+  },
+  {
+   "id": "0x000",
+   "data": "",
+   "line": "t0000"
+  },
+  {
+   "id": "0x7FF",
+   "data": "0102030405060708",
+   "line": "t7FF80102030405060708"
+  },
+  {
+   "id": "0x100",
+   "data": "FF000A0B00000000",
+   "line": "t1008FF000A0B00000000"
+  },
+  {
+   "id": "0x1A4",
+   "data": "0A",
+   "line": "t1A410A"
+  }
+ ],
+ "slcan_encode_rejected": [
+  {
+   "id": "0x800",
+   "data": ""
+  },
+  {
+   "id": "0xFFF",
+   "data": "00"
+  },
+  {
+   "id": "0x100",
+   "data": "000102030405060708"
+  }
+ ],
+ "slcan_decode": [
+  {
+   "name": "active tool answer",
+   "line": "t1116010000000000",
+   "frame": {
+    "id": "0x111",
+    "data": "010000000000"
+   }
+  },
+  {
+   "name": "version answer",
+   "line": "t7F98000303CC01000003",
+   "frame": {
+    "id": "0x7F9",
+    "data": "000303CC01000003"
+   }
+  },
+  {
+   "name": "empty payload",
+   "line": "t1000",
+   "frame": {
+    "id": "0x100",
+    "data": ""
+   }
+  },
+  {
+   "name": "full eight bytes",
+   "line": "t7FF8FFFFFFFFFFFFFFFF",
+   "frame": {
+    "id": "0x7FF",
+    "data": "FFFFFFFFFFFFFFFF"
+   }
+  },
+  {
+   "name": "lower-case hex digits",
+   "line": "t1a6101",
+   "frame": {
+    "id": "0x1A6",
+    "data": "01"
+   }
+  },
+  {
+   "name": "DLC 9 is not a CAN 2.0 frame",
+   "line": "t1239010203040506070809",
+   "frame": null
+  },
+  {
+   "name": "DLC F is not a CAN 2.0 frame",
+   "line": "t123F000000000000000000000000000000",
+   "frame": null
+  },
+  {
+   "name": "truncated payload",
+   "line": "t11140102",
+   "frame": null
+  },
+  {
+   "name": "non-hex payload",
+   "line": "t1116ZZ0000000000",
+   "frame": null
+  },
+  {
+   "name": "non-hex identifier",
+   "line": "t1G10",
+   "frame": null
+  },
+  {
+   "name": "signed identifier",
+   "line": "t+1F0",
+   "frame": null
+  },
+  {
+   "name": "0x-prefixed identifier",
+   "line": "t0x10",
+   "frame": null
+  },
+  {
+   "name": "underscore in identifier",
+   "line": "t1_20",
+   "frame": null
+  },
+  {
+   "name": "empty line",
+   "line": "",
+   "frame": null
+  },
+  {
+   "name": "status character only",
+   "line": "z",
+   "frame": null
+  },
+  {
+   "name": "bare t",
+   "line": "t",
+   "frame": null
+  },
+  {
+   "name": "identifier cut short",
+   "line": "t11",
+   "frame": null
+  },
+  {
+   "name": "extended frame whose 29-bit id looks like 0x111",
+   "line": "T0000011180102030405060708",
+   "frame": null
+  },
+  {
+   "name": "extended frame without payload",
+   "line": "T000001110",
+   "frame": null
+  },
+  {
+   "name": "remote request, standard",
+   "line": "r1110",
+   "frame": null
+  },
+  {
+   "name": "remote request, extended",
+   "line": "R000001110",
+   "frame": null
+  },
+  {
+   "name": "adapter timestamp after the payload",
+   "line": "t11101234",
+   "frame": {
+    "id": "0x111",
+    "data": ""
+   },
+   "note": "Adapters with timestamps enabled append 4 hex digits after the payload. This protocol never enables them, so the readers may differ here; each client documents what it does."
+  }
+ ],
+ "quick_state": [
+  {
+   "name": "four-byte answer from firmware before the thermal guard",
+   "data": "0A000100",
+   "expect": {
+    "tool_id": 10,
+    "system_error": false,
+    "can_error": true,
+    "booting": false,
+    "thermal_fault": null,
+    "reset_cause": null,
+    "watchdog_reset": false
+   }
+  },
+  {
+   "name": "five bytes: thermal fault, no reset cause",
+   "data": "0A01000002",
+   "expect": {
+    "tool_id": 10,
+    "system_error": true,
+    "can_error": false,
+    "booting": false,
+    "thermal_fault": 2,
+    "reset_cause": null,
+    "watchdog_reset": false
+   }
+  },
+  {
+   "name": "six bytes: watchdog reset",
+   "data": "000000000001",
+   "expect": {
+    "tool_id": 0,
+    "system_error": false,
+    "can_error": false,
+    "booting": false,
+    "thermal_fault": 0,
+    "reset_cause": 1,
+    "watchdog_reset": true
+   }
+  },
+  {
+   "name": "six bytes: power-on reset, boot sequence running",
+   "data": "190000010108",
+   "expect": {
+    "tool_id": 25,
+    "system_error": false,
+    "can_error": false,
+    "booting": true,
+    "thermal_fault": 1,
+    "reset_cause": 8,
+    "watchdog_reset": false
+   }
+  },
+  {
+   "name": "eight bytes: communication watchdog error, clear refused because hot",
+   "data": "0A01000000080505",
+   "expect": {
+    "tool_id": 10,
+    "system_error": true,
+    "can_error": false,
+    "booting": false,
+    "thermal_fault": 0,
+    "reset_cause": 8,
+    "error_reason": 5,
+    "error_reason_name": "COMMS_WATCHDOG",
+    "clear_result": 5,
+    "clear_result_name": "REFUSED_HOT"
+   }
+  },
+  {
+   "name": "eight bytes: no error, error cleared",
+   "data": "0000000000080001",
+   "expect": {
+    "tool_id": 0,
+    "system_error": false,
+    "can_error": false,
+    "booting": false,
+    "thermal_fault": 0,
+    "reset_cause": 8,
+    "error_reason": 0,
+    "error_reason_name": null,
+    "clear_result": 1,
+    "clear_result_name": "CLEARED"
+   }
+  },
+  {
+   "name": "six bytes: error reason not reported by older firmware",
+   "data": "000000000001",
+   "expect": {
+    "tool_id": 0,
+    "system_error": false,
+    "can_error": false,
+    "booting": false,
+    "thermal_fault": 0,
+    "reset_cause": 1,
+    "error_reason": null,
+    "clear_result": null
+   }
+  },
+  {
+   "name": "three bytes is not an answer",
+   "data": "000000",
+   "expect": null
+  }
+ ],
+ "version_query": [
+  {
+   "name": "application with patch",
+   "frames": [
+    [
+     "0x7F9",
+     "000303CC01000003"
+    ],
+    [
+     "0x7E9",
+     "000500"
+    ]
+   ],
+   "expect": {
+    "responder": "application",
+    "hardware_id": "0x0303CC01",
+    "major": 0,
+    "minor": 3,
+    "patch": 5,
+    "patch_aware": true,
+    "accepts_patch_in_end_update": false
+   }
+  },
+  {
+   "name": "application that predates the patch frame",
+   "frames": [
+    [
+     "0x7F9",
+     "000303CC01000003"
+    ]
+   ],
+   "expect": {
+    "responder": "application",
+    "hardware_id": "0x0303CC01",
+    "major": 0,
+    "minor": 3,
+    "patch": null,
+    "patch_aware": false,
+    "accepts_patch_in_end_update": false
+   }
+  },
+  {
+   "name": "patch 0xFF means unknown but the board is patch-aware",
+   "frames": [
+    [
+     "0x7F9",
+     "000303CC01000003"
+    ],
+    [
+     "0x7E9",
+     "00FF00"
+    ]
+   ],
+   "expect": {
+    "responder": "application",
+    "hardware_id": "0x0303CC01",
+    "major": 0,
+    "minor": 3,
+    "patch": null,
+    "patch_aware": true,
+    "accepts_patch_in_end_update": false
+   }
+  },
+  {
+   "name": "bootloader with 0x7FA and a patch frame announcing the end-update patch",
+   "frames": [
+    [
+     "0x7F9",
+     "010303CC01000004"
+    ],
+    [
+     "0x7FA",
+     "000309"
+    ],
+    [
+     "0x7E9",
+     "010701"
+    ]
+   ],
+   "expect": {
+    "responder": "bootloader",
+    "hardware_id": "0x0303CC01",
+    "major": 0,
+    "minor": 4,
+    "patch": 7,
+    "patch_aware": true,
+    "accepts_patch_in_end_update": true,
+    "bootloader": [
+     0,
+     3,
+     9
+    ]
+   }
+  },
+  {
+   "name": "patch frame longer than 3 bytes: extra bytes ignored",
+   "frames": [
+    [
+     "0x7F9",
+     "000303CC01000003"
+    ],
+    [
+     "0x7E9",
+     "0009007F"
+    ]
+   ],
+   "expect": {
+    "responder": "application",
+    "hardware_id": "0x0303CC01",
+    "major": 0,
+    "minor": 3,
+    "patch": 9,
+    "patch_aware": true,
+    "accepts_patch_in_end_update": false
+   }
+  },
+  {
+   "name": "patch frame shorter than 3 bytes is not a patch frame",
+   "frames": [
+    [
+     "0x7F9",
+     "000303CC01000003"
+    ],
+    [
+     "0x7E9",
+     "0005"
+    ]
+   ],
+   "expect": {
+    "responder": "application",
+    "hardware_id": "0x0303CC01",
+    "major": 0,
+    "minor": 3,
+    "patch": null,
+    "patch_aware": false,
+    "accepts_patch_in_end_update": false
+   }
+  },
+  {
+   "name": "version answer shorter than 8 bytes gets no answer",
+   "frames": [
+    [
+     "0x7F9",
+     "000303CC010000"
+    ]
+   ],
+   "expect": null
+  }
+ ],
+ "minor_field": [
+  {
+   "minor": 3,
+   "patch": 5,
+   "bootloader_accepts_patch": true,
+   "expect": 34051
+  },
+  {
+   "minor": 3,
+   "patch": 5,
+   "bootloader_accepts_patch": false,
+   "expect": 3
+  },
+  {
+   "minor": 3,
+   "patch": null,
+   "bootloader_accepts_patch": true,
+   "expect": 3
+  },
+  {
+   "minor": 3,
+   "patch": 0,
+   "bootloader_accepts_patch": true,
+   "expect": 32771
+  },
+  {
+   "minor": 3,
+   "patch": 127,
+   "bootloader_accepts_patch": true,
+   "expect": 65283
+  },
+  {
+   "minor": 3,
+   "patch": 128,
+   "bootloader_accepts_patch": true,
+   "expect": 3
+  },
+  {
+   "minor": 255,
+   "patch": 1,
+   "bootloader_accepts_patch": true,
+   "expect": 33279
+  },
+  {
+   "minor": 3,
+   "patch": -1,
+   "bootloader_accepts_patch": true,
+   "expect": 3
+  }
+ ],
+ "version_order": [
+  {
+   "installed": [
+    0,
+    3,
+    5
+   ],
+   "candidate": [
+    0,
+    3,
+    5
+   ],
+   "expect": 0
+  },
+  {
+   "installed": [
+    0,
+    3,
+    5
+   ],
+   "candidate": [
+    0,
+    3,
+    6
+   ],
+   "expect": 1
+  },
+  {
+   "installed": [
+    0,
+    3,
+    5
+   ],
+   "candidate": [
+    0,
+    3,
+    4
+   ],
+   "expect": -1
+  },
+  {
+   "installed": [
+    0,
+    3,
+    null
+   ],
+   "candidate": [
+    0,
+    3,
+    4
+   ],
+   "expect": 0
+  },
+  {
+   "installed": [
+    0,
+    3,
+    5
+   ],
+   "candidate": [
+    0,
+    3,
+    null
+   ],
+   "expect": 0
+  },
+  {
+   "installed": [
+    0,
+    3,
+    9
+   ],
+   "candidate": [
+    0,
+    4,
+    0
+   ],
+   "expect": 1
+  },
+  {
+   "installed": [
+    0,
+    4,
+    0
+   ],
+   "candidate": [
+    0,
+    3,
+    9
+   ],
+   "expect": -1
+  },
+  {
+   "installed": [
+    1,
+    0,
+    0
+   ],
+   "candidate": [
+    0,
+    9,
+    9
+   ],
+   "expect": -1
+  },
+  {
+   "installed": [
+    0,
+    9,
+    9
+   ],
+   "candidate": [
+    1,
+    0,
+    0
+   ],
+   "expect": 1
+  }
+ ]
+}
