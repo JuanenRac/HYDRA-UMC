@@ -184,8 +184,8 @@ O firmware configura-se ao compilar, através de variáveis de ambiente; a ponte
 Compilar o firmware exige a cadeia de ferramentas Arm GNU (`arm-none-eabi-gcc` 10.3 ou superior), `git` e `python`; os testes de anfitrião só precisam de um compilador de C normal e de Python. O mesmo script funciona em Linux, macOS e Windows.
 
 ```bash
-python3 tools/build_firmware.py                                  # builds every MCU target and runs the host tests (step 1b)
-python3 tools/build_firmware.py g474                             # only the Robot Controller Board; h745 builds only the Kinematic Brain
+python3 tools/build_firmware.py                      # builds every MCU target and runs the host tests (step 1b)
+python3 tools/build_firmware.py g474                 # only the Robot Controller Board; h745 builds only the Kinematic Brain
 python tools/verify_firmware_inventory.py            # read-only check of the committed six-component firmware inventory
 python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the firmware sources, the image header and the CAN identifiers
 ```

@@ -184,8 +184,8 @@ Die Firmware wird beim Bauen über Umgebungsvariablen konfiguriert; die SPI-Brü
 Das Bauen der Firmware braucht die Arm-GNU-Toolchain (`arm-none-eabi-gcc` 10.3 oder neuer), `git` und `python`; die Host-Tests brauchen nur einen gewöhnlichen C-Compiler und Python. Dasselbe Skript läuft unter Linux, macOS und Windows.
 
 ```bash
-python3 tools/build_firmware.py                                  # builds every MCU target and runs the host tests (step 1b)
-python3 tools/build_firmware.py g474                             # only the Robot Controller Board; h745 builds only the Kinematic Brain
+python3 tools/build_firmware.py                      # builds every MCU target and runs the host tests (step 1b)
+python3 tools/build_firmware.py g474                 # only the Robot Controller Board; h745 builds only the Kinematic Brain
 python tools/verify_firmware_inventory.py            # read-only check of the committed six-component firmware inventory
 python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the firmware sources, the image header and the CAN identifiers
 ```
