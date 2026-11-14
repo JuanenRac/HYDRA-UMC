@@ -86,74 +86,13 @@ extern IWDG_HandleTypeDef  hiwdg;
 // STACK A), and as IpcFrame_t frame_type bytes (talking to CM7) - the
 // whole point of keeping ONE numeric offset space is that this gateway
 // core can translate between all three without a lookup table.
-#define OFS_ENTER_BOOTLOADER  0x00
-#define OFS_START_UPDATE      0x01
-#define OFS_DATA               0x02
-#define OFS_PAGE_ACK            0x03
-#define OFS_END_UPDATE           0x04
-#define OFS_STATUS                 0x05
-#define OFS_HEARTBEAT                0x06
-#define OFS_HMAC_CHUNK                 0x07 // the 64-byte Ed25519 signature of the image: DLC=8 x 8 frames in order, right after START_UPDATE (URTC bootloaders behind the relay still take an HMAC in 4)
-#define OFS_QUERY_VERSION                0x08
-#define OFS_VERSION_RESPONSE               0x09
-#define OFS_BOOTLOADER_VERSION               0x0A
-#define OFS_QUERY_ERROR_COUNTERS               0x0B
-#define OFS_ERROR_COUNTERS_RESPONSE               0x0C
-#define OFS_AUTHORIZE_DOWNGRADE                     0x0D
-#define OFS_BACKUP_READ_REQUEST                       0x0E
-#define OFS_BACKUP_READ_RESPONSE                        0x0F
-#define OFS_BACKUP_READ_PAGE_ACK                          0x14
+#include "boot_protocol_ids.h"  // OFS_*, STATUS_*, VERIFY_FAIL_REASON_*, META_STATE_*
 #define OFS_RELAY_SEND                                      0x12 // opaque to this core - just forwarded, see this file's own header
 #define OFS_RELAY_RECV                                        0x13 // opaque to this core - just forwarded
 // One emitter per identifier (tools/can_ids.py): the controller board answers on its own identifiers, not on the one the request came in on.
 #define OFS_AXIS_STATUS_RESPONSE                              0x16 // sent BY the controller board's application
 #define OFS_POLL_STATUS                                       0x17 // SPI frame type from the CM5, DLC=1: the frame type to wait for; nothing is transmitted on CAN
 #define OFS_RELAY_RECV_RESPONSE                               0x18 // sent BY the controller board's application
-// see mcu_stm32g474/boot/bootloader_common.h's own comment
-// for the full design - sent BY an external SPI/CAN master, never by the
-// application itself. Resets FirmwareMetadata_t's own boot_attempts back
-// to 0.
-#define OFS_CONFIRM_HEALTHY                                   0x15
-
-// The signed image header and the downgrade token (image_header.h, update_verify.h). The numbers follow tools/can_ids.py (and the frame types of
-// the SPI-OTA frames are the same offsets); each has ONE emitter.
-#define OFS_IMAGE_HEADER                                      0x19 // host -> bootloader, DLC=8 x 8 frames in order, after START_UPDATE: the 64-byte header of the image
-#define OFS_DOWNGRADE_NONCE_REQUEST                           0x1A // host -> bootloader, DLC=1: which half (0 or 1) of the 16-byte nonce of this session it wants
-#define OFS_DOWNGRADE_TOKEN                                   0x1B // host -> bootloader, DLC=8 x 8 frames, optional: the Ed25519 signature that allows exactly one downgrade
-#define OFS_DOWNGRADE_NONCE_RESPONSE                          0x1C // sent BY this bootloader, DLC=8: the half that was asked for
-// Emergency stop state and slot scan (docs/ESTOP_CAN.md, docs/SLOT_SCAN.md): offsets inside the slot window of a controller board; the brain only listens to the first.
-#define OFS_ESTOP_STATE                                       0x1D // sent BY the application of a controller board, DLC=4: latched or ready, epoch, last accepted sequence
-#define OFS_SLOT_SCAN_PROBE                                   0x1E // host -> every board of the slot window, DLC=8
-#define OFS_SLOT_SCAN_REPLY                                   0x1F // sent BY a controller board (bootloader or application) after a delay taken from its unique identifier, DLC=8
-
-// F-RAM erase and self-test of the controller boards (docs/FRAM_ERASE.md): the brain relays them, the frame type is the offset. They need the window of 64 identifiers: the first 32 were all taken.
-#define OFS_FRAM_ERASE_REQUEST             0x20 // host -> bootloader, DLC=8: erase the whole F-RAM (writes zeros and reads them back)
-#define OFS_FRAM_ERASE_RESPONSE            0x21 // sent BY the bootloader, DLC=8: status and the bytes written
-#define OFS_FRAM_SELFTEST_REQUEST          0x22 // host -> bootloader, DLC=8: write two patterns over a scratch area, read them back and put the old bytes back
-#define OFS_FRAM_SELFTEST_RESPONSE         0x23 // sent BY the bootloader, DLC=8: status and the address that failed
-
-#define STATUS_LISTENING     0x01
-#define STATUS_ERASING       0x02
-#define STATUS_RECEIVING     0x03
-#define STATUS_VERIFYING     0x06
-#define STATUS_COPYING       0x07
-#define STATUS_VERIFY_OK     0x04
-#define STATUS_VERIFY_FAIL   0x05
-#define VERIFY_FAIL_REASON_INCOMPLETE  0x01
-#define VERIFY_FAIL_REASON_CRC32       0x02
-#define VERIFY_FAIL_REASON_HMAC        0x03
-#define VERIFY_FAIL_REASON_SIGNATURE    VERIFY_FAIL_REASON_HMAC // the same reason code: the signature of the image did not verify
-#define VERIFY_FAIL_REASON_HARDWARE_ID 0x04
-#define VERIFY_FAIL_REASON_ROLLBACK    0x05
-#define VERIFY_FAIL_REASON_HEADER      0x06 // the signed header is missing, is not ours, or says something that is not true of what arrived
-#define STATUS_ERROR          0xFF
-// reported once this bootloader has refused to jump to an
-// app that reset back here BOOT_MAX_ATTEMPTS times in a row without ever
-// being confirmed healthy - see boot_decision.h.
-#define STATUS_ROLLBACK_SUSPECT 0x08
-
-#define META_STATE_APP_VALID     1
-#define META_STATE_COPY_PENDING  2
 
 typedef struct {
     uint32_t magic;
