@@ -1,17 +1,28 @@
 # =============================================================================
-# HYDRA-UMC - virtual CAN interface check (manual)
+# HYDRA-UMC - virtual CAN interface check
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-# Started by hand only. It brings up a virtual CAN interface of the Linux kernel (vcan0) on the runner and runs tests/vcan_check.py over it: the frames
+# Started by hand, and on a pull request that touches the bus contract, the checks or this file. It brings up a virtual CAN interface of the Linux kernel (vcan0) on the runner and runs tests/vcan_check.py and tests/vcan_urtc_vectors.py over it: the frames
 # of the emergency stop, the slot scan and the health frame travel through real kernel sockets, and the node state machine of the reference reads
 # them back from the socket. It checks the identifier table and the frame layouts with a real CAN stack; it does not model arbitration or bit timing
 # and it says nothing about a board. If the runner cannot load the vcan module the job says so and fails.
 
-name: Virtual CAN check (manual)
+name: Virtual CAN check
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "tests/vcan_check.py"
+      - "tests/vcan_urtc_vectors.py"
+      - "tests/urtc_can_conformance_vectors.json"
+      - "tools/can_ids.py"
+      - "tools/estop_can.py"
+      - "tools/health_frame.py"
+      - "tools/slot_scan.py"
+      - "contracts/can_ids.json"
+      - ".github/workflows/vcan-check.yml"
 
 permissions:
   contents: read
@@ -47,4 +58,6 @@ jobs:
 
       - name: Run the contract over vcan0
         shell: bash
-        run: python3 tests/vcan_check.py vcan0
+        run: |
+          python3 tests/vcan_check.py vcan0
+          python3 tests/vcan_urtc_vectors.py vcan0
