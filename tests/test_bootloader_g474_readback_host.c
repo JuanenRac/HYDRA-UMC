@@ -80,6 +80,8 @@ static int tx_busy_polls;         /* how many polls of the transmit FIFO answer 
 
 /* What the host answers on the receive side while the bootloader waits for the acknowledgement of a page. */
 enum { RX_NONE, RX_ACK, RX_WRONG_ID, RX_WRONG_PAGE, RX_WRONG_LENGTH, RX_READ_ERROR };
+/* OFS_BACKUP_READ_PAGE_ACK of bootloader_common.h, which is not included yet where the stand-in receive function is defined (checked below). */
+#define PAGE_ACK_OFFSET 0x14u
 static int rx_mode;
 static uint32_t rx_page;
 static uint32_t slot_base_for_acks;
@@ -124,7 +126,7 @@ HAL_StatusTypeDef HAL_FDCAN_GetRxMessage(FDCAN_HandleTypeDef *h, uint32_t fifo, 
     uint32_t page = rx_page;
     header->IdType = FDCAN_STANDARD_ID;
     header->RxFrameType = FDCAN_DATA_FRAME;
-    header->Identifier = slot_base_for_acks + OFS_BACKUP_READ_PAGE_ACK;
+    header->Identifier = slot_base_for_acks + PAGE_ACK_OFFSET;
     header->DataLength = 4;
     if (rx_mode == RX_WRONG_ID) header->Identifier += 1;
     if (rx_mode == RX_WRONG_LENGTH) header->DataLength = 3;
@@ -176,6 +178,8 @@ HAL_StatusTypeDef HAL_FLASH_Program(uint32_t type, uint32_t address, uint64_t da
 #include "bootloader_flash.c"
 #include "bootloader_trust.c"
 #include "bootloader_protocol.c"
+
+_Static_assert(OFS_BACKUP_READ_PAGE_ACK == PAGE_ACK_OFFSET, "the stand-in acknowledges on the identifier the bootloader waits for");
 
 /* ---- helpers ------------------------------------------------------------------------------------------------------------------- */
 #define SLOT_BASE 0x600UL
