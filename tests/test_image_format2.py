@@ -120,6 +120,16 @@ class SigningStepOutputTests(unittest.TestCase):
         self.assertEqual(h2.sign_image2(self.seed, header, self.image), self.sig2)
         self.assertEqual(ed25519.public_key(self.seed), self.public)
 
+    def test_the_image_is_one_the_c_bootloader_also_accepts(self):
+        """The C decision (update_verify.h) also wants the reset vector inside the image and the vector words of the header to be the first words
+        of the image; the Python reference does not look, so a fixed image that breaks it passes here and fails the host tests of the bootloaders."""
+        first, reset = struct.unpack_from("<II", self.image, 0)
+        header = h2.parse_header2(self.hdr2)
+        self.assertEqual((first, reset), (header.vector_sp, header.vector_reset))
+        self.assertGreaterEqual(reset, header.link_address)
+        self.assertLess(reset - header.link_address, header.image_size)
+        self.assertEqual(header.image_size % 8, 0)
+
     def test_the_files_have_the_sizes_the_updater_expects(self):
         self.assertEqual((len(self.hdr2), len(self.sig2)), (64, 64))
         self.assertEqual(h2.parse_header2(self.hdr2).image_size, len(self.image))
