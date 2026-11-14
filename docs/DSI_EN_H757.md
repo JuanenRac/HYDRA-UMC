@@ -138,6 +138,10 @@ Only in Actions, on temporary branches, behind the switch `HYDRA_UI_H757` that i
 4. **Display**: the FMC SDRAM start-up test, the LTDC/DSI configuration and the ILI9881 start-up sequence (candidates from the CubeMX project, not confirmed), DMA2D; bench only.
 5. **Link**: the heartbeat and status exchange with the Jetson once its frame is defined; the position frame of the brain.
 
+## LTDC and DMA2D driver
+
+`src/mcu_stm32h757/CM7/DisplayLtdc.c` is the driver of the LTDC (one layer on the frame buffer in the SDRAM) and of the DMA2D (fills and copies) of the display, under the numbers of `Common/display_plan.h`: the timing words, the window of the layer and the line length come from the size, the porches and the format of `config/display.cfg`, and a frame buffer that does not fit its window is refused. The layer is complete before the controller is enabled, and a DMA2D job is polled up to `poll_limit` and given up when it hangs. It ships off (`HYDRA_DISPLAY_LTDC 0`: the unit is empty and no register is touched); `tests/test_display_ltdc.c` runs it against a double of the registers and a build step compiles it against the real header. The DSI host and the start-up of the panel are not in it. Nothing has run on a board.
+
 ## Open decisions
 
 | Decision | Default until the owner decides |
