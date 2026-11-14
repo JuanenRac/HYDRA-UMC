@@ -65,10 +65,10 @@ class BumpFirmwareVersionsTest(unittest.TestCase):
 
 class BuildScriptsDoNotBumpTest(unittest.TestCase):
     def test_no_build_script_runs_a_bump(self):
-        for script in ("build_firmware.sh", "build_firmware.bat"):
+        for script in ("tools/build_firmware.py",):
             for number, line in enumerate((ROOT / script).read_text(encoding="utf-8").splitlines(), start=1):
                 code = line.strip().lower()
-                if not code or code.startswith(("#", "rem ", "echo", "printf")):
+                if not code or code.startswith(("#", "print(")):
                     continue
                 self.assertNotIn("bump_version", code, f"{script}:{number}")
                 self.assertNotIn("bump_manifest_version", code, f"{script}:{number}")

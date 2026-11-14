@@ -177,10 +177,10 @@ class SwitchesShipOff(unittest.TestCase):
 
     def test_the_new_host_tests_are_in_both_lists(self):
         table = text(ROOT / "tools" / "host_tests.py")
-        script = text(ROOT / "build_firmware.sh")
+        script = text(ROOT / "tools" / "build_firmware.py")
         for source in ("test_app_support.c", "test_spi_system.c", "test_rcc_owner.c", "test_flash_layer.c"):
             self.assertIn(source, table, source)
-            self.assertIn(source, script, source)
+            self.assertIn(source.replace(".c", ""), script, source)
         self.assertEqual(table.count("tests/test_flash_layer.c"), 3)
 
     def test_the_cm4_stages_the_reply_through_one_function(self):

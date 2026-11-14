@@ -1,7 +1,7 @@
-name: Build script port check
+name: Build script host tests
 
-# Started by hand. Runs the logic tests of the host with the shell script and with tools/build_firmware.py, with a real C compiler, and fails if
-# the two do not report the same tests passing. Nothing is built for a board and nothing is published.
+# Started by hand. Runs the logic tests of the host of tools/build_firmware.py with a real C compiler and fails if any of them does not pass.
+# Nothing is built for a board and nothing is published.
 on:
   workflow_dispatch:
 
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   compare:
-    name: Compare the shell script and the Python script
+    name: Run the logic tests of the host with a real compiler
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -22,7 +22,7 @@ jobs:
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
-      - name: Run both scripts and compare what they report
+      - name: Run the build script tests
         env:
           HYDRA_BUILD_PORT_REAL: "1"
         run: python -m unittest tests.test_build_firmware_port -v

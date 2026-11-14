@@ -5,7 +5,7 @@
  * =============================================================================
  * update_verify.h (the decision at the end of an update: complete, CRC, signature, header, version, anti-rollback with a downgrade token)
  * exists as a real per-target copy in all THREE bootloaders; the exact same test source is compiled and run once per target's own
- * include path (build_firmware.sh). The bytes come from tests/image_header_vectors.h, made by the host reference
+ * include path (tools/build_firmware.py). The bytes come from tests/image_header_vectors.h, made by the host reference
  * tools/image_header.py. The signature check is a test double that says yes only to a (message, signature) pair the reference made: so
  * the test proves the C code builds those messages byte for byte, without an Ed25519 of its own (the real Ed25519 against the reference
  * is tested in test_bootloader_g474_host.c).

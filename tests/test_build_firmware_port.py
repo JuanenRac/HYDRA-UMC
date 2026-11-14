@@ -3,11 +3,11 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-"""tools/build_firmware.py against build_firmware.sh, stage by stage.
+"""tools/build_firmware.py with stand-in tools.
 
-The shell script is cut to its first stages (the head with the variables, and the logic tests of the host), both are run in a scratch folder with a
-stand-in compiler and a stand-in python3 that only write down what they were asked, and the two runs must agree: the same commands in the same order
-and the same lines printed. Nothing is compiled. Needs a POSIX shell, so it is skipped elsewhere.
+The build is run in a scratch folder with a stand-in C compiler, a stand-in python3 and stand-ins for the ARM tools and git, that only write down what they
+were asked and create the files the real ones would, so nothing is compiled. The lines printed, the commands run and the files left behind are checked.
+Needs a POSIX shell for the stand-ins, so it is skipped elsewhere.
 """
 from __future__ import annotations
 
@@ -113,26 +113,6 @@ exit 0
 """
 
 
-def trimmed_compile_script(text: str) -> str:
-    """The head of build_firmware.sh and the steps 2 to 10b (the fetches, the compilation and the linking of the three boards)."""
-    lines = text.replace("\r\n", "\n").split("\n")
-    first_stage = next(i for i, line in enumerate(lines) if line.startswith('step "1. Toolchain"')) - 1
-    start = next(i for i, line in enumerate(lines) if line.startswith('mkdir -p "$FIRMWARE_OUT"'))
-    end = next(i for i, line in enumerate(lines) if line.startswith('step "11.')) - 1
-    body = lines[:first_stage] + lines[start:end]
-    return "\n".join(body) + '\necho ""; echo "$PASS passed, $WARN warnings, $FAIL failed"\n'
-
-
-def trimmed_script(text: str) -> str:
-    """The head of build_firmware.sh (its variables) and the logic tests of the host, cut at the markers of the stages."""
-    lines = text.replace("\r\n", "\n").split("\n")
-    first_stage = next(i for i, line in enumerate(lines) if line.startswith('step "1. Toolchain"')) - 1
-    host_start = next(i for i, line in enumerate(lines) if line.startswith('step "1b.')) - 1
-    host_end = next(i for i, line in enumerate(lines) if line.startswith('mkdir -p "$FIRMWARE_OUT"'))
-    body = lines[:first_stage] + lines[host_start:host_end]
-    return "\n".join(body) + '\necho ""; echo "$PASS passed, $WARN warnings, $FAIL failed"\n'
-
-
 @unittest.skipIf(os.name == "nt" or shutil.which("bash") is None, "needs a POSIX shell")
 class BuildFirmwarePortTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -148,19 +128,6 @@ class BuildFirmwarePortTests(unittest.TestCase):
         self.env["HOST_CC"] = str(self.bin / "fakecc")
         self.env["PATH"] = f"{self.bin}{os.pathsep}{self.env['PATH']}"
         self.env.pop("HYDRA_UMC_SKIP_HOST_TESTS", None)
-
-    def run_shell(self) -> tuple[list[str], list[str]]:
-        root = self.work / "shell"
-        root.mkdir()
-        script = root / "trimmed.sh"
-        script.write_text(trimmed_script((ROOT / "build_firmware.sh").read_text(encoding="utf-8")), encoding="utf-8")
-        log = self.work / "shell.log"
-        env = dict(self.env, FAKE_LOG=str(log))
-        result = subprocess.run(["bash", str(script)], cwd=root, env=env, capture_output=True, text=True, check=False, stdin=subprocess.DEVNULL)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        ok = [line.strip() for line in result.stdout.splitlines() if line.strip().startswith("OK")]
-        lines = log.read_text(encoding="utf-8").replace(str(root), "<root>").splitlines()
-        return [line.replace(str(root), "<root>") for line in ok], lines
 
     def run_python(self) -> tuple[list[str], list[str]]:
         root = self.work / "python"
@@ -181,43 +148,30 @@ class BuildFirmwarePortTests(unittest.TestCase):
         lines = log.read_text(encoding="utf-8").replace(str(root), "<root>").splitlines()
         return [line.replace(str(root), "<root>") for line in ok], lines
 
-    def test_the_logic_tests_of_the_host_print_and_run_what_the_shell_script_does(self) -> None:
-        shell_ok, shell_log = self.run_shell()
+    def test_the_logic_tests_of_the_host_print_and_run_their_programs(self) -> None:
         python_ok, python_log = self.run_python()
-        self.assertGreater(len(shell_ok), 80)
-        self.assertEqual(python_ok, shell_ok)
-        self.assertEqual(python_log, shell_log)
+        self.assertGreater(len(python_ok), 80)
+        self.assertGreater(len(python_log), 150)
 
     @unittest.skipUnless(os.environ.get("HYDRA_BUILD_PORT_REAL") == "1" and shutil.which("cc") is not None, "set HYDRA_BUILD_PORT_REAL=1 with a C compiler")
-    def test_with_the_real_compiler_both_scripts_report_the_same_tests_passing(self) -> None:
-        """The workflow `build-port-check` sets the variable: the two scripts compile and run the real tests, in their own copies of the repository."""
-        results = []
-        for name, command in (("shell", None), ("python", [sys.executable, str(ROOT / "tools" / "build_firmware.py"), "--host-tests-only"])):
-            copy = self.work / name
-            shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns(".git", "build", "firmware", "__pycache__"))
-            env = dict(os.environ)
-            env.pop("HYDRA_UMC_SKIP_HOST_TESTS", None)
-            # the last step of both scripts runs every test of the copy, this one included: without this it would start the comparison again
-            env.pop("HYDRA_BUILD_PORT_REAL", None)
-            if command is None:
-                script = copy / "trimmed.sh"
-                script.write_text(trimmed_script((ROOT / "build_firmware.sh").read_text(encoding="utf-8")), encoding="utf-8")
-                command = ["bash", str(script)]
-            else:
-                command = [*command, "--root", str(copy)]
-            result = subprocess.run(command, cwd=copy, env=env, capture_output=True, text=True, check=False, stdin=subprocess.DEVNULL)
-            self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
-            results.append([line.strip().replace(str(copy), "<root>") for line in result.stdout.splitlines() if line.strip().startswith("OK")])
-        self.assertGreater(len(results[0]), 80)
-        self.assertEqual(results[1], results[0])
+    def test_with_the_real_compiler_the_logic_tests_of_the_host_pass(self) -> None:
+        copy = self.work / "real"
+        shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns(".git", "build", "firmware", "__pycache__"))
+        env = dict(os.environ)
+        env.pop("HYDRA_UMC_SKIP_HOST_TESTS", None)
+        # the last step of the build runs every test of the copy, this one included: without this it would start again
+        env.pop("HYDRA_BUILD_PORT_REAL", None)
+        command = [sys.executable, str(ROOT / "tools" / "build_firmware.py"), "--host-tests-only", "--root", str(copy)]
+        result = subprocess.run(command, cwd=copy, env=env, capture_output=True, text=True, check=False, stdin=subprocess.DEVNULL)
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+        self.assertGreater(len([line for line in result.stdout.splitlines() if line.strip().startswith("OK")]), 80)
 
-    def test_the_compilation_of_the_boards_runs_the_same_commands_and_leaves_the_same_files_as_the_shell_script(self) -> None:
+    def test_the_compilation_of_the_boards_runs_its_commands_and_leaves_its_files(self) -> None:
         for name, text in (("arm-none-eabi-gcc", FAKE_ARM_GCC), ("arm-none-eabi-objcopy", FAKE_OBJCOPY), ("arm-none-eabi-size", FAKE_SIZE), ("git", FAKE_GIT)):
             path = self.bin / name
             path.write_text(text, encoding="utf-8")
             path.chmod(path.stat().st_mode | stat.S_IEXEC)
-        results = []
-        for kind in ("shell", "python"):
+        for kind in ("python",):
             root = self.work / f"compile-{kind}"
             root.mkdir()
             shutil.copytree(ROOT / "src", root / "src")
@@ -225,12 +179,7 @@ class BuildFirmwarePortTests(unittest.TestCase):
             env = dict(self.env, FAKE_LOG=str(log), LC_ALL="C")
             env.pop("HYDRA_UMC_RELEASE", None)
             env.pop("HYDRA_EXTRA_CFLAGS", None)
-            if kind == "shell":
-                script = root / "trimmed.sh"
-                script.write_text(trimmed_compile_script((ROOT / "build_firmware.sh").read_text(encoding="utf-8")), encoding="utf-8")
-                command = ["bash", str(script)]
-            else:
-                command = [sys.executable, str(ROOT / "tools" / "build_firmware.py"), "--compile-only", "--root", str(root)]
+            command = [sys.executable, str(ROOT / "tools" / "build_firmware.py"), "--compile-only", "--root", str(root)]
             result = subprocess.run(command, cwd=root, env=env, capture_output=True, text=True, check=False, stdin=subprocess.DEVNULL)
             self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
             reported = [line.strip().replace(str(root), "<root>") for line in result.stdout.splitlines() if line.strip().startswith(("OK", "WARN", "FAIL"))]
@@ -239,18 +188,12 @@ class BuildFirmwarePortTests(unittest.TestCase):
             for path in sorted((root / "build").rglob("*")):
                 if path.is_file():
                     files[path.relative_to(root).as_posix()] = path.read_text(encoding="utf-8", errors="replace").replace(str(root), "<root>")
-            results.append((reported, commands, files))
-        shell, python = results
-        self.assertGreater(len(shell[0]), 35)
-        self.assertGreater(len(shell[1]), 120)
-        self.assertEqual(python[0], shell[0])
-        self.assertEqual(python[1], shell[1])
-        self.assertEqual(sorted(python[2]), sorted(shell[2]))
-        self.assertEqual(python[2], shell[2])
-        staged = [name for name in python[2] if name.startswith("build/firmware_staging/")]
+        self.assertGreater(len(reported), 35)
+        self.assertGreater(len(commands), 120)
+        staged = [name for name in files if name.startswith("build/firmware_staging/")]
         self.assertEqual(len(staged), 18)  # six components, each as .elf, .bin and .hex
 
-    def test_the_whole_build_prints_the_same_lines_runs_the_same_commands_and_leaves_the_same_files_as_the_shell_script(self) -> None:
+    def test_the_whole_build_prints_its_lines_runs_its_commands_and_leaves_its_files(self) -> None:
         for name, text in (
             ("arm-none-eabi-gcc", FAKE_ARM_GCC),
             ("arm-none-eabi-objcopy", FAKE_OBJCOPY),
@@ -261,8 +204,7 @@ class BuildFirmwarePortTests(unittest.TestCase):
             path = self.bin / name
             path.write_text(text, encoding="utf-8")
             path.chmod(path.stat().st_mode | stat.S_IEXEC)
-        results = []
-        for kind in ("shell", "python"):
+        for kind in ("python",):
             root = self.work / f"whole-{kind}"
             root.mkdir()
             shutil.copytree(ROOT / "src", root / "src")
@@ -273,11 +215,7 @@ class BuildFirmwarePortTests(unittest.TestCase):
             env = dict(self.env, FAKE_LOG=str(log), LC_ALL="C", HYDRA_UMC_SKIP_HOST_TESTS="1")
             for name in ("HYDRA_UMC_RELEASE", "HYDRA_EXTRA_CFLAGS", "HYDRA_UMC_CI"):
                 env.pop(name, None)
-            if kind == "shell":
-                shutil.copyfile(ROOT / "build_firmware.sh", root / "build_firmware.sh")
-                command = ["bash", str(root / "build_firmware.sh")]
-            else:
-                command = [sys.executable, str(ROOT / "tools" / "build_firmware.py"), "--root", str(root)]
+            command = [sys.executable, str(ROOT / "tools" / "build_firmware.py"), "--root", str(root)]
             result = subprocess.run(command, cwd=root, env=env, capture_output=True, text=True, check=False, stdin=subprocess.DEVNULL)
             self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
             lines = result.stdout.replace(str(root), "<root>").splitlines()
@@ -288,15 +226,12 @@ class BuildFirmwarePortTests(unittest.TestCase):
                 for path in sorted((root / folder).rglob("*")):
                     if path.is_file():
                         files[path.relative_to(root).as_posix()] = path.read_text(encoding="utf-8", errors="replace").replace(str(root), "<root>")
-            results.append((lines[start:], commands, files))
-        shell, python = results
-        self.assertGreater(len(shell[0]), 80)
-        self.assertEqual(python[0], shell[0])
-        self.assertEqual(python[1], shell[1])
-        self.assertEqual(python[2], shell[2])
-        self.assertNotIn("firmware/HYDRA_RCB_APP_v0.0.1.bin", python[2])  # the older version of a rebuilt component is replaced
-        self.assertIn("firmware/keep_me.txt", python[2])  # anything else is left alone
-        self.assertEqual(len([name for name in python[2] if name.startswith("firmware/HYDRA_")]), 18)
+        self.assertGreater(len(lines[start:]), 80)
+        self.assertGreater(len(commands), 120)
+        self.assertIn("Output binaries are in: <root>/firmware/", lines)
+        self.assertNotIn("firmware/HYDRA_RCB_APP_v0.0.1.bin", files)  # the older version of a rebuilt component is replaced
+        self.assertIn("firmware/keep_me.txt", files)  # anything else is left alone
+        self.assertEqual(len([name for name in files if name.startswith("firmware/HYDRA_")]), 18)
 
     def test_a_failing_program_stops_the_build_with_status_one(self) -> None:
         failing = self.bin / "failcc"

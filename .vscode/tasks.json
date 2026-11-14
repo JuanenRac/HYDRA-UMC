@@ -4,8 +4,8 @@
     {
       "label": "Build: Robot Controller Board (STM32G474)",
       "type": "shell",
-      "command": "bash",
-      "args": ["build_firmware.sh", "g474"],
+      "command": "python3",
+      "args": ["tools/build_firmware.py", "g474"],
       "options": { "cwd": "${workspaceFolder}" },
       "group": { "kind": "build", "isDefault": true },
       "problemMatcher": ["$gcc"]
@@ -13,8 +13,8 @@
     {
       "label": "Build: Kinematic Brain (STM32H745, both cores)",
       "type": "shell",
-      "command": "bash",
-      "args": ["build_firmware.sh", "h745"],
+      "command": "python3",
+      "args": ["tools/build_firmware.py", "h745"],
       "options": { "cwd": "${workspaceFolder}" },
       "group": "build",
       "problemMatcher": ["$gcc"]
@@ -22,8 +22,8 @@
     {
       "label": "Build: All Firmware",
       "type": "shell",
-      "command": "bash",
-      "args": ["build_firmware.sh"],
+      "command": "python3",
+      "args": ["tools/build_firmware.py"],
       "options": { "cwd": "${workspaceFolder}" },
       "group": "build",
       "problemMatcher": ["$gcc"]
@@ -31,8 +31,8 @@
     {
       "label": "Build: Clean + All Firmware",
       "type": "shell",
-      "command": "bash",
-      "args": ["build_firmware.sh", "--clean", "all"],
+      "command": "python3",
+      "args": ["tools/build_firmware.py", "--clean", "all"],
       "options": { "cwd": "${workspaceFolder}" },
       "group": "build",
       "problemMatcher": ["$gcc"]

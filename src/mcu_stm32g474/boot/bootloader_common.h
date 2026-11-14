@@ -53,7 +53,7 @@ extern IWDG_HandleTypeDef  hiwdg;
 // components, including this one, are incremental - PATCH bumps by
 // exactly 1 on every real build that produces a new binary for this
 // application, via bump_version.py, called automatically as the first
-// step of "6. Robot Controller Board application" in build_firmware.sh/
+// step of "6. Robot Controller Board application" in tools/build_firmware.py/
 // .bat, BEFORE this header is compiled in. "Odometer" carry rule: PATCH
 // past 9 resets to 0 and MINOR increments (e.g. 0.1.9 -> 0.2.0, never
 // 0.1.10) - same rule BOOTLOADER_VERSION_* below already used. Also
@@ -68,7 +68,7 @@ extern IWDG_HandleTypeDef  hiwdg;
 // see bump_version.py's own header comment): PATCH increments on every
 // real build of this partitioned bootloader source (0-9), then MINOR
 // increments and PATCH resets to 0. Also embedded in the output filename
-// by build_firmware.sh (HYDRA_RCB_BOOTLOADER_v0.0.0.bin).
+// by tools/build_firmware.py (HYDRA_RCB_BOOTLOADER_v0.0.0.bin).
 #define BOOTLOADER_VERSION_MAJOR 0
 #define BOOTLOADER_VERSION_MINOR 1
 #define BOOTLOADER_VERSION_PATCH 9

@@ -9,7 +9,7 @@
 // granularity and FLASHWORD programming) - this is Bank 2 instead of
 // Bank 1, the only real difference. Kept as a separate file rather than a
 // shared one because each core's bootloader is its own independent build
-// target (own .elf, own flash bank) - see ../../../build_firmware.sh.
+// target (own .elf, own flash bank) - see ../../.python3 tools/build_firmware.py.
 // =============================================================================
 #include "stm32h7xx_hal.h"
 #include <string.h>

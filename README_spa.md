@@ -152,7 +152,7 @@ La especificación detallada del diseño (once subsistemas, del ordenador anfitr
 |---|---|---|
 | Una imagen de firmware falsa o editada | Una cabecera fija de 64 bytes (magia, versión, id de hardware, tamaño, palabras de vector, CRC-32) va seguida de la imagen y de una firma Ed25519 de 64 bytes sobre cabecera e imagen; el cargador comprueba primero la firma y no cree nada de la cabecera antes de que verifique | `image_header.h`, `tools/image_header.py` |
 | Una imagen firmada antigua enviada de nuevo (retroceso) | Una imagen nueva debe ser estrictamente más nueva que la instalada (se comparan mayor, menor y parche); una más antigua solo se acepta con un token de bajada de versión, una firma Ed25519 sobre las versiones instalada y destino y el resumen de la imagen; el firmware no contiene ninguna constante que permita bajar de versión | `image_header.h`, `ImageHeader_CheckRollback` |
-| Imágenes compiladas con las claves de desarrollo | Sin `HYDRA_FW_UPDATE_PUBKEY_HEX` y `HYDRA_FW_HMAC_KEY_HEX` los cargadores llevan claves de desarrollo cuya parte privada está publicada en el repositorio; la compilación avisa, y con `HYDRA_UMC_RELEASE=1` se niega a compilar; la placa solo guarda la clave pública, la semilla privada queda con el dueño | `build_firmware.sh` |
+| Imágenes compiladas con las claves de desarrollo | Sin `HYDRA_FW_UPDATE_PUBKEY_HEX` y `HYDRA_FW_HMAC_KEY_HEX` los cargadores llevan claves de desarrollo cuya parte privada está publicada en el repositorio; la compilación avisa, y con `HYDRA_UMC_RELEASE=1` se niega a compilar; la placa solo guarda la clave pública, la semilla privada queda con el dueño | `tools/build_firmware.py` |
 | Una placa que se cuelga | El cargador de la G474 arma el perro guardián independiente (IWDG) como primerísima acción de `main()`, antes de `HAL_Init()`, así que un cuelgue durante el arranque reinicia el chip | `src/mcu_stm32g474/boot/bootloader_main.c` |
 | El servicio HTTP local del puente SPI alcanzado por otra persona | Escucha en 127.0.0.1 por defecto, acepta un cuerpo de firmware de 4 MiB como máximo y no guarda ninguna clave de firma: la firma llega en la petición, hecha en la máquina que tiene la semilla privada; no tiene TLS ni inicio de sesión propio, así que quien le reenvíe debe decidir quién puede flashear | `src/cm5_host/spi_bridge/spi_bridge/http_service.py` |
 
@@ -181,11 +181,11 @@ El firmware se configura al compilarse, mediante variables de entorno; el puente
 
 ## 🚀 Inicio rápido
 
-Compilar el firmware requiere la cadena de herramientas Arm GNU (`arm-none-eabi-gcc` 10.3 o superior), `git` y `python`; las pruebas de host solo necesitan un compilador de C normal y Python. Windows tiene `build_firmware.bat`.
+Compilar el firmware requiere la cadena de herramientas Arm GNU (`arm-none-eabi-gcc` 10.3 o superior), `git` y `python`; las pruebas de host solo necesitan un compilador de C normal y Python. El mismo script funciona en Linux, macOS y Windows.
 
 ```bash
-./build_firmware.sh                                  # builds every MCU target and runs the host tests (step 1b)
-./build_firmware.sh g474                             # only the Robot Controller Board; h745 builds only the Kinematic Brain
+python3 tools/build_firmware.py                                  # builds every MCU target and runs the host tests (step 1b)
+python3 tools/build_firmware.py g474                             # only the Robot Controller Board; h745 builds only the Kinematic Brain
 python tools/verify_firmware_inventory.py            # read-only check of the committed six-component firmware inventory
 python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the firmware sources, the image header and the CAN identifiers
 ```
@@ -193,21 +193,21 @@ python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the f
 ### ENTORNO DE DESARROLLO
 
 Lo que las propias máquinas de desarrollo de este proyecto tienen realmente
-instalado y verificado funcionando (`build_firmware.sh`/`build_firmware.bat`,
+instalado y verificado funcionando (`tools/build_firmware.py`,
 objetivos `g474`/`h745`/por defecto, 0 errores) - no una lista teórica:
 
 * 🔧 **ARM GNU Toolchain** (`arm-none-eabi-gcc` 10.3+) - compila cada objetivo
   de firmware MCU. No se usan ni se requieren archivos de proyecto
   STM32CubeIDE/CubeMX para compilar -
-  `build_firmware.sh`/`build_firmware.bat` obtiene las propias fuentes
+  `tools/build_firmware.py` obtiene las propias fuentes
   HAL/CMSIS de ST directamente de sus repositorios oficiales de GitHub y
   ejecuta el compilador directamente, la misma filosofía que ya estableció
-  el propio `build_firmware.sh`/`build_firmware.bat` del repositorio hermano
+  el propio `tools/build_firmware.py` del repositorio hermano
   `URTC`.
 * 🧩 **VS Code + extensiones** (`.vscode/extensions.json` lista todas
   estas): [STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension)
   (integración de proyecto/compilación/depuración), **Cortex-Debug**
-  (depuración SWD/JTAG - independiente de `build_firmware.sh`, útil cuando
+  (depuración SWD/JTAG - independiente de `tools/build_firmware.py`, útil cuando
   exista hardware real), **C/C++** (IntelliSense en cada archivo fuente de
   firmware/host), **Python** (scripts del pipeline de `ai_inference/`),
   **Hex Editor** (inspeccionar la salida de firmware `.bin`), **YAML**
@@ -217,50 +217,30 @@ objetivos `g474`/`h745`/por defecto, 0 errores) - no una lista teórica:
   (`.vscode/tasks.json`).
 * 🗂️ **git** - tanto para este propio repositorio como para el propio
   vendoring de tags fijos de los paquetes HAL/CMSIS de ST que hace
-  `build_firmware.sh` (cacheado bajo `build/`, en gitignore, vuelto a obtener
+  `tools/build_firmware.py` (cacheado bajo `build/`, en gitignore, vuelto a obtener
   con `--clean`).
 
 ## 🧪 Pruebas
 
-1132 pruebas automáticas se ejecutan con `python -m unittest discover -s tests -p 'test_*.py'`. Son 187 pruebas del puente SPI de la CM5 más 522 de las fuentes del firmware, la cabecera de imagen firmada y los identificadores CAN (las del puente SPI se ejecutan con `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` y `-s src/cm5_host/spi_bridge/tests`). La lógica en C de los cargadores de arranque y del relé la comprueban otros 50 programas compilados con un compilador de C normal del anfitrión, en el paso 1b de `build_firmware.sh`. Ninguna necesita una placa.
+1132 pruebas automáticas se ejecutan con `python -m unittest discover -s tests -p 'test_*.py'`. Son 187 pruebas del puente SPI de la CM5 más 522 de las fuentes del firmware, la cabecera de imagen firmada y los identificadores CAN (las del puente SPI se ejecutan con `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` y `-s src/cm5_host/spi_bridge/tests`). La lógica en C de los cargadores de arranque y del relé la comprueban otros 50 programas compilados con un compilador de C normal del anfitrión, en el paso 1b de `tools/build_firmware.py`. Ninguna necesita una placa.
 
 El CI ejecuta `HYDRA_UMC_CI=1 python tools/ci_validate.py`, que comprueba el manifiesto, los documentos, los ocho README y las imágenes.
 
 ## 🏗️ Compilación y publicación
 
-**Linux/Mac:**
+**Linux, macOS, Windows:**
 ```bash
-./build_firmware.sh          # compila cada objetivo MCU (Robot Controller Board + Kinematic Brain, ambos núcleos)
-./build_firmware.sh g474     # solo Robot Controller Board
-./build_firmware.sh h745     # solo Kinematic Brain (ambos núcleos)
-./build_firmware.sh --clean  # borra primero la caché de HAL/CMSIS obtenida
+python3 tools/build_firmware.py          # compila cada objetivo MCU (Robot Controller Board + Kinematic Brain, ambos núcleos)
+python3 tools/build_firmware.py g474     # solo Robot Controller Board
+python3 tools/build_firmware.py h745     # solo Kinematic Brain (ambos núcleos)
+python3 tools/build_firmware.py --clean  # borra primero la caché de HAL/CMSIS obtenida
 ```
-
-**Windows:**
-```bat
-build_firmware.bat          :: compila cada objetivo MCU (Robot Controller Board + Kinematic Brain, ambos núcleos)
-build_firmware.bat g474     :: solo Robot Controller Board
-build_firmware.bat h745     :: solo Kinematic Brain (ambos núcleos)
-build_firmware.bat --clean  :: borra primero la caché de HAL/CMSIS obtenida
-```
-
-`build_firmware.bat` es la misma compilación que `build_firmware.sh`
-traducida a batch (mismos pasos, mismas versiones fijas de HAL/CMSIS, mismo
-reporte pass/warn/fail) - ejecutada de principio a fin en una máquina
-Windows real con el [Arm GNU
-Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)
-instalado y `arm-none-eabi-gcc` en el `PATH`: cada módulo HAL, ambos
-bootloaders, y cada aplicación se compilaron y enlazaron limpio, y
-`firmware_manifest.json` se regeneró con CRC32s que coinciden con la propia
-salida de la compilación de Linux/Mac. Requiere las mismas herramientas que
-el script de Linux/Mac: el Arm GNU Toolchain, `git` (para obtener las propias
-fuentes HAL/CMSIS de ST), y `python` para el paso del manifest.
 
 **Compilación manual (cualquier SO, sin el script):** el script automatiza
 exactamente los pasos de `docs/COMPILE_STM32G474.md` y
 `docs/COMPILE_STM32H745.md` - obtiene las fuentes fijas de
 HAL/CMSIS/FreeRTOS listadas al principio de
-`build_firmware.sh`/`build_firmware.bat`, compila los módulos HAL y los
+`tools/build_firmware.py`, compila los módulos HAL y los
 archivos de arranque/sistema de cada objetivo con `arm-none-eabi-gcc` (las
 flags/listas de módulos están listadas en ese mismo script), luego enlaza
 cada bootloader y aplicación contra su propio script de enlazado (`*.ld`,
@@ -292,7 +272,7 @@ sigue abierto.
 
 > **Estado de seguridad:** este repositorio todavía no contiene ninguna ruta de E-STOP, límites por software, enclavamientos de seguridad, el volcado a FRAM por pérdida de alimentación (PVD) ni ningún comando de movimiento. Allí donde las secciones anteriores (u otro proyecto del ecosistema) los describen, es el diseño previsto: nada debe depender de ello para la seguridad hasta que esté implementado y probado en una placa real. Lo que hacen hoy las aplicaciones: las del CM4 y del G474 ejecutan el sondeo/respuesta AXIS_STATUS de STACK A y el túnel de relé de Tier 2/3; la del CM7 sigue siendo una prueba de humo con GPIO-toggle.
 
-Los seis componentes del firmware (tres cargadores de arranque y tres aplicaciones, un par por chip o núcleo) tienen cada uno su versión. Compilar nunca la cambia: `build_firmware.sh` y `.bat` solo la informan. Subir versiones es el comando explícito `python bump_firmware_versions.py` (`--list` las muestra), y `python show_component_version.py` imprime la versión de un componente. La versión del propio repositorio es la de la aplicación de la G474: `python tools/hydra_project_tool.py bump` la sube (el manifiesto la sigue) como en cualquier otro repositorio.
+Los seis componentes del firmware (tres cargadores de arranque y tres aplicaciones, un par por chip o núcleo) tienen cada uno su versión. Compilar nunca la cambia: `tools/build_firmware.py` y `.bat` solo la informan. Subir versiones es el comando explícito `python bump_firmware_versions.py` (`--list` las muestra), y `python show_component_version.py` imprime la versión de un componente. La versión del propio repositorio es la de la aplicación de la G474: `python tools/hydra_project_tool.py bump` la sube (el manifiesto la sigue) como en cualquier otro repositorio.
 
 ## 🩺 Resolución de problemas
 
@@ -301,7 +281,7 @@ Los seis componentes del firmware (tres cargadores de arranque y tres aplicacion
 | «los cargadores aceptan actualizaciones firmadas con la semilla de DESARROLLO, que es pública» | La compilación no tenía `HYDRA_FW_UPDATE_PUBKEY_HEX` (o no tenía `HYDRA_FW_HMAC_KEY_HEX`) | Vale para un banco de pruebas; para cualquier placa que otra persona pueda alcanzar, crea un par de claves con `python tools/image_header.py keygen`, compila con la clave pública y compila las versiones con `HYDRA_UMC_RELEASE=1` |
 | «arm-none-eabi-gcc no encontrado» | La cadena de herramientas Arm GNU no está instalada o no está en `PATH` | Instálala (el script prueba `apt` en Linux) y vuelve a compilar; las pruebas de host del paso 1b solo necesitan un compilador de C normal |
 | El puente SPI no abre el dispositivo, o `SPI transfer returned ... bytes` | El transporte real necesita `spidev` y `gpiod` en una CM5 con el dispositivo SPI activado, y un STM32H757 al otro lado; ninguno existe aún, así que el puente solo se ha ejercitado con simulaciones | Usa el transporte simulado de las pruebas hasta que exista una placa |
-| `build_firmware.sh` termina con FAIL en una prueba de host | Las copias de una fuente que comparten los tres cargadores se han separado, o `tests/image_header_vectors.h` es más viejo que `tools/image_header.py` | Ejecuta `python tools/gen_image_header_vectors.py` y `python -m unittest discover -s tests` para ver qué copia difiere |
+| `tools/build_firmware.py` termina con FAIL en una prueba de host | Las copias de una fuente que comparten los tres cargadores se han separado, o `tests/image_header_vectors.h` es más viejo que `tools/image_header.py` | Ejecuta `python tools/gen_image_header_vectors.py` y `python -m unittest discover -s tests` para ver qué copia difiere |
 
 ## 📂 Estructura del repositorio
 
@@ -329,8 +309,6 @@ HYDRA-UMC/
 ├── firmware/                        Salida de compilación comiteada (.bin/.hex/.elf + manifest) - NO en gitignore, misma convención que la propia carpeta de salida de URTC, ver "Compilando el Firmware" abajo
 ├── firmware_base/                   Los ficheros iguales en los tres bootloaders STM32, que tools/sync_firmware_base.py mantiene iguales a sus copias
 ├── .github/                         flujo de CI y plantillas de incidencias
-├── build_firmware.sh                Compila cada objetivo de firmware MCU de arriba desde una copia limpia (Linux/Mac)
-├── build_firmware.bat               La misma compilación, Windows (ver "Compilando el Firmware" abajo)
 ├── build-test.sh / build-test.bat   Comprobación de build/compilación sin subir versión
 ├── generate_manifest.py             Regenera firmware/firmware_manifest.json (versiones/CRC32) tras una compilación completa
 ├── bump_version.py                  Incremento de versión tipo cuentakilómetros de un componente

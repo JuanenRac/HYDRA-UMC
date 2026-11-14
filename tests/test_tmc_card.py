@@ -78,7 +78,7 @@ class ProfileTests(unittest.TestCase):
 
     def test_the_c_test_is_in_both_lists(self):
         self.assertIn("tests/test_tmc_card.c", (ROOT / "tools/host_tests.py").read_text(encoding="utf-8"))
-        self.assertIn("test_tmc_card.c", (ROOT / "build_firmware.sh").read_text(encoding="utf-8"))
+        self.assertIn("test_tmc_card", (ROOT / "tools" / "build_firmware.py").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

@@ -117,7 +117,7 @@ def main() -> int:
             run(flutter, "analyze")
             print("FLUTTER_BUILD=SKIPPED no native desktop/mobile target is available on this host")
     elif stack == "firmware-c":
-        # build-test is explicitly non-mutating. build_firmware.sh cleans and
+        # build-test is explicitly non-mutating. tools/build_firmware.py cleans and
         # repackages firmware/ by design, so it belongs only to the real
         # incremental build flow; invoking it here would delete published
         # artifacts before a failed compiler run could restore them.

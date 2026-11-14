@@ -8,7 +8,7 @@ AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
 LICENSE: This document is licensed under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
 =============================================================================
 Every command in this document was actually run against this project's own
-real source tree while writing it, via ./build_firmware.sh g474 - not
+real source tree while writing it, via python3 tools/build_firmware.py g474 - not
 reconstructed from memory. That script automates exactly what's documented
 here; read this first if the script itself ever needs adjusting.
 
@@ -55,7 +55,7 @@ land (note this explicitly if that changes, don't let it go undocumented the
 way it would have bitten someone here).
 
 You do not need STM32CubeIDE, STM32CubeMX, or any ST-branded IDE at all -
-build_firmware.sh builds this entirely from the command line with the
+tools/build_firmware.py builds this entirely from the command line with the
 generic GNU ARM toolchain above, the same philosophy URTC's own build script
 already established. See the repo root's own .vscode/ for an OPTIONAL VS
 Code setup (debugging via ST's own VS Code extension) - entirely separate
@@ -66,7 +66,7 @@ from what's needed to just compile.
 -----------------------------------------------------------------------------
 Same reasoning as URTC's own document: this repository does NOT vendor ST's
 HAL/CMSIS files (BSD-3-Clause, doesn't belong copied into this project's own
-source tree) - build_firmware.sh fetches them fresh from ST's own official
+source tree) - tools/build_firmware.py fetches them fresh from ST's own official
 repos, pinned to specific tags for reproducibility between runs:
 
     stm32g4xx_hal_driver    v1.2.7   https://github.com/STMicroelectronics/stm32g4xx_hal_driver.git
@@ -124,7 +124,7 @@ that function's own comment in STM32G474RE_main.c.
 
 Only 12 of the ~100+ available HAL modules are compiled today - just enough
 for the bootloader and the relay application (HAL core, Cortex, GPIO, RCC +
-RCC_EX, PWR + PWR_EX, FLASH + FLASH_EX, EXTI, FDCAN, IWDG). Extend HAL_MODULES_G4 in build_firmware.sh
+RCC_EX, PWR + PWR_EX, FLASH + FLASH_EX, EXTI, FDCAN, IWDG). Extend HAL_MODULES_G4 in tools/build_firmware.py
 as real FDCAN/timer/motion code lands - same "only what's used" reasoning
 URTC's own document explains in more depth for its own, larger module list.
 
@@ -176,7 +176,7 @@ similar dependency.
     arm-none-eabi-size HYDRA_RCB_APP.elf
 
 Last verified: both binaries build cleanly, 0 warnings, 0 errors, via a full
---clean rebuild (`./build_firmware.sh --clean g474`).
+--clean rebuild (`python3 tools/build_firmware.py --clean g474`).
 =============================================================================
 END OF FILE
 =============================================================================

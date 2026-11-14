@@ -3,7 +3,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-"""Source guards of the SPI3 driver of the host link (the HAL cannot run on the host; the compile check is a step of build_firmware.sh, and the logic it drives is tested through the
+"""Source guards of the SPI3 driver of the host link (the HAL cannot run on the host; the compile check is a step of tools/build_firmware.py, and the logic it drives is tested through the
 transport). Evidence: simulator."""
 import re
 import sys
@@ -17,7 +17,7 @@ import platform_profile as pp  # noqa: E402
 
 DRIVER = (ROOT / "src/mcu_stm32h757/CM7/HostLinkSpi3.c").read_text(encoding="utf-8")
 HEADER = (ROOT / "src/mcu_stm32h757/CM7/HostLinkSpi3.h").read_text(encoding="utf-8")
-SCRIPT = (ROOT / "build_firmware.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+SCRIPT = (ROOT / "tools" / "build_firmware.py").read_text(encoding="utf-8").replace("\r\n", "\n")
 
 
 class HostLinkSpi3DriverTests(unittest.TestCase):
@@ -49,7 +49,7 @@ class HostLinkSpi3DriverTests(unittest.TestCase):
         self.assertIn("HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);", DRIVER)
 
     def test_the_build_compiles_it_for_the_h757_platform_and_never_links_it(self):
-        self.assertTrue(re.search(r"-DHYDRA_PLATFORM_H757 -DHYDRA_HOST_LINK_MASTER=1 .*HostLinkSpi3\.c", SCRIPT))
+        self.assertTrue(re.search(r"\"-DHYDRA_PLATFORM_H757\", \"-DHYDRA_HOST_LINK_MASTER=1\".*HostLinkSpi3\.c", SCRIPT, re.DOTALL))
 
 
 if __name__ == "__main__":

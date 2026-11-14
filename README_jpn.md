@@ -152,7 +152,7 @@ flowchart LR
 |---|---|---|
 | 偽造または編集されたファームウェアイメージ | 固定の 64 バイトのヘッダー（マジック、バージョン、ハードウェア ID、サイズ、ベクターワード、CRC-32）にイメージと、ヘッダーとイメージにかけた 64 バイトの Ed25519 署名が続きます。ブートローダーはまず署名を確認し、検証が通るまでヘッダーの内容を一切信用しません | `image_header.h`, `tools/image_header.py` |
 | 古い署名付きイメージの再送（ロールバック） | 新しいイメージはインストール済みのものより厳密に新しくなければなりません（メジャー・マイナー・パッチを比較）。古いイメージは、インストール済みと対象のバージョンおよびイメージのダイジェストにかけた Ed25519 署名であるダウングレードトークンがある場合にだけ受け入れられ、ファームウェアにはダウングレードを許す定数はありません | `image_header.h`, `ImageHeader_CheckRollback` |
-| 開発用の鍵でビルドされたイメージ | `HYDRA_FW_UPDATE_PUBKEY_HEX` と `HYDRA_FW_HMAC_KEY_HEX` がないと、ブートローダーには秘密部分がリポジトリで公開されている開発用の鍵が入ります。ビルドは警告し、`HYDRA_UMC_RELEASE=1` ではビルドを拒否します。基板が持つのは公開鍵だけで、秘密のシードは所有者の手元に残ります | `build_firmware.sh` |
+| 開発用の鍵でビルドされたイメージ | `HYDRA_FW_UPDATE_PUBKEY_HEX` と `HYDRA_FW_HMAC_KEY_HEX` がないと、ブートローダーには秘密部分がリポジトリで公開されている開発用の鍵が入ります。ビルドは警告し、`HYDRA_UMC_RELEASE=1` ではビルドを拒否します。基板が持つのは公開鍵だけで、秘密のシードは所有者の手元に残ります | `tools/build_firmware.py` |
 | ハングする基板 | G474 のブートローダーは `main()` の最初の処理として、`HAL_Init()` より前に独立ウォッチドッグ（IWDG）を有効にするため、起動中のハングはチップをリセットします | `src/mcu_stm32g474/boot/bootloader_main.c` |
 | SPI ブリッジのローカル HTTP サービスに他者が到達する | 既定では 127.0.0.1 で待ち受け、ファームウェア本体は最大 4 MiB まで受け付け、署名鍵は持ちません。署名は秘密のシードを持つマシンで作られてリクエストに含まれます。TLS も独自のサインインもないため、中継する側が誰がフラッシュできるかを決める必要があります | `src/cm5_host/spi_bridge/spi_bridge/http_service.py` |
 
@@ -181,56 +181,46 @@ flowchart LR
 
 ## 🚀 クイックスタート
 
-ファームウェアのビルドには Arm GNU ツールチェーン（`arm-none-eabi-gcc` 10.3 以降）、`git`、`python` が必要です。ホストテストに必要なのは通常の C コンパイラーと Python だけです。Windows には `build_firmware.bat` があります。
+ファームウェアのビルドには Arm GNU ツールチェーン（`arm-none-eabi-gcc` 10.3 以降）、`git`、`python` が必要です。ホストテストに必要なのは通常の C コンパイラーと Python だけです。同じスクリプトが Linux、macOS、Windows で動作します。
 
 ```bash
-./build_firmware.sh                                  # builds every MCU target and runs the host tests (step 1b)
-./build_firmware.sh g474                             # only the Robot Controller Board; h745 builds only the Kinematic Brain
+python3 tools/build_firmware.py                                  # builds every MCU target and runs the host tests (step 1b)
+python3 tools/build_firmware.py g474                             # only the Robot Controller Board; h745 builds only the Kinematic Brain
 python tools/verify_firmware_inventory.py            # read-only check of the committed six-component firmware inventory
 python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the firmware sources, the image header and the CAN identifiers
 ```
 
 ### 開発環境
 
-本プロジェクト自身の開発マシンに実際にインストールされ、動作確認済みの環境（`build_firmware.sh`/`build_firmware.bat`、`g474`/`h745`/デフォルトターゲット、エラー 0 件）— 机上の理論的なリストではありません：
+本プロジェクト自身の開発マシンに実際にインストールされ、動作確認済みの環境（`tools/build_firmware.py`、`g474`/`h745`/デフォルトターゲット、エラー 0 件）— 机上の理論的なリストではありません：
 
-* 🔧 **ARM GNU ツールチェーン**（`arm-none-eabi-gcc` 10.3 以降）— すべての MCU ファームウェアターゲットをコンパイル。STM32CubeIDE／CubeMX のプロジェクトファイルは使用も必要もありません — `build_firmware.sh`/`build_firmware.bat` は ST 公式の GitHub リポジトリから最新の HAL/CMSIS ソースを直接取得し、コンパイラを直接駆動します。これは、同族の `URTC` リポジトリ自身の `build_firmware.sh`/`build_firmware.bat` がすでに確立している方針と同じです。
-* 🧩 **VS Code と拡張機能**（`.vscode/extensions.json` に以下すべてを記載）：[STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension)（プロジェクト／ビルド／デバッグ統合）、**Cortex-Debug**（SWD/JTAG デバッグ — `build_firmware.sh` とは独立、実機到着後に有用）、**C/C++**（全ファームウェア／ホストソースファイルにわたる IntelliSense）、**Python**（`ai_inference/` パイプラインスクリプト）、**Hex Editor**（`.bin` ファームウェア出力の確認）、**YAML**（`video_streamer/` 自身の MediaMTX 設定）。リポジトリを開き、推奨拡張機能のインストール案内を承諾した後、あらかじめ用意されたビルドタスク（`.vscode/tasks.json`）を **ターミナル → タスクの実行** から使用してください。
-* 🗂️ **git** — 本リポジトリ自身のためだけでなく、`build_firmware.sh` 自身による ST の HAL/CMSIS パッケージの固定タグでのベンダリング取得にも使用（`build/` 配下にキャッシュ、gitignore 対象、`--clean` 時に再取得）。
+* 🔧 **ARM GNU ツールチェーン**（`arm-none-eabi-gcc` 10.3 以降）— すべての MCU ファームウェアターゲットをコンパイル。STM32CubeIDE／CubeMX のプロジェクトファイルは使用も必要もありません — `tools/build_firmware.py` は ST 公式の GitHub リポジトリから最新の HAL/CMSIS ソースを直接取得し、コンパイラを直接駆動します。これは、同族の `URTC` リポジトリ自身の `tools/build_firmware.py` がすでに確立している方針と同じです。
+* 🧩 **VS Code と拡張機能**（`.vscode/extensions.json` に以下すべてを記載）：[STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension)（プロジェクト／ビルド／デバッグ統合）、**Cortex-Debug**（SWD/JTAG デバッグ — `tools/build_firmware.py` とは独立、実機到着後に有用）、**C/C++**（全ファームウェア／ホストソースファイルにわたる IntelliSense）、**Python**（`ai_inference/` パイプラインスクリプト）、**Hex Editor**（`.bin` ファームウェア出力の確認）、**YAML**（`video_streamer/` 自身の MediaMTX 設定）。リポジトリを開き、推奨拡張機能のインストール案内を承諾した後、あらかじめ用意されたビルドタスク（`.vscode/tasks.json`）を **ターミナル → タスクの実行** から使用してください。
+* 🗂️ **git** — 本リポジトリ自身のためだけでなく、`tools/build_firmware.py` 自身による ST の HAL/CMSIS パッケージの固定タグでのベンダリング取得にも使用（`build/` 配下にキャッシュ、gitignore 対象、`--clean` 時に再取得）。
 
 ## 🧪 テスト
 
-`python -m unittest discover -s tests -p 'test_*.py'` で自動テスト 1132 件を実行します。 CM5 の SPI ブリッジのテスト 187 件と、ファームウェアのソース、署名付きイメージヘッダー、CAN 識別子のテスト 522 件です（SPI ブリッジ側は `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` と `-s src/cm5_host/spi_bridge/tests` で実行します）。ブートローダーとリレーの C ロジックは、`build_firmware.sh` のステップ 1b で通常のホスト C コンパイラーでビルドする 50 本のプログラムがさらに検査します。どれも基板を必要としません。
+`python -m unittest discover -s tests -p 'test_*.py'` で自動テスト 1132 件を実行します。 CM5 の SPI ブリッジのテスト 187 件と、ファームウェアのソース、署名付きイメージヘッダー、CAN 識別子のテスト 522 件です（SPI ブリッジ側は `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` と `-s src/cm5_host/spi_bridge/tests` で実行します）。ブートローダーとリレーの C ロジックは、`tools/build_firmware.py` のステップ 1b で通常のホスト C コンパイラーでビルドする 50 本のプログラムがさらに検査します。どれも基板を必要としません。
 
 CI は `HYDRA_UMC_CI=1 python tools/ci_validate.py` を実行し、マニフェスト、文書、8 つの README、図を検査します。
 
 ## 🏗️ ビルドとリリース
 
-**Linux/Mac：**
+**Linux, macOS, Windows：**
 ```bash
-./build_firmware.sh          # 全 MCU ターゲットをビルド（ロボットコントローラーボード + Kinematic Brain、両コア含む）
-./build_firmware.sh g474     # ロボットコントローラーボードのみ
-./build_firmware.sh h745     # Kinematic Brain のみ（両コア含む）
-./build_firmware.sh --clean  # ベンダリング済み HAL/CMSIS キャッシュを先に消去
+python3 tools/build_firmware.py          # 全 MCU ターゲットをビルド（ロボットコントローラーボード + Kinematic Brain、両コア含む）
+python3 tools/build_firmware.py g474     # ロボットコントローラーボードのみ
+python3 tools/build_firmware.py h745     # Kinematic Brain のみ（両コア含む）
+python3 tools/build_firmware.py --clean  # ベンダリング済み HAL/CMSIS キャッシュを先に消去
 ```
 
-**Windows：**
-```bat
-build_firmware.bat          :: 全 MCU ターゲットをビルド（ロボットコントローラーボード + Kinematic Brain、両コア含む）
-build_firmware.bat g474     :: ロボットコントローラーボードのみ
-build_firmware.bat h745     :: Kinematic Brain のみ（両コア含む）
-build_firmware.bat --clean  :: ベンダリング済み HAL/CMSIS キャッシュを先に消去
-```
-
-`build_firmware.bat` は `build_firmware.sh` をバッチファイルに変換した完全に対応するもの（同じ手順、同じ固定 HAL/CMSIS バージョン、同じ合格／警告／失敗の報告方式）です — [Arm GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) がインストールされ、`arm-none-eabi-gcc` が `PATH` に通った実際の Windows マシン上でエンドツーエンドに実行済みです：すべての HAL モジュール、両方のブートローダー、すべてのアプリケーションがクリーンにコンパイル・リンクされ、再生成された `firmware_manifest.json` の CRC32 は Linux/Mac ビルド自身の出力と一致します。必要なツールは Linux/Mac スクリプトと同じです：Arm GNU Toolchain、`git`（ST 公式の HAL/CMSIS ソース取得用）、マニフェスト生成ステップ用の `python`。
-
-**手動ビルド（いずれの OS でも、スクリプトを使わない場合）：** このスクリプトが自動化しているのは、まさに `docs/COMPILE_STM32G474.md` および `docs/COMPILE_STM32H745.md` に記載された手順そのものです — `build_firmware.sh`/`build_firmware.bat` の冒頭にリストされた固定バージョンの HAL/CMSIS/FreeRTOS ソースを取得し、各ターゲットの HAL モジュールとスタートアップ／システムファイルを `arm-none-eabi-gcc` でコンパイル（コンパイルオプション／モジュール一覧は同スクリプト内に記載）、その後各ブートローダー・アプリケーションを、ソースの隣にあるそれぞれ自身のリンカスクリプト（`*.ld`）に対して `arm-none-eabi-gcc`／`-Wl,--gc-sections` でリンクし、`arm-none-eabi-objcopy` で `.bin`／`.hex` へ変換します。いずれのスクリプトも使いたくない場合は、これら 2 つの `docs/COMPILE_*.md` ファイルが権威ある手順書です — スクリプトはこれらを自動化するために存在するのであり、事実上の根拠を置き換えるものではありません。
+**手動ビルド（いずれの OS でも、スクリプトを使わない場合）：** このスクリプトが自動化しているのは、まさに `docs/COMPILE_STM32G474.md` および `docs/COMPILE_STM32H745.md` に記載された手順そのものです — `tools/build_firmware.py` の冒頭にリストされた固定バージョンの HAL/CMSIS/FreeRTOS ソースを取得し、各ターゲットの HAL モジュールとスタートアップ／システムファイルを `arm-none-eabi-gcc` でコンパイル（コンパイルオプション／モジュール一覧は同スクリプト内に記載）、その後各ブートローダー・アプリケーションを、ソースの隣にあるそれぞれ自身のリンカスクリプト（`*.ld`）に対して `arm-none-eabi-gcc`／`-Wl,--gc-sections` でリンクし、`arm-none-eabi-objcopy` で `.bin`／`.hex` へ変換します。いずれのスクリプトも使いたくない場合は、これら 2 つの `docs/COMPILE_*.md` ファイルが権威ある手順書です — スクリプトはこれらを自動化するために存在するのであり、事実上の根拠を置き換えるものではありません。
 
 ビルド成果物は `firmware/` に配置され、本リポジトリにコミット・プッシュされます（URTC 自身の `firmware/` 出力フォルダと同じ規約）。これにより、HYDRA-UMC-STUDIO の GitHub ダウンロード機能が `firmware_manifest.json` 経由で実際に存在する `.bin` ファイルを見つけられるようになっています — このディレクトリは gitignore の対象では **ありません**。各ステップの内容と理由は `docs/COMPILE_STM32G474.md` および `docs/COMPILE_STM32H745.md` を、現在の状況は各ファームウェアフォルダ自身の `README.md` を参照してください。3 つのターゲット（G474、H7 CM7、H7 CM4）すべての **ブートローダー** は、実際に動作する CAN-OTA/SPI-OTA 実装です（CRC32 + HMAC-SHA256 による検証後にバックアップへ書き込み、その後メイン領域へコピーするという、URTC 自身のブートローダーと同じ防文鎮化の仕組み）— エンドツーエンドでクリーンにコンパイルされていますが、実機での検証はまだです。**アプリケーション** は、現時点ではコンパイル検証済みの FreeRTOS GPIO 点滅スモークテストにとどまり、実際のモーション／ビジョン／中継ファームウェアではまだありません。何が実際で何がまだ未着手かは、`docs/architecture.md`（特に第 6 節の状況表と第 8 節の既知かつ許容済みのセキュリティ上の制約）を参照してください。
 
 > **安全に関する現状：** このリポジトリには、E-STOP の経路、ソフトウェアリミット、安全インターロック、電源喪失時（PVD）の FRAM への退避、モーション指令はまだ含まれていません。上記の各セクション（またはエコシステム内の他のプロジェクト）がそれらを説明している箇所は、あくまで想定している設計です。実装され、実機基板で試験されるまで、安全のためにそれらに依存してはいけません。現在のアプリケーションの動作：CM4 と G474 のものは STACK A の AXIS_STATUS ポーリング／応答と Tier 2/3 リレートンネルを実行し、CM7 のものは依然として GPIO トグルのスモークテストです。
 
-6 つのファームウェアコンポーネント（チップまたはコアごとにブートローダーとアプリケーションの組）にはそれぞれ独自のバージョンがあります。ビルドでは変わらず、`build_firmware.sh` と `.bat` は報告するだけです。バージョンを上げるのは明示的なコマンド `python bump_firmware_versions.py`（`--list` で一覧）で、`python show_component_version.py` はコンポーネントのバージョンを表示します。リポジトリ自体のバージョンは G474 アプリケーションのバージョンで、`python tools/hydra_project_tool.py bump` が他のリポジトリと同じように（マニフェストも追従して）上げます。
+6 つのファームウェアコンポーネント（チップまたはコアごとにブートローダーとアプリケーションの組）にはそれぞれ独自のバージョンがあります。ビルドでは変わらず、`tools/build_firmware.py` と `.bat` は報告するだけです。バージョンを上げるのは明示的なコマンド `python bump_firmware_versions.py`（`--list` で一覧）で、`python show_component_version.py` はコンポーネントのバージョンを表示します。リポジトリ自体のバージョンは G474 アプリケーションのバージョンで、`python tools/hydra_project_tool.py bump` が他のリポジトリと同じように（マニフェストも追従して）上げます。
 
 ## 🩺 トラブルシューティング
 
@@ -239,7 +229,7 @@ build_firmware.bat --clean  :: ベンダリング済み HAL/CMSIS キャッシ�
 | 「ブートローダーは公開されている開発用シードで署名された更新を受け入れます」 | ビルドに `HYDRA_FW_UPDATE_PUBKEY_HEX`（または `HYDRA_FW_HMAC_KEY_HEX`）がなかった | 作業台なら問題ありません。他人が触れる基板には、`python tools/image_header.py keygen` で鍵ペアを作り、公開鍵でビルドし、リリースは `HYDRA_UMC_RELEASE=1` でビルドします |
 | 「arm-none-eabi-gcc が見つかりません」 | Arm GNU ツールチェーンがインストールされていないか、`PATH` にありません | インストールして（スクリプトは Linux で `apt` を試します）再ビルドします。ステップ 1b のホストテストに必要なのは通常の C コンパイラーだけです |
 | SPI ブリッジがデバイスを開けない、または `SPI transfer returned ... bytes` | 実際のトランスポートには、SPI デバイスを有効にした CM5 上の `spidev` と `gpiod`、反対側の STM32H757 が必要です。どちらもまだ存在しないため、ブリッジは模擬相手でしか試していません | 基板ができるまでは、テストの模擬トランスポートを使う |
-| `build_firmware.sh` がホストテストで FAIL で終わる | 3 つのブートローダーが共有するソースのコピーがずれたか、`tests/image_header_vectors.h` が `tools/image_header.py` より古い | `python tools/gen_image_header_vectors.py` と `python -m unittest discover -s tests` を実行して、どのコピーが違うかを確認する |
+| `tools/build_firmware.py` がホストテストで FAIL で終わる | 3 つのブートローダーが共有するソースのコピーがずれたか、`tests/image_header_vectors.h` が `tools/image_header.py` より古い | `python tools/gen_image_header_vectors.py` と `python -m unittest discover -s tests` を実行して、どのコピーが違うかを確認する |
 
 ## 📂 リポジトリの構成
 
@@ -267,8 +257,6 @@ HYDRA-UMC/
 ├── firmware/                        コミット済みのビルド成果物（.bin/.hex/.elf + マニフェスト）— gitignore 対象外、URTC 自身の出力フォルダと同じ規約、下記「ファームウェアのビルド」参照
 ├── firmware_base/                   3つの STM32 ブートローダーで同一のファイル。tools/sync_firmware_base.py がコピーとの一致を保つ
 ├── .github/                         CI ワークフローと Issue テンプレート
-├── build_firmware.sh                クリーンなチェックアウトから、上記の全 MCU ファームウェアターゲットを一括ビルド（Linux/Mac）
-├── build_firmware.bat               同じビルド、Windows 版（下記「ファームウェアのビルド」参照）
 ├── build-test.sh / build-test.bat   バージョンを更新しないビルド/コンパイル確認
 ├── generate_manifest.py             フルビルド後に firmware/firmware_manifest.json（バージョン／CRC32）を再生成
 ├── bump_version.py                  明示的なバージョン更新

@@ -10,7 +10,7 @@ AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
 LICENSE: This document is licensed under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
 =============================================================================
 Every command in this document was actually run against this project's own
-real source tree while writing it, via ./build_firmware.sh h745 - not
+real source tree while writing it, via python3 tools/build_firmware.py h745 - not
 reconstructed from memory. See docs/COMPILE_STM32G474.md's own section 1-2
 for the shared tooling/vendoring philosophy (same pattern, applied here to
 a dual-core chip) - this document focuses on what's DIFFERENT for dual-core.
@@ -90,7 +90,7 @@ a typical single-core chip:
                                                      instead (see this
                                                      document's own section 6
                                                      for what that would mean).
-                             build_firmware.sh copies whichever variant it
+                             tools/build_firmware.py copies whichever variant it
                              uses to a plain system_stm32h7xx.c locally, per
                              core - the source filename itself doesn't need
                              to survive into the build tree.
@@ -219,7 +219,7 @@ Kinematic Brain firmware - be aware of it before assuming "it builds" means
     tasks replace vBlinkTask in both.
 
 None of this blocks compiling or verifying the toolchain/linker setup
-itself (that's what this document and build_firmware.sh both already
+itself (that's what this document and tools/build_firmware.py both already
 verify) - it blocks real hardware bring-up, which is separate, real
 engineering work.
 
@@ -228,8 +228,8 @@ engineering work.
 -----------------------------------------------------------------------------
 Last verified: all 4 binaries (2 bare-metal bootloaders, 2 FreeRTOS
 applications) build cleanly, 0 warnings, 0 errors, via a full --clean
-rebuild (`./build_firmware.sh --clean h745`), and via a combined
-`./build_firmware.sh --clean all` alongside the G474 target in the same run.
+rebuild (`python3 tools/build_firmware.py --clean h745`), and via a combined
+`python3 tools/build_firmware.py --clean all` alongside the G474 target in the same run.
 =============================================================================
 END OF FILE
 =============================================================================

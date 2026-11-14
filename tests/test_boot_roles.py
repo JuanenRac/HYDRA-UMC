@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import platform_profile as pp  # noqa: E402
 
 HEADER = (ROOT / "src/mcu_stm32h757/Common/boot_roles.h").read_text(encoding="utf-8")
-SCRIPT = (ROOT / "build_firmware.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+SCRIPT = (ROOT / "tools" / "build_firmware.py").read_text(encoding="utf-8").replace("\r\n", "\n")
 
 
 class BootRolesTests(unittest.TestCase):
@@ -43,24 +43,24 @@ class BootRolesTests(unittest.TestCase):
         self.assertEqual(host.count('"tests/test_boot_roles.c"'), 4)
         for core in ("CORE_CM4", "CORE_CM7"):
             self.assertIn(core, host)
-        self.assertIn("tests/test_boot_roles.c", SCRIPT)
-        self.assertIn('"-DCORE_CM4 -DHYDRA_PLATFORM_H757"', SCRIPT)
-        self.assertIn('"-DCORE_CM7 -DHYDRA_PLATFORM_H757"', SCRIPT)
+        self.assertIn("test_boot_roles", SCRIPT)
+        self.assertIn('("-DCORE_CM4", "-DHYDRA_PLATFORM_H757")', SCRIPT)
+        self.assertIn('("-DCORE_CM7", "-DHYDRA_PLATFORM_H757")', SCRIPT)
 
     def test_the_compile_check_for_the_h757_platform_is_after_the_images_and_never_links_or_ships(self):
-        step = SCRIPT.split('step "10b.', 1)[1].split('step "11.', 1)[0]
-        self.assertGreater(SCRIPT.index('step "10b.'), SCRIPT.index('step "10.'))
+        step = SCRIPT.split("def step10b(self)", 1)[1].split(chr(10) + "    def ", 1)[0]
+        self.assertGreater(SCRIPT.index("self.step10b()"), SCRIPT.index("self.step10()"))
         self.assertIn("-DHYDRA_PLATFORM_H757", step)
         self.assertIn("compile_dir", step)
         self.assertNotIn("-T", step.replace("-DHYDRA", ""))   # no linker script
-        self.assertNotIn("FIRMWARE_OUT", step)
+        self.assertNotIn("final", step)
         self.assertNotIn("objcopy", step)
         self.assertNotIn("link_filtered", step)
 
     def test_a_failure_of_the_compile_check_fails_the_build(self):
-        step = SCRIPT.split('step "10b.', 1)[1].split('step "11.', 1)[0]
-        self.assertIn("H757_CHECK_FAILED=1", step)
-        self.assertIn("exit 1", step)
+        step = SCRIPT.split("def step10b(self)", 1)[1].split(chr(10) + "    def ", 1)[0]
+        self.assertIn("failed = True", step)
+        self.assertIn("if failed:" + chr(10) + "            self.stop()", step)
 
 
 if __name__ == "__main__":

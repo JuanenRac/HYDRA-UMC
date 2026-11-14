@@ -19,7 +19,7 @@ FDCAN1 "STACK A". Two independent cores, two independent firmware images:
 ## Status: real CAN-OTA/SPI-OTA bootloaders, application still a skeleton
 
 Both cores' app/bootloader pairs compile and link today
-(`../../build_firmware.sh h745`, verified against a full `--clean`
+(`../.python3 tools/build_firmware.py h745`, verified against a full `--clean`
 rebuild).
 
 **Both `boot/` folders are real bootloaders now**, not placeholders —
@@ -101,7 +101,7 @@ controller. Not yet verified against real hardware.
 ## Building
 
 ```bash
-../../build_firmware.sh h745
+../.python3 tools/build_firmware.py h745
 ```
 
 See `../../docs/COMPILE_STM32H745.md` for the full compile reference,
@@ -132,6 +132,6 @@ the 4 `system_stm32h7xx*.c` boot-strategy variants was picked and why).
 | `CM4/boot/STM32H757XIHx_CM4_BOOTLOADER.ld` | CM4 bootloader linker script (sector 0, 128 KB) |
 | `Common/ipc_mailbox.h` | CM7↔CM4 shared-SRAM4 IPC mailbox (2 HSEM channels) — now implemented and used by both bootloaders, not just reserved |
 
-HAL/CMSIS headers are NOT vendored here — `build_firmware.sh` fetches them
+HAL/CMSIS headers are NOT vendored here — `tools/build_firmware.py` fetches them
 fresh from ST's own official repos each run (cached under
 `../../build/h745/vendor/`). See `../../docs/COMPILE_STM32H745.md` section 3.

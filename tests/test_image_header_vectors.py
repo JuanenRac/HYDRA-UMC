@@ -5,7 +5,7 @@
 # =============================================================================
 """The C vectors (tests/image_header_vectors.h) are what the host reference makes, and the reference accepts and refuses them as the
 bootloader's C code does. The C side of the same bytes is tests/test_image_header.c, tests/test_update_verify.c and
-tests/test_bootloader_g474_host.c (build_firmware.sh compiles them with the host C compiler)."""
+tests/test_bootloader_g474_host.c (tools/build_firmware.py compiles them with the host C compiler)."""
 import sys
 import unittest
 from pathlib import Path

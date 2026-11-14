@@ -36,8 +36,8 @@ Every file of the repository with a line on what it does: the annotated tree tha
 ├── tests/                   # Host tests: C logic of the bootloaders and the relay (stubs/ stands in for the HAL, image_header_vectors.h holds the reference vectors) and Python tests of the tools
 ├── os/                          # CM5 OS image - base OS choice, systemd units, first-boot provisioning
 ├── images/                      # README banner + icon + splashscreen (SVG)
-├── build_firmware.sh            # Builds every MCU firmware target above from a clean checkout (Linux/Mac)
-├── build_firmware.bat           # Same build, Windows (see "Building the Firmware" below)
+├── tools/build_firmware.py            # Builds every MCU firmware target above from a clean checkout (Linux/Mac)
+├── tools/build_firmware.py           # Same build, Windows (see "Building the Firmware" below)
 ├── build-test.sh / build-test.bat # Non-versioning build/compile check
 ├── generate_manifest.py         # Regenerates firmware/firmware_manifest.json (versions/CRC32) after a full build
 ├── bump_version.py              # Version bump of one component

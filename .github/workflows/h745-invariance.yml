@@ -131,7 +131,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 tools/build_firmware.py
+          if [ -f tools/build_firmware.py ]; then
+            python3 tools/build_firmware.py
+          else
+            bash build_firmware.sh
+          fi
 
       - name: Take the sums of the images
         shell: bash

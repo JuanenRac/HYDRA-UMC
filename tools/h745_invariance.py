@@ -7,7 +7,7 @@
 """Shows that a change to the firmware leaves the images of the default platform exactly as they were.
 
 The firmware of the default platform is what runs on the bench boards today; a change that is made for the H757 platform only (behind the platform profile) must not alter a byte
-of it. The proof is a comparison of the six images that build_firmware.sh makes, built from two commits by the same toolchain in the same job layout:
+of it. The proof is a comparison of the six images that tools/build_firmware.py makes, built from two commits by the same toolchain in the same job layout:
 
     python tools/h745_invariance.py collect firmware > sums.txt        one line per image: the sha256 and the component (the version in the file name is dropped)
     python tools/h745_invariance.py compare base.txt head.txt           exit 1 when an image differs, is missing or is new

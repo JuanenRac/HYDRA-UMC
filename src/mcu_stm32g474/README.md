@@ -11,7 +11,7 @@ itself relaying one hop further to that robot's own URTC Tool Head.
 
 ## Status: real bootloader, real relay/status application logic, motion control still a skeleton
 
-Everything here compiles and links today (`../../build_firmware.sh g474`,
+Everything here compiles and links today (`../.python3 tools/build_firmware.py g474`,
 verified against a full `--clean` rebuild).
 
 **`boot/` is a real CAN-OTA bootloader**, not a placeholder — bare-metal, no
@@ -89,7 +89,7 @@ and this layout does not apply.
 ## Building
 
 ```bash
-../../build_firmware.sh g474
+../.python3 tools/build_firmware.py g474
 ```
 
 See `../../docs/COMPILE_STM32G474.md` for the full compile reference (every
@@ -113,6 +113,6 @@ command this script runs, and why).
 | `boot/STM32G474RETx_BOOTLOADER.ld` | Bootloader linker script |
 
 `stm32g4xx_hal_conf.h` and every HAL/CMSIS header are NOT vendored here —
-`build_firmware.sh` fetches them fresh from ST's own official repos each
+`tools/build_firmware.py` fetches them fresh from ST's own official repos each
 run (cached under `../../build/g474/vendor/`). See
 `../../docs/COMPILE_STM32G474.md` section 3.

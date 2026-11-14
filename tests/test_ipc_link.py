@@ -80,9 +80,9 @@ class IpcLinkTests(unittest.TestCase):
 
     def test_the_host_test_is_registered_in_both_runners_for_both_platforms_and_seal_settings(self):
         host = (ROOT / "tools/host_tests.py").read_text(encoding="utf-8")
-        script = (ROOT / "build_firmware.sh").read_text(encoding="utf-8")
+        script = (ROOT / "tools" / "build_firmware.py").read_text(encoding="utf-8")
         self.assertIn("tests/test_ipc_link.c", host)
-        self.assertIn("tests/test_ipc_link.c", script)
+        self.assertIn("test_ipc_link", script)
         self.assertEqual(host.count('"tests/test_ipc_link.c"'), 4)   # H745 and H757, seal switch off and on
 
 

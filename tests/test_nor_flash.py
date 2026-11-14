@@ -63,7 +63,7 @@ class NorFlashTests(unittest.TestCase):
 
     def test_the_host_test_is_registered_in_both_runners(self):
         self.assertIn("tests/test_nor_flash.c", (ROOT / "tools/host_tests.py").read_text(encoding="utf-8"))
-        self.assertIn("tests/test_nor_flash.c", (ROOT / "build_firmware.sh").read_text(encoding="utf-8"))
+        self.assertIn("test_nor_flash", (ROOT / "tools" / "build_firmware.py").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

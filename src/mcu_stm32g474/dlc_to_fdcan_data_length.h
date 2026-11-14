@@ -14,7 +14,7 @@
  * copy of this exact file for the same reason relay_rx_queue.h itself
  * documents at RobotControllerRelay.c's own call site: this project
  * builds each MCU target from its own isolated include path (see
- * build_firmware.sh), so a genuinely shared file needs a real per-target
+ * tools/build_firmware.py), so a genuinely shared file needs a real per-target
  * copy, not a cross-directory #include. tests/test_dlc_to_fdcan_data_
  * length.c is compiled and run against BOTH copies, so a behavioral
  * drift between them - not just a textual one - is a real, real test
