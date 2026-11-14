@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
+import health_frame  # noqa: E402
 import spi_app  # noqa: E402
 import spi_frame  # noqa: E402
 import spi_system  # noqa: E402
@@ -42,7 +43,7 @@ class TwinFollowsTheContract(unittest.TestCase):
 
     def test_the_bytes_the_c_test_asserts_are_the_ones_the_twin_builds(self):
         vectors = vectors_in_c()
-        self.assertEqual(set(vectors), {"idle frame", "telemetry query", "telemetry reply", "probe request", "probe reply"})
+        self.assertEqual(set(vectors), {"idle frame", "telemetry query", "telemetry reply", "probe request", "probe reply", "health query", "health reply", "health silent reply"})
         app = self.full()
         self.assertEqual(app.tx_wire[:16], vectors["idle frame"])
         self.assertEqual(query_frame(1)[:16], vectors["telemetry query"])
@@ -55,6 +56,14 @@ class TwinFollowsTheContract(unittest.TestCase):
         probe.scan_finished(0x2A, [1, 1, 2, 0, 4, 1, 1, 3])
         probe.service()
         self.assertEqual(probe.tx_wire[:16], vectors["probe reply"])
+        health = spi_app.SpiApp(spi_system.Config(True, True, True))
+        health.publish_health(2, health_frame.build(7, 0x11, 1, 2, 0, 48000), 25)
+        query = spi_frame.build(0, 0, spi_system.HEALTH_QUERY, b"\x02", 1)
+        self.assertEqual(query[:16], vectors["health query"])
+        health.on_receive(query)
+        self.assertEqual(health.tx_wire[:16], vectors["health reply"])
+        health.on_receive(spi_frame.build(0, 0, spi_system.HEALTH_QUERY, b"\x05", 2))
+        self.assertEqual(health.tx_wire[:16], vectors["health silent reply"])
 
     def test_every_frame_the_twin_sends_is_sealed_and_the_sequence_moves_by_one(self):
         app = self.full()
@@ -136,6 +145,35 @@ class TwinFollowsTheContract(unittest.TestCase):
         driver = text(CM4 / "SpiApp.c")
         self.assertIn("#if HYDRA_SPI_ZONES_HEARTBEAT", driver)
         self.assertRegex(text(CM4 / "spi_app.h"), r"#ifndef HYDRA_SPI_ZONES_HEARTBEAT\s*\n#define HYDRA_SPI_ZONES_HEARTBEAT\s+0")
+
+    def test_the_health_of_a_board_goes_over_the_link_and_comes_back_as_the_frame_it_sent(self):
+        app = spi_app.SpiApp(spi_system.Config(True, False, True))
+        frame = health_frame.build(7, 0x11, 1, 2, 0, 48000)
+        app.publish_health(2, frame, 25)
+        link = spi_app.Cm5Link(app)
+        client = spi_system.Client(link.exchange)
+        slot, age, decoded = client.read_health(2)
+        self.assertEqual((slot, age), (2, 25))
+        self.assertEqual((decoded.sequence, decoded.flags, decoded.tx_errors, decoded.rx_errors, decoded.stalls, decoded.uptime_s), (7, 0x11, 1, 2, 0, 48))
+        self.assertEqual(client.read_health(5), (5, None, None))
+        app.publish_health(5, None, 0)
+        self.assertEqual(client.read_health(5), (5, None, None))
+        self.assertEqual(app.commands_run, 3)
+
+    def test_a_build_without_the_health_switch_does_not_answer_the_query(self):
+        for config in (spi_system.Config(True, True), spi_system.Config(False, False, True)):
+            app = spi_app.SpiApp(config)
+            before = app.tx_wire
+            self.assertFalse(app.on_receive(spi_frame.build(0, 0, spi_system.HEALTH_QUERY, b"\x02", 1)))
+            self.assertEqual((app.tx_wire, app.commands_run, app.frames_ignored), (before, 0, 1))
+            self.assertIsNone(spi_system.Client(spi_app.Cm5Link(app).exchange).read_health(2))
+
+    def test_the_health_switch_ships_off_in_the_header_and_the_driver_keeps_it_behind_a_switch(self):
+        self.assertRegex(text(CM4 / "spi_system.h"), r"#ifndef HYDRA_SPI_HEALTH\s*\n#define HYDRA_SPI_HEALTH\s+0")
+        self.assertRegex(text(CM4 / "node_health.h"), r"#ifndef HYDRA_SPI_HEALTH\s*\n#define HYDRA_SPI_HEALTH\s+0")
+        self.assertIn("#if HYDRA_SPI_HEALTH", text(CM4 / "SpiApp.c"))
+        self.assertIn("#if HYDRA_SPI_HEALTH", text(CM4 / "KinematicBrainCan.c"))
+        self.assertIn("-DHYDRA_SPI_HEALTH=1", text(ROOT / "tools" / "build_firmware.py"))
 
     def test_the_seal_can_be_required_or_not(self):
         lenient, strict = self.full(), spi_app.SpiApp(spi_system.Config(True, True), require_crc=True)

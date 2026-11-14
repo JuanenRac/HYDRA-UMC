@@ -202,6 +202,12 @@ void SpiApp_Pump(void)
     if (SpiApp_TakeScan(&g_spi_app, &scan_id)) SpiApp_RunScan(scan_id);
     uint8_t fram_request[8], fram_reply[8];
     if (SpiApp_TakeFram(&g_spi_app, fram_request) && FramNode_Handle(&g_fram_node, FRAM_BRAIN_ID, 0u, fram_request, 8u, fram_reply)) SpiApp_FramDone(&g_spi_app, fram_reply);
+#if HYDRA_SPI_HEALTH
+    for (uint8_t slot = 0; slot < 8u; slot++) {
+        uint8_t health[8], health_age = 0u;
+        SpiApp_PublishHealth(&g_spi_app, slot, KinematicBrainCan_ReadHealth(slot, health, &health_age) ? health : NULL, health_age);
+    }
+#endif
 #if HYDRA_SPI_ZONES_HEARTBEAT
     if (SpiApp_ZonesTick(&g_spi_app, HAL_GetTick(), (uint32_t)HYDRA_SPI_ZONES_MAX_AGE_MS)) KinematicBrainCan_EstopTrip((uint8_t)SPI_APP_ZONES_REASON);
 #endif

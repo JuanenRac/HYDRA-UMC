@@ -152,8 +152,38 @@ class SpiCommands(unittest.TestCase):
         self.boards = [hil.ControllerBoardDouble(0, 0x70), hil.ControllerBoardDouble(2, 0x72, on(enter_bootloader=True))]
         self.bench = bench_with(*self.boards)
 
-    def double(self, telemetry=True, stop=True):
-        return hil.SpiBrainDouble(self.bench, spi_system.Config(telemetry, stop))
+    def double(self, telemetry=True, stop=True, health=False):
+        return hil.SpiBrainDouble(self.bench, spi_system.Config(telemetry, stop, health))
+
+    def test_the_cm5_reads_the_health_frame_a_board_sends_on_the_bus(self):
+        board = hil.ControllerBoardDouble(3, 0x73, on(health_frame=True))
+        self.bench.add(board)
+        self.bench.bus.run(3600)
+        client = spi_system.Client(self.double(stop=False, health=True).exchange)
+        slot, age, frame = client.read_health(3)
+        self.assertEqual(slot, 3)
+        self.assertLessEqual(age, 10, "the last frame is at most a second old")
+        self.assertTrue(frame.flags & health_frame.FLAG_ESTOP, "a board starts latched and says so")
+        self.assertEqual(frame.sequence, self.bench.host.health_heard[3][-1].sequence)
+        self.assertEqual(client.read_health(0), (0, None, None), "a board with the switch off sends nothing: nothing to report")
+        self.assertEqual(client.read_health(1), (1, None, None), "an empty slot too")
+
+    def test_the_age_grows_while_the_board_is_silent(self):
+        board = hil.ControllerBoardDouble(3, 0x73, on(health_frame=True))
+        self.bench.add(board)
+        self.bench.bus.run(1200)
+        client = spi_system.Client(self.double(health=True).exchange)
+        first = client.read_health(3)[1]
+        self.bench.bus.drop_next[can_ids.identifier(hil.slot_base(3), can_ids.by_name("HEALTH_FRAME"))] = 5
+        self.bench.bus.run(3000)
+        later = client.read_health(3)[1]
+        self.assertGreater(later, first + 15, "three more seconds without a frame add at least 15 steps of 100 ms")
+
+    def test_the_cm5_gets_no_health_answer_without_the_health_switch(self):
+        board = hil.ControllerBoardDouble(3, 0x73, on(health_frame=True))
+        self.bench.add(board)
+        self.bench.bus.run(3600)
+        self.assertIsNone(spi_system.Client(self.double(health=False).exchange).read_health(3))
 
     def test_the_probe_runs_the_slot_scan_and_returns_the_verdicts(self):
         client = spi_system.Client(self.double().exchange)

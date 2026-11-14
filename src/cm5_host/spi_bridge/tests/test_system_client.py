@@ -86,10 +86,54 @@ class Brain:
         self.app.publish_brain_state(self.tripped, 0, 0)
 
 
-def make(telemetry=True, stop=True, scan_after_pumps=1):
-    app = spi_app.SpiApp(spi_system.Config(telemetry, stop))
+def make(telemetry=True, stop=True, scan_after_pumps=1, health=False):
+    app = spi_app.SpiApp(spi_system.Config(telemetry, stop, health))
     brain = Brain(app, scan_after_pumps)
     return app, brain, TwinTransport(app, brain.pump)
+
+
+class HealthTests(unittest.TestCase):
+    def test_the_last_frame_of_a_board_comes_back_with_its_age(self):
+        app, _brain, transport = make(health=True)
+        app.publish_health(2, bytes((0x48, 7, 0x11, 1, 2, 0, 3, 0xFB)), 25)
+        info = system_client.read_health(transport, 2)
+        self.assertEqual((info.slot, info.heard, info.age_ms), (2, True, 2500))
+        self.assertEqual((info.sequence, info.tx_errors, info.rx_errors, info.stalls, info.uptime_s), (7, 1, 2, 0, 48))
+        self.assertEqual(info.flag_names, ("estop_latched", "application_confirmed"))
+
+    def test_a_slot_never_heard_says_so_and_invents_nothing(self):
+        _app, _brain, transport = make(health=True)
+        info = system_client.read_health(transport, 5)
+        self.assertEqual((info.slot, info.heard, info.age_ms, info.flag_names), (5, False, None, ()))
+
+    def test_a_firmware_without_the_health_switch_does_not_answer(self):
+        _app, _brain, transport = make(health=False)
+        self.assertIsNone(system_client.read_health(transport, 2))
+        transport.fail = OSError("no device")
+        self.assertIsNone(system_client.read_health(transport, 2))
+
+    def test_a_slot_out_of_range_is_not_even_asked(self):
+        _app, _brain, transport = make(health=True)
+        self.assertIsNone(system_client.read_health(transport, 8))
+        self.assertIsNone(system_client.read_health(transport, -1))
+        self.assertEqual(transport.sent, [])
+
+    def test_the_decoder_refuses_what_is_not_a_health_answer(self):
+        for frame in (SpiOtaFrame(0, 0, 0x23, 8, bytes(8)), SpiOtaFrame(0, 0, 0x2A, 8, bytes([9]) + bytes(7)), SpiOtaFrame(0, 0, 0x2A, 8, bytes([2, 255]) + bytes(6)),
+                      SpiOtaFrame(0, 0, 0x2A, 2, bytes([2, 7])), SpiOtaFrame(0, 0, 0x2A, 5, bytes(5)), SpiOtaFrame(0, 0, 0x2A, 8, bytes(7))):
+            self.assertIsNone(system_client.decode_health(frame), frame)
+
+    def test_an_answer_for_another_slot_is_not_taken_for_the_one_asked(self):
+        app, _brain, transport = make(health=True)
+        app.publish_health(3, bytes((0x48, 1, 0, 0, 0, 0, 1, 0)), 1)
+        real = transport.transceive
+
+        def other_slot(frame):
+            answer = real(frame)
+            return SpiOtaFrame(answer.target_tier, answer.target_slot, answer.frame_type, answer.dlc, bytes([3]) + bytes(answer.payload[1:])) if answer.frame_type == 0x2A else answer
+
+        transport.transceive = other_slot
+        self.assertIsNone(system_client.read_health(transport, 2))
 
 
 class TelemetryTests(unittest.TestCase):

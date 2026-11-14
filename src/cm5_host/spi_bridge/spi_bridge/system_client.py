@@ -24,6 +24,10 @@ TELEMETRY_RESPONSE = 0x23
 PROBE_REQUEST = 0x24
 PROBE_RESPONSE = 0x25
 ZONES_HEARTBEAT = 0x26
+HEALTH_QUERY = 0x27
+HEALTH_RESPONSE = 0x2A  # 0x28 and 0x29 are the F-RAM request and its answer (fram_client.py)
+HEALTH_AGE_NEVER = 0xFF
+HEALTH_TICK_MS = 100  # the unit of the age in the answer
 IDLE_FRAME = 0xFF  # the frame that asks for nothing: the firmware ignores it and the transaction brings the staged answer
 
 STATE_BOOTLOADER = 0x01
@@ -33,6 +37,17 @@ FLAG_ESTOP_LATCHED = 0x02
 FLAG_STOP_ENABLED = 0x04
 
 VERDICT_NAMES = {0: "absent", 1: "ok", 2: "duplicate", 3: "misplaced", 4: "noisy"}
+
+# the flags of the health frame of a controller board (tools/health_frame.py of the firmware repository; src/mcu_stm32g474/health_frame.h)
+HEALTH_FLAG_NAMES = {
+    0x01: "estop_latched",
+    0x02: "bus_off_seen",
+    0x04: "watchdog_reset_at_start",
+    0x08: "setup_failed_at_start",
+    0x10: "application_confirmed",
+    0x20: "drivers_enabled",
+    0x40: "setup_failed_safe_state",
+}
 
 
 @dataclass(frozen=True)
@@ -56,6 +71,25 @@ class Telemetry:
 class ProbeResult:
     scan_id: int
     verdicts: tuple[str, ...]  # the slots 0 to 7: absent, ok, duplicate, misplaced, noisy (unknown for a nibble outside the table)
+
+
+@dataclass(frozen=True)
+class NodeHealth:
+    """The last health frame the brain heard from the board in a slot. ``heard`` is False while it has heard none (then only ``slot`` is meaningful)."""
+
+    slot: int
+    heard: bool
+    age_ms: int | None = None  # how long ago the brain heard it, in steps of 100 ms (254 steps at most: 25.4 s means "that long or more")
+    sequence: int = 0
+    flags: int = 0
+    tx_errors: int = 0
+    rx_errors: int = 0
+    stalls: int = 0
+    uptime_s: int = 0  # a multiple of 16; 4080 means "4080 or more"
+
+    @property
+    def flag_names(self) -> tuple[str, ...]:
+        return tuple(name for bit, name in HEALTH_FLAG_NAMES.items() if self.flags & bit)
 
 
 def _exchange(transport: SpiOtaTransport, frame_type: int, payload: bytes) -> SpiOtaFrame | None:
@@ -82,6 +116,28 @@ def decode_probe(frame: SpiOtaFrame) -> ProbeResult | None:
     for byte in frame.payload[1:5]:
         verdicts += [VERDICT_NAMES.get(byte & 0x0F, "unknown"), VERDICT_NAMES.get(byte >> 4, "unknown")]
     return ProbeResult(frame.payload[0], tuple(verdicts))
+
+
+def decode_health(frame: SpiOtaFrame) -> NodeHealth | None:
+    """None for anything that is not a health answer: another type, a slot beyond 7, an age of 255 with eight bytes, a length other than 2 or 8."""
+    if frame.frame_type != HEALTH_RESPONSE or len(frame.payload) < frame.dlc or frame.dlc not in (2, 8) or frame.payload[0] > 7:
+        return None
+    data = frame.payload
+    if frame.dlc == 2:
+        return NodeHealth(slot=data[0], heard=False) if data[1] == HEALTH_AGE_NEVER else None
+    if data[1] == HEALTH_AGE_NEVER:
+        return None
+    return NodeHealth(data[0], True, data[1] * HEALTH_TICK_MS, data[2], data[3], data[4], data[5], data[6], data[7] * 16)
+
+
+def read_health(transport: SpiOtaTransport, slot: int) -> NodeHealth | None:
+    """The last health frame of the board in `slot` (0 to 7) as the brain heard it, or None when the firmware does not answer (the health switch is off in
+    its build, the link is down, the slot is out of range). Read only: nothing is sent to the board."""
+    if not 0 <= slot <= 7:
+        return None
+    answer = _exchange(transport, HEALTH_QUERY, bytes((slot,)))
+    result = None if answer is None else decode_health(answer)
+    return result if result is not None and result.slot == slot else None
 
 
 def read_telemetry(transport: SpiOtaTransport) -> Telemetry | None:

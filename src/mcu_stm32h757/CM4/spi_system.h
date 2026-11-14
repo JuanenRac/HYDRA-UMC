@@ -15,10 +15,13 @@
  *   0x24 PROBE_REQUEST      dlc 1   scan id: scan the slots before an update
  *   0x25 PROBE_RESPONSE     dlc 5   scan id, then the verdict of the slots 0 to 7 in a nibble each
  *   0x26 ZONES_HEARTBEAT    dlc 4   'Z' 'O' 'N' 'E'            the CM5 says the safety-zones chain is healthy; the application stops the stack when it stops coming
+ *   0x27 HEALTH_QUERY       dlc 1   slot 0 to 7                the CM5 asks for the last health frame of the board in that slot (only with HYDRA_SPI_HEALTH)
+ *   0x2A HEALTH_RESPONSE    dlc 8   slot, age, sequence, flags, tx errors, rx errors, stalls, uptime (units of 16 s); dlc 2 (slot, 0xFF) while no frame has been heard
  *
  * Two switches, both 0 by default, so the firmware answers none of these until a build asks for them:
  *   HYDRA_SPI_SYSTEM        telemetry and probe (read only)
  *   HYDRA_SPI_STOP_COMMAND  stop and release (act on the stack; needs HYDRA_SPI_SYSTEM too)
+ * and a third, also 0 by default, for the health of the boards: HYDRA_SPI_HEALTH (read only; needs HYDRA_SPI_SYSTEM too).
  * The functions take the switches in a configuration structure, so the host test runs every combination in one binary.
  * ========================================================================== */
 #ifndef HYDRA_UMC_SPI_SYSTEM_H
@@ -33,6 +36,9 @@
 #ifndef HYDRA_SPI_STOP_COMMAND
 #define HYDRA_SPI_STOP_COMMAND 0
 #endif
+#ifndef HYDRA_SPI_HEALTH
+#define HYDRA_SPI_HEALTH 0
+#endif
 
 #define SPI_SYS_STOP_REQUEST       0x20u
 #define SPI_SYS_RELEASE_REQUEST    0x21u
@@ -41,6 +47,9 @@
 #define SPI_SYS_PROBE_REQUEST      0x24u
 #define SPI_SYS_PROBE_RESPONSE     0x25u
 #define SPI_SYS_ZONES_HEARTBEAT    0x26u
+#define SPI_SYS_HEALTH_QUERY       0x27u
+#define SPI_SYS_HEALTH_RESPONSE    0x2Au /* 0x28 and 0x29 are the F-RAM request and its answer (spi_app.h) */
+#define SPI_SYS_HEALTH_AGE_NEVER   0xFFu /* the age that goes with "no health frame heard yet from this slot" */
 
 #define SPI_SYS_STATE_BOOTLOADER   0x01u
 #define SPI_SYS_STATE_APPLICATION  0x02u
@@ -51,6 +60,7 @@
 typedef struct {
     uint8_t telemetry_enabled; /* HYDRA_SPI_SYSTEM */
     uint8_t stop_enabled;      /* HYDRA_SPI_STOP_COMMAND */
+    uint8_t health_enabled;    /* HYDRA_SPI_HEALTH */
 } SpiSysConfig_t;
 
 typedef struct {
@@ -64,6 +74,9 @@ typedef struct {
     uint8_t estop_latched;
     uint8_t scan_verdicts[8]; /* the last slot scan: 0 absent, 1 ok, 2 duplicate, 3 misplaced, 4 noisy (tools/slot_scan.py) */
     uint8_t scan_id;
+    uint8_t health_seen[8];   /* 1 once a valid health frame of the slot has been heard */
+    uint8_t health_age[8];    /* units of 100 ms since it was heard, saturated at 254 */
+    uint8_t health[8][8];     /* the frame as it came: marker, sequence, flags, tx errors, rx errors, stalls, uptime, check (tools/health_frame.py) */
 } SpiSysSnapshot_t;
 
 typedef enum {
@@ -77,7 +90,7 @@ typedef enum {
 
 static inline SpiSysConfig_t SpiSys_ConfigFromBuild(void)
 {
-    SpiSysConfig_t config = {(uint8_t)HYDRA_SPI_SYSTEM, (uint8_t)HYDRA_SPI_STOP_COMMAND};
+    SpiSysConfig_t config = {(uint8_t)HYDRA_SPI_SYSTEM, (uint8_t)HYDRA_SPI_STOP_COMMAND, (uint8_t)HYDRA_SPI_HEALTH};
     return config;
 }
 
@@ -88,7 +101,7 @@ static inline uint8_t SpiSys_Saturate(uint32_t value)
 
 static inline uint8_t SpiSys_IsCommand(uint8_t frame_type)
 {
-    return (uint8_t)(frame_type >= SPI_SYS_STOP_REQUEST && (frame_type <= SPI_SYS_PROBE_REQUEST || frame_type == SPI_SYS_ZONES_HEARTBEAT) && frame_type != SPI_SYS_TELEMETRY_RESPONSE);
+    return (uint8_t)(frame_type >= SPI_SYS_STOP_REQUEST && (frame_type <= SPI_SYS_PROBE_REQUEST || frame_type == SPI_SYS_ZONES_HEARTBEAT || frame_type == SPI_SYS_HEALTH_QUERY) && frame_type != SPI_SYS_TELEMETRY_RESPONSE);
 }
 
 /* Fills the telemetry answer (8 bytes). */
@@ -115,6 +128,22 @@ static inline void SpiSys_BuildProbeResponse(const SpiSysSnapshot_t *snap, uint8
     }
 }
 
+/* The answer to a health query: `out` is 8 bytes and the length is returned. The marker and the check byte of the frame are not carried (they are the frame's
+ * own seal on the CAN bus; only a frame that passed them was stored), so the eight bytes are the slot, the age and the six bytes between marker and check.
+ * 2 (slot, 0xFF) while nothing has been heard from the slot. */
+static inline uint8_t SpiSys_BuildHealth(const SpiSysSnapshot_t *snap, uint8_t slot, uint8_t out[8])
+{
+    memset(out, 0, 8);
+    out[0] = slot;
+    if (!snap->health_seen[slot]) {
+        out[1] = SPI_SYS_HEALTH_AGE_NEVER;
+        return 2u;
+    }
+    out[1] = snap->health_age[slot] > 254u ? 254u : snap->health_age[slot];
+    for (int index = 0; index < 6; index++) out[2 + index] = snap->health[slot][1 + index];
+    return 8u;
+}
+
 /* One frame of the tier SELF: what to do and, for a reply, the bytes. `out_dlc` is the length of `out` for a reply. Anything that is not exactly
  * a command of the table above (wrong length, wrong magic, unknown selector) does nothing: a frame never half-works. */
 static inline SpiSysAction SpiSys_Handle(const SpiSysConfig_t *config, const SpiSysSnapshot_t *snap, uint8_t frame_type, const uint8_t *payload,
@@ -130,6 +159,11 @@ static inline SpiSysAction SpiSys_Handle(const SpiSysConfig_t *config, const Spi
         SpiSys_BuildTelemetry(config, snap, payload[0], out);
         *out_type = SPI_SYS_TELEMETRY_RESPONSE;
         *out_dlc = 8u;
+        return SPI_SYS_ACT_REPLY;
+    case SPI_SYS_HEALTH_QUERY:
+        if (!config->health_enabled || dlc != 1u || payload[0] > 7u) return SPI_SYS_ACT_NONE;
+        *out_dlc = SpiSys_BuildHealth(snap, payload[0], out);
+        *out_type = SPI_SYS_HEALTH_RESPONSE;
         return SPI_SYS_ACT_REPLY;
     case SPI_SYS_PROBE_REQUEST:
         if (dlc != 1u) return SPI_SYS_ACT_NONE;

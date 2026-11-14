@@ -14,6 +14,7 @@
 
 #include "estop_brain.h"
 #include "fram_node.h"
+#include "node_health.h"
 #include "spi_app.h"
 
 #ifndef SPI_APP_TEST_SWITCHES
@@ -72,7 +73,7 @@ static void rig_pump(Rig_t *rig, SpiApp_t *app)
 static SpiApp_t make_app(uint8_t telemetry, uint8_t stop, uint8_t require_crc)
 {
     SpiApp_t app;
-    const SpiSysConfig_t config = {telemetry, stop};
+    const SpiSysConfig_t config = {telemetry, stop, 0u};
     SpiApp_Init(&app, &config, require_crc);
     return app;
 }
@@ -109,6 +110,62 @@ static void run_with_switches_on(void)
         const uint8_t want[16] = {0x00, 0x00, 0x23, 0x08, 0x00, 0x07, 0, 0, 0, 0, 0, 0x02, 0xA1, 0x01, 0x81, 0x7E};
         TEST_ASSERT(same16(app.tx_wire, want), "the staged answer is the vector (latched, stop enabled, link ok, application)");
         TEST_ASSERT(app.commands_run == 1u && app.crc_errors == 0u && app.retries == 0u, "one command, nothing damaged");
+    }
+
+    /* the health of the boards: the last frame heard from a slot goes over the link, without its marker and check byte, with its age; a slot never heard says so */
+    {
+        SpiApp_t app;
+        const SpiSysConfig_t config = {1u, 1u, 1u};
+        SpiApp_Init(&app, &config, 0u);
+        NodeHealth_t store;
+        NodeHealth_Init(&store);
+        /* a board that sent sequence 7, flags 0x11, one tx error, two rx errors, no stall and 48 s of uptime: 48 40 .. as tools/health_frame.py builds it */
+        const uint8_t frame[8] = {0x48, 0x07, 0x11, 0x01, 0x02, 0x00, 0x03, 0xFB};
+        const uint8_t bad_check[8] = {0x48, 0x07, 0x11, 0x01, 0x02, 0x00, 0x03, 0xFA};
+        const uint8_t bad_marker[8] = {0x49, 0x07, 0x11, 0x01, 0x02, 0x00, 0x03, 0xFA};
+        TEST_ASSERT(NodeHealth_Check(frame) == 0xFBu, "the check byte of the example frame");
+        TEST_ASSERT(NodeHealth_OnFrame(&store, 2u, bad_check, 8u, 1000u) == 0u && NodeHealth_OnFrame(&store, 2u, bad_marker, 8u, 1000u) == 0u, "a wrong check byte or marker is not stored");
+        TEST_ASSERT(NodeHealth_OnFrame(&store, 2u, frame, 7u, 1000u) == 0u && NodeHealth_OnFrame(&store, 8u, frame, 8u, 1000u) == 0u, "a short frame or a slot beyond 7 is not stored");
+        TEST_ASSERT(store.seen[2] == 0u, "nothing was stored by those");
+        TEST_ASSERT(NodeHealth_OnFrame(&store, 2u, frame, 8u, 1000u) == 1u && store.seen[2] == 1u, "a valid frame is stored");
+        TEST_ASSERT(NodeHealth_Age(&store, 2u, 3500u) == 25u && NodeHealth_Age(&store, 2u, 1000u + 100000u) == 254u, "the age is in units of 100 ms and saturates at 254");
+        TEST_ASSERT(NodeHealth_Age(&store, 2u, 40u) == 0u || NodeHealth_Age(&store, 2u, 40u) == 254u, "a clock that wrapped gives a defined age");
+        SpiApp_PublishHealth(&app, 2u, store.frame[2], NodeHealth_Age(&store, 2u, 3500u));
+        make_wire(wire, 0u, SPI_SYS_HEALTH_QUERY, (const uint8_t[1]){2u}, 1u, 1, 1u);
+        /* VECTOR health query: 00 00 27 01 02 00 00 00 00 00 00 00 a1 01 f7 2c */
+        const uint8_t sent[16] = {0x00, 0x00, 0x27, 0x01, 0x02, 0, 0, 0, 0, 0, 0, 0, 0xA1, 0x01, 0xF7, 0x2C};
+        TEST_ASSERT(same16(wire, sent), "the sealed health query is the vector");
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 1u, "a health query is a command that ran");
+        /* VECTOR health reply: 00 00 2a 08 02 19 07 11 01 02 00 03 a1 01 19 b1 */
+        const uint8_t want[16] = {0x00, 0x00, 0x2A, 0x08, 0x02, 0x19, 0x07, 0x11, 0x01, 0x02, 0x00, 0x03, 0xA1, 0x01, 0x19, 0xB1};
+        TEST_ASSERT(same16(app.tx_wire, want), "the staged answer is the vector: slot 2, age 25, then the six bytes between the marker and the check byte");
+        make_wire(wire, 0u, SPI_SYS_HEALTH_QUERY, (const uint8_t[1]){5u}, 1u, 1, 2u);
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 1u, "a query of a slot nobody answered for is answered too");
+        /* VECTOR health silent reply: 00 00 2a 02 05 ff 00 00 00 00 00 00 a1 02 3a 7b */
+        const uint8_t silent[16] = {0x00, 0x00, 0x2A, 0x02, 0x05, 0xFF, 0, 0, 0, 0, 0, 0, 0xA1, 0x02, 0x3A, 0x7B};
+        TEST_ASSERT(same16(app.tx_wire, silent), "slot 5 was never heard: two bytes, the slot and 0xFF");
+        /* a slot that the STACK A task is writing right now is told as not heard instead of half a frame */
+        app.health_gen[2] = (uint8_t)(app.health_gen[2] + 1u);
+        make_wire(wire, 0u, SPI_SYS_HEALTH_QUERY, (const uint8_t[1]){2u}, 1u, 1, 3u);
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 1u && app.tx_wire[3] == 2u && app.tx_wire[5] == 0xFFu, "a slot in the middle of a write is told as not heard");
+        app.health_gen[2] = (uint8_t)(app.health_gen[2] + 1u);
+        SpiApp_PublishHealth(&app, 2u, NULL, 0u);
+        make_wire(wire, 0u, SPI_SYS_HEALTH_QUERY, (const uint8_t[1]){2u}, 1u, 1, 4u);
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 1u && app.tx_wire[3] == 2u, "a slot published as not heard answers with two bytes");
+        /* a malformed query does nothing: a slot beyond 7, the wrong length */
+        const uint8_t before_len = app.tx_wire[3];
+        make_wire(wire, 0u, SPI_SYS_HEALTH_QUERY, (const uint8_t[1]){8u}, 1u, 1, 5u);
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u && app.tx_wire[3] == before_len, "slot 8 is not answered");
+        make_wire(wire, 0u, SPI_SYS_HEALTH_QUERY, (const uint8_t[2]){1u, 0u}, 2u, 1, 6u);
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u, "two bytes of query are not answered");
+        /* with the health switch off (telemetry and stop on) the query is not answered and the other commands are not affected */
+        {
+            SpiApp_t quiet = make_app(1u, 1u, 0u);
+            make_wire(wire, 0u, SPI_SYS_HEALTH_QUERY, (const uint8_t[1]){2u}, 1u, 1, 1u);
+            TEST_ASSERT(SpiApp_OnReceive(&quiet, wire) == 0u && quiet.commands_run == 0u, "health off: the query is ignored");
+            make_wire(wire, 0u, SPI_SYS_TELEMETRY_QUERY, query, 1u, 1, 2u);
+            TEST_ASSERT(SpiApp_OnReceive(&quiet, wire) == 1u, "health off: telemetry still works");
+        }
     }
 
     /* a damaged frame is dropped and counted; a retry is not run twice; a jump of the sequence is accepted and counted */
@@ -383,7 +440,7 @@ static void run_with_switches_off(void)
     const uint8_t scan[1] = {0x2Au};
     const uint8_t zone[4] = {'Z', 'O', 'N', 'E'};
     const SpiSysConfig_t build = SpiSys_ConfigFromBuild();
-    TEST_ASSERT(build.telemetry_enabled == 0u && build.stop_enabled == 0u, "the build as it ships has both switches off");
+    TEST_ASSERT(build.telemetry_enabled == 0u && build.stop_enabled == 0u && build.health_enabled == 0u && HYDRA_SPI_HEALTH == 0, "the build as it ships has the three switches off");
     TEST_ASSERT(HYDRA_SPI_APP == 0 && HYDRA_SPI_REQUIRE_CRC == 0, "and the service and the seal requirement are off");
 
     SpiApp_t app = make_app(build.telemetry_enabled, build.stop_enabled, 0u);
@@ -406,7 +463,12 @@ static void run_with_switches_off(void)
         make_wire(wire, 0u, SPI_APP_FRAM_REQUEST, fram, 8u, 1, ++seq);
         TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u && app.fram_pending == 0u, "off: an F-RAM request leaves no request");
     }
-    TEST_ASSERT(memcmp(keep, app.tx_wire, sizeof keep) == 0 && app.commands_run == 0u && app.frames_ignored == 6u, "off: nothing staged, nothing run, six ignored");
+    {
+        const uint8_t slot[1] = {2u};
+        make_wire(wire, 0u, SPI_SYS_HEALTH_QUERY, slot, 1u, 1, ++seq);
+        TEST_ASSERT(SpiApp_OnReceive(&app, wire) == 0u, "off: a health query is not answered");
+    }
+    TEST_ASSERT(memcmp(keep, app.tx_wire, sizeof keep) == 0 && app.commands_run == 0u && app.frames_ignored == 7u, "off: nothing staged, nothing run, seven ignored");
     SpiApp_Service(&app);
     TEST_ASSERT(memcmp(keep, app.tx_wire, sizeof keep) == 0, "off: the service stages nothing between transactions");
 }
