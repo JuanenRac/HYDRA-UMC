@@ -1,0 +1,57 @@
+# =============================================================================
+# HYDRA-UMC - coverage of the SPI bridge of the CM5
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Measures lines and branches of src/cm5_host/spi_bridge with its own tests and compares them with the floor in tools/coverage_floor.json
+# (python tools/hydra_project_tool.py coverage --strict). Started by hand, by a push to a branch whose name starts with hy-cov-, and by a push or a
+# pull request that touches the bridge. It runs on a pinned Ubuntu image because it measures against a floor.
+
+name: SPI bridge coverage
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "hy-cov-**"
+      - main
+    paths:
+      - "src/cm5_host/spi_bridge/**"
+      - "tools/coverage_floor.json"
+      - "tools/hydra_project_tool.py"
+      - ".github/workflows/bridge-coverage.yml"
+  pull_request:
+    paths:
+      - "src/cm5_host/spi_bridge/**"
+      - "tools/coverage_floor.json"
+      - "tools/hydra_project_tool.py"
+      - ".github/workflows/bridge-coverage.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: Coverage of the SPI bridge
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install the measuring tools
+        run: python -m pip install --quiet coverage pytest
+
+      - name: Measure the bridge against its floor
+        run: python tools/hydra_project_tool.py coverage --strict
