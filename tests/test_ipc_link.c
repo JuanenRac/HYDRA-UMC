@@ -232,6 +232,23 @@ int main(void)
     CHECK(w.foreign_releases == 0u, "in all those interleavings no core released what the other took");
     CHECK((uint8_t)((uint8_t)cmds - expect_cmd) <= 1u, "no command was lost or repeated (at most one is in flight)");
 
+    /* the heartbeat answer is best effort: it goes when the answer channel is free and says busy at once, without waiting, when it is not */
+    world_init(&w);
+    memset((void *)&mailbox, 0, sizeof mailbox);
+    backend_sequence = 0;
+    const uint8_t beat[2] = {0x01, 0x02};
+    CHECK(Ipc_PostResponseNow(&OPS, &be, &mailbox, &backend_sequence, 0x44, beat, 2) == IPC_OK, "the heartbeat goes on a free channel");
+    CHECK(w.owner[IPC_HSEM_RESP_ID] == BACKEND && backend_sequence == 1, "the backend took the answer semaphore and the sequence rose");
+    const uint32_t before_busy = w.now;
+    CHECK(Ipc_PostResponseNow(&OPS, &be, &mailbox, &backend_sequence, 0x45, beat, 2) == IPC_BUSY, "a second heartbeat before the first was taken: busy");
+    CHECK(mailbox.resp.frame_type == 0x44 && backend_sequence == 1, "the posted frame and the sequence are untouched");
+    CHECK(w.now - before_busy <= 8u, "it did not wait for the channel (the time barely moved)");
+    CHECK(Ipc_TakeResponse(&OPS, &gw, &mailbox, &got) == IPC_OK && got.frame_type == 0x44 && got.payload[0] == 0x01 && got.payload[1] == 0x02, "the gateway reads the first heartbeat");
+    /* the gateway has acknowledged but not yet let go of the done semaphore: still busy */
+    CHECK(Ipc_PostResponseNow(&OPS, &be, &mailbox, &backend_sequence, 0x46, beat, 2) == IPC_BUSY, "while the acknowledgement is still held: busy");
+    settle(&w, &gw, &be);
+    CHECK(Ipc_PostResponseNow(&OPS, &be, &mailbox, &backend_sequence, 0x46, beat, 2) == IPC_OK, "once the exchange is finished the next heartbeat goes");
+
     if (failures == 0) printf("IPC_LINK=PASS\n");
     return failures == 0 ? 0 : 1;
 }
