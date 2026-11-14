@@ -16,6 +16,9 @@
  *    flash write that does not take), a record that matches the flash, a flipped byte (CRC), a record whose digest does not match, a record of another board
  *    or with an impossible size, and the copy that a pending record asks for;
  *  - the version and the error-counter queries, the status, the heartbeat and the scan reply, and what happens when no transmit mailbox frees up;
+ *  - the start of an update (a size of 0 or over the slot, another board, a backup that cannot be erased, an accepted start that erases what the image needs
+ *    and begins a clean session), the data frames (outside a session, longer than a frame, past the declared size, after a failure), a full page that is
+ *    written and acknowledged, a page that cannot be written, and the confirmation of a healthy start;
  *  - JumpToApplication: the five vectors it refuses (it never reaches the code that leaves the bootloader).
  *
  * Needs Linux on x86-64 (a fixed mapping at the flash address); anywhere else it reports that and passes.
@@ -667,6 +670,183 @@ static void test_a_full_transmit_fifo_drops_or_delays_but_never_blocks(void)
     CHECK(sent_count == 0 && clock_ms == 1000, "a heartbeat never waits: it is skipped when the FIFO is full");
 }
 
+/* ---- the start of an update, the data frames and the confirmation of a healthy start ---------------------------------------------- */
+static void start_frame(uint8_t d[8], uint32_t size, uint32_t hw_id)
+{
+    d[0] = (uint8_t)(size >> 24); d[1] = (uint8_t)(size >> 16); d[2] = (uint8_t)(size >> 8); d[3] = (uint8_t)size;
+    d[4] = (uint8_t)(hw_id >> 24); d[5] = (uint8_t)(hw_id >> 16); d[6] = (uint8_t)(hw_id >> 8); d[7] = (uint8_t)hw_id;
+}
+
+static int status_frames(uint8_t code)
+{
+    int n = 0;
+    for (int i = 0; i < sent_count; i++) {
+        if (sent[i].id == SLOT_BASE + OFS_STATUS && sent[i].dlc >= 1 && sent[i].data[0] == code) n++;
+    }
+    return n;
+}
+
+static void test_a_request_to_start_is_refused_for_a_wrong_size_or_board_or_a_failed_erase(void)
+{
+    printf("  a request to start an update is refused, and the board stays out of the update\n");
+    uint8_t d[8];
+
+    reset_world();
+    start_frame(d, 0, THIS_HARDWARE_ID);
+    CHECK(HandleStartUpdate(d) == 0 && update_in_progress == 0, "a size of 0");
+    CHECK(status_frames(STATUS_ERROR) == 1 && sent_count == 1, "is answered with the error status and nothing else");
+
+    reset_world();
+    start_frame(d, APP_MAX_SIZE + 1u, THIS_HARDWARE_ID);
+    CHECK(HandleStartUpdate(d) == 0 && update_in_progress == 0, "a size over the slot");
+    CHECK(status_frames(STATUS_ERROR) == 1, "is answered with the error status");
+
+    reset_world();
+    start_frame(d, APP_MAX_SIZE, THIS_HARDWARE_ID);
+    CHECK(HandleStartUpdate(d) == 1 && update_in_progress == 1, "the largest size that fits is accepted");
+
+    reset_world();
+    start_frame(d, 1000, THIS_HARDWARE_ID + 1u);
+    CHECK(HandleStartUpdate(d) == 0 && update_in_progress == 0, "an image for another board");
+    CHECK(sent_count == 1 && sent[0].id == SLOT_BASE + OFS_STATUS && sent[0].dlc == 2 && sent[0].data[0] == STATUS_VERIFY_FAIL &&
+          sent[0].data[1] == VERIFY_FAIL_REASON_HARDWARE_ID, "is answered with the verify-fail status and the hardware reason");
+
+    reset_world();
+    start_frame(d, 5000, THIS_HARDWARE_ID);
+    fail_erase = 1;
+    CHECK(HandleStartUpdate(d) == 0 && update_in_progress == 0 && update_failed == 1, "a backup slot that cannot be erased");
+    CHECK(status_frames(STATUS_ERASING) == 1 && status_frames(STATUS_ERROR) == 1 && status_frames(STATUS_RECEIVING) == 0,
+          "is told as erasing, then error, never as receiving");
+    update_failed = 0;
+}
+
+static void test_an_accepted_start_erases_the_backup_and_starts_the_session_clean(void)
+{
+    printf("  an accepted start erases what the image needs and clears the state of any earlier session\n");
+    uint8_t d[8];
+    reset_world();
+    memset(backup_slot(), 0x00, 8192);
+    start_frame(d, 5000, THIS_HARDWARE_ID);
+    CHECK(HandleStartUpdate(d) == 1, "accepted");
+    CHECK(update_in_progress == 1 && update_failed == 0 && update_bytes_received == 0 && update_total_size == 5000, "a clean session of the declared size");
+    CHECK(memcmp(backup_slot() + 6144, (const uint8_t[]){0, 0, 0, 0}, 4) == 0, "the page after the last one needed is not erased");
+    int erased = 1;
+    for (uint32_t i = 0; i < 3u * FLASH_PAGE_SIZE; i++) {
+        if (backup_slot()[i] != 0xFF) erased = 0;
+    }
+    CHECK(erased, "the three pages the image needs are erased");
+    CHECK(status_frames(STATUS_ERASING) == 1 && status_frames(STATUS_RECEIVING) == 1, "the host is told erasing, then receiving");
+
+    uint8_t bytes[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+    HandleData(bytes, 8);
+    CHECK(update_bytes_received == 8, "eight bytes arrived");
+    HandleData(bytes, 8);
+    start_frame(d, 3000, THIS_HARDWARE_ID);
+    CHECK(HandleStartUpdate(d) == 1 && update_bytes_received == 0 && update_total_size == 3000, "a second start begins again from zero");
+}
+
+static void test_data_frames_are_ignored_when_they_do_not_belong_to_a_session(void)
+{
+    printf("  data frames outside a session, longer than a frame, or past the declared size are ignored\n");
+    uint8_t d[8];
+    uint8_t bytes[16];
+    for (unsigned i = 0; i < sizeof(bytes); i++) bytes[i] = (uint8_t)(0x40 + i);
+
+    reset_world();
+    HandleData(bytes, 8);
+    CHECK(update_bytes_received == 0 && sent_count == 0, "no session: nothing is taken");
+
+    reset_world();
+    start_frame(d, 20, THIS_HARDWARE_ID);
+    CHECK(HandleStartUpdate(d) == 1, "a session of 20 bytes");
+    int before = sent_count;
+    HandleData(bytes, 9);
+    CHECK(update_bytes_received == 0, "a frame of more than eight bytes is dropped whole");
+    HandleData(bytes, 8);
+    HandleData(bytes, 8);
+    HandleData(bytes, 8);
+    CHECK(update_bytes_received == 20, "bytes past the declared size are not counted");
+    CHECK(sent_count == before, "and no page was written for fewer bytes than a page");
+
+    update_failed = 1;
+    uint32_t seen = update_bytes_received;
+    HandleData(bytes, 8);
+    CHECK(update_bytes_received == seen, "after a failure nothing more is taken");
+    update_failed = 0;
+}
+
+static void test_a_full_page_is_written_and_acknowledged_and_a_failed_write_ends_the_session(void)
+{
+    printf("  a full page is written and acknowledged; a page that cannot be written ends the session\n");
+    uint8_t d[8];
+    uint8_t chunk[8];
+    reset_world();
+    start_frame(d, 2u * FLASH_PAGE_SIZE + 8u, THIS_HARDWARE_ID);
+    CHECK(HandleStartUpdate(d) == 1, "a session of two pages and a bit");
+    for (uint32_t at = 0; at < 2u * FLASH_PAGE_SIZE; at += 8) {
+        for (unsigned k = 0; k < 8; k++) chunk[k] = (uint8_t)((at + k) * 7u + 1u);
+        HandleData(chunk, 8);
+    }
+    CHECK(count_frames(OFS_PAGE_ACK) == 2, "two page acknowledgements");
+    int ordered = 1;
+    int seen = 0;
+    for (int i = 0; i < sent_count; i++) {
+        if (sent[i].id != SLOT_BASE + OFS_PAGE_ACK) continue;
+        uint32_t index = ((uint32_t)sent[i].data[0] << 24) | ((uint32_t)sent[i].data[1] << 16) | ((uint32_t)sent[i].data[2] << 8) | sent[i].data[3];
+        if (sent[i].dlc != 4 || index != (uint32_t)seen) ordered = 0;
+        seen++;
+    }
+    CHECK(ordered, "numbered 0 and 1");
+    int match = 1;
+    for (uint32_t i = 0; i < 2u * FLASH_PAGE_SIZE; i++) {
+        if (backup_slot()[i] != (uint8_t)(i * 7u + 1u)) match = 0;
+    }
+    CHECK(match, "the backup holds the bytes that were sent");
+
+    reset_world();
+    start_frame(d, 3u * FLASH_PAGE_SIZE, THIS_HARDWARE_ID);
+    CHECK(HandleStartUpdate(d) == 1, "another session");
+    fail_program = 1;
+    for (uint32_t at = 0; at < FLASH_PAGE_SIZE; at += 8) HandleData(chunk, 8);
+    CHECK(update_failed == 1 && update_in_progress == 0, "a page that cannot be written ends the session");
+    CHECK(status_frames(STATUS_ERROR) >= 1 && count_frames(OFS_PAGE_ACK) == 0, "with the error status and no acknowledgement");
+    fail_program = 0;
+    uint32_t received = update_bytes_received;
+    HandleData(chunk, 8);
+    CHECK(update_bytes_received == received, "and the frames that follow are dropped");
+    update_failed = 0;
+}
+
+static void test_the_confirmation_of_a_healthy_start_clears_the_attempts_only_when_there_are_some(void)
+{
+    printf("  the confirmation of a healthy start clears the boot attempts only when there are some\n");
+    FirmwareMetadata_t m;
+
+    reset_world();
+    HandleConfirmHealthy();
+    CHECK(Metadata_Read(&m) == 0, "without a record there is nothing to clear and nothing is written");
+
+    reset_world();
+    lay_out_app(main_slot(), 3000, 5);
+    m = record_for(MAIN_APP_ADDR, META_STATE_APP_VALID, THIS_HARDWARE_ID, 3000);
+    m.boot_attempts = 3;
+    write_record(&m);
+    HandleConfirmHealthy();
+    FirmwareMetadata_t after = metadata();
+    CHECK(after.boot_attempts == 0, "the attempts go back to 0");
+    CHECK(after.crc32 == m.crc32 && after.size == m.size && after.version_major == m.version_major && memcmp(after.sha256, m.sha256, 32) == 0,
+          "and nothing else of the record changes");
+
+    HandleConfirmHealthy();
+    FirmwareMetadata_t again = metadata();
+    CHECK(memcmp(&again, &after, sizeof(after)) == 0, "a second confirmation leaves the record as it is");
+    int blank_after = 1;
+    for (uint32_t i = 0; i < META_RECORD_SIZE; i++) {
+        if (flash_mem[(METADATA_ADDR - FLASH_BASE_ADDR) + 2u * META_RECORD_SIZE + i] != 0xFF) blank_after = 0;
+    }
+    CHECK(blank_after, "and it writes no third record");
+}
+
 /* ---- JumpToApplication ------------------------------------------------------------------------------------------------------ */
 static void test_the_jump_refuses_what_is_not_an_application(void)
 {
@@ -717,6 +897,11 @@ int main(void)
     test_the_error_counter_query();
     test_the_small_senders_and_the_slot_base();
     test_a_full_transmit_fifo_drops_or_delays_but_never_blocks();
+    test_a_request_to_start_is_refused_for_a_wrong_size_or_board_or_a_failed_erase();
+    test_an_accepted_start_erases_the_backup_and_starts_the_session_clean();
+    test_data_frames_are_ignored_when_they_do_not_belong_to_a_session();
+    test_a_full_page_is_written_and_acknowledged_and_a_failed_write_ends_the_session();
+    test_the_confirmation_of_a_healthy_start_clears_the_attempts_only_when_there_are_some();
     test_the_jump_refuses_what_is_not_an_application();
 
     if (failures) {
