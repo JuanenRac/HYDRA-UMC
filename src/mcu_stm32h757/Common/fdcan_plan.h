@@ -53,6 +53,12 @@
 #define FDCP_E_SJW 6
 #define FDCP_E_ELEMENTS 7
 #define FDCP_E_TIMING 8 /* no prescaler gives exactly the bit rate with a bit of 8..max_quanta time quanta */
+#define FDCP_E_FILTER 9 /* the id or the mask of the filter of the field bus is over 11 bits */
+#define FDCP_E_RAM 10   /* the second controller does not fit in the message RAM that the two share */
+
+/* the message RAM of the two controllers is one block of 2560 words; a controller uses its standard filters (1 word each), and for each element of a FIFO 4 words (2 of header and 2 of an 8-byte payload) */
+#define FDCP_RAM_WORDS_TOTAL 2560UL
+#define FDCP_ELEMENT_WORDS 4UL
 
 typedef struct {
     uint32_t kernel_hz, bit_rate_bps, sample_permille, max_quanta, sjw, rx_elements, tx_elements, estop_filter;
@@ -66,6 +72,7 @@ typedef struct {
     uint32_t prescaler, sjw, seg1, seg2; /* the values the HAL takes: 1-based, as in Init.NominalPrescaler and the three segments */
     uint32_t actual_bps, actual_sample_permille;
     uint32_t rx_elements, tx_elements;
+    uint32_t ram_offset;   /* where this controller starts in the message RAM, in words (Init.MessageRAMOffset) */
     uint32_t filter_count; /* 1 or 2 */
     FdcpFilter filter[2];
 } FdcpPlan;
@@ -121,6 +128,7 @@ static inline int FdcanPlan_Make(const FdcpConfig *c, FdcpPlan *plan)
         plan->tx_elements = c->tx_elements;
         plan->filter[0].id = FDCP_STACKA_FILTER_ID;
         plan->filter[0].mask = FDCP_STACKA_FILTER_MASK;
+        plan->ram_offset = 0u;
         plan->filter_count = 1u;
         if (c->estop_filter) {
             plan->filter[1].id = FDCP_ESTOP_ID;
@@ -130,6 +138,40 @@ static inline int FdcanPlan_Make(const FdcpConfig *c, FdcpPlan *plan)
         return FDCP_OK;
     }
     return FDCP_E_TIMING;
+}
+
+/* The words of the message RAM that a plan uses. */
+static inline uint32_t FdcanPlan_RamWords(const FdcpPlan *p)
+{
+    return p->filter_count + (p->rx_elements + p->tx_elements) * FDCP_ELEMENT_WORDS;
+}
+
+/* Puts `second` in the message RAM right after `first`; FDCP_E_RAM (and `second` unchanged) when it would pass the end of the block. */
+static inline int FdcanPlan_PlaceAfter(const FdcpPlan *first, FdcpPlan *second)
+{
+    if (!first || !second) return FDCP_E_ARG;
+    const uint32_t offset = first->ram_offset + FdcanPlan_RamWords(first);
+    if (offset + FdcanPlan_RamWords(second) > FDCP_RAM_WORDS_TOTAL) return FDCP_E_RAM;
+    second->ram_offset = offset;
+    return FDCP_OK;
+}
+
+/* The plan of the second controller, FDCAN2 of the field bus (CAN_FIELD): the same timing rules and one acceptance filter, id and mask given by the caller (a mask of 0 takes every
+ * standard id), placed after `first` in the message RAM. */
+static inline int FdcanPlan_MakeField(const FdcpConfig *c, uint32_t id, uint32_t mask, const FdcpPlan *first, FdcpPlan *out)
+{
+    FdcpPlan made;
+    if (!out) return FDCP_E_ARG;
+    if (id > 0x7FFUL || mask > 0x7FFUL) return FDCP_E_FILTER;
+    int rc = FdcanPlan_Make(c, &made);
+    if (rc != FDCP_OK) return rc;
+    made.filter[0].id = id;
+    made.filter[0].mask = mask;
+    made.filter_count = 1u;
+    rc = FdcanPlan_PlaceAfter(first, &made);
+    if (rc != FDCP_OK) return rc;
+    *out = made;
+    return FDCP_OK;
 }
 
 #endif /* HYDRA_UMC_FDCAN_PLAN_H */

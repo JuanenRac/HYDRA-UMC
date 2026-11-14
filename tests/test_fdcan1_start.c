@@ -136,6 +136,22 @@ int main(void)
     fail_start = 1;
     CHECK(Fdcan1Start_Run(&handle, &plan) == FDS_FAULT_START && strcmp(calls, "IFFGS") == 0, "a start that fails is reported");
 
+    /* the second controller: the same start-up with a plan placed after the first */
+    {
+        FdcpPlan field;
+        FDCAN_GlobalTypeDef instance2 = {2};
+        FDCAN_HandleTypeDef handle2;
+        reset();
+        config.estop_filter = 1u;
+        CHECK(FdcanPlan_Make(&config, &plan) == FDCP_OK && FdcanPlan_MakeField(&config, 0u, 0u, &plan, &field) == FDCP_OK, "plans for both controllers");
+        memset(&handle2, 0, sizeof handle2);
+        handle2.Instance = &instance2;
+        CHECK(Fdcan1Start_Run(&handle2, &field) == FDS_OK && strcmp(calls, "IFGS") == 0, "FDCAN2 starts with its one filter");
+        CHECK(init_seen.MessageRAMOffset == 66u && init_seen.StdFiltersNbr == 1u && filters_seen[0].FilterID1 == 0u && filters_seen[0].FilterID2 == 0u, "its place in the message RAM and its filter");
+        reset();
+        CHECK(Fdcan1Start_Run(&handle, &plan) == FDS_OK && init_seen.MessageRAMOffset == 0u, "FDCAN1 stays at 0");
+    }
+
     /* arguments */
     reset();
     CHECK(Fdcan1Start_Run(NULL, &plan) == FDS_FAULT_ARG && Fdcan1Start_Run(&handle, NULL) == FDS_FAULT_ARG, "no handle, no plan");
