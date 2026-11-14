@@ -1,0 +1,32 @@
+# =============================================================================
+# HYDRA-UMC - the integration bench on the pull requests that touch what the CM5 services read from the firmware
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Calls the reusable workflow of HYDRA-UMC-DEV-SERVER that starts the swarm cell as real containers and runs its scenarios (the container bench). It is a light
+# check on purpose: it runs only for a pull request that touches the services of the CM5 side (src/cm5_host) or the contracts they read, and by hand; it never
+# runs on a push to main, and a second push to the same pull request cancels the run in progress. The firmware itself is not in the cell (no board and no
+# chip): the bench says whether the host side still works with the rest of the ecosystem. The called workflow is pinned by commit hash, like every other
+# action of the repository.
+
+name: Integration bench
+
+on:
+  pull_request:
+    paths:
+      - "src/cm5_host/**"
+      - "contracts/**"
+      - ".github/workflows/integration-bench.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-bench-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  integration:
+    name: Container bench of the swarm cell
+    uses: JuanenRac/HYDRA-UMC-DEV-SERVER/.github/workflows/compose-bench.yml@5a81f23d2a7f51433a6c89a281be612842386cab
