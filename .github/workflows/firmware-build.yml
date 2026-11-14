@@ -29,7 +29,7 @@ on:
         required: true
         default: true
       ref:
-        description: "Branch, tag or commit of this repository"
+        description: "Branch or tag of this repository, the same one the run is started from (--ref); it must be part of main (a dry run of the dev table may check a branch)"
         type: string
         required: true
         default: main
@@ -78,7 +78,8 @@ jobs:
       - name: Check out this repository
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ inputs.ref }}
+          # the commit this run was started from; the ref input can only confirm it (start the run from that branch or tag)
+          ref: ${{ github.sha }}
           persist-credentials: false
           fetch-depth: 0
 
@@ -87,8 +88,12 @@ jobs:
         env:
           DRY_RUN: ${{ inputs.dry_run }}
           FLAVOUR: ${{ inputs.flavour }}
+          REF: ${{ inputs.ref }}
         run: |
           set -euo pipefail
+          # the commit built is the one this run was started from (github.sha); the ref input can only confirm it, never choose another commit
+          want="$(git rev-parse --verify --quiet "refs/remotes/origin/${REF}^{commit}" || git rev-parse --verify --quiet "refs/tags/${REF}^{commit}" || git rev-parse --verify --quiet "${REF}^{commit}" || true)"
+          [ -n "$want" ] && [ "$want" = "$(git rev-parse HEAD)" ] || { echo "::error::the ref $REF is not the commit this run was started from ($(git rev-parse --short HEAD)); start the run from that ref"; exit 1; }
           # Only code that is already in main is built for anything that can become a release: a draft pre-release (dry_run off) and the official trust table
           # (flavour release) are refused for a branch or a fork commit that is not in main. A DRY RUN (dry_run on, which makes no draft pre-release, signs nothing, holds no
           # secret and uploads only an unsigned artifact) may check a commit that is not in main yet, with the dev trust table, so a change of the firmware is compiled before it is merged.
@@ -127,7 +132,8 @@ jobs:
       - name: Check out the exact commit that was planned
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ needs.plan.outputs.sha }}
+          # the commit this run was started from, which is the one the plan job checked out and pinned
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Make sure the build has no private key to take
