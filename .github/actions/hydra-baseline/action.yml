@@ -237,7 +237,7 @@ runs:
         chmod +x gradlew
         ./gradlew $ANDROID_TASKS
     - name: Install ARM GNU Toolchain for firmware projects
-      if: ${{ hashFiles('tools/build_firmware.py') != '' }}
+      if: ${{ hashFiles('build_firmware.sh') != '' }}
       env:
         ARM_PACKAGES: ${{ inputs.arm-packages }}
       shell: bash
@@ -245,9 +245,10 @@ runs:
         sudo apt-get update
         sudo apt-get install --yes gcc-arm-none-eabi binutils-arm-none-eabi $ARM_PACKAGES
     - name: Compile firmware without a version bump
-      if: ${{ hashFiles('tools/build_firmware.py') != '' }}
+      if: ${{ hashFiles('build_firmware.sh') != '' }}
       env:
         HYDRA_UMC_CI: "1"
       shell: bash
       run: |
-        python3 tools/build_firmware.py
+        chmod +x build_firmware.sh
+        ./build_firmware.sh
