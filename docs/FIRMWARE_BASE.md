@@ -18,7 +18,7 @@ the chip, not by drift:
 
 | File | Same in all three | Same in two | Differs |
 |---|---|---|---|
-| `bootloader_common.h` | (macros, no functions) | | the clock, the pins, the peripherals and the memory map of each chip: addresses of the slots, the size of a page (2 KB on the G474) or a sector (128 KB on the H745), the flash word (8 or 32 bytes), the reset and clock registers |
+| `bootloader_common.h` | the 47 numbers of the update protocol (command offsets, status codes, verify-fail reasons, metadata states), now in `boot_protocol_ids.h` | the relay and poll offsets (G474 and CM4) | the clock, the pins, the peripherals and the memory map of each chip: addresses of the slots, the size of a page (2 KB on the G474) or a sector (128 KB on the H745), the flash word (8 or 32 bytes), the reset and clock registers |
 | `bootloader_flash.c` | CRC32, the checks of a metadata record | the read, copy, write-and-verify and erase of the CM4 and the CM7 (one bank geometry, a bank at a time) differ from the G474 | erasing: pages on the G474, sectors on the H745; the geometry of the bank each core owns; the hardware calls under `flash_layer.h` |
 | `bootloader_protocol.c` | the page buffer flush, the start of an update, the confirmation of a healthy start and the data frames (now one copy, `boot_update_core_impl.h`) | the check that the application is valid (the G474 against the CM4 and CM7) | how a frame leaves: FDCAN on the G474, the SPI link to the CM7 and the relay to the stack on the CM4, the mailbox on the CM7; the jump to the application (the valid range of the stack pointer is the RAM of each chip); the end of an update and the readback, which send their answers through the transport |
 | `bootloader_main.c` | the fault and interrupt handlers that do nothing | the watchdog failure handler (G474 and CM4), the clock set-up (CM4 and CM7) | the entry point, the peripheral set-up (FDCAN1 on the G474, SPI1 on the CM4, the mailbox on the CM7), the dispatch of a frame, the polling of the receive loop |
@@ -27,6 +27,10 @@ the chip, not by drift:
 identical in the three protocol files, and they sit right after `boot_update_glue.h`, which already worked on the same static state. How a frame leaves
 (`CAN_SendStatus`, `CAN_SendPageAck`) is declared in `bootloader_protocol.h` and stays in each file, so the order of the functions in the file no longer
 matters. What is left in the protocol files differs because of the transport.
+
+`boot_protocol_ids.h` holds only `#define` lines, with the comments that explained them: each `bootloader_common.h` includes it and keeps the numbers that only
+its chip carries (the axis, relay and poll offsets, whose values `tools/can_ids.py` fixes). The host guard `tests/test_bootloader_common_twin.py` reads a header
+together with this file and fails when a header defines again one of the 47.
 
 Nothing in the shared files changes a line of behaviour: the bytes of each bootloader are the ones the three chips had before, apart from the two
 `#include` lines that stand where the CRC32 and the record checks used to be.

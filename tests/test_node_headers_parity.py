@@ -29,6 +29,11 @@ def read(path: str) -> str:
     return (ROOT / path).read_bytes().decode("utf-8").replace("\r\n", "\n")
 
 
+def read_with_ids(path: str) -> str:
+    """A bootloader_common.h together with the shared protocol numbers it includes (firmware_base/boot/boot_protocol_ids.h)."""
+    return read(path) + "\n" + read("firmware_base/boot/boot_protocol_ids.h")
+
+
 def define(text: str, name: str) -> int:
     match = re.search(rf"^#define {name}\s+\(?(0x[0-9A-Fa-f]+|\d+)u?\)?", text, re.M)
     if not match:
@@ -67,7 +72,7 @@ class EstopHeaderTests(unittest.TestCase):
     def test_the_state_answer_has_the_offset_of_the_table(self):
         offset = can_ids.by_name("ESTOP_STATE").offset
         for path in ("src/mcu_stm32g474/boot/bootloader_common.h", "src/mcu_stm32h757/CM4/boot/bootloader_common.h", "src/mcu_stm32h757/CM7/boot/bootloader_common.h"):
-            self.assertEqual(define(read(path), "OFS_ESTOP_STATE"), offset, path)
+            self.assertEqual(define(read_with_ids(path), "OFS_ESTOP_STATE"), offset, path)
 
     def test_the_application_of_the_controller_board_acts_on_the_stop(self):
         relay = read("src/mcu_stm32g474/RobotControllerRelay.c")
@@ -91,7 +96,7 @@ class SlotScanHeaderTests(unittest.TestCase):
 
     def test_the_offsets_follow_the_table_in_every_bootloader(self):
         for path in ("src/mcu_stm32g474/boot/bootloader_common.h", "src/mcu_stm32h757/CM4/boot/bootloader_common.h", "src/mcu_stm32h757/CM7/boot/bootloader_common.h"):
-            text = read(path)
+            text = read_with_ids(path)
             self.assertEqual(define(text, "OFS_SLOT_SCAN_PROBE"), can_ids.by_name("SLOT_SCAN_PROBE").offset, path)
             self.assertEqual(define(text, "OFS_SLOT_SCAN_REPLY"), can_ids.by_name("SLOT_SCAN_REPLY").offset, path)
 
