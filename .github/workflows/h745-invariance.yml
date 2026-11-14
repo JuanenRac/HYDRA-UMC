@@ -4,7 +4,7 @@
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
 # Started by hand only (workflow_dispatch): it never runs on a push or a pull request. It builds the six firmware images of the default platform from two commits (the base, main
-# by default, and the head, the branch that is being checked) with build_firmware.sh in CI mode, and compares the sha256 of every image with tools/h745_invariance.py. A change made
+# by default, and the head, the branch that is being checked) with tools/build_firmware.py in CI mode, and compares the sha256 of every image with tools/h745_invariance.py. A change made
 # for the H757 platform only, behind the platform profile, must leave every image exactly as it was; the comparison fails when one differs, is missing or is new. Both builds run in
 # the same job layout (the same path and toolchain) so that nothing but the code can make an image differ.
 # It holds no key, signs nothing and makes no release: the images are not kept, only their sums. The owner is the only one who starts it.
@@ -131,8 +131,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          chmod +x build_firmware.sh
-          ./build_firmware.sh
+          python3 tools/build_firmware.py
 
       - name: Take the sums of the images
         shell: bash
