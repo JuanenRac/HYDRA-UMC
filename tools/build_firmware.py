@@ -315,6 +315,18 @@ def host_cases(root: str) -> list[Case]:
             sources=("src/mcu_stm32h757/CM7/GatewayFdcan1.c",),
         )
     )
+    cases.append(_t("fdcan_plan host logic tests passed", "host_tests_fdcan_plan", "test_fdcan_plan", [H757_COMMON], ["-DHYDRA_PLATFORM_H757"]))
+    cases.append(_t("gateway_self host logic tests passed", "host_tests_gateway_self", "test_gateway_self", [H757_COMMON]))
+    cases.append(
+        _t(
+            "fdcan1_start host logic tests passed",
+            "host_tests_fdcan1_start",
+            "test_fdcan1_start",
+            ["tests/stubs/h7fdcanstart", "src/mcu_stm32h757/CM7", H757_COMMON],
+            ["-DHYDRA_FDCAN1_START=1"],
+            sources=("src/mcu_stm32h757/CM7/Fdcan1Start.c",),
+        )
+    )
     cases.append(_t("task_watchdog host logic tests passed", "host_tests_task_watchdog", "test_task_watchdog", ["tests", CM4]))
     cases.append(_t("slot_scan_node host logic tests passed", "host_tests_slot_scan_node", "test_slot_scan_node", ["tests", G474_BOOT]))
     for n in (0, 1):
@@ -1135,6 +1147,16 @@ class Stage2:
             r.ok("CM7 binding of the stack tier of the gateway (FDCAN1) compiles for the H757 platform")
         else:
             r.fail("CM7 binding of the stack tier of the gateway (FDCAN1) does NOT compile for the H757 platform - see errors above")
+            failed = True
+        fs_obj = f"{h7}/cm7_fdcan1_start_h757_check_obj"
+        self.makedirs(fs_obj)
+        if self.gcc(
+            self.cflags_cm7, "-DHYDRA_PLATFORM_H757", "-DHYDRA_FDCAN1_START=1", f"-I{root}/src/mcu_stm32h757/CM7", *self.common_inc,
+            "-x", "c", "-c", f"{root}/src/mcu_stm32h757/CM7/Fdcan1Start.c", "-o", f"{fs_obj}/Fdcan1Start.o",
+        ) == 0:
+            r.ok("CM7 start-up of FDCAN1 compiles for the H757 platform")
+        else:
+            r.fail("CM7 start-up of FDCAN1 does NOT compile for the H757 platform - see errors above")
             failed = True
         ltdc_obj = f"{h7}/cm7_display_ltdc_h757_check_obj"
         self.makedirs(ltdc_obj)
