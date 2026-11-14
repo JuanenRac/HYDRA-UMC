@@ -5,8 +5,8 @@
 # =============================================================================
 """Host guard for the three bootloader headers: what they must share stays equal, what must differ does.
 
-The G474 board bootloader and the two cores of the kinematic brain each carry their own bootloader_common.h. Until the
-shared part moves into one common header, this test pins it: the command offsets, the status codes, the verify-fail
+The G474 board bootloader and the two cores of the kinematic brain each carry their own bootloader_common.h. The numbers of the update
+protocol live once in firmware_base/boot/boot_protocol_ids.h, which each header includes; this test pins that: the command offsets, the status codes, the verify-fail
 reasons and the metadata states are the same in the three, the metadata fields come in the same order (older fields
 keep their offsets), and the things that identify a platform (hardware id, metadata magic, flash layout) differ and
 are consistent. Pure text checks: nothing is compiled.
@@ -24,8 +24,13 @@ HEADERS = {
 SHARED_PREFIXES = ("OFS_", "STATUS_", "VERIFY_FAIL_REASON_", "META_STATE_")
 
 
+SHARED_IDS = ROOT / "firmware_base" / "boot" / "boot_protocol_ids.h"
+
+
 def read(name):
-    return HEADERS[name].read_text(encoding="utf-8", errors="replace")
+    """The header and the shared protocol numbers it includes (boot_protocol_ids.h), as one text."""
+    text = HEADERS[name].read_text(encoding="utf-8", errors="replace")
+    return text + "\n" + SHARED_IDS.read_text(encoding="utf-8", errors="replace")
 
 
 def defines(text):
@@ -56,6 +61,15 @@ class SharedProtocolTests(unittest.TestCase):
     def test_the_headers_exist(self):
         for path in HEADERS.values():
             self.assertTrue(path.is_file(), path)
+
+    def test_each_header_includes_the_shared_ids_and_does_not_define_them_again(self):
+        shared = defines(SHARED_IDS.read_text(encoding="utf-8"))
+        self.assertEqual(len([n for n in shared if n.startswith(SHARED_PREFIXES)]), 47)
+        for board, path in HEADERS.items():
+            own = path.read_text(encoding="utf-8")
+            self.assertIn('#include "boot_protocol_ids.h"', own, board)
+            again = sorted(n for n in defines(own) if n in shared)
+            self.assertEqual(again, [], f"{board} defines again what boot_protocol_ids.h defines")
 
     def test_there_is_a_real_shared_protocol(self):
         names = self.shared_names()

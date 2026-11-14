@@ -127,7 +127,7 @@ class CanIdTableTests(unittest.TestCase):
             "BOOT_DOWNGRADE_NONCE_RESPONSE": ("OFS_DOWNGRADE_NONCE_RESPONSE", can_ids.BOOTLOADER),
         }
         for header in headers:
-            text = header.read_text(encoding="utf-8")
+            text = header.read_text(encoding="utf-8") + (root / "firmware_base/boot/boot_protocol_ids.h").read_text(encoding="utf-8")
             for table_name, (define, emitter) in names.items():
                 message = can_ids.by_name(table_name)
                 self.assertEqual(message.emitter, emitter, table_name)
