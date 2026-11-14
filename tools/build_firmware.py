@@ -214,6 +214,16 @@ def host_cases(root: str) -> list[Case]:
             sources=("src/mcu_stm32h757/CM7/TmcCardSpi6.c",),
         )
     )
+    cases.append(
+        _t(
+            "display_ltdc host logic tests passed",
+            "host_tests_display_ltdc",
+            "test_display_ltdc",
+            ["tests/stubs/h7ltdc", "src/mcu_stm32h757/CM7", H757_COMMON],
+            ["-DHYDRA_PLATFORM_H757", "-DHYDRA_DISPLAY_LTDC=1"],
+            sources=("src/mcu_stm32h757/CM7/DisplayLtdc.c",),
+        )
+    )
     cases.append(_t("nor_flash host logic tests passed", "host_tests_nor_flash", "test_nor_flash", [H757_COMMON], ["-DHYDRA_PLATFORM_H757"], quiet=False))
     cases.append(_t("memtest host logic tests passed", "host_tests_memtest", "test_memtest", [H757_COMMON], quiet=False))
     cases.append(_t("clock_config host logic tests passed", "host_tests_clock_config", "test_clock_config", [H757_COMMON, "tests"], ["-DHYDRA_PLATFORM_H757"], quiet=False))
@@ -1116,6 +1126,7 @@ class Stage2:
         else:
             r.fail("CM7 driver of the TMC5160 cards (SPI6 master) does NOT compile for the H757 platform - see errors above")
             failed = True
+<<<<<<< HEAD
         gw_obj = f"{h7}/cm7_gateway_fdcan1_h757_check_obj"
         self.makedirs(gw_obj)
         if self.gcc(
@@ -1125,6 +1136,17 @@ class Stage2:
             r.ok("CM7 binding of the stack tier of the gateway (FDCAN1) compiles for the H757 platform")
         else:
             r.fail("CM7 binding of the stack tier of the gateway (FDCAN1) does NOT compile for the H757 platform - see errors above")
+=======
+        ltdc_obj = f"{h7}/cm7_display_ltdc_h757_check_obj"
+        self.makedirs(ltdc_obj)
+        if self.gcc(
+            self.cflags_cm7, "-DHYDRA_PLATFORM_H757", "-DHYDRA_DISPLAY_LTDC=1", f"-I{root}/src/mcu_stm32h757/CM7", *self.common_inc,
+            "-x", "c", "-c", f"{root}/src/mcu_stm32h757/CM7/DisplayLtdc.c", "-o", f"{ltdc_obj}/DisplayLtdc.o",
+        ) == 0:
+            r.ok("CM7 driver of the display (LTDC and DMA2D) compiles for the H757 platform")
+        else:
+            r.fail("CM7 driver of the display (LTDC and DMA2D) does NOT compile for the H757 platform - see errors above")
+>>>>>>> origin/main
             failed = True
         if failed:
             self.stop()
