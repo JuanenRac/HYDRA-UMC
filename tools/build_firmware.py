@@ -292,6 +292,8 @@ def host_cases(root: str) -> list[Case]:
     )
     cases.append(_t("expansion_slots host logic tests passed", "host_tests_expansion_slots", "test_expansion_slots", [H757_COMMON, "tests"]))
     cases.append(_t("host_link_master host logic tests passed", "host_tests_host_link_master", "test_host_link_master", [H757_COMMON, CM4_BOOT, "tests"]))
+    for variant, label in (((), "default"), (("-DHYDRA_PLATFORM_H757",), "-DHYDRA_PLATFORM_H757")):
+        cases.append(_t(f"gateway_dispatch host logic tests passed [{label}]", "host_tests_gateway_dispatch", "test_gateway_dispatch", [H757_COMMON, CM4_BOOT, "tests"], list(variant), quiet=False))
     cases.append(_t("task_watchdog host logic tests passed", "host_tests_task_watchdog", "test_task_watchdog", ["tests", CM4]))
     cases.append(_t("slot_scan_node host logic tests passed", "host_tests_slot_scan_node", "test_slot_scan_node", ["tests", G474_BOOT]))
     for n in (0, 1):
