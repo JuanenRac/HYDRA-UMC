@@ -95,7 +95,7 @@ class RccPlanTests(unittest.TestCase):
         self.assertNotIn("RCC->", header)
         self.assertIn("HYDRA_CLOCK_POLL_LIMIT", header)
         self.assertIn("tests/test_clock_config.c", (ROOT / "tools/host_tests.py").read_text(encoding="utf-8"))
-        self.assertIn("tests/test_clock_config.c", (ROOT / "build_firmware.sh").read_text(encoding="utf-8"))
+        self.assertIn("test_clock_config", (ROOT / "tools" / "build_firmware.py").read_text(encoding="utf-8"))
 
     def test_the_poll_limit_is_a_setting_of_the_profile(self):
         self.assertGreater(self.profile["rcc_poll_limit"], 0)

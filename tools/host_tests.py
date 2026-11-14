@@ -12,7 +12,7 @@ The tests build the real firmware sources (bootloaders, relay logic) for the PC 
 clang. Nothing is compiled for a board and nothing is flashed. With no host compiler the run says so and exits 0, unless --require is
 given (a release gate wants the tests to have run). Binaries go to build/host_tests/, which the build folder rules already ignore.
 
-The table below is the same list build_firmware.sh runs; tests/test_host_tests_table.py keeps the two from drifting apart.
+The table below is the same list tools/build_firmware.py runs; tests/test_host_tests_table.py keeps the two from drifting apart.
 """
 from __future__ import annotations
 

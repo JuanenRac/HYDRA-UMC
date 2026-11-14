@@ -32,7 +32,7 @@ class MemtestTests(unittest.TestCase):
 
     def test_the_host_test_is_registered_in_both_runners(self):
         self.assertIn("tests/test_memtest.c", (ROOT / "tools/host_tests.py").read_text(encoding="utf-8"))
-        self.assertIn("tests/test_memtest.c", (ROOT / "build_firmware.sh").read_text(encoding="utf-8"))
+        self.assertIn("test_memtest", (ROOT / "tools" / "build_firmware.py").read_text(encoding="utf-8"))
 
     def test_the_temperature_test_is_not_claimed(self):
         self.assertIn("temperature test of the guide is not here", HEADER)

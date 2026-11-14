@@ -152,7 +152,7 @@ flowchart LR
 |---|---|---|
 | 伪造或被篡改的固件镜像 | 固定的 64 字节头部（魔数、版本、硬件 ID、大小、向量字、CRC-32）之后是镜像和对头部与镜像的 64 字节 Ed25519 签名；引导程序先验签，验证通过之前不相信头部的任何内容 | `image_header.h`, `tools/image_header.py` |
 | 重新发送的旧签名镜像（回滚） | 新镜像必须严格比已安装的更新（比较主版本、次版本和补丁号）；更旧的镜像只有在带有降级令牌时才被接受，该令牌是对已安装版本、目标版本和镜像摘要的 Ed25519 签名；固件中没有任何允许降级的常量 | `image_header.h`, `ImageHeader_CheckRollback` |
-| 用开发密钥构建的镜像 | 没有 `HYDRA_FW_UPDATE_PUBKEY_HEX` 和 `HYDRA_FW_HMAC_KEY_HEX` 时，引导程序带有私有部分已公布在仓库中的开发密钥；构建会发出警告，设置 `HYDRA_UMC_RELEASE=1` 时会拒绝构建；电路板只持有公钥，私钥种子由所有者保管 | `build_firmware.sh` |
+| 用开发密钥构建的镜像 | 没有 `HYDRA_FW_UPDATE_PUBKEY_HEX` 和 `HYDRA_FW_HMAC_KEY_HEX` 时，引导程序带有私有部分已公布在仓库中的开发密钥；构建会发出警告，设置 `HYDRA_UMC_RELEASE=1` 时会拒绝构建；电路板只持有公钥，私钥种子由所有者保管 | `tools/build_firmware.py` |
 | 死机的电路板 | G474 引导程序在 `main()` 的第一个动作中、早于 `HAL_Init()` 启用独立看门狗（IWDG），因此启动期间的挂起会使芯片复位 | `src/mcu_stm32g474/boot/bootloader_main.c` |
 | SPI 桥的本地 HTTP 服务被他人访问 | 默认监听 127.0.0.1，接受的固件正文最大为 4 MiB，且不持有签名密钥：签名随请求而来，由持有私钥种子的机器生成；它没有 TLS，也没有自己的登录，因此向它转发请求的一方必须决定谁可以刷写 | `src/cm5_host/spi_bridge/spi_bridge/http_service.py` |
 
@@ -181,56 +181,46 @@ flowchart LR
 
 ## 🚀 快速开始
 
-构建固件需要 Arm GNU 工具链（`arm-none-eabi-gcc` 10.3 或更高版本）、`git` 和 `python`；主机测试只需要普通的 C 编译器和 Python。Windows 上有 `build_firmware.bat`。
+构建固件需要 Arm GNU 工具链（`arm-none-eabi-gcc` 10.3 或更高版本）、`git` 和 `python`；主机测试只需要普通的 C 编译器和 Python。同一个脚本可在 Linux、macOS 和 Windows 上运行。
 
 ```bash
-./build_firmware.sh                                  # builds every MCU target and runs the host tests (step 1b)
-./build_firmware.sh g474                             # only the Robot Controller Board; h745 builds only the Kinematic Brain
+python3 tools/build_firmware.py                                  # builds every MCU target and runs the host tests (step 1b)
+python3 tools/build_firmware.py g474                             # only the Robot Controller Board; h745 builds only the Kinematic Brain
 python tools/verify_firmware_inventory.py            # read-only check of the committed six-component firmware inventory
 python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the firmware sources, the image header and the CAN identifiers
 ```
 
 ### 开发环境
 
-本项目自身的开发机器实际安装并验证可用的环境（`build_firmware.sh`/`build_firmware.bat`，`g474`/`h745`/默认目标，0 错误）——而非纸面理论清单：
+本项目自身的开发机器实际安装并验证可用的环境（`tools/build_firmware.py`，`g474`/`h745`/默认目标，0 错误）——而非纸面理论清单：
 
-* 🔧 **ARM GNU 工具链**（`arm-none-eabi-gcc` 10.3+）—— 编译每一个 MCU 固件目标。构建过程不使用也不需要任何 STM32CubeIDE/CubeMX 工程文件 —— `build_firmware.sh`/`build_firmware.bat` 会直接从 ST 官方 GitHub 仓库获取最新的 HAL/CMSIS 源码并直接驱动编译器，与同族 `URTC` 仓库自身 `build_firmware.sh`/`build_firmware.bat` 已确立的理念一致。
-* 🧩 **VS Code 及扩展**（`.vscode/extensions.json` 列出了以下全部扩展）：[STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension)（工程/构建/调试集成）、**Cortex-Debug**（SWD/JTAG 调试 —— 独立于 `build_firmware.sh`，待真实硬件到位后有用）、**C/C++**（覆盖每个固件/主机源文件的智能感知）、**Python**（`ai_inference/` 管线脚本）、**Hex Editor**（查看 `.bin` 固件输出）、**YAML**（`video_streamer/` 自身的 MediaMTX 配置）。打开本仓库，接受推荐扩展的安装提示，然后使用 **终端 → 运行任务** 执行预先配置好的构建任务（`.vscode/tasks.json`）。
-* 🗂️ **git** —— 既用于本仓库自身，也用于 `build_firmware.sh` 对 ST 官方 HAL/CMSIS 软件包的固定版本获取（缓存于 `build/` 下，已被 gitignore 排除，`--clean` 时会重新拉取）。
+* 🔧 **ARM GNU 工具链**（`arm-none-eabi-gcc` 10.3+）—— 编译每一个 MCU 固件目标。构建过程不使用也不需要任何 STM32CubeIDE/CubeMX 工程文件 —— `tools/build_firmware.py` 会直接从 ST 官方 GitHub 仓库获取最新的 HAL/CMSIS 源码并直接驱动编译器，与同族 `URTC` 仓库自身 `tools/build_firmware.py` 已确立的理念一致。
+* 🧩 **VS Code 及扩展**（`.vscode/extensions.json` 列出了以下全部扩展）：[STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension)（工程/构建/调试集成）、**Cortex-Debug**（SWD/JTAG 调试 —— 独立于 `tools/build_firmware.py`，待真实硬件到位后有用）、**C/C++**（覆盖每个固件/主机源文件的智能感知）、**Python**（`ai_inference/` 管线脚本）、**Hex Editor**（查看 `.bin` 固件输出）、**YAML**（`video_streamer/` 自身的 MediaMTX 配置）。打开本仓库，接受推荐扩展的安装提示，然后使用 **终端 → 运行任务** 执行预先配置好的构建任务（`.vscode/tasks.json`）。
+* 🗂️ **git** —— 既用于本仓库自身，也用于 `tools/build_firmware.py` 对 ST 官方 HAL/CMSIS 软件包的固定版本获取（缓存于 `build/` 下，已被 gitignore 排除，`--clean` 时会重新拉取）。
 
 ## 🧪 测试
 
-运行 `python -m unittest discover -s tests -p 'test_*.py'` 会执行 1132 个自动测试。 其中 187 个是 CM5 SPI 桥的测试，522 个是固件源码、签名镜像头和 CAN 标识符的测试（SPI 桥的测试用 `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` 和 `-s src/cm5_host/spi_bridge/tests` 运行）。引导程序和中继的 C 逻辑还由另外 50 个程序检查，它们在 `build_firmware.sh` 的 1b 步骤中用普通的主机 C 编译器编译。它们都不需要电路板。
+运行 `python -m unittest discover -s tests -p 'test_*.py'` 会执行 1132 个自动测试。 其中 187 个是 CM5 SPI 桥的测试，522 个是固件源码、签名镜像头和 CAN 标识符的测试（SPI 桥的测试用 `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` 和 `-s src/cm5_host/spi_bridge/tests` 运行）。引导程序和中继的 C 逻辑还由另外 50 个程序检查，它们在 `tools/build_firmware.py` 的 1b 步骤中用普通的主机 C 编译器编译。它们都不需要电路板。
 
 CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档、八个 README 和图片。
 
 ## 🏗️ 构建与发布
 
-**Linux/Mac：**
+**Linux, macOS, Windows：**
 ```bash
-./build_firmware.sh          # 构建全部 MCU 目标（机器人控制板 + 运动学大脑，双核均包含）
-./build_firmware.sh g474     # 仅构建机器人控制板
-./build_firmware.sh h745     # 仅构建运动学大脑（双核均包含）
-./build_firmware.sh --clean  # 先清空已缓存的 HAL/CMSIS
+python3 tools/build_firmware.py          # 构建全部 MCU 目标（机器人控制板 + 运动学大脑，双核均包含）
+python3 tools/build_firmware.py g474     # 仅构建机器人控制板
+python3 tools/build_firmware.py h745     # 仅构建运动学大脑（双核均包含）
+python3 tools/build_firmware.py --clean  # 先清空已缓存的 HAL/CMSIS
 ```
 
-**Windows：**
-```bat
-build_firmware.bat          :: 构建全部 MCU 目标（机器人控制板 + 运动学大脑，双核均包含）
-build_firmware.bat g474     :: 仅构建机器人控制板
-build_firmware.bat h745     :: 仅构建运动学大脑（双核均包含）
-build_firmware.bat --clean  :: 先清空已缓存的 HAL/CMSIS
-```
-
-`build_firmware.bat` 是 `build_firmware.sh` 转换为批处理脚本后的完全对应版本（相同步骤、相同的固定 HAL/CMSIS 版本、相同的通过/警告/失败报告方式）——已在装有 [Arm GNU 工具链](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)、并将 `arm-none-eabi-gcc` 加入 `PATH` 的真实 Windows 机器上完整跑通：每个 HAL 模块、两个引导加载程序以及每个应用程序均编译链接干净通过，且重新生成的 `firmware_manifest.json` 中的 CRC32 与 Linux/Mac 构建自身的输出完全一致。所需工具与 Linux/Mac 脚本相同：Arm GNU 工具链、`git`（用于获取 ST 官方 HAL/CMSIS 源码），以及用于清单生成步骤的 `python`。
-
-**手动构建（任一操作系统，不使用脚本）：** 该脚本自动化的正是 `docs/COMPILE_STM32G474.md` 与 `docs/COMPILE_STM32H745.md` 中列出的步骤 —— 获取 `build_firmware.sh`/`build_firmware.bat` 顶部列出的固定版本 HAL/CMSIS/FreeRTOS 源码，用 `arm-none-eabi-gcc` 编译每个目标的 HAL 模块与启动/系统文件（编译参数/模块列表均列于该脚本中），然后为每个引导加载程序与应用程序分别链接其自身的链接脚本（`*.ld`，位于源码旁），使用 `arm-none-eabi-gcc`/`-Wl,--gc-sections`，并通过 `arm-none-eabi-objcopy` 转换为 `.bin`/`.hex`。如果你不想运行任一脚本，这两份 `docs/COMPILE_*.md` 文档就是权威的分步参考 —— 脚本的存在是为了自动化这些步骤，而非取代它们作为事实依据。
+**手动构建（任一操作系统，不使用脚本）：** 该脚本自动化的正是 `docs/COMPILE_STM32G474.md` 与 `docs/COMPILE_STM32H745.md` 中列出的步骤 —— 获取 `tools/build_firmware.py` 顶部列出的固定版本 HAL/CMSIS/FreeRTOS 源码，用 `arm-none-eabi-gcc` 编译每个目标的 HAL 模块与启动/系统文件（编译参数/模块列表均列于该脚本中），然后为每个引导加载程序与应用程序分别链接其自身的链接脚本（`*.ld`，位于源码旁），使用 `arm-none-eabi-gcc`/`-Wl,--gc-sections`，并通过 `arm-none-eabi-objcopy` 转换为 `.bin`/`.hex`。如果你不想运行任一脚本，这两份 `docs/COMPILE_*.md` 文档就是权威的分步参考 —— 脚本的存在是为了自动化这些步骤，而非取代它们作为事实依据。
 
 构建产物存放于 `firmware/`，该目录会被提交并推送到本仓库（与 URTC 自身 `firmware/` 输出文件夹的约定一致），以便 HYDRA-UMC-STUDIO 的 GitHub 下载功能能够通过 `firmware_manifest.json` 真正找到实际存在的 `.bin` 文件 —— 该目录 **不会** 被 gitignore 排除。各步骤的具体内容与原因详见 `docs/COMPILE_STM32G474.md` 与 `docs/COMPILE_STM32H745.md`；当前状态详见各固件文件夹自身的 `README.md`。全部 3 个目标（G474、H7 CM7、H7 CM4）的 **引导加载程序** 均为真实可用的 CAN-OTA/SPI-OTA 实现（CRC32 + HMAC-SHA256 校验后先写入备份区再复制到主区，与 URTC 自身引导加载程序相同的防变砖机制）—— 端到端编译干净通过，但尚未在真实硬件上验证。**应用程序** 目前仍是经过编译验证的 FreeRTOS GPIO 闪烁烟雾测试代码，尚非真正的运动/视觉/中继固件。哪些内容属实、哪些仍待完成，详见 `docs/architecture.md`（尤其是第 6 节的状态表与第 8 节已知且已被接受的安全局限）。
 
 > **安全状态：** 本仓库目前尚不包含 E-STOP 通路、软件限位、安全联锁、掉电（PVD）时向 FRAM 转储，也没有任何运动指令。上文各章节（或生态系统中其他项目）对这些功能的描述均属预期设计：在其实现并在真实电路板上测试之前，不得依赖它们来保障安全。目前各应用程序的实际行为：CM4 与 G474 的应用程序运行 STACK A 的 AXIS_STATUS 轮询/应答和 Tier 2/3 中继隧道；CM7 的应用程序仍只是 GPIO 翻转冒烟测试。
 
-六个固件组件（每个芯片或内核一对引导程序和应用）各有自己的版本。构建从不改变它：`build_firmware.sh` 和 `.bat` 只报告版本。提升版本要使用明确的命令 `python bump_firmware_versions.py`（`--list` 列出它们），`python show_component_version.py` 会打印某个组件的版本。仓库本身的版本就是 G474 应用的版本：`python tools/hydra_project_tool.py bump` 像其他仓库一样提升它（清单随之更新）。
+六个固件组件（每个芯片或内核一对引导程序和应用）各有自己的版本。构建从不改变它：`tools/build_firmware.py` 和 `.bat` 只报告版本。提升版本要使用明确的命令 `python bump_firmware_versions.py`（`--list` 列出它们），`python show_component_version.py` 会打印某个组件的版本。仓库本身的版本就是 G474 应用的版本：`python tools/hydra_project_tool.py bump` 像其他仓库一样提升它（清单随之更新）。
 
 ## 🩺 故障排除
 
@@ -239,7 +229,7 @@ build_firmware.bat --clean  :: 先清空已缓存的 HAL/CMSIS
 | “引导程序接受用公开的开发种子签名的更新” | 构建时没有 `HYDRA_FW_UPDATE_PUBKEY_HEX`（或没有 `HYDRA_FW_HMAC_KEY_HEX`） | 在工作台上没问题；对任何别人可能接触到的电路板，请用 `python tools/image_header.py keygen` 生成密钥对，用公钥构建，并用 `HYDRA_UMC_RELEASE=1` 构建发布版 |
 | “未找到 arm-none-eabi-gcc” | 未安装 Arm GNU 工具链，或它不在 `PATH` 中 | 安装它（脚本在 Linux 上会尝试 `apt`）并重新构建；1b 步骤的主机测试只需要普通的 C 编译器 |
 | SPI 桥无法打开设备，或出现 `SPI transfer returned ... bytes` | 真实传输需要在启用 SPI 设备的 CM5 上有 `spidev` 和 `gpiod`，另一端还要有 STM32H757；两者目前都不存在，因此桥只对模拟对象试过 | 在有电路板之前，使用测试中的模拟传输 |
-| `build_firmware.sh` 在某个主机测试处以 FAIL 结束 | 三个引导程序共用的某个源文件的副本已出现差异，或 `tests/image_header_vectors.h` 比 `tools/image_header.py` 旧 | 运行 `python tools/gen_image_header_vectors.py` 和 `python -m unittest discover -s tests`，看看是哪份副本不同 |
+| `tools/build_firmware.py` 在某个主机测试处以 FAIL 结束 | 三个引导程序共用的某个源文件的副本已出现差异，或 `tests/image_header_vectors.h` 比 `tools/image_header.py` 旧 | 运行 `python tools/gen_image_header_vectors.py` 和 `python -m unittest discover -s tests`，看看是哪份副本不同 |
 
 ## 📂 仓库结构
 
@@ -267,8 +257,6 @@ HYDRA-UMC/
 ├── firmware/                        已提交的构建产物（.bin/.hex/.elf + 清单文件）—— 未被 gitignore 排除，与 URTC 自身的输出文件夹约定一致，见下方“构建固件”
 ├── firmware_base/                   三个 STM32 引导程序中相同的文件，由 tools/sync_firmware_base.py 保持与各自副本一致
 ├── .github/                         CI 工作流和 Issue 模板
-├── build_firmware.sh                从全新检出一次性构建上述所有 MCU 固件目标（Linux/Mac）
-├── build_firmware.bat               相同构建，Windows 版（见下方“构建固件”）
 ├── build-test.sh / build-test.bat   不递增版本号的构建/编译检查
 ├── generate_manifest.py             完整构建后重新生成 firmware/firmware_manifest.json（版本号/CRC32）
 ├── bump_version.py                  显式提升版本

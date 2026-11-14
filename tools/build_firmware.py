@@ -4,13 +4,13 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 #
-# The firmware build as one script that runs the same everywhere, to replace build_firmware.sh and build_firmware.bat. It is ported one stage at a
-# time and checked against the shell script at every stage (tests/test_build_firmware_port.py runs both with stand-in tools and compares the
-# commands they run, the lines they print and the files they leave):
+# The firmware build as one script that runs the same everywhere. It replaced build_firmware.sh and build_firmware.bat; before they were removed it was
+# built to leave the same files in firmware/ byte for byte (checked with the real arm-none-eabi-gcc), print the same lines and run the same commands.
+# tests/test_build_firmware_port.py runs it with stand-in tools.
 #
-#   stage 1   the toolchain check and the logic tests of the host (plain gcc)                    ported
-#   stage 2   the compilation and the linking of the three boards (steps 2 to 10b)               ported
-#   stage 3   the move into firmware/, the manifest and the summary (step 11)                    ported
+#   the toolchain check and the logic tests of the host (plain gcc)
+#   the compilation and the linking of the three boards (steps 2 to 10b)
+#   the move into firmware/, the manifest and the summary (step 11)
 #
 # Building does not change any version. Raise one explicitly with: python3 bump_firmware_versions.py
 #
@@ -413,7 +413,7 @@ def protocol_commands(root: str, cc: str) -> list[tuple[str, list[str]]]:
 
 
 # =============================================================================
-# Stage 2: the compilation and linking of the three boards (steps 2 to 10b of build_firmware.sh)
+# Stage 2: the compilation and linking of the three boards (steps 2 to 10b)
 # =============================================================================
 
 G4_HAL_REPO = "https://github.com/STMicroelectronics/stm32g4xx_hal_driver.git"

@@ -122,7 +122,7 @@ class SdramPlanTests(unittest.TestCase):
         for needle in ("SDRAM_MODE_CLOCK_ENABLE", "Sdram_Start", "wait_not_busy", "HYDRA_SDRAM_STARTUP_DELAY_US"):
             self.assertIn(needle, c_header)
         self.assertIn("tests/test_sdram_init.c", (ROOT / "tools/host_tests.py").read_text(encoding="utf-8"))
-        self.assertIn("tests/test_sdram_init.c", (ROOT / "build_firmware.sh").read_text(encoding="utf-8"))
+        self.assertIn("test_sdram_init", (ROOT / "tools" / "build_firmware.py").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

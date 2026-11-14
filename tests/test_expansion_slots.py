@@ -187,7 +187,7 @@ class TwinTests(unittest.TestCase):
 
     def test_the_c_test_is_in_both_lists_and_the_header_has_no_hal(self):
         self.assertIn("tests/test_expansion_slots.c", (ROOT / "tools/host_tests.py").read_text(encoding="utf-8"))
-        self.assertIn("test_expansion_slots.c", (ROOT / "build_firmware.sh").read_text(encoding="utf-8"))
+        self.assertIn("test_expansion_slots", (ROOT / "tools" / "build_firmware.py").read_text(encoding="utf-8"))
         self.assertNotIn("HAL_", HEADER)
 
 

@@ -55,7 +55,7 @@
 // target include paths, AND a full real link into a working bootloader
 // .elf for all three (g474/CM4/CM7) - not merely "it looks right".
 // tests/test_boot_decision.c's own pure logic is compiled and executed for
-// all three copies by build_firmware.sh's host-tests step (native compiler).
+// all three copies by tools/build_firmware.py's host-tests step (native compiler).
 // Real hardware validation (an actual crash-loop-then-recover cycle on a
 // physical board) is separate, larger, still entirely unaddressed future
 // work (this project's own "physical bench" scope).

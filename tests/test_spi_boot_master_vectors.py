@@ -64,8 +64,8 @@ class VectorTests(unittest.TestCase):
     def test_the_host_test_is_in_the_table_of_the_runner_and_in_the_build_script(self):
         names = [test.name for test in host_tests.table()]
         self.assertIn("spi_boot_master", names)
-        script = (ROOT / "build_firmware.sh").read_text(encoding="utf-8")
-        self.assertIn("tests/test_spi_boot_master.c", script)
+        script = (ROOT / "tools" / "build_firmware.py").read_text(encoding="utf-8")
+        self.assertIn("test_spi_boot_master", script)
         self.assertEqual(sum(1 for t in host_tests.table() if t.source == "tests/test_spi_boot_master.c"), 1)
 
     def test_the_judgement_of_the_model_follows_the_rules_of_the_document(self):

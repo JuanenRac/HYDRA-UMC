@@ -3,7 +3,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-"""The single build entry point and the pinned versions of the two platform scripts."""
+"""The single build entry point and the pinned versions of the build script."""
 import sys
 import unittest
 from pathlib import Path
@@ -14,23 +14,21 @@ import build  # noqa: E402
 
 
 class BuildEntryTests(unittest.TestCase):
-    def test_both_scripts_pin_the_same_third_party_versions(self):
-        sh = build.read_pins(build.SH, build._PIN_SH)
-        bat = build.read_pins(build.BAT, build._PIN_BAT)
-        self.assertGreaterEqual(len(sh), 12)
-        self.assertEqual(build.pin_drift(sh, bat), [])
+    def test_the_script_pins_the_third_party_versions(self):
+        pins = build.read_pins(build.SCRIPT)
+        self.assertGreaterEqual(len(pins), 12)
+        self.assertEqual(build.pin_problems(pins), [])
 
-    def test_drift_is_reported(self):
-        problems = build.pin_drift({"A_TAG": "1", "B_TAG": "2"}, {"A_TAG": "9", "C_TAG": "3"})
-        self.assertEqual(len(problems), 3)
+    def test_a_repository_without_its_tag_is_reported(self):
+        problems = build.pin_problems({"A_TAG": "1", "B_REPO": "2", "B_TAG": "3"})
+        self.assertEqual(len(problems), 1)
 
     def test_no_pins_is_a_problem(self):
-        self.assertTrue(build.pin_drift({}, {}))
+        self.assertTrue(build.pin_problems({}))
 
-    def test_command_per_platform(self):
-        self.assertEqual(build.command_for("all", False, False)[0], "bash")
-        self.assertEqual(build.command_for("g474", True, False)[-2:], ["--clean", "g474"])
-        self.assertEqual(build.command_for("all", False, True)[:2], ["cmd", "/c"])
+    def test_command_for_the_target(self):
+        self.assertEqual(build.command_for("all", False)[1:], [str(build.SCRIPT)])
+        self.assertEqual(build.command_for("g474", True)[-2:], ["--clean", "g474"])
 
 
 if __name__ == "__main__":

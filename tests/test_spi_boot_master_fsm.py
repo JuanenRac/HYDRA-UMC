@@ -59,7 +59,7 @@ class SpiBootMasterFsmTests(unittest.TestCase):
 
     def test_the_host_test_is_registered_in_both_runners(self):
         self.assertIn("tests/test_spi_boot_master_fsm.c", (ROOT / "tools/host_tests.py").read_text(encoding="utf-8"))
-        self.assertIn("tests/test_spi_boot_master_fsm.c", (ROOT / "build_firmware.sh").read_text(encoding="utf-8"))
+        self.assertIn("test_spi_boot_master_fsm", (ROOT / "tools" / "build_firmware.py").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

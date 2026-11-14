@@ -11,7 +11,7 @@
     python tools/sync_firmware_base.py sync     writes the base over the copies of the chip directories (the base is edited, never a copy)
     python tools/sync_firmware_base.py import   takes the files that are already identical in all three chip directories into the base and the list
 
-Why files and not an include path: every chip directory has to build on its own (build_firmware.sh, the host tests and the Renode and Actions jobs name
+Why files and not an include path: every chip directory has to build on its own (tools/build_firmware.py, the host tests and the Renode and Actions jobs name
 those directories), so a copy stays where the compiler looks for it and this tool keeps the copies from drifting. Nothing here changes a line of any
 bootloader: `import` only declares what was already the same. What differs between the chips (bootloader_common.h, the flash routines, the protocol)
 stays in the chip directories and is listed by `status` with the number of lines that differ, so the next step of the split can be sized.

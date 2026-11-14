@@ -4,7 +4,7 @@
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
 # Started by hand only (workflow_dispatch): it never runs on a push or a pull request. It compiles the six firmware components of this repository
-# with build_firmware.sh in CI mode (HYDRA_UMC_CI=1: no version change, nothing tracked is rewritten), checks the images, and uploads them with SHA256SUMS and a build manifest as one artifact with a build-provenance attestation.
+# with tools/build_firmware.py in CI mode (HYDRA_UMC_CI=1: no version change, nothing tracked is rewritten), checks the images, and uploads them with SHA256SUMS and a build manifest as one artifact with a build-provenance attestation.
 #
 # It holds no key and signs nothing. The bootloaders hold a table of PUBLIC Ed25519 keys (docs/image_trust.json). The flavour input picks the table:
 # "dev" (the default) is the bench table, whose seed is public (signing_key_kind "dev"); "release" is the official table (HYDRA_UMC_RELEASE=1), which stays
@@ -153,8 +153,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          chmod +x build_firmware.sh
-          ./build_firmware.sh
+          python3 tools/build_firmware.py
           arm-none-eabi-gcc --version | head -n 1 > toolchain.txt
 
       - name: Check the images and name the files

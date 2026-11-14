@@ -4,7 +4,7 @@
  * GPL-3.0-or-later - see LICENSE
  * =============================================================================
  * image_header.h (the signed image header and the anti-rollback rule) exists as a real per-target copy in all THREE bootloaders; the
- * exact same test source is compiled and run once per target's own include path (build_firmware.sh), so a drift between the copies is
+ * exact same test source is compiled and run once per target's own include path (tools/build_firmware.py), so a drift between the copies is
  * a test failure. The bytes come from tests/image_header_vectors.h, which tools/gen_image_header_vectors.py makes with the host
  * reference tools/image_header.py: the C code is checked against what the reference produced, not against itself.
  */

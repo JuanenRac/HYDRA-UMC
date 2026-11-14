@@ -41,7 +41,7 @@ Header layout (little endian, 64 bytes, then the image):
 
 Keys: `keygen` makes a private seed for production; the operator who owns it keeps it off every board and every shared machine. The
 development seeds below are published on purpose, only so that a bench build works with no setup; a release build refuses the development
-public keys (build_firmware.sh).
+public keys (tools/build_firmware.py).
 
     python tools/image_header.py keygen --out SEEDFILE        a new random seed, as 64 hexadecimal digits
     python tools/image_header.py pubkey SEEDFILE              the public key, as hex and as the C initializer the build takes

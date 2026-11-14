@@ -378,52 +378,6 @@
       "columns": 2,
       "rows": [
         {
-          "name": "build_firmware.sh",
-          "desc": {
-            "en": "Builds every MCU firmware target above",
-            "es": "Compila cada objetivo de firmware MCU de",
-            "de": "Baut jedes obige MCU-Firmware-Ziel aus",
-            "fr": "Compile chaque cible firmware MCU ci-dessus",
-            "it": "Compila ogni target firmware MCU sopra da",
-            "ja": "クリーンなチェックアウトから",
-            "zh": "从全新检出一次性构建上述所有 MCU 固件目",
-            "pt": "Constrói cada alvo de firmware MCU acima a"
-          },
-          "tree_desc": {
-            "en": "Builds every MCU firmware target above from a clean checkout (Linux/Mac)",
-            "es": "Compila cada objetivo de firmware MCU de arriba desde una copia limpia (Linux/Mac)",
-            "de": "Baut jedes obige MCU-Firmware-Ziel aus einem sauberen Checkout (Linux/Mac)",
-            "fr": "Compile chaque cible firmware MCU ci-dessus depuis un checkout propre (Linux/Mac)",
-            "it": "Compila ogni target firmware MCU sopra da un checkout pulito (Linux/Mac)",
-            "ja": "クリーンなチェックアウトから、上記の全 MCU ファームウェアターゲットを一括ビルド（Linux/Mac）",
-            "zh": "从全新检出一次性构建上述所有 MCU 固件目标（Linux/Mac）",
-            "pt": "Constrói cada alvo de firmware MCU acima a partir de um checkout limpo (Linux/Mac)"
-          }
-        },
-        {
-          "name": "build_firmware.bat",
-          "desc": {
-            "en": "Same build, Windows",
-            "es": "La misma compilación, Windows",
-            "de": "Derselbe Build, Windows",
-            "fr": "Même build, Windows",
-            "it": "Stessa build, Windows",
-            "ja": "同じビルド、Windows 版",
-            "zh": "相同构建，Windows 版",
-            "pt": "O mesmo build, Windows"
-          },
-          "tree_desc": {
-            "en": "Same build, Windows (see \"Building the Firmware\" below)",
-            "es": "La misma compilación, Windows (ver \"Compilando el Firmware\" abajo)",
-            "de": "Derselbe Build, Windows (siehe \"Die Firmware bauen\" unten)",
-            "fr": "Même build, Windows (voir \"Compiler le Firmware\" ci-dessous)",
-            "it": "Stessa build, Windows (vedi \"Compilare il Firmware\" sotto)",
-            "ja": "同じビルド、Windows 版（下記「ファームウェアのビルド」参照）",
-            "zh": "相同构建，Windows 版（见下方“构建固件”）",
-            "pt": "O mesmo build, Windows (ver \"Compilar o firmware\" abaixo)"
-          }
-        },
-        {
           "name": "build-test.sh / build-test.bat",
           "desc": {
             "en": "Non-versioning build/compile check",

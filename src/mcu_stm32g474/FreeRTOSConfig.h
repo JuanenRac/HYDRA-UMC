@@ -56,7 +56,7 @@
 
 /* Optional API functions this skeleton doesn't need yet - trimmed to keep
  * flash usage down, same "only what's used" philosophy as the HAL module
- * list in ../../build_firmware.sh. Add back as real code needs them. */
+ * list in ../.python3 tools/build_firmware.py. Add back as real code needs them. */
 #define INCLUDE_vTaskPrioritySet                 1
 #define INCLUDE_uxTaskPriorityGet                1
 #define INCLUDE_vTaskDelete                      1

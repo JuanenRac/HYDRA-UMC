@@ -245,12 +245,12 @@ class SourcesOfTheService(unittest.TestCase):
 
     def test_the_host_tests_and_the_build_know_the_service(self):
         table = text(ROOT / "tools" / "host_tests.py")
-        script = text(ROOT / "build_firmware.sh")
+        script = text(ROOT / "tools" / "build_firmware.py")
         self.assertIn("tests/test_spi_app.c", table)
-        self.assertIn("tests/test_spi_app.c", script)
+        self.assertIn("test_spi_app", script)
         self.assertIn("SPI_APP_TEST_SWITCHES=0", table)
         self.assertIn("SPI_APP_TEST_SWITCHES=1", table)
-        self.assertIn('"$SRC/SpiApp.c"', script)
+        self.assertIn("/SpiApp.c", script)
 
     def test_the_documents_name_the_switch(self):
         self.assertIn("HYDRA_SPI_APP", text(ROOT / "docs" / "FIRMWARE_SWITCHES.md"))

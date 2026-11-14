@@ -104,7 +104,7 @@ class HostTestsTableTests(unittest.TestCase):
                 self.assertTrue((ROOT / include).is_dir(), include)
 
     def test_the_table_is_the_list_build_firmware_runs(self):
-        script = (ROOT / "build_firmware.sh").read_text(encoding="utf-8")
+        script = (ROOT / "tools" / "build_firmware.py").read_text(encoding="utf-8")
         for test in host_tests.table():
             self.assertIn(Path(test.source).name.replace(".c", ""), script.replace(".c", ""))
 

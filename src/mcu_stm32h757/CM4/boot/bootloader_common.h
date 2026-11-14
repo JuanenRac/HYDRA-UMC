@@ -53,7 +53,7 @@ extern IWDG_HandleTypeDef  hiwdg;
 // FIRMWARE_VERSION_* (this core's application) and BOOTLOADER_VERSION_*
 // (this bootloader) are BOTH incremental - PATCH bumps by 1 on every real
 // build of that component, via bump_version.py, called automatically by
-// build_firmware.sh/.bat before this header is compiled in. Odometer carry
+// tools/build_firmware.py before this header is compiled in. Odometer carry
 // rule (PATCH past 9 -> MINOR+1, PATCH resets to 0) - full reasoning in
 // src/mcu_stm32g474/boot/bootloader_common.h's own header comment, same
 // rule applies here verbatim.

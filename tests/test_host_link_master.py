@@ -197,7 +197,7 @@ class TwinTests(unittest.TestCase):
 
     def test_the_c_test_is_in_both_lists_and_the_header_has_no_hal(self):
         self.assertIn("tests/test_host_link_master.c", (ROOT / "tools/host_tests.py").read_text(encoding="utf-8"))
-        self.assertIn("test_host_link_master.c", (ROOT / "build_firmware.sh").read_text(encoding="utf-8"))
+        self.assertIn("test_host_link_master", (ROOT / "tools" / "build_firmware.py").read_text(encoding="utf-8"))
         self.assertNotIn("HAL_", HEADER)
         self.assertEqual(re.findall(r"#include <(\w+)\.h>", HEADER), ["stdint", "string"])
 

@@ -54,7 +54,7 @@ class ClockTreeTests(unittest.TestCase):
         for needle in ("HYDRA_CLOCK_KERNEL_FDCAN_HZ == HYDRA_CLOCK_PLL2_Q_HZ", "HYDRA_STACK_BUS_BIT_RATE_BPS", "HYDRA_PLL1_VCO_HZ >= 192000000UL"):
             self.assertIn(needle, c_header)
         self.assertIn("HYDRA_PLATFORM_H757", (ROOT / "tools/host_tests.py").read_text(encoding="utf-8"))
-        self.assertIn("tests/test_clock_tree.c", (ROOT / "build_firmware.sh").read_text(encoding="utf-8"))
+        self.assertIn("test_clock_tree", (ROOT / "tools" / "build_firmware.py").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
