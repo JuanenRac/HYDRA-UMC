@@ -128,6 +128,10 @@ def table() -> list[HostTest]:
     tests.append(HostTest("bootloader_g474_update_flash_layer", "tests/test_bootloader_g474_update_host.c",
                           ("tests/stubs/protocol", G4, f"{G4}/boot", "tests"), GNU, (f"{G4}/boot/update_signature.c",),
                           defines=("HYDRA_FLASH_LAYER=1",), needs_tweetnacl=True))
+    for gate in (0, 1):
+        tests.append(HostTest(f"bootloader_g474_readback@gate{gate}", "tests/test_bootloader_g474_readback_host.c",
+                              ("tests/stubs/protocol", G4, f"{G4}/boot", "tests"), GNU, (f"{G4}/boot/update_signature.c",),
+                              defines=(f"HYDRA_READBACK_GATE={gate}",), needs_tweetnacl=True))
     for core in ("CM4", "CM7"):
         tests.append(HostTest(f"bootloader_h745_{core}_protocol", f"{H7}/{core}/boot/bootloader_protocol.c",
                               ("tests/stubs/h7protocol", f"{H7}/{core}/boot", f"{H7}/Common", f"{H7}/{core}", H7, "tests"),

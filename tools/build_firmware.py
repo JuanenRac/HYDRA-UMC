@@ -387,6 +387,18 @@ def bootloader_cases(root: str) -> list[Case]:
             **GNU,
         )
     )
+    for gate in (0, 1):
+        cases.append(
+            _t(
+                f"G474 bootloader read-back, validity and query host tests passed (read-out gate {gate})",
+                f"host_tests_bootloader_g474_readback_gate{gate}",
+                "test_bootloader_g474_readback_host",
+                update_includes,
+                [f"-DHYDRA_READBACK_GATE={gate}"],
+                sources=(TWEETNACL, f"{G474_BOOT}/update_signature.c"),
+                **GNU,
+            )
+        )
     return cases
 
 
