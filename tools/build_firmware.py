@@ -304,6 +304,17 @@ def host_cases(root: str) -> list[Case]:
     cases.append(_t("host_link_master host logic tests passed", "host_tests_host_link_master", "test_host_link_master", [H757_COMMON, CM4_BOOT, "tests"]))
     for variant, label in (((), "default"), (("-DHYDRA_PLATFORM_H757",), "-DHYDRA_PLATFORM_H757")):
         cases.append(_t(f"gateway_dispatch host logic tests passed [{label}]", "host_tests_gateway_dispatch", "test_gateway_dispatch", [H757_COMMON, CM4_BOOT, "tests"], list(variant), quiet=False))
+    cases.append(_t("gateway_stack_a host logic tests passed", "host_tests_gateway_stack_a", "test_gateway_stack_a", [H757_COMMON, CM4_BOOT, "tests"]))
+    cases.append(
+        _t(
+            "gateway_fdcan1 host logic tests passed",
+            "host_tests_gateway_fdcan1",
+            "test_gateway_fdcan1",
+            ["tests/stubs/h7fdcan", "src/mcu_stm32h757/CM7", H757_COMMON],
+            ["-DHYDRA_GATEWAY_FDCAN1=1"],
+            sources=("src/mcu_stm32h757/CM7/GatewayFdcan1.c",),
+        )
+    )
     cases.append(_t("task_watchdog host logic tests passed", "host_tests_task_watchdog", "test_task_watchdog", ["tests", CM4]))
     cases.append(_t("slot_scan_node host logic tests passed", "host_tests_slot_scan_node", "test_slot_scan_node", ["tests", G474_BOOT]))
     for n in (0, 1):
@@ -1114,6 +1125,16 @@ class Stage2:
             r.ok("CM7 driver of the TMC5160 cards (SPI6 master) compiles for the H757 platform")
         else:
             r.fail("CM7 driver of the TMC5160 cards (SPI6 master) does NOT compile for the H757 platform - see errors above")
+            failed = True
+        gw_obj = f"{h7}/cm7_gateway_fdcan1_h757_check_obj"
+        self.makedirs(gw_obj)
+        if self.gcc(
+            self.cflags_cm7, "-DHYDRA_PLATFORM_H757", "-DHYDRA_GATEWAY_FDCAN1=1", f"-I{root}/src/mcu_stm32h757/CM7", *self.common_inc,
+            "-x", "c", "-c", f"{root}/src/mcu_stm32h757/CM7/GatewayFdcan1.c", "-o", f"{gw_obj}/GatewayFdcan1.o",
+        ) == 0:
+            r.ok("CM7 binding of the stack tier of the gateway (FDCAN1) compiles for the H757 platform")
+        else:
+            r.fail("CM7 binding of the stack tier of the gateway (FDCAN1) does NOT compile for the H757 platform - see errors above")
             failed = True
         ltdc_obj = f"{h7}/cm7_display_ltdc_h757_check_obj"
         self.makedirs(ltdc_obj)
