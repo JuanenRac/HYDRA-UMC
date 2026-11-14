@@ -1126,7 +1126,6 @@ class Stage2:
         else:
             r.fail("CM7 driver of the TMC5160 cards (SPI6 master) does NOT compile for the H757 platform - see errors above")
             failed = True
-<<<<<<< HEAD
         gw_obj = f"{h7}/cm7_gateway_fdcan1_h757_check_obj"
         self.makedirs(gw_obj)
         if self.gcc(
@@ -1136,7 +1135,7 @@ class Stage2:
             r.ok("CM7 binding of the stack tier of the gateway (FDCAN1) compiles for the H757 platform")
         else:
             r.fail("CM7 binding of the stack tier of the gateway (FDCAN1) does NOT compile for the H757 platform - see errors above")
-=======
+            failed = True
         ltdc_obj = f"{h7}/cm7_display_ltdc_h757_check_obj"
         self.makedirs(ltdc_obj)
         if self.gcc(
@@ -1146,7 +1145,6 @@ class Stage2:
             r.ok("CM7 driver of the display (LTDC and DMA2D) compiles for the H757 platform")
         else:
             r.fail("CM7 driver of the display (LTDC and DMA2D) does NOT compile for the H757 platform - see errors above")
->>>>>>> origin/main
             failed = True
         if failed:
             self.stop()

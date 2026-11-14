@@ -60,13 +60,10 @@
     "src/mcu_stm32h757/CM7/boot/flash_layer.h": 100,
     "src/mcu_stm32h757/CM7/boot/image_header.h": 100,
     "src/mcu_stm32h757/CM7/TmcCardSpi6.c": 100,
-<<<<<<< HEAD
     "src/mcu_stm32h757/CM7/GatewayFdcan1.c": 100,
     "src/mcu_stm32h757/Common/gateway_stack_a.h": 100,
-=======
     "src/mcu_stm32h757/CM7/DisplayLtdc.c": 100,
     "src/mcu_stm32h757/Common/display_plan.h": 100,
->>>>>>> origin/main
     "src/mcu_stm32h757/CM7/boot/update_verify.h": 100,
     "src/mcu_stm32h757/Common/clock_config.h": 100,
     "src/mcu_stm32h757/Common/expansion_slots.h": 100,
