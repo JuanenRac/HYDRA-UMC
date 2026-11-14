@@ -135,7 +135,7 @@ class GlueParityTests(unittest.TestCase):
         }
         expected = {"OFS_IMAGE_HEADER": 0x19, "OFS_DOWNGRADE_NONCE_REQUEST": 0x1A, "OFS_DOWNGRADE_TOKEN": 0x1B, "OFS_DOWNGRADE_NONCE_RESPONSE": 0x1C, "VERIFY_FAIL_REASON_HEADER": 0x06}
         for core, path in commons.items():
-            text = read(path)
+            text = read(path) + "\n" + read(ROOT / "firmware_base/boot/boot_protocol_ids.h")   # the numbers are in the shared header
             for name, value in expected.items():
                 match = re.search(rf"^#define {name}\s+(0x[0-9A-Fa-f]+)", text, re.M)
                 self.assertIsNotNone(match, f"{core}: {name}")
