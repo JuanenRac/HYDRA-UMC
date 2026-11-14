@@ -1,0 +1,10 @@
+[
+  {
+    "stack": "python",
+    "workdir": "src/cm5_host/spi_bridge",
+    "pythonpath": "src/cm5_host/spi_bridge",
+    "source": "spi_bridge",
+    "tests": "tests",
+    "floor": 99
+  }
+]
