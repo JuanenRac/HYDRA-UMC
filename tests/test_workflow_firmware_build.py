@@ -56,7 +56,9 @@ class FirmwareBuildWorkflowTests(unittest.TestCase):
 
     def test_the_commit_is_pinned_in_the_plan_and_checked_out_again_by_its_sha(self):
         self.assertIn('echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"', step("Work out the version and pin the commit"))
-        self.assertIn("ref: ${{ needs.plan.outputs.sha }}", TEXT)
+        self.assertIn("ref: ${{ github.sha }}", TEXT)
+        self.assertNotIn("ref: ${{ needs.plan.outputs.sha }}", TEXT)
+        self.assertNotIn("ref: ${{ inputs.ref }}", TEXT)
 
     def test_the_ref_is_checked_for_odd_characters_before_it_is_used(self):
         self.assertIn("A-Za-z0-9._/-", step("Check the inputs"))
