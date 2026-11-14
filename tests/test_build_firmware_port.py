@@ -250,6 +250,54 @@ class BuildFirmwarePortTests(unittest.TestCase):
         staged = [name for name in python[2] if name.startswith("build/firmware_staging/")]
         self.assertEqual(len(staged), 18)  # six components, each as .elf, .bin and .hex
 
+    def test_the_whole_build_prints_the_same_lines_runs_the_same_commands_and_leaves_the_same_files_as_the_shell_script(self) -> None:
+        for name, text in (
+            ("arm-none-eabi-gcc", FAKE_ARM_GCC),
+            ("arm-none-eabi-objcopy", FAKE_OBJCOPY),
+            ("arm-none-eabi-size", FAKE_SIZE),
+            ("arm-none-eabi-nm", "#!/bin/sh\nexit 0\n"),
+            ("git", FAKE_GIT),
+        ):
+            path = self.bin / name
+            path.write_text(text, encoding="utf-8")
+            path.chmod(path.stat().st_mode | stat.S_IEXEC)
+        results = []
+        for kind in ("shell", "python"):
+            root = self.work / f"whole-{kind}"
+            root.mkdir()
+            shutil.copytree(ROOT / "src", root / "src")
+            (root / "firmware").mkdir()
+            (root / "firmware" / "HYDRA_RCB_APP_v0.0.1.bin").write_text("an older build of the same component\n", encoding="utf-8")
+            (root / "firmware" / "keep_me.txt").write_text("not generated\n", encoding="utf-8")
+            log = self.work / f"whole-{kind}.log"
+            env = dict(self.env, FAKE_LOG=str(log), LC_ALL="C", HYDRA_UMC_SKIP_HOST_TESTS="1")
+            for name in ("HYDRA_UMC_RELEASE", "HYDRA_EXTRA_CFLAGS", "HYDRA_UMC_CI"):
+                env.pop(name, None)
+            if kind == "shell":
+                shutil.copyfile(ROOT / "build_firmware.sh", root / "build_firmware.sh")
+                command = ["bash", str(root / "build_firmware.sh")]
+            else:
+                command = [sys.executable, str(ROOT / "tools" / "build_firmware.py"), "--root", str(root)]
+            result = subprocess.run(command, cwd=root, env=env, capture_output=True, text=True, check=False, stdin=subprocess.DEVNULL)
+            self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+            lines = result.stdout.replace(str(root), "<root>").splitlines()
+            start = next(i for i, line in enumerate(lines) if line.startswith("Building does not change"))
+            commands = [line.replace(str(root), "<root>") for line in log.read_text(encoding="utf-8").splitlines()]
+            files = {}
+            for folder in ("build", "firmware"):
+                for path in sorted((root / folder).rglob("*")):
+                    if path.is_file():
+                        files[path.relative_to(root).as_posix()] = path.read_text(encoding="utf-8", errors="replace").replace(str(root), "<root>")
+            results.append((lines[start:], commands, files))
+        shell, python = results
+        self.assertGreater(len(shell[0]), 80)
+        self.assertEqual(python[0], shell[0])
+        self.assertEqual(python[1], shell[1])
+        self.assertEqual(python[2], shell[2])
+        self.assertNotIn("firmware/HYDRA_RCB_APP_v0.0.1.bin", python[2])  # the older version of a rebuilt component is replaced
+        self.assertIn("firmware/keep_me.txt", python[2])  # anything else is left alone
+        self.assertEqual(len([name for name in python[2] if name.startswith("firmware/HYDRA_")]), 18)
+
     def test_a_failing_program_stops_the_build_with_status_one(self) -> None:
         failing = self.bin / "failcc"
         failing.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")

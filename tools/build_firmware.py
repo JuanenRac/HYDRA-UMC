@@ -10,13 +10,13 @@
 #
 #   stage 1   the toolchain check and the logic tests of the host (plain gcc)                    ported
 #   stage 2   the compilation and the linking of the three boards (steps 2 to 10b)               ported
-#   stage 3+  the move into firmware/ and the manifest                                           not ported yet: use build_firmware.sh
+#   stage 3   the move into firmware/, the manifest and the summary (step 11)                    ported
 #
 # Building does not change any version. Raise one explicitly with: python3 bump_firmware_versions.py
 #
 #   python3 tools/build_firmware.py --host-tests-only        runs stage 1 and stops
 #   python3 tools/build_firmware.py --compile-only [TARGET]  runs stage 2 and stops (TARGET: all, g474 or h745)
-#   python3 tools/build_firmware.py [--clean] [TARGET]       runs every stage that is ported and says which are not
+#   python3 tools/build_firmware.py [--clean] [TARGET]       runs the whole build
 #
 # Environment: HYDRA_UMC_SKIP_HOST_TESTS=1 skips the logic tests of the host; HOST_CC names the host compiler (else cc, else gcc).
 # =============================================================================
@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import platform
 import shutil
 import subprocess
 import sys
@@ -951,6 +950,57 @@ class Stage2:
             "still no CM7<->CM4 scheduler sync"
         )
 
+    def promote_staged_firmware(self) -> None:
+        """A firmware folder is one build set, never an accumulation of differently versioned binaries: the staged files replace the older
+        versions of the same components, and anything else in the folder stays."""
+        import re
+
+        staged = [path for pattern in ("HYDRA_*.bin", "HYDRA_*.elf", "HYDRA_*.hex") for path in sh_glob(self.out, pattern)]
+        for path in staged:
+            prefix = re.sub(r"_v[0-9].*$", "", os.path.basename(path))
+            for pattern in (f"{prefix}_v*.bin", f"{prefix}_v*.elf", f"{prefix}_v*.hex"):
+                for old in sh_glob(self.final, pattern):
+                    os.remove(old)
+        for path in staged:
+            shutil.copyfile(path, f"{self.final}/{os.path.basename(path)}")
+
+    def step11(self) -> None:
+        r = self.r
+        r.step("11. Firmware manifest (firmware/firmware_manifest.json)")
+        if r.failed == 0:
+            self.promote_staged_firmware()
+            r.ok("built firmware moved into firmware/")
+        else:
+            r.warn("build had failures: firmware/ was left as it was")
+        # only meaningful once every component exists: a partial build would make generate_manifest.py look for the binaries of the other chip
+        if self.target == "all" and self.b.env.get("HYDRA_UMC_CI", "0") != "1":
+            if self.run(["python3", f"{self.root}/generate_manifest.py", self.root], False) == 0:
+                r.ok("firmware_manifest.json regenerated - see it for exact versions/CRC32 of every component just built")
+            else:
+                r.fail("generate_manifest.py failed - see errors above")
+        else:
+            print("  (skipped - CI never rewrites the manifest; partial builds do not regenerate it either)")
+
+    def summary(self) -> None:
+        r = self.r
+        r.step("Summary")
+        r.out(f"{r.passed} passed, {r.warned} warnings, {r.failed} failed")
+        r.out("")
+        r.out(f"Output binaries are in: {self.final}/")
+        r.out("")
+        for line in (
+            "Reminder: the CM4 and G474 _APP binaries now carry real FDCAN Tier",
+            "0/1 traffic (STACK A master + AXIS_STATUS responder) and the real",
+            "Tier 2/3 RELAY_SEND/RELAY_RECV tunnel end to end - CM7's own _APP",
+            "and every board's real motion-control code (step/dir/en pulse",
+            "generation, S-curve profiles) are still the FreeRTOS GPIO-toggle",
+            "smoke test, not yet written. Every _BOOTLOADER binary IS the real",
+            "CAN-OTA/SPI-OTA protocol (bare-metal, no FreeRTOS by design) - none",
+            "of this is yet verified against real hardware. See each",
+            "src/*/README.md and docs/architecture.md.",
+        ):
+            r.out(line)
+
     def step10b(self) -> None:
         r = self.r
         r.step("10b. Kinematic Brain bootloaders and CAN code compiled for the H757 platform (compile check only, nothing is linked or shipped)")
@@ -1058,7 +1108,11 @@ class Build:
         else:
             r.fail("git not found - needed to fetch ST's own HAL/CMSIS sources.")
             self.stop()
-        r.ok(f"python3 found: Python {platform.python_version()}")
+        if self.which("python3"):
+            r.ok(f"python3 found: {self._first_line(['python3', '--version'])}")
+        else:
+            r.fail("python3 not found - required to read the component versions and to run generate_manifest.py.")
+            self.stop()
 
     @staticmethod
     def _first_line(command: list[str]) -> str:
@@ -1070,8 +1124,12 @@ class Build:
 
     # -- stage 2 ---------------------------------------------------------------------------------------------------
 
-    def compile_stage(self, target: str = "all") -> None:
-        Stage2(self, target).run_all()
+    def compile_stage(self, target: str = "all", finish: bool = False) -> None:
+        stage = Stage2(self, target)
+        stage.run_all()
+        if finish:
+            stage.step11()
+            stage.summary()
 
     # -- stage 1b --------------------------------------------------------------------------------------------------
 
@@ -1170,14 +1228,10 @@ def main(argv: Sequence[str] | None = None, runner: Runner = default_runner) -> 
         if args.host_tests_only:
             report.summary()
             return 0 if report.failed == 0 else 1
-        build.compile_stage(args.target)
+        build.compile_stage(args.target, finish=not args.compile_only)
         if args.compile_only:
             report.summary()
-            return 0 if report.failed == 0 else 1
-        report.out("")
-        report.out("The stages after the compilation and linking (the move into firmware/ and the manifest) are not ported to this script yet: run build_firmware.sh.")
-        report.summary()
-        return 2 if report.failed == 0 else 1
+        return 0 if report.failed == 0 else 1
     except BuildStopped:
         return 1
     finally:
