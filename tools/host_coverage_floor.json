@@ -68,6 +68,7 @@
     "src/mcu_stm32h757/Common/ipc_mailbox.h": 100,
     "src/mcu_stm32h757/Common/memtest.h": 100,
     "src/mcu_stm32h757/Common/nor_flash.h": 100,
+    "src/mcu_stm32h757/Common/sdram_banks.h": 100,
     "src/mcu_stm32h757/Common/sdram_init.h": 100,
     "src/mcu_stm32h757/Common/spi_boot_master.h": 100,
     "src/mcu_stm32h757/Common/spi_boot_master_fsm.h": 100,
