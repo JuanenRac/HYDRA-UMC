@@ -51,6 +51,8 @@ class SpiApp:
     zones_beat_seen: int = 0
     zones_last_ms: int = 0
     zones_armed: bool = False
+    health: list[bytes | None] = field(default_factory=lambda: [None] * 8)
+    health_age: list[int] = field(default_factory=lambda: [0] * 8)
 
     def __post_init__(self) -> None:
         self._seal(IDLE_TYPE, b"", 0)
@@ -78,6 +80,8 @@ class SpiApp:
             link_ok=self.link_ok,
             estop_latched=self.estop_latched,
             scan_verdicts=list(self.scan_verdicts),
+            health=list(self.health),
+            health_age=list(self.health_age),
         )
 
     def on_receive(self, wire: bytes) -> bool:
@@ -99,13 +103,15 @@ class SpiApp:
                 self.seq_gaps += 1
             self.rx_last = sequence
         tier, frame_type, dlc = wire[0], wire[2], wire[3]
-        is_command = (spi_system.STOP_REQUEST <= frame_type <= spi_system.PROBE_REQUEST or frame_type == spi_system.ZONES_HEARTBEAT) and frame_type != spi_system.TELEMETRY_RESPONSE
+        is_command = (spi_system.STOP_REQUEST <= frame_type <= spi_system.PROBE_REQUEST or frame_type in (spi_system.ZONES_HEARTBEAT, spi_system.HEALTH_QUERY)) and frame_type != spi_system.TELEMETRY_RESPONSE
         if tier != TARGET_SELF or not is_command or dlc > 8:
             self.frames_ignored += 1
             return False
         action, data = spi_system.handle(self.config, self.snapshot(), frame_type, bytes(wire[4 : 4 + dlc]))
         if action == "reply":
             self._seal(spi_system.TELEMETRY_RESPONSE, data, len(data))
+        elif action == "health":
+            self._seal(spi_system.HEALTH_RESPONSE, data, len(data))
         elif action == "trip":
             self.trip_reason, self.trip_pending = data[0], True
         elif action == "release":
@@ -157,6 +163,11 @@ class SpiApp:
     def scan_finished(self, scan_id: int, verdicts: list[int]) -> None:
         self.scan_verdicts = list(verdicts)
         self.scan_done_id, self.scan_done = scan_id, True
+
+    def publish_health(self, slot: int, frame: bytes | None, age: int) -> None:
+        """The STACK A task hands over the last health frame of a slot (None while none was heard) and its age in units of 100 ms."""
+        self.health[slot] = None if frame is None else bytes(frame)
+        self.health_age[slot] = age
 
     def publish_brain_state(self, estop_latched: bool, can_tx_errors: int, can_rx_errors: int, link_ok: bool = True) -> None:
         self.estop_latched, self.can_tx_errors, self.can_rx_errors, self.link_ok = estop_latched, can_tx_errors, can_rx_errors, link_ok

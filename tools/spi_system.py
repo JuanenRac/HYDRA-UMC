@@ -13,6 +13,8 @@
     0x24 PROBE_REQUEST      scan id                          scan the slots before an update
     0x25 PROBE_RESPONSE     scan id, then the verdicts of slots 0..7 in a nibble each
     0x26 ZONES_HEARTBEAT    'Z' 'O' 'N' 'E'                  the safety-zones chain is healthy; the application stops the stack when it stops coming
+    0x27 HEALTH_QUERY       slot 0..7                        the last health frame of the board in that slot (HYDRA_SPI_HEALTH)
+    0x2A HEALTH_RESPONSE    slot, age, sequence, flags, tx errors, rx errors, stalls, uptime; 2 bytes (slot, 0xFF) while no frame has been heard
 
 None of these frames is a CAN message: the tier of the frame (SELF) decides where it goes before its type is read, although the types 0x20 and up are also offsets of the 64-identifier window of a slot (the F-RAM requests). The firmware answers them only when it is built
 with HYDRA_SPI_SYSTEM=1 (telemetry and probe) and HYDRA_SPI_STOP_COMMAND=1 (stop and release). Evidence of anything built on this file: simulator."""
@@ -27,6 +29,9 @@ TELEMETRY_RESPONSE = 0x23
 PROBE_REQUEST = 0x24
 PROBE_RESPONSE = 0x25
 ZONES_HEARTBEAT = 0x26
+HEALTH_QUERY = 0x27
+HEALTH_RESPONSE = 0x2A  # 0x28 and 0x29 are the F-RAM request and its answer
+HEALTH_AGE_NEVER = 0xFF
 
 STATE_BOOTLOADER = 0x01
 STATE_APPLICATION = 0x02
@@ -42,6 +47,7 @@ VERDICT_NAMES = {value: name for name, value in VERDICTS.items()}
 class Config:
     telemetry_enabled: bool = False
     stop_enabled: bool = False
+    health_enabled: bool = False
 
 
 @dataclass
@@ -55,6 +61,8 @@ class Snapshot:
     link_ok: bool = True
     estop_latched: bool = True
     scan_verdicts: list[int] = field(default_factory=lambda: [0] * 8)
+    health: list[bytes | None] = field(default_factory=lambda: [None] * 8)  # the last health frame of each slot, as it came (8 bytes), None while none was heard
+    health_age: list[int] = field(default_factory=lambda: [0] * 8)  # units of 100 ms since it was heard
 
 
 def saturate(value: int) -> int:
@@ -78,6 +86,15 @@ def telemetry(config: Config, snap: Snapshot, selector: int = 0) -> bytes:
     return bytes((selector, flags, saturate(snap.crc_errors), saturate(snap.retries), saturate(snap.seq_gaps), snap.can_tx_errors, snap.can_rx_errors, snap.state))
 
 
+def health_response(snap: Snapshot, slot: int) -> bytes:
+    """The answer to a health query: slot, age, and the six bytes between the marker and the check byte of the frame (the CM4 stores only frames whose marker
+    and check byte were right, so they are not carried). Two bytes, slot and 0xFF, while nothing has been heard from the slot."""
+    frame = snap.health[slot]
+    if frame is None:
+        return bytes((slot, HEALTH_AGE_NEVER))
+    return bytes((slot, min(max(snap.health_age[slot], 0), 254))) + bytes(frame[1:7])
+
+
 def probe_response(snap: Snapshot, scan_id: int) -> bytes:
     nibbles = [v & 0x0F for v in snap.scan_verdicts]
     packed = [nibbles[2 * i] | (nibbles[2 * i + 1] << 4) for i in range(4)]
@@ -86,11 +103,13 @@ def probe_response(snap: Snapshot, scan_id: int) -> bytes:
 
 def handle(config: Config, snap: Snapshot, frame_type: int, payload: bytes) -> tuple[str, bytes]:
     """The action the firmware takes for one frame of the tier SELF: ('none'|'reply'|'trip'|'release'|'scan'|'heartbeat', bytes). A reply carries the answer
-    (the type is TELEMETRY_RESPONSE); trip carries the reason; scan carries the scan id."""
+    (the type is TELEMETRY_RESPONSE; a health answer is the action 'health', of the type HEALTH_RESPONSE); trip carries the reason; scan carries the scan id."""
     if not config.telemetry_enabled:
         return "none", b""
     if frame_type == TELEMETRY_QUERY:
         return ("reply", telemetry(config, snap, 0)) if payload == b"\x00" else ("none", b"")
+    if frame_type == HEALTH_QUERY:
+        return ("health", health_response(snap, payload[0])) if config.health_enabled and len(payload) == 1 and payload[0] <= 7 else ("none", b"")
     if frame_type == PROBE_REQUEST:
         return ("scan", payload) if len(payload) == 1 else ("none", b"")
     if frame_type == STOP_REQUEST:
@@ -124,6 +143,18 @@ def decode_telemetry(data: bytes) -> Telemetry | None:
     return Telemetry(data[0], bool(data[1] & FLAG_LINK_OK), bool(data[1] & FLAG_ESTOP_LATCHED), bool(data[1] & FLAG_STOP_ENABLED), data[2], data[3], data[4], data[5], data[6], data[7])
 
 
+def decode_health_response(data: bytes):
+    """(slot, age in units of 100 ms, health frame rebuilt for tools/health_frame.py) or (slot, None, None) while nothing has been heard; None for a damaged answer."""
+    import health_frame  # the frame is rebuilt here: the marker and the check byte are the ones a board would have sent
+
+    if len(data) == 2 and data[0] <= 7 and data[1] == HEALTH_AGE_NEVER:
+        return data[0], None, None
+    if len(data) != 8 or data[0] > 7 or data[1] > 254:
+        return None
+    body = bytes((health_frame.MARKER,)) + bytes(data[2:8])
+    return data[0], data[1], body + bytes((health_frame.check_byte(body),))
+
+
 def decode_probe_response(data: bytes) -> tuple[int, list[str]] | None:
     if len(data) != 5:
         return None
@@ -147,6 +178,17 @@ class Client:
     def scan(self, scan_id: int) -> tuple[int, list[str]] | None:
         answer_type, answer = self._exchange(PROBE_REQUEST, bytes((scan_id & 0xFF,)))
         return decode_probe_response(answer) if answer_type == PROBE_RESPONSE else None
+
+    def read_health(self, slot: int):
+        """The last health frame of the board in `slot`, as (slot, age in units of 100 ms, frame) with the frame decoded by tools/health_frame.py, or
+        (slot, None, None) while nothing was heard; None when the build does not answer or the answer is damaged."""
+        answer_type, answer = self._exchange(HEALTH_QUERY, bytes((slot & 0xFF,)))
+        decoded = decode_health_response(answer) if answer_type == HEALTH_RESPONSE else None
+        if decoded is None or decoded[2] is None:
+            return decoded
+        import health_frame
+
+        return decoded[0], decoded[1], health_frame.decode(decoded[2])
 
     def stop(self, reason: int) -> None:
         self._exchange(STOP_REQUEST, stop_payload(reason))

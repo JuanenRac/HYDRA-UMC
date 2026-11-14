@@ -50,9 +50,9 @@ int main(void)
 {
     printf("HYDRA-UMC host logic tests - spi_system.h\n");
     uint8_t out_type, out[8], out_dlc;
-    const SpiSysConfig_t off = {0u, 0u};
-    const SpiSysConfig_t read_only = {1u, 0u};
-    const SpiSysConfig_t full = {1u, 1u};
+    const SpiSysConfig_t off = {0u, 0u, 0u};
+    const SpiSysConfig_t read_only = {1u, 0u, 0u};
+    const SpiSysConfig_t full = {1u, 1u, 0u};
     const uint8_t query[1] = {0u};
     const uint8_t stop[5] = {'S', 'T', 'O', 'P', 7u};
     const uint8_t release[4] = {'R', 'E', 'L', 'S'};
@@ -93,13 +93,44 @@ int main(void)
     {
         const uint8_t zone[4] = {'Z', 'O', 'N', 'E'};
         const uint8_t wrong[4] = {'Z', 'O', 'N', 'X'};
-        TEST_ASSERT(SpiSys_IsCommand(SPI_SYS_ZONES_HEARTBEAT) && !SpiSys_IsCommand(0x27u), "the heartbeat is a command, the type above it is not");
+        TEST_ASSERT(SpiSys_IsCommand(SPI_SYS_ZONES_HEARTBEAT) && SpiSys_IsCommand(SPI_SYS_HEALTH_QUERY) && !SpiSys_IsCommand(0x28u) && !SpiSys_IsCommand(SPI_SYS_HEALTH_RESPONSE), "the heartbeat and the health query are commands, the F-RAM request and the health answer are not");
         TEST_ASSERT(run(&full, SPI_SYS_ZONES_HEARTBEAT, zone, 4u, &out_type, out, &out_dlc) == SPI_SYS_ACT_ZONES_HEARTBEAT && out_dlc == 0u, "full: the heartbeat is noted and not answered");
         TEST_ASSERT(run(&read_only, SPI_SYS_ZONES_HEARTBEAT, zone, 4u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "read only: the heartbeat is ignored");
         TEST_ASSERT(run(&off, SPI_SYS_ZONES_HEARTBEAT, zone, 4u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "off: the heartbeat is ignored");
         TEST_ASSERT(run(&full, SPI_SYS_ZONES_HEARTBEAT, wrong, 4u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "a wrong magic does nothing");
         TEST_ASSERT(run(&full, SPI_SYS_ZONES_HEARTBEAT, zone, 3u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "a short heartbeat does nothing");
         TEST_ASSERT(run(&full, SPI_SYS_ZONES_HEARTBEAT, zone, 5u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "a long heartbeat does nothing");
+    }
+
+    /* the health of the boards: a third switch, read only, and the exact length and slot */
+    {
+        const SpiSysConfig_t with_health = {1u, 0u, 1u};
+        const SpiSysConfig_t health_only = {0u, 0u, 1u};
+        const uint8_t slot2[1] = {2u}, slot5[1] = {5u}, slot8[1] = {8u};
+        SpiSysSnapshot_t snap = snapshot();
+        const uint8_t frame[8] = {0x48u, 0x07u, 0x11u, 0x01u, 0x02u, 0x00u, 0x03u, 0xFBu};
+        memcpy(snap.health[2], frame, 8);
+        snap.health_seen[2] = 1u;
+        snap.health_age[2] = 25u;
+        TEST_ASSERT(SpiSys_Handle(&with_health, &snap, SPI_SYS_HEALTH_QUERY, slot2, 1u, &out_type, out, &out_dlc) == SPI_SYS_ACT_REPLY, "health: a heard slot answers");
+        {
+            /* VECTOR health response: 02 19 07 11 01 02 00 03 */
+            const uint8_t want[8] = {0x02u, 0x19u, 0x07u, 0x11u, 0x01u, 0x02u, 0x00u, 0x03u};
+            TEST_ASSERT(out_type == SPI_SYS_HEALTH_RESPONSE && out_dlc == 8u && memcmp(out, want, 8) == 0, "the answer is slot, age and the six bytes between marker and check byte");
+        }
+        TEST_ASSERT(SpiSys_Handle(&with_health, &snap, SPI_SYS_HEALTH_QUERY, slot5, 1u, &out_type, out, &out_dlc) == SPI_SYS_ACT_REPLY && out_dlc == 2u && out[0] == 5u && out[1] == 0xFFu,
+                    "health: a slot never heard answers with two bytes, the slot and 0xFF");
+        snap.health_age[2] = 255u;
+        (void)SpiSys_Handle(&with_health, &snap, SPI_SYS_HEALTH_QUERY, slot2, 1u, &out_type, out, &out_dlc);
+        TEST_ASSERT(out[1] == 254u, "an age of 255 is told as 254: 0xFF is only the 'never' of the short answer");
+        TEST_ASSERT(SpiSys_Handle(&with_health, &snap, SPI_SYS_HEALTH_QUERY, slot8, 1u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "health: slot 8 does nothing");
+        TEST_ASSERT(SpiSys_Handle(&with_health, &snap, SPI_SYS_HEALTH_QUERY, slot2, 2u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "health: a long query does nothing");
+        TEST_ASSERT(SpiSys_Handle(&with_health, &snap, SPI_SYS_HEALTH_QUERY, slot2, 0u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "health: a query without payload does nothing");
+        TEST_ASSERT(SpiSys_Handle(&read_only, &snap, SPI_SYS_HEALTH_QUERY, slot2, 1u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "health off: the query is ignored with telemetry on");
+        TEST_ASSERT(SpiSys_Handle(&full, &snap, SPI_SYS_HEALTH_QUERY, slot2, 1u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "health off: the query is ignored with stop on");
+        TEST_ASSERT(SpiSys_Handle(&health_only, &snap, SPI_SYS_HEALTH_QUERY, slot2, 1u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE, "health needs the telemetry switch too");
+        TEST_ASSERT(SpiSys_Handle(&with_health, &snap, SPI_SYS_STOP_REQUEST, (const uint8_t[5]){'S', 'T', 'O', 'P', 1u}, 5u, &out_type, out, &out_dlc) == SPI_SYS_ACT_NONE,
+                    "health does not switch the stop on");
     }
 
     /* the probe answer: the verdicts of the eight slots in nibbles */

@@ -21,7 +21,8 @@
  * Switches (0 by default, so the firmware does not start the service until a build asks for it): HYDRA_SPI_APP. It also needs HYDRA_SPI_SYSTEM
  * (telemetry and probe) and, for stop and release, HYDRA_SPI_STOP_COMMAND. HYDRA_SPI_ZONES_HEARTBEAT makes the application stop the stack when the
  * heartbeat of the safety-zones chain (type 0x26, sent by the CM5 only while the chain is healthy) has come and then stops coming; it never trips
- * before the first heartbeat, so a machine without that service is not affected. docs/SPI_SYSTEM.md is the contract.
+ * before the first heartbeat, so a machine without that service is not affected. HYDRA_SPI_HEALTH answers the health query (0x27 / 0x2A) with the last health
+ * frame of each board, which the STACK A task copies here (SpiApp_PublishHealth); it needs HYDRA_SPI_SYSTEM and is read only. docs/SPI_SYSTEM.md is the contract.
  * ========================================================================== */
 #ifndef HYDRA_UMC_SPI_APP_H
 #define HYDRA_UMC_SPI_APP_H
@@ -101,6 +102,12 @@ typedef struct {
     uint32_t zones_beat_seen;
     uint32_t zones_last_ms;
     uint8_t zones_armed;
+    /* the last health frame of each board, copied here by the STACK A task (the only writer) and read by the SPI task. A slot has a counter that is odd while
+     * the STACK A task writes it, so the reader never answers with a half-written frame (see SpiApp_Snapshot). */
+    volatile uint8_t health_gen[8];
+    volatile uint8_t health_seen[8];
+    volatile uint8_t health_age[8];
+    volatile uint8_t health_frame[8][8];
 } SpiApp_t;
 
 static inline void SpiApp_SealIdle(SpiApp_t *app)
@@ -149,6 +156,22 @@ static inline SpiSysSnapshot_t SpiApp_Snapshot(const SpiApp_t *app)
     snap.link_ok = app->link_ok;
     snap.estop_latched = app->estop_latched;
     for (int slot = 0; slot < 8; slot++) snap.scan_verdicts[slot] = app->scan_verdicts[slot];
+    for (int slot = 0; slot < 8; slot++) {
+        /* up to three tries to read a slot between two writes; a slot still being written is reported as not heard yet, which is the safe reading */
+        for (int attempt = 0; attempt < 3; attempt++) {
+            const uint8_t before = app->health_gen[slot];
+            if (before & 1u) continue;
+            const uint8_t seen = app->health_seen[slot];
+            const uint8_t age = app->health_age[slot];
+            uint8_t frame[8];
+            for (int index = 0; index < 8; index++) frame[index] = app->health_frame[slot][index];
+            if (app->health_gen[slot] != before) continue;
+            snap.health_seen[slot] = seen;
+            snap.health_age[slot] = age;
+            memcpy(snap.health[slot], frame, 8);
+            break;
+        }
+    }
     return snap;
 }
 
@@ -302,6 +325,18 @@ static inline void SpiApp_ScanDone(SpiApp_t *app, uint8_t scan_id, const uint8_t
     for (int slot = 0; slot < 8; slot++) app->scan_verdicts[slot] = verdicts[slot];
     app->scan_done_id = scan_id;
     app->scan_done = 1u;
+}
+
+/* The STACK A task hands over the last health frame of a slot (NULL while none has been heard) and its age in units of 100 ms. Called once per pass for each
+ * slot, only when the build has HYDRA_SPI_HEALTH on. */
+static inline void SpiApp_PublishHealth(SpiApp_t *app, uint8_t slot, const uint8_t frame[8], uint8_t age)
+{
+    if (slot >= 8u) return;
+    app->health_gen[slot] = (uint8_t)(app->health_gen[slot] + 1u); /* odd: being written */
+    app->health_seen[slot] = frame != NULL ? 1u : 0u;
+    app->health_age[slot] = age;
+    for (int index = 0; index < 8; index++) app->health_frame[slot][index] = frame != NULL ? frame[index] : 0u;
+    app->health_gen[slot] = (uint8_t)(app->health_gen[slot] + 1u); /* even again */
 }
 
 static inline void SpiApp_PublishBrainState(SpiApp_t *app, uint8_t estop_latched, uint8_t can_tx_errors, uint8_t can_rx_errors, uint8_t link_ok)

@@ -64,6 +64,11 @@ uint8_t KinematicBrainCan_EstopStatus(uint8_t *release_state, uint8_t *missing_s
 /* The transmit and receive error counters of FDCAN1 (0 to 255 and 0 to 127; the bus is error passive from 128), for the telemetry of the SPI link. */
 void KinematicBrainCan_ErrorCounters(uint8_t *tx_errors, uint8_t *rx_errors);
 
+/* The last health frame of the board in a slot (tools/health_frame.py, 8 bytes sent once a second on slot_base + 0x11 by a board built with HYDRA_HEALTH_FRAME=1)
+ * and its age in units of 100 ms (saturated at 254). Returns 1 and fills `frame` and `age` when a valid frame has been heard, 0 when none has or when the build has
+ * HYDRA_SPI_HEALTH off (the default: then nothing is kept). Call it from the STACK A task. Read only: nothing is sent. */
+uint8_t KinematicBrainCan_ReadHealth(uint8_t slot, uint8_t frame[8], uint8_t *age);
+
 /* Real slot-addressed AXIS_STATUS query (+0x10) - sends a real Classic CAN
  * frame to CAN_ID_STACKA_BASE + slot*STACKA_SLOT_WINDOW + 0x10 and waits
  * (bounded, non-blocking-forever) for a real response. Returns 1 and

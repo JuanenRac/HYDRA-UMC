@@ -253,10 +253,14 @@ class SpiSystemReference(unittest.TestCase):
         self.assertEqual(vectors["telemetry (stop disabled)"], spi_system.telemetry(spi_system.Config(True, False), self.snapshot()))
         self.assertEqual(vectors["telemetry (stop enabled)"], spi_system.telemetry(spi_system.Config(True, True), self.snapshot()))
         self.assertEqual(vectors["probe response"], spi_system.probe_response(self.snapshot(), 0x2A))
+        health = self.snapshot()
+        health.health[2], health.health_age[2] = health_frame.build(7, 0x11, 1, 2, 0, 48000), 25
+        self.assertEqual(vectors["health response"], spi_system.health_response(health, 2))
+        self.assertEqual(spi_system.health_response(health, 5), bytes((5, 0xFF)))
 
     def test_the_types_and_flags_of_the_header_are_the_ones_of_the_reference(self):
         header = text(H7 / "CM4" / "spi_system.h")
-        for name in ("STOP_REQUEST", "RELEASE_REQUEST", "TELEMETRY_QUERY", "TELEMETRY_RESPONSE", "PROBE_REQUEST", "PROBE_RESPONSE"):
+        for name in ("STOP_REQUEST", "RELEASE_REQUEST", "TELEMETRY_QUERY", "TELEMETRY_RESPONSE", "PROBE_REQUEST", "PROBE_RESPONSE", "HEALTH_QUERY", "HEALTH_RESPONSE"):
             value = int(re.search(rf"#define SPI_SYS_{name}\s+(0x[0-9A-Fa-f]+)u", header).group(1), 16)
             self.assertEqual(value, getattr(spi_system, name), name)
             self.assertGreaterEqual(value, 0x20, f"{name} must stay above the first 32 offsets of a slot, which the update protocol owns")
@@ -268,6 +272,42 @@ class SpiSystemReference(unittest.TestCase):
         dispatch = main[main.index("static uint8_t DispatchFrame"):]
         self.assertLess(dispatch.index("SPI_TARGET_STACKA"), dispatch.index("SpiSys_IsCommand"))
         self.assertLess(dispatch.index("Relay_ToStackA"), dispatch.index("SpiSys_IsCommand"))
+
+    def test_the_health_frame_types_do_not_collide_with_the_other_types_of_the_tier_self(self):
+        taken = {spi_system.STOP_REQUEST, spi_system.RELEASE_REQUEST, spi_system.TELEMETRY_QUERY, spi_system.TELEMETRY_RESPONSE, spi_system.PROBE_REQUEST,
+                 spi_system.PROBE_RESPONSE, spi_system.ZONES_HEARTBEAT, 0x28, 0x29}  # 0x28 and 0x29: the F-RAM request and its answer
+        self.assertNotIn(spi_system.HEALTH_QUERY, taken)
+        self.assertNotIn(spi_system.HEALTH_RESPONSE, taken)
+        self.assertEqual((spi_system.HEALTH_QUERY, spi_system.HEALTH_RESPONSE), (0x27, 0x2A))
+
+    def test_the_store_of_the_brain_checks_the_same_frame_as_the_reference(self):
+        store = text(H7 / "CM4" / "node_health.h")
+        self.assertEqual(int(re.search(r"#define NODE_HEALTH_MARKER\s+(0x[0-9A-Fa-f]+)u", store).group(1), 16), health_frame.MARKER)
+        self.assertEqual(int(re.search(r"#define NODE_HEALTH_OFFSET\s+(0x[0-9A-Fa-f]+)u", store).group(1), 16), health_frame.OFFSET)
+        self.assertIn("0xA5u", store)
+        self.assertEqual(health_frame.check_byte(bytes(7)), 0xA5)
+
+    def test_the_health_answer_carries_what_the_board_sent_and_rebuilds_the_frame(self):
+        frame = health_frame.build(7, 0x11, 1, 2, 0, 48000)
+        snap = self.snapshot()
+        snap.health[2], snap.health_age[2] = frame, 25
+        answer = spi_system.health_response(snap, 2)
+        self.assertEqual(answer, bytes((2, 25, 7, 0x11, 1, 2, 0, 3)))
+        slot, age, rebuilt = spi_system.decode_health_response(answer)
+        self.assertEqual((slot, age, rebuilt), (2, 25, frame))
+        self.assertEqual(health_frame.decode(rebuilt).uptime_s, 48)
+        self.assertEqual(spi_system.decode_health_response(bytes((5, 0xFF))), (5, None, None))
+        for damaged in (b"", bytes((2,)), bytes((9, 25, 7, 0x11, 1, 2, 0, 3)), bytes((2, 255, 7, 0x11, 1, 2, 0, 3)), bytes(9)):
+            self.assertIsNone(spi_system.decode_health_response(damaged), damaged)
+
+    def test_the_health_query_needs_its_own_switch_and_the_telemetry_one(self):
+        snap = self.snapshot()
+        for config in (spi_system.Config(), spi_system.Config(True, False), spi_system.Config(True, True), spi_system.Config(False, False, True)):
+            self.assertEqual(spi_system.handle(config, snap, spi_system.HEALTH_QUERY, b"\x02"), ("none", b""), config)
+        on = spi_system.Config(True, False, True)
+        self.assertEqual(spi_system.handle(on, snap, spi_system.HEALTH_QUERY, b"\x02"), ("health", bytes((2, 0xFF))))
+        for payload in (b"", b"\x08", b"\x01\x00"):
+            self.assertEqual(spi_system.handle(on, snap, spi_system.HEALTH_QUERY, payload), ("none", b""), payload)
 
     def test_the_verdict_codes_follow_the_slot_scan_names(self):
         self.assertEqual(set(spi_system.VERDICTS), {slot_scan.ABSENT, slot_scan.OK, slot_scan.DUPLICATE, slot_scan.MISPLACED, slot_scan.NOISY})

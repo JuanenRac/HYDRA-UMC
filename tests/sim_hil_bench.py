@@ -124,6 +124,7 @@ class ScanBrain(ScanHost):
         super().__init__()
         self.allowed_ids = (self.allowed_ids or set()) | {estop_can.ESTOP_CAN_ID} | {slot_base(s) + ENTER_BOOTLOADER_OFFSET for s in range(slot_scan.SLOTS)}
         self.health_heard: dict[int, list[health_frame.Health]] = {}
+        self.health_last: dict[int, tuple[bytes, int]] = {}  # slot -> (the last valid frame as it came, the bus time it was heard): what node_health.h keeps
 
     def on_frame(self, now_ms: int, frame: Frame) -> None:
         super().on_frame(now_ms, frame)
@@ -131,6 +132,7 @@ class ScanBrain(ScanHost):
             decoded = health_frame.decode(frame.data)
             if decoded is not None:
                 self.health_heard.setdefault(frame.can_id // can_ids.SLOT_WINDOW, []).append(decoded)
+                self.health_last[frame.can_id // can_ids.SLOT_WINDOW] = (bytes(frame.data), now_ms)
 
 
 # --- the batch orchestrator (bench rows 14 and 15) ---------------------------------------------------------------------------------------------------
@@ -227,10 +229,22 @@ class SpiBrainDouble:
         self.releases = 0
         self.scans = 0
 
+    def _refresh_health(self) -> None:
+        """What the STACK A task does every pass with HYDRA_SPI_HEALTH on: the last valid frame of each slot and its age in units of 100 ms."""
+        now = self.bench.bus.now_ms
+        for slot in range(slot_scan.SLOTS):
+            last = self.bench.host.health_last.get(slot)
+            self.snapshot.health[slot] = None if last is None else last[0]
+            self.snapshot.health_age[slot] = 0 if last is None else min((now - last[1]) // 100, 254)
+
     def exchange(self, frame_type: int, payload: bytes) -> tuple[int, bytes]:
+        if self.config.health_enabled:
+            self._refresh_health()
         action, data = spi_system.handle(self.config, self.snapshot, frame_type, payload)
         if action == "reply":
             return spi_system.TELEMETRY_RESPONSE, data
+        if action == "health":
+            return spi_system.HEALTH_RESPONSE, data
         if action == "trip":
             self.tripped = True
             self.trips.append(data[0])

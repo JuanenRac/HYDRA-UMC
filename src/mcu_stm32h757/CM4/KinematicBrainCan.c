@@ -22,9 +22,13 @@
 #include "bootloader_common.h" /* shared CAN_ID_STACKA_BASE/STACKA_SLOT_WINDOW/OFS_* - see that header's own comment on why this application reuses it, not a copy */
 #include <string.h>
 #include "zones_frame.h" /* the filter for the frame of the safety-zones service on 0x002: off unless HYDRA_ZONES_CAN_FILTER=1 */
+#include "node_health.h" /* the last health frame of each board (slot_base + 0x11): kept only with HYDRA_SPI_HEALTH=1 */
 
 static FDCAN_HandleTypeDef hfdcan1_app;
 static ZonesFilter_t zones_filter; /* decision of the owner: the brain has its own filter for 0x002 and turns a stop of the zones service into a TRIP with the reason safety-zone */
+#if HYDRA_SPI_HEALTH
+static NodeHealth_t node_health; /* written by ObserveFrame, read by KinematicBrainCan_ReadHealth: both run in the STACK A task */
+#endif
 static EstopBrain_t estop_brain; /* the master side of the emergency stop on identifier 0x001 (docs/ESTOP_CAN.md); LATCHED at power-up */
 
 /* A set-up call that fails leaves the brain unable to talk to the slots: stop here with the interrupts off. Nothing refreshes the watchdog any more, it
@@ -184,6 +188,11 @@ static void ObserveFrame(uint32_t id, const uint8_t *data, uint8_t dlc)
         }
     } else if (id >= CAN_ID_STACKA_BASE && id < CAN_ID_STACKA_BASE + 8u * STACKA_SLOT_WINDOW && ((id - CAN_ID_STACKA_BASE) % STACKA_SLOT_WINDOW) == OFS_ESTOP_STATE) {
         EstopBrain_OnSlotState(&estop_brain, (uint8_t)((id - CAN_ID_STACKA_BASE) / STACKA_SLOT_WINDOW), data, dlc);
+#if HYDRA_SPI_HEALTH
+    } else if (id >= CAN_ID_STACKA_BASE && id < CAN_ID_STACKA_BASE + 8u * STACKA_SLOT_WINDOW && ((id - CAN_ID_STACKA_BASE) % STACKA_SLOT_WINDOW) == NODE_HEALTH_OFFSET) {
+        /* the offset is also the one of the axis step telemetry: only a frame with the marker and the check byte of a health frame is kept */
+        (void)NodeHealth_OnFrame(&node_health, (uint8_t)((id - CAN_ID_STACKA_BASE) / STACKA_SLOT_WINDOW), data, dlc, HAL_GetTick());
+#endif
     }
 }
 
@@ -254,6 +263,21 @@ void KinematicBrainCan_ErrorCounters(uint8_t *tx_errors, uint8_t *rx_errors)
     const uint32_t ecr = hfdcan1_app.Instance->ECR;
     if (tx_errors != NULL) *tx_errors = (uint8_t)(ecr & 0xFFu);
     if (rx_errors != NULL) *rx_errors = (uint8_t)((ecr >> 8) & 0x7Fu);
+}
+
+uint8_t KinematicBrainCan_ReadHealth(uint8_t slot, uint8_t frame[8], uint8_t *age)
+{
+#if HYDRA_SPI_HEALTH
+    if (slot >= NODE_HEALTH_SLOTS || !node_health.seen[slot]) return 0u;
+    memcpy(frame, node_health.frame[slot], 8);
+    if (age != NULL) *age = NodeHealth_Age(&node_health, slot, HAL_GetTick());
+    return 1u;
+#else
+    (void)slot;
+    (void)frame;
+    (void)age;
+    return 0u;
+#endif
 }
 
 uint8_t KinematicBrainCan_QueryAxisStatus(uint8_t slot, uint8_t out_status[8], uint8_t *out_dlc, uint32_t timeout_ms)

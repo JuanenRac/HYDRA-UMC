@@ -924,12 +924,16 @@ class Stage2:
         self.makedirs(f"{h7}/cm4_app_check")
         all_switches = [
             "-DHYDRA_SPI_SYSTEM=1", "-DHYDRA_SPI_STOP_COMMAND=1", "-DHYDRA_SPI_APP=1", "-DHYDRA_SPI_REQUIRE_CRC=1", "-DHYDRA_SPI_ZONES_HEARTBEAT=1",
-            "-DHYDRA_SPI_SLOT_SCAN=1",
+            "-DHYDRA_SPI_SLOT_SCAN=1", "-DHYDRA_SPI_HEALTH=1",
         ]
         if self.gcc(app, *all_switches, f"-I{src}", f"-I{src}/boot", "-x", "c", "-c", f"{src}/SpiApp.c", "-o", f"{h7}/cm4_app_check/SpiApp_all_switches.o") == 0:
-            r.ok("SpiApp.c compiles with every switch on (SPI service, stop command, seal, zones heartbeat, full slot scan)")
+            r.ok("SpiApp.c compiles with every switch on (SPI service, stop command, seal, zones heartbeat, full slot scan, health of the boards)")
         else:
             self.finish_failure("SpiApp.c does not compile with every switch on")
+        if self.gcc(app, "-DHYDRA_SPI_HEALTH=1", f"-I{src}", f"-I{src}/boot", *self.common_inc, "-x", "c", "-c", f"{src}/KinematicBrainCan.c", "-o", f"{h7}/cm4_app_check/KinematicBrainCan_health.o") == 0:
+            r.ok("KinematicBrainCan.c compiles with the health of the boards on (the last health frame of each slot)")
+        else:
+            self.finish_failure("KinematicBrainCan.c does not compile with the health of the boards on")
         fram = ["-DHYDRA_SPI_SYSTEM=1", "-DHYDRA_SPI_APP=1", "-DHYDRA_FRAM_ERASE=1", "-DHYDRA_FRAM_I2C_TIMING=0x10000001"]
         if self.gcc(app, *fram, f"-I{src}", f"-I{src}/boot", "-x", "c", "-c", f"{src}/SpiApp.c", "-o", f"{h7}/cm4_app_check/SpiApp_fram.o") == 0:
             r.ok("SpiApp.c compiles with the F-RAM driver on (I2C4, FM24CL64B)")
