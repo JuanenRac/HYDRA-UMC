@@ -4,7 +4,7 @@
     "src/mcu_stm32g474/boot/adoption_guard.h": 100,
     "src/mcu_stm32g474/boot/boot_crc32_impl.h": 100,
     "src/mcu_stm32g474/boot/boot_decision.h": 100,
-    "src/mcu_stm32g474/boot/boot_update_core_impl.h": 71,
+    "src/mcu_stm32g474/boot/boot_update_core_impl.h": 100,
     "src/mcu_stm32g474/boot/boot_update_glue.h": 100,
     "src/mcu_stm32g474/boot/bootloader_crypto.c": 100,
     "src/mcu_stm32g474/boot/bootloader_flash.c": 100,
