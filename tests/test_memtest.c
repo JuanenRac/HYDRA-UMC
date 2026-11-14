@@ -25,6 +25,7 @@ typedef struct {
     int stuck_cell; uint32_t stuck_cell_mask, stuck_cell_value;
     int no_fall_cell;                                /* this cell cannot go from 1 to 0 (-1: none) */
     int disturb_cell;                                /* a write to this cell sets bit 0 of the next one (-1: none) */
+    int couple_from, couple_to;                      /* a write to cell `from` is copied into cell `to` (-1: none): the coupling that only a write can show */
 } Ram;
 
 static uint32_t map_index(const Ram *r, uint32_t i)
@@ -49,6 +50,7 @@ static void ram_write(void *ctx, uint32_t index, uint32_t value)
     if ((int)at == r->no_fall_cell) value |= r->cell[at];
     r->cell[at] = value;
     if ((int)at == r->disturb_cell && at + 1u < WORDS) r->cell[at + 1u] |= 1u;
+    if ((int)at == r->couple_from) r->cell[r->couple_to] = value;
 }
 
 static uint32_t ram_read(void *ctx, uint32_t index)
@@ -68,6 +70,7 @@ static void ram_init(Ram *r)
     r->data_bridge_a = r->data_bridge_b = -1;
     r->addr_bridge_from = r->addr_bridge_to = -1;
     r->stuck_cell = r->no_fall_cell = r->disturb_cell = -1;
+    r->couple_from = r->couple_to = -1;
 }
 
 int main(void)
@@ -111,6 +114,16 @@ int main(void)
     ram_init(&ram);
     ram.addr_bridge_from = 3; ram.addr_bridge_to = 4;
     CHECK(Memtest_Run(&OPS, &ram, WORDS, &report) == MEMTEST_FAIL_ADDRESS_BUS, "address lines 3 and 4 bridged");
+
+    /* a write at one power-of-two offset that shows up at the base, or at another power-of-two offset, is found by the second half of the address test */
+    ram_init(&ram);
+    ram.couple_from = 8; ram.couple_to = 0;
+    CHECK(Memtest_Run(&OPS, &ram, WORDS, &report) == MEMTEST_FAIL_ADDRESS_BUS && report.word_index == 0u, "a write at offset 8 that shows at the base");
+    ram_init(&ram);
+    ram.couple_from = 8; ram.couple_to = 64;
+    CHECK(Memtest_Run(&OPS, &ram, WORDS, &report) == MEMTEST_FAIL_ADDRESS_BUS && report.word_index == 64u, "a write at offset 8 that shows at offset 64");
+    ram_init(&ram);
+    CHECK(Memtest_AddressBus(&OPS, &ram, 2u, &report) == MEMTEST_OK, "the smallest window passes the address test on its own");
 
     /* cell faults are found by the march, with the element and the cell */
     ram_init(&ram);
