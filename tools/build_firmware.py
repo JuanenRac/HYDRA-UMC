@@ -204,6 +204,16 @@ def host_cases(root: str) -> list[Case]:
             )
         )
     cases.append(_t("tmc_card host logic tests passed", "host_tests_tmc_card", "test_tmc_card", [H757_COMMON]))
+    cases.append(
+        _t(
+            "tmc_card_spi6 host logic tests passed",
+            "host_tests_tmc_card_spi6",
+            "test_tmc_card_spi6",
+            ["tests/stubs/h7spi6", "src/mcu_stm32h757/CM7", H757_COMMON],
+            ["-DHYDRA_PLATFORM_H757", "-DHYDRA_TMC_CARD_SPI6=1"],
+            sources=("src/mcu_stm32h757/CM7/TmcCardSpi6.c",),
+        )
+    )
     cases.append(_t("nor_flash host logic tests passed", "host_tests_nor_flash", "test_nor_flash", [H757_COMMON], ["-DHYDRA_PLATFORM_H757"], quiet=False))
     cases.append(_t("memtest host logic tests passed", "host_tests_memtest", "test_memtest", [H757_COMMON], quiet=False))
     cases.append(_t("clock_config host logic tests passed", "host_tests_clock_config", "test_clock_config", [H757_COMMON, "tests"], ["-DHYDRA_PLATFORM_H757"], quiet=False))
