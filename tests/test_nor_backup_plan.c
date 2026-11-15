@@ -328,6 +328,80 @@ int main(void)
         }
     }
 
+    /* staging: an update that arrives page by page goes into the NOR, is checked there, and only then is it copied into the slot */
+    {
+        uint8_t update[9000], page[256];
+        uint32_t offset, update_crc;
+        for (i = 0; i < sizeof update; i++) update[i] = (uint8_t)(i * 13u + 5u);
+        update_crc = Norb_Crc32(update, sizeof update);
+        reset();
+        fill(5, 8000);
+        CHECK(Norb_Save(&ops, &c, 8000) == NORB_OK, "a copy of the running application");
+        CHECK(Norb_StageBegin(&ops, &c, 0) == NORB_E_TOO_BIG && Norb_StageBegin(&ops, &c, SLOT + 1) == NORB_E_TOO_BIG, "an update of 0 or too many bytes");
+        d = c;
+        d.nor_offset = 3;
+        CHECK(Norb_StageBegin(&ops, &d, 100) == NORB_E_ALIGN && Norb_StagePage(&ops, &d, 0, page, 1) == NORB_E_ALIGN && Norb_StageFinish(&ops, &d, 100, 0) == NORB_E_ALIGN, "a bad plan is refused by all three steps");
+        CHECK(Norb_StageBegin(&ops, &c, sizeof update) == NORB_OK, "staging begins");
+        CHECK(!Norb_CopyExists(&ops, &c), "while the update is half in, the older copy is no longer one");
+        CHECK(Norb_StagePage(&ops, &c, 0, page, 0) == NORB_E_TOO_BIG && Norb_StagePage(&ops, &c, SLOT + 1, page, 1) == NORB_E_TOO_BIG && Norb_StagePage(&ops, &c, SLOT - 10, page, 11) == NORB_E_TOO_BIG, "a page outside the slot");
+        for (offset = 0; offset < sizeof update; offset += 256) {
+            uint32_t n = sizeof update - offset < 256 ? (uint32_t)sizeof update - offset : 256;
+            memcpy(page, update + offset, n);
+            CHECK(Norb_StagePage(&ops, &c, offset, page, n) == NORB_OK, "a page is staged");
+        }
+        CHECK(Norb_StageFinish(&ops, &c, sizeof update, update_crc ^ 1UL) == NORB_E_COPY_BAD, "a CRC the sender did not give is refused and no header is written");
+        CHECK(!Norb_CopyExists(&ops, &c), "no copy before the check holds");
+        CHECK(Norb_StageFinish(&ops, &c, 0, update_crc) == NORB_E_TOO_BIG, "an empty update");
+        nor[Norb_Plan(&c, &l) == NORB_OK ? l.image_offset + 4000 : 0] ^= 0x01;
+        CHECK(Norb_StageFinish(&ops, &c, sizeof update, update_crc) == NORB_E_COPY_BAD, "a damaged byte in the NOR is found");
+        nor[l.image_offset + 4000] ^= 0x01;
+        fail_nor_read_at = 2;
+        nor_read_calls = 0;
+        CHECK(Norb_StageFinish(&ops, &c, sizeof update, update_crc) == NORB_E_NOR_READ, "a failing NOR read in the check");
+        fail_nor_read_at = -1;
+        CHECK(Norb_StageFinish(&ops, &c, sizeof update, update_crc) == NORB_OK, "the update is complete");
+        CHECK(Norb_CopyExists(&ops, &c), "the staged update is now a copy that can be restored");
+        memset(flash, 0, FLASH_SIZE);
+        got = 0;
+        CHECK(Norb_Restore(&ops, &c, &got) == NORB_OK && got == sizeof update && memcmp(flash, update, sizeof update) == 0, "committing copies the staged update into the slot");
+        /* a refusal of the NOR at each step */
+        ops_left = 0;
+        CHECK(Norb_StageBegin(&ops, &c, 100) == NORB_E_NOR_WRITE, "the NOR refuses the erase");
+        CHECK(Norb_StagePage(&ops, &c, 0, page, 1) == NORB_E_NOR_WRITE, "the NOR refuses the page");
+        ops_left = -1;
+        /* a cut at every operation of the staging: whatever is left, a restore gives either nothing or an update that was complete */
+        {
+            long total;
+            reset();
+            CHECK(Norb_StageBegin(&ops, &c, sizeof update) == NORB_OK, "count the operations");
+            for (offset = 0; offset < sizeof update; offset += 256) {
+                uint32_t n = sizeof update - offset < 256 ? (uint32_t)sizeof update - offset : 256;
+                memcpy(page, update + offset, n);
+                CHECK(Norb_StagePage(&ops, &c, offset, page, n) == NORB_OK, "page");
+            }
+            CHECK(Norb_StageFinish(&ops, &c, sizeof update, update_crc) == NORB_OK, "finish");
+            total = ops_done;
+            for (long cut = 0; cut <= total; cut += 3) {
+                reset();
+                fill(5, 8000);
+                ops_left = cut;
+                if (Norb_StageBegin(&ops, &c, sizeof update) == NORB_OK) {
+                    for (offset = 0; offset < sizeof update; offset += 256) {
+                        uint32_t n = sizeof update - offset < 256 ? (uint32_t)sizeof update - offset : 256;
+                        memcpy(page, update + offset, n);
+                        if (Norb_StagePage(&ops, &c, offset, page, n) != NORB_OK) break;
+                    }
+                    (void)Norb_StageFinish(&ops, &c, sizeof update, update_crc);
+                }
+                ops_left = -1;
+                if (Norb_CopyExists(&ops, &c)) {
+                    memset(flash, 0, FLASH_SIZE);
+                    CHECK(Norb_Restore(&ops, &c, &got) == NORB_OK && got == sizeof update && memcmp(flash, update, sizeof update) == 0, "only a complete staged update can be committed");
+                }
+            }
+        }
+    }
+
     if (failures) {
         printf("nor_backup_plan: %d FAILED\n", failures);
         return 1;
