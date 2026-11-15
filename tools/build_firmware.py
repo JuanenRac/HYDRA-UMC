@@ -225,6 +225,17 @@ def host_cases(root: str) -> list[Case]:
         )
     )
     cases.append(_t("nor_flash host logic tests passed", "host_tests_nor_flash", "test_nor_flash", [H757_COMMON], ["-DHYDRA_PLATFORM_H757"], quiet=False))
+    cases.append(_t("nor_backup_glue host logic tests passed", "host_tests_nor_backup_glue", "test_nor_backup_glue", [H757_COMMON], ["-DHYDRA_PLATFORM_H757"]))
+    cases.append(
+        _t(
+            "nor_spi5 host logic tests passed",
+            "host_tests_nor_spi5",
+            "test_nor_spi5",
+            ["tests/stubs/h7spi5", "src/mcu_stm32h757/CM7", H757_COMMON],
+            ["-DHYDRA_PLATFORM_H757", "-DHYDRA_NOR_SPI5=1"],
+            sources=("src/mcu_stm32h757/CM7/NorSpi5.c",),
+        )
+    )
     cases.append(_t("memtest host logic tests passed", "host_tests_memtest", "test_memtest", [H757_COMMON], quiet=False))
     cases.append(_t("clock_config host logic tests passed", "host_tests_clock_config", "test_clock_config", [H757_COMMON, "tests"], ["-DHYDRA_PLATFORM_H757"], quiet=False))
     for variant, label in (
@@ -1195,6 +1206,16 @@ class Stage2:
             r.ok("CM7 driver of the TMC5160 cards (SPI6 master) compiles for the H757 platform")
         else:
             r.fail("CM7 driver of the TMC5160 cards (SPI6 master) does NOT compile for the H757 platform - see errors above")
+            failed = True
+        nor_obj = f"{h7}/cm7_nor_spi5_h757_check_obj"
+        self.makedirs(nor_obj)
+        if self.gcc(
+            self.cflags_cm7, "-DHYDRA_PLATFORM_H757", "-DHYDRA_NOR_SPI5=1", f"-I{root}/src/mcu_stm32h757/CM7", *self.common_inc,
+            "-x", "c", "-c", f"{root}/src/mcu_stm32h757/CM7/NorSpi5.c", "-o", f"{nor_obj}/NorSpi5.o",
+        ) == 0:
+            r.ok("CM7 driver of the NOR flash (SPI5 master) compiles for the H757 platform")
+        else:
+            r.fail("CM7 driver of the NOR flash (SPI5 master) does NOT compile for the H757 platform - see errors above")
             failed = True
         gw_obj = f"{h7}/cm7_gateway_fdcan1_h757_check_obj"
         self.makedirs(gw_obj)
