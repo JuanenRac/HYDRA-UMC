@@ -102,3 +102,25 @@ def make_plan(cfg: dict) -> dict:
             "actual_hz": 10**12 // ((scll + sclh) * tp + sync),
         }
     raise ValueError("no prescaler fits the specification")
+
+
+BUSES_CFG_PATH = Path(__file__).resolve().parents[1] / "config" / "i2c_buses.cfg"
+BUS_NAMES = ("i2c1", "i2c2", "i2c3")
+
+
+def load_buses_config(path: Path = BUSES_CFG_PATH) -> dict:
+    """config/i2c_buses.cfg: one section per bus with the keys of i2c4.cfg; returns {name: cfg} and refuses anything out of range or a bus that has no timing."""
+    parser = configparser.ConfigParser(inline_comment_prefixes=None)
+    parser.read_string(path.read_text(encoding="utf-8"))
+    if tuple(parser.sections()) != BUS_NAMES:
+        raise ValueError("config/i2c_buses.cfg: the sections are i2c1, i2c2 and i2c3")
+    buses = {}
+    for name in BUS_NAMES:
+        section = parser[name]
+        cfg = {key: int(section[key]) for key in ("kernel_hz", "speed_hz", "rise_ns", "fall_ns")}
+        cfg["analog_filter"] = int(section["analog"])
+        cfg["digital_filter"] = int(section["digital"])
+        check(cfg)
+        make_plan(cfg)
+        buses[name] = cfg
+    return buses
