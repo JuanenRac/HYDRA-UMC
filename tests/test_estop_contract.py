@@ -137,5 +137,14 @@ class ContractNumbersTests(unittest.TestCase):
             self.assertIn(f"`{value}`", text, name)
 
 
+    def test_the_tool_head_is_part_of_the_stop_chain(self):
+        head = ESTOP["tool_head"]
+        self.assertEqual(int(head["responds_to_can_id"], 16), estop_can.ESTOP_CAN_ID)
+        self.assertIs(head["responds_to_master_loss"], True)
+        self.assertIn("tool_head_downlink", ESTOP["buses"])
+        text = (ROOT / "docs" / "ESTOP_CAN.md").read_text(encoding="utf-8")
+        self.assertIn("emergency_stop.tool_head", text)
+
+
 if __name__ == "__main__":
     unittest.main()

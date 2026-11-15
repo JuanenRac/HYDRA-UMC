@@ -201,12 +201,23 @@ static inline int Norb_NorCrc(const NorbOps *ops, uint32_t offset, uint32_t leng
     return NORB_OK;
 }
 
+/* Writes a header into the sector that is not the newest (`into_b` says B): erase, then program. */
+static inline int Norb_WriteHeader(const NorbOps *ops, const NorbLayout *l, const NorbHeader *h, int into_b)
+{
+    uint8_t raw[NORB_HEADER_BYTES];
+    const uint32_t where = into_b ? l->header_b : l->header_a;
+    Norb_HeaderEncode(h, raw);
+    if (ops->nor_erase(ops->ctx, where, NORB_SECTOR) != 0) return NORB_E_NOR_WRITE;
+    if (ops->nor_write(ops->ctx, where, raw, NORB_HEADER_BYTES) != 0) return NORB_E_NOR_WRITE;
+    return NORB_OK;
+}
+
 /* Saves the application of the flash (`length` bytes) into the NOR: image first, header last, into the header that is NOT the newest. */
 static inline int Norb_Save(const NorbOps *ops, const NorbConfig *c, uint32_t length)
 {
     NorbLayout l;
     NorbHeader newest, h;
-    uint8_t buf[NORB_CHUNK], raw[NORB_HEADER_BYTES];
+    uint8_t buf[NORB_CHUNK];
     uint32_t done = 0, n, crc = 0xFFFFFFFFUL;
     int which = 1, have, rc;
     rc = Norb_Plan(c, &l);
@@ -224,10 +235,49 @@ static inline int Norb_Save(const NorbOps *ops, const NorbConfig *c, uint32_t le
     }
     h.length = length;
     h.crc32 = ~crc;
-    Norb_HeaderEncode(&h, raw);
-    if (ops->nor_erase(ops->ctx, have && which == 0 ? l.header_b : l.header_a, NORB_SECTOR) != 0) return NORB_E_NOR_WRITE;
-    if (ops->nor_write(ops->ctx, have && which == 0 ? l.header_b : l.header_a, raw, NORB_HEADER_BYTES) != 0) return NORB_E_NOR_WRITE;
+    return Norb_WriteHeader(ops, &l, &h, have && which == 0);
+}
+
+/* A staged update (the 768 KB slot has no room in the flash for the second copy, so the update that arrives page by page is written into the image area of the NOR, checked there and
+ * then copied into the slot by Norb_Restore). Begin erases the image area; a header that described an older copy stops matching, so nothing half-staged is ever restored. */
+static inline int Norb_StageBegin(const NorbOps *ops, const NorbConfig *c, uint32_t total)
+{
+    NorbLayout l;
+    int rc = Norb_Plan(c, &l);
+    if (rc != NORB_OK) return rc;
+    if (total == 0UL || total > c->slot_bytes) return NORB_E_TOO_BIG;
+    if (ops->nor_erase(ops->ctx, l.image_offset, ((total + NORB_SECTOR - 1UL) / NORB_SECTOR) * NORB_SECTOR) != 0) return NORB_E_NOR_WRITE;
     return NORB_OK;
+}
+
+/* One page of the update at `offset` of the image (a page may not run past the slot). */
+static inline int Norb_StagePage(const NorbOps *ops, const NorbConfig *c, uint32_t offset, const uint8_t *data, uint32_t length)
+{
+    NorbLayout l;
+    int rc = Norb_Plan(c, &l);
+    if (rc != NORB_OK) return rc;
+    if (length == 0UL || offset > c->slot_bytes || length > c->slot_bytes - offset) return NORB_E_TOO_BIG;
+    return ops->nor_write(ops->ctx, l.image_offset + offset, data, length) == 0 ? NORB_OK : NORB_E_NOR_WRITE;
+}
+
+/* The update is complete: the CRC-32 of what is in the NOR must be the one the sender gave, and only then the header is written (last, into the older sector). */
+static inline int Norb_StageFinish(const NorbOps *ops, const NorbConfig *c, uint32_t total, uint32_t crc32)
+{
+    NorbLayout l;
+    NorbHeader newest, h;
+    uint32_t crc = 0;
+    int which = 1, have, rc;
+    rc = Norb_Plan(c, &l);
+    if (rc != NORB_OK) return rc;
+    if (total == 0UL || total > c->slot_bytes) return NORB_E_TOO_BIG;
+    rc = Norb_NorCrc(ops, l.image_offset, total, &crc);
+    if (rc != NORB_OK) return rc;
+    if (crc != crc32) return NORB_E_COPY_BAD;
+    have = Norb_ReadHeaders(ops, &l, c->slot_bytes, &newest, &which);
+    h.sequence = have ? newest.sequence + 1UL : 1UL;
+    h.length = total;
+    h.crc32 = crc32;
+    return Norb_WriteHeader(ops, &l, &h, have && which == 0);
 }
 
 /* 1 when a copy that can be restored exists (a good header whose image in the NOR matches); 0 otherwise */
