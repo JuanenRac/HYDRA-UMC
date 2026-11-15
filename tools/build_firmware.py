@@ -177,6 +177,14 @@ def host_cases(root: str) -> list[Case]:
     cases.append(_t("spi_boot_master_fsm host logic tests passed", "host_tests_spi_boot_master_fsm", "test_spi_boot_master_fsm", [H757_COMMON, "tests"], quiet=False))
     cases.append(_t("clock_tree host logic tests passed", "host_tests_clock_tree", "test_clock_tree", [H757_COMMON], ["-DHYDRA_PLATFORM_H757"], quiet=False))
     for variant, label in (
+        (("-DEXPECT_PLATFORM=745",), "default"),
+        (("-DEXPECT_PLATFORM=745", "-DHYDRA_DEFAULT_PLATFORM_H757=0"), "-DHYDRA_DEFAULT_PLATFORM_H757=0"),
+        (("-DEXPECT_PLATFORM=757", "-DHYDRA_DEFAULT_PLATFORM_H757=1"), "-DHYDRA_DEFAULT_PLATFORM_H757=1"),
+        (("-DEXPECT_PLATFORM=757", "-DHYDRA_PLATFORM_H757"), "-DHYDRA_PLATFORM_H757"),
+        (("-DEXPECT_PLATFORM=745", "-DHYDRA_DEFAULT_PLATFORM_H757=1", "-DHYDRA_PLATFORM_H745"), "-DHYDRA_PLATFORM_H745 beats the switch"),
+    ):
+        cases.append(_t(f"platform_default host logic tests passed [{label}]", "host_tests_platform_default", "test_platform_default", [H757_COMMON], list(variant), quiet=False))
+    for variant, label in (
         ((), "(bank 1 only, the default)"),
         (("-DHYDRA_SDRAM_BANK2_ENABLED=1",), "-DHYDRA_SDRAM_BANK2_ENABLED=1"),
         (("-DHYDRA_SDRAM_BANK1_ENABLED=0", "-DHYDRA_SDRAM_BANK2_ENABLED=1"), "-DHYDRA_SDRAM_BANK1_ENABLED=0 -DHYDRA_SDRAM_BANK2_ENABLED=1"),
@@ -241,6 +249,7 @@ def host_cases(root: str) -> list[Case]:
     )
     cases.append(_t("memtest host logic tests passed", "host_tests_memtest", "test_memtest", [H757_COMMON], quiet=False))
     cases.append(_t("clock_config host logic tests passed", "host_tests_clock_config", "test_clock_config", [H757_COMMON, "tests"], ["-DHYDRA_PLATFORM_H757"], quiet=False))
+    cases.append(_t("clock_config host logic tests passed with the H757 as the default platform", "host_tests_clock_config_default", "test_clock_config", [H757_COMMON, "tests"], ["-DHYDRA_DEFAULT_PLATFORM_H757=1"], quiet=False))
     for variant, label in (
         ((), "default"),
         (("-DHYDRA_PLATFORM_H757",), "-DHYDRA_PLATFORM_H757"),

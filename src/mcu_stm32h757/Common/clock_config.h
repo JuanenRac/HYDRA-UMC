@@ -5,7 +5,7 @@
 //
 // The C twin of tools/rcc_plan.py: from the macros of the platform profile (25 MHz crystal, PLL1 and PLL2 and their dividers, the AHB and APB dividers that give the clocks of
 // the table) it computes the values of the RCC registers and runs the sequence: the flash latency for the bus clock, the crystal on and ready, the PLL inputs and outputs, both
-// PLLs on and ready, the bus dividers, the FDCAN kernel clock from PLL2_Q and the switch of the core clock to PLL1. The registers are reached only through the callbacks of
+// PLLs on and ready, the bus dividers, the FDCAN kernel clock from PLL2_Q, the kernel clock of SPI5 from the source of the profile and the switch of the core clock to PLL1. The registers are reached only through the callbacks of
 // RccOps, so the host test runs the sequence against a double and compares every write with the golden plan of the Python model.
 //
 // A ready flag that does not rise within the limit of polls ends the set-up with an error and the core clock is NOT switched: the core stays on the clock it had. The display
@@ -59,7 +59,7 @@ _Static_assert(HYDRA_CLOCK_CPU2_HZ == HYDRA_CLOCK_HCLK_HZ, "the second core runs
 #define RCC_D1CFGR_VALUE (RCC_AHB_DIV(RCC_HPRE_DIV) | (RCC_APB_DIV(RCC_D1PPRE_DIV) << 4) | (RCC_AHB_DIV(1UL) << 8))
 #define RCC_D2CFGR_VALUE ((RCC_APB_DIV(RCC_D2PPRE1_DIV) << 4) | (RCC_APB_DIV(RCC_D2PPRE2_DIV) << 8))
 #define RCC_D3CFGR_VALUE (RCC_APB_DIV(RCC_D3PPRE_DIV) << 4)
-#define RCC_D2CCIP1R_VALUE (RCC_FDCANSEL_PLL2_Q << 28)
+#define RCC_D2CCIP1R_VALUE ((RCC_FDCANSEL_PLL2_Q << 28) | ((unsigned long)HYDRA_CLOCK_SPI5_SEL << 16)) /* FDCANSEL (29:28) and SPI45SEL (18:16), the kernel clock of SPI5 */
 
 typedef enum {
     RCC_REG_CR = 0, RCC_REG_PLLCKSELR, RCC_REG_PLLCFGR, RCC_REG_PLL1DIVR, RCC_REG_PLL2DIVR,

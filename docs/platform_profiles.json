@@ -130,6 +130,9 @@
         "kernel_spi6": 100000000,
         "kernel_spi3": 200000000
       },
+      "kernel_select": {
+        "spi5": "apb2"
+      },
       "pll": {
         "pll1": {
           "divm": 5,

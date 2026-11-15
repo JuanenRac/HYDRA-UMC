@@ -86,6 +86,39 @@ class RccPlanTests(unittest.TestCase):
         bad["clocks_hz"]["cpu2"] = 100_000_000
         self.assertTrue(any("second core" in p for p in plan.problems(bad)))
 
+    def test_the_kernel_clock_of_spi5_is_chosen_from_the_source_the_profile_names(self):
+        self.assertEqual(self.profile["kernel_select"], {"spi5": "apb2"})
+        value = plan.d2ccip1r(self.profile)
+        self.assertEqual((value >> 16) & 7, plan.SPI45SEL["apb2"])
+        self.assertEqual((value >> 28) & 3, plan.FDCANSEL_PLL2_Q)
+        self.assertEqual(value & ~((3 << 28) | (7 << 16)), 0)  # no other field of the register is written
+        for source, code in (("pll2_q", 1), ("pll3_q", 2)):
+            other = copy.deepcopy(self.profile)
+            other["kernel_select"]["spi5"] = source
+            other["clocks_hz"]["kernel_spi5"] = other["clocks_hz"][source]
+            self.assertEqual(plan.problems(other), [], source)
+            self.assertEqual((plan.d2ccip1r(other) >> 16) & 7, code, source)
+        # the register value that the C header writes is the same one
+        header = (ROOT / "src/mcu_stm32h757/Common/clock_config.h").read_text(encoding="utf-8")
+        self.assertIn("(unsigned long)HYDRA_CLOCK_SPI5_SEL << 16", header)
+
+    def test_a_source_that_does_not_give_the_listed_frequency_or_does_not_exist_is_refused(self):
+        wrong = copy.deepcopy(self.profile)
+        wrong["kernel_select"]["spi5"] = "pll3_q"   # 75 MHz, while the table lists 100 MHz for the kernel clock of SPI5
+        self.assertTrue(any("kernel clock of SPI5" in p and "pll3_q" in p for p in plan.problems(wrong)))
+        unknown = copy.deepcopy(self.profile)
+        unknown["kernel_select"]["spi5"] = "hse"
+        self.assertTrue(any("not a source of SPI45SEL" in p for p in plan.problems(unknown)))
+        missing = copy.deepcopy(self.profile)
+        del missing["kernel_select"]
+        self.assertTrue(any("kernel_select.spi5 is missing" in p for p in plan.problems(missing)))
+
+    def test_the_header_of_the_platform_carries_the_code_of_the_source(self):
+        header = (ROOT / "src/mcu_stm32h757/Common/platform_profile.h").read_text(encoding="utf-8")
+        self.assertIn("#define HYDRA_CLOCK_SPI5_SEL 0UL", header)
+        self.assertEqual(header.count("HYDRA_CLOCK_SPI5_SEL"), 1)  # only the H757 block has it
+        self.assertIn("HYDRA_CLOCK_SPI5_SOURCE_HZ", (ROOT / "src/mcu_stm32h757/Common/clock_tree.h").read_text(encoding="utf-8"))
+
     def test_the_golden_file_is_what_the_model_produces(self):
         self.assertEqual(golden.HEADER_PATH.read_bytes().decode("utf-8").replace("\r\n", "\n"), golden.render())
 

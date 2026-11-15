@@ -6,7 +6,7 @@
 # =============================================================================
 """Plans the clock set-up of the CM7 of the STM32H757 board: the values of the RCC registers that give the clock tree of docs/platform_profiles.json (profile h757_target).
 
-The crystal is 25 MHz; PLL1 gives the core clock (400 MHz), PLL2 the 100 MHz kernel clock of the FDCAN of the stack bus; the second core runs at the bus clock (200 MHz). The
+The crystal is 25 MHz; PLL1 gives the core clock (400 MHz), PLL2 the 100 MHz kernel clock of the FDCAN of the stack bus, and the kernel clock of SPI5 (the NOR flash) is chosen in the same register from the source the profile names; the second core runs at the bus clock (200 MHz). The
 display clock (PLL3) is not set up here: the profile gives it a reference of 25 MHz, outside the 1 to 16 MHz the PLL accepts, which has to be confirmed with the board file before
 that PLL is started. `src/mcu_stm32h757/Common/clock_config.h` does the same arithmetic in C and its host test compares it with `tests/rcc_plan_golden.h`, which
 `tools/gen_rcc_golden.py` writes from this module.
@@ -25,6 +25,8 @@ import platform_profile as pp
 HSEON, HSERDY, PLL1ON, PLL1RDY, PLL2ON, PLL2RDY = 1 << 16, 1 << 17, 1 << 24, 1 << 25, 1 << 26, 1 << 27
 SW_PLL1 = 3
 FDCANSEL_PLL2_Q = 2
+#: SPI45SEL (bits 18:16 of D2CCIP1R), the kernel clock of SPI4 and SPI5: the source name of the profile (`kernel_select`) and its code.
+SPI45SEL = {"apb2": 0, "pll2_q": 1, "pll3_q": 2}
 HPRE = {1: 0, 2: 8, 4: 9, 8: 10, 16: 11, 64: 12, 128: 13, 256: 14, 512: 15}
 APB = {1: 0, 2: 4, 4: 5, 8: 6, 16: 7}
 CPRE = HPRE
@@ -77,7 +79,21 @@ def problems(profile: dict) -> list[str]:
         found.append("the second core is meant to run at the bus clock")
     if profile["clocks_hz"]["kernel_fdcan"] != profile["clocks_hz"]["pll2_q"]:
         found.append("the FDCAN kernel clock is meant to be PLL2_Q")
+    found += spi5_problems(profile)
     return found
+
+
+def spi5_problems(profile: dict) -> list[str]:
+    """The source chosen for the kernel clock of SPI5 must exist and give the frequency the table lists for it."""
+    source = profile.get("kernel_select", {}).get("spi5")
+    if source is None:
+        return ["kernel_select.spi5 is missing: the kernel clock of SPI5 would be left to the reset state"]
+    if source not in SPI45SEL:
+        return [f"kernel_select.spi5 {source!r} is not a source of SPI45SEL ({', '.join(SPI45SEL)})"]
+    given = profile["clocks_hz"][source]
+    if profile["clocks_hz"]["kernel_spi5"] != given:
+        return [f"the kernel clock of SPI5 is {profile['clocks_hz']['kernel_spi5']} Hz in the table and {given} Hz from {source}"]
+    return []
 
 
 def pllckselr(profile: dict) -> int:
@@ -129,8 +145,8 @@ def d3cfgr(profile: dict) -> int:
 
 
 def d2ccip1r(profile: dict) -> int:
-    """D2CCIP1R: the FDCAN kernel clock is PLL2_Q (field FDCANSEL, bits 29:28)."""
-    return FDCANSEL_PLL2_Q << 28
+    """D2CCIP1R: the FDCAN kernel clock is PLL2_Q (field FDCANSEL, bits 29:28) and the kernel clock of SPI5 is the source of the profile (field SPI45SEL, bits 18:16)."""
+    return (FDCANSEL_PLL2_Q << 28) | (SPI45SEL[profile["kernel_select"]["spi5"]] << 16)
 
 
 def sequence(profile: dict) -> list[dict]:

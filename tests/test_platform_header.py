@@ -66,6 +66,18 @@ class PlatformHeaderTests(unittest.TestCase):
                 self.assertEqual(number(values[f"{base}_ORIGIN"]), region["origin"], f"{name} {region['name']}")
                 self.assertEqual(number(values[f"{base}_LENGTH"]), region["length"], f"{name} {region['name']}")
 
+    def test_the_production_board_can_be_the_default_only_through_a_switch_that_ships_off(self):
+        block = self.text.split("#if !defined(HYDRA_PLATFORM_H745) && !defined(HYDRA_PLATFORM_H757)", 1)[1].split("#endif", 2)
+        self.assertIn("#if defined(HYDRA_DEFAULT_PLATFORM_H757) && HYDRA_DEFAULT_PLATFORM_H757", block[0])
+        self.assertLess(block[0].index("#define HYDRA_PLATFORM_H757 1"), block[0].index("#define HYDRA_PLATFORM_H745 1"))
+        # no workflow sets it and the compile steps of the build do not: only the host tests of the header try it
+        for path in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+            self.assertNotIn("HYDRA_DEFAULT_PLATFORM_H757", path.read_text(encoding="utf-8"), path.name)
+        build = (ROOT / "tools" / "build_firmware.py").read_text(encoding="utf-8")
+        for line in build.splitlines():
+            if "HYDRA_DEFAULT_PLATFORM_H757" in line:
+                self.assertTrue("EXPECT_PLATFORM" in line or "host_tests_clock_config_default" in line, line.strip())
+
     def test_the_default_platform_is_the_one_the_sources_build_for_and_its_role_is_slave(self):
         self.assertIn("#define HYDRA_PLATFORM_H745 1", self.text)
         self.assertEqual(block(self.text, "HYDRA_PLATFORM_H745")["HYDRA_SPI_ROLE"], "HYDRA_SPI_ROLE_SLAVE")
