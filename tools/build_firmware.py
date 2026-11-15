@@ -1264,6 +1264,9 @@ class Stage2:
         flags = [*self.cflags_cm7, *long_slot_plan.compile_flags(cfg)]
         if self.compile_dir(f"{src}/boot", boot_obj, flags, [*self.common_inc, f"-I{src}"]) and self.gcc(
             flags, f"-I{src}", *self.common_inc, "-x", "c", "-c", f"{src}/NorSpi5.c", "-o", f"{boot_obj}/NorSpi5.o"
+        ) == 0 and self.gcc(
+            # the SPI module of the HAL calls the DMA module (to abort a transfer): only this variant links the SPI driver, so only it takes the DMA object
+            self.cflags_cm7, "-x", "c", "-c", f"{h7}/hal_src/stm32h7xx_hal_dma.c", "-o", f"{boot_obj}/stm32h7xx_hal_dma.o"
         ) == 0:
             r.ok(f"CM7 bootloader sources compile for the long slot ({' '.join(long_slot_plan.compile_flags(cfg))})")
         else:
