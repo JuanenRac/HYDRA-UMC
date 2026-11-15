@@ -330,6 +330,7 @@ def host_cases(root: str) -> list[Case]:
     cases.append(_t("task_watchdog host logic tests passed", "host_tests_task_watchdog", "test_task_watchdog", ["tests", CM4]))
     cases.append(_t("slot_scan_node host logic tests passed", "host_tests_slot_scan_node", "test_slot_scan_node", ["tests", G474_BOOT]))
     cases.append(_t("i2c_plan host logic tests passed", "host_tests_i2c_plan", "test_i2c_plan", [H757_COMMON]))
+    cases.append(_t("nor_backup_plan host logic tests passed", "host_tests_nor_backup_plan", "test_nor_backup_plan", [H757_COMMON]))
     cases.append(
         _t(
             "fram_i2c4 host logic tests passed",
