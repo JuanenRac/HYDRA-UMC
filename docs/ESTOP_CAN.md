@@ -87,7 +87,7 @@ Two states: **LATCHED** (drivers off) and **READY** (drivers may be enabled by t
 |---|---|
 | Kinematic brain (H757) | stops generating setpoints, empties the motion queue, refuses motion until READY and an explicit enable, tells the CM5 over SPI, keeps repeating TRIP |
 | Controller board (G474) | de-asserts the enable of every motor driver and stops the pulse generation (stop category 0), switches valves, pumps and other outputs off, forwards the frame to its tool head, reports `ESTOP_STATE` |
-| Tool head (URTC) | heaters, laser, solder, spindle and ultrasonic outputs off. Requires the head firmware to honour 0x001, see Pending |
+| Tool head (URTC) | heaters, laser, solder, spindle and ultrasonic outputs off, on a TRIP on 0x001 and also when the master falls silent. This is part of the contract (`emergency_stop.tool_head` of `bus_contract.json`): the head is part of the stop chain, and its firmware (URTC) is what has to honour it; see Pending |
 | CM5 / server | announces `SAFE_STOP` as in `GLOBAL_STOP.md` of HYDRA-UMC-SERVER; a stop-all from the server asks the brain to send a TRIP |
 
 ## Relation with the other stops
