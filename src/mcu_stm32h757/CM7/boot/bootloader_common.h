@@ -57,6 +57,12 @@ extern IWDG_HandleTypeDef hiwdg;
 #else
 #define APP_MAX_SIZE         (384UL * 1024UL) // 3 sectors
 #endif
+// HYDRA_NOR_BACKUP_BEFORE_UPDATE (off as it ships) is the backup of the running application into a second region of the NOR before an update starts (Common/nor_update_flow.h); it needs the long slot.
+#if defined(HYDRA_NOR_BACKUP_BEFORE_UPDATE) && HYDRA_NOR_BACKUP_BEFORE_UPDATE
+#if !defined(HYDRA_APP_SLOT_768K) || !HYDRA_APP_SLOT_768K
+#error "HYDRA_NOR_BACKUP_BEFORE_UPDATE needs HYDRA_APP_SLOT_768K=1: the backup is the way back of the long slot"
+#endif
+#endif
 #define METADATA_MAGIC_VALID 0x55415043UL // "CPAU" - CM7, distinct from G474's "UPAU" and CM4's "CPA4" so a metadata page from the wrong core/chip is never mistaken for this one's
 #define FLASH_PAGE_SIZE       0x800UL // 2048 bytes - LOGICAL transfer-chunk size for the OTA protocol/page_buffer (matches every other tier for page-count/PAGE_ACK math), NOT this chip's hardware erase granularity - see bootloader_flash.c
 

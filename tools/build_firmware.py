@@ -442,6 +442,7 @@ def host_cases(root: str) -> list[Case]:
     cases.append(_t("nor_backup_plan host logic tests passed", "host_tests_nor_backup_plan", "test_nor_backup_plan", [H757_COMMON]))
     cases.append(_t("boot_nor_stage host logic tests passed", "host_tests_boot_nor_stage", "test_boot_nor_stage", [H757_COMMON]))
     cases.append(_t("nor_spi5_pins host logic tests passed", "host_tests_nor_spi5_pins", "test_nor_spi5_pins", [H757_COMMON]))
+    cases.append(_t("nor_update_flow host logic tests passed", "host_tests_nor_update_flow", "test_nor_update_flow", [H757_COMMON]))
     cases.append(
         _t(
             "fram_i2c4 host logic tests passed",
