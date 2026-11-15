@@ -348,6 +348,8 @@ def host_cases(root: str) -> list[Case]:
             [H757_COMMON],
         )
     )
+    cases.append(_t("ui_tick_plan host logic tests passed", "host_tests_ui_tick_plan", "test_ui_tick_plan", [H757_COMMON]))
+    cases.append(_t("touch_gt911 host logic tests passed", "host_tests_touch_gt911", "test_touch_gt911", [H757_COMMON]))
     cases.append(
         _t(
             "dsi_host host logic tests passed",
