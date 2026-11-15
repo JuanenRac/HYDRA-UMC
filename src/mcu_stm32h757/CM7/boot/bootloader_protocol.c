@@ -105,6 +105,32 @@ static uint8_t ApplicationMatchesMetadata(const FirmwareMetadata_t *meta) {
     sha256_prefixed_flash_region(NULL, 0, MAIN_APP_ADDR, meta->size, actual_digest);
     return digest_constant_time_compare(actual_digest, meta->sha256, 32);
 }
+
+#if HYDRA_NOR_BACKUP_BEFORE_UPDATE
+// An update is about to start: the application that runs is saved into the second region of the NOR first, but only when it is a good one (a broken one is not worth keeping and the update is its repair).
+static uint8_t BackupRunningApplication(void) {
+    FirmwareMetadata_t meta;
+    uint8_t good = Metadata_Read(&meta) && meta.state == META_STATE_APP_VALID && meta.hardware_id == THIS_HARDWARE_ID && meta.size != 0 && meta.size <= APP_MAX_SIZE && ApplicationMatchesMetadata(&meta);
+    return BootNor_BackupBeforeUpdate(good, good ? meta.size : 0UL);
+}
+
+// The previous application is back in the flash: the metadata describes it again. The version it had is not kept in the NOR, so it is recorded as 0.0.0 (the rollback counter keeps its floor,
+// so nothing signed with a lower counter installs); the boot attempts start again.
+static uint8_t AdoptPreviousApplication(FirmwareMetadata_t *meta, uint32_t length, uint32_t crc) {
+    FirmwareMetadata_t adopted = *meta;
+    adopted.state = META_STATE_APP_VALID;
+    adopted.size = length;
+    adopted.crc32 = crc;
+    adopted.version_major = 0;
+    adopted.version_minor = 0;
+    adopted.version_patch = 0;
+    adopted.boot_attempts = 0;
+    sha256_prefixed_flash_region(NULL, 0, MAIN_APP_ADDR, length, adopted.sha256);
+    if (!Metadata_EraseAndWrite(&adopted)) return 0;
+    *meta = adopted;
+    return ApplicationMatchesMetadata(meta);
+}
+#endif
 #endif
 
 uint8_t ApplicationIsValid(void) {
@@ -153,7 +179,15 @@ uint8_t ApplicationIsValid(void) {
     if (ApplicationMatchesMetadata(&meta)) return 1;
     // The application is damaged. With the long slot the copy lives in the NOR: it replaces the application only when it is the image this metadata describes, and the result is checked again.
     CAN_SendStatus(STATUS_COPYING);
+#if HYDRA_NOR_BACKUP_BEFORE_UPDATE
+    // With the backup before the update there are two copies: the current one (when it is the image of the metadata) and the application that ran before the update.
+    uint32_t restored_length = 0, restored_crc = 0;
+    uint8_t rolled_back = 0;
+    if (!BootNor_RecoverAtStart(meta.size, meta.crc32, &restored_length, &restored_crc, &rolled_back)) return 0;
+    if (rolled_back) return AdoptPreviousApplication(&meta, restored_length, restored_crc);
+#else
     if (!BootNor_RestoreIfLost(meta.size, meta.crc32)) return 0;
+#endif
     return ApplicationMatchesMetadata(&meta);
 #else
     uint32_t crc = 0xFFFFFFFFUL;

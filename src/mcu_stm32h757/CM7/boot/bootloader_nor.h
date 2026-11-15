@@ -6,7 +6,8 @@
 // With the long slot (HYDRA_APP_SLOT_768K) the second half of bank 1 is the application, so an update is staged in the NOR flash of SPI5 and the copy of the application lives there too
 // (Common/boot_nor_stage.h over Common/nor_backup_plan.h). This file is the part that touches the board: it starts SPI5 from the pins of config/nor_spi5.cfg (Common/nor_spi5_pins.h) the first
 // time anything needs the NOR, gives the flash layer the three operations on the application slot, and keeps the watchdog fed while the slow NOR operations run. OFF by default: it compiles to
-// nothing unless HYDRA_NOR_BACKUP is 1 (and then HYDRA_NOR_SPI5 must be 1 as well). Not run on a board.
+// nothing unless HYDRA_NOR_BACKUP is 1 (and then HYDRA_NOR_SPI5 must be 1 as well). With HYDRA_NOR_BACKUP_BEFORE_UPDATE (off as it ships) it also keeps a second region of the NOR with the
+// application that ran before an update (Common/nor_update_flow.h). Not run on a board.
 // =============================================================================
 #ifndef BOOTLOADER_NOR_H
 #define BOOTLOADER_NOR_H
@@ -15,6 +16,10 @@
 
 #ifndef HYDRA_NOR_BACKUP
 #define HYDRA_NOR_BACKUP 0
+#endif
+
+#ifndef HYDRA_NOR_BACKUP_BEFORE_UPDATE
+#define HYDRA_NOR_BACKUP_BEFORE_UPDATE 0
 #endif
 
 #if HYDRA_NOR_BACKUP
@@ -35,6 +40,15 @@ uint8_t BootNor_Finish(uint32_t total, uint32_t crc32);                         
 uint8_t BootNor_Commit(uint32_t total, uint32_t crc32);                                               // write the staged image over the application slot and read it back
 // Boot-time rule: an application that is not good is replaced by the copy when the copy is the image the metadata describes. Returns 1 when the application was restored.
 uint8_t BootNor_RestoreIfLost(uint32_t size, uint32_t crc32);
+
+#if HYDRA_NOR_BACKUP_BEFORE_UPDATE
+// Before an update starts: saves the application of the flash (`app_length` bytes, when `app_good`) into the second region. Returns 1 when the update may go on (the backup worked, there was
+// nothing to protect, or the configuration lets it go on without) and 0 when it is refused.
+uint8_t BootNor_BackupBeforeUpdate(uint8_t app_good, uint32_t app_length);
+// Boot-time rule for an application that is not good, against the metadata (`size`, `crc32`): the current copy when it is that image, otherwise the application that ran before the update.
+// Returns 1 when an application was written to the flash; `*length` and `*crc32` describe it and `*rolled_back` says it is the previous one (the metadata then has to be written again).
+uint8_t BootNor_RecoverAtStart(uint32_t size, uint32_t crc32, uint32_t *length, uint32_t *crc, uint8_t *rolled_back);
+#endif // HYDRA_NOR_BACKUP_BEFORE_UPDATE
 
 #endif // HYDRA_NOR_BACKUP
 

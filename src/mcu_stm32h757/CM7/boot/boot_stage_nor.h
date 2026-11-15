@@ -18,5 +18,9 @@
 #define BOOT_STAGE_WORD(offset) BootNor_Word(offset)
 #define BOOT_STAGE_FINISH(total, crc32) BootNor_Finish((total), (crc32))
 #define BOOT_STAGE_COMMIT(total, crc32) BootNor_Commit((total), (crc32))
+#if HYDRA_NOR_BACKUP_BEFORE_UPDATE
+// The application that is running is saved before the NOR is erased for the new image (BackupRunningApplication is in bootloader_protocol.c).
+#define BOOT_STAGE_BEFORE(total) ((void)(total), BackupRunningApplication())
+#endif
 
 #endif // BOOT_STAGE_NOR_H

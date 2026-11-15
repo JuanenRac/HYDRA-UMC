@@ -189,11 +189,17 @@ class SharedFilesAndRegistration(unittest.TestCase):
         for call in ("BootNor_Commit(", "BootNor_RestoreIfLost("):
             self.assertIn(call, source)
             for match in re.finditer(re.escape(call), source):
-                before = source[: match.start()]
-                last_if = max(before.rfind("#if HYDRA_NOR_BACKUP"), -1)
-                last_else = max(before.rfind("#else", last_if), before.rfind("#endif", last_if))
-                self.assertGreater(last_if, -1, call)
-                self.assertLess(last_else, last_if, call)
+                # the conditionals that are open at the call: one of them must be the live branch of `#if HYDRA_NOR_BACKUP` itself
+                open_branches = []
+                for line in source[: match.start()].split("\n"):
+                    text = line.strip()
+                    if text.startswith(("#if ", "#ifdef ", "#ifndef ")):
+                        open_branches.append([text.split("//")[0].strip(), False])
+                    elif text.startswith("#else") and open_branches:
+                        open_branches[-1][1] = True
+                    elif text.startswith("#endif") and open_branches:
+                        open_branches.pop()
+                self.assertIn(["#if HYDRA_NOR_BACKUP", False], open_branches, call)
 
     def test_the_end_of_an_update_asks_the_staging_through_macros_that_default_to_the_backup_slot(self):
         core = (ROOT / "firmware_base/boot/boot_update_core_impl.h").read_text(encoding="utf-8")

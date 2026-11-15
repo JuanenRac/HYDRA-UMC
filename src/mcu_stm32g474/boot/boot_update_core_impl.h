@@ -24,6 +24,13 @@
 #define BOOT_STAGE_FINISH(total, crc32) 1
 #define BOOT_STAGE_COMMIT(total, crc32) Flash_CopyRegion(MAIN_APP_ADDR, BACKUP_APP_ADDR, (total))
 #endif
+// HYDRA_NOR_BACKUP_BEFORE_UPDATE (off as it ships): the running application is saved before the staging area is touched. BOOT_STAGE_BEFORE(total) answers 1 when the update may go on;
+// only the bootloader that keeps a second region for it (the CM7 with the 768 KB slot, boot_stage_nor.h) defines it, and without the switch no text of it is compiled.
+#if defined(HYDRA_NOR_BACKUP_BEFORE_UPDATE) && HYDRA_NOR_BACKUP_BEFORE_UPDATE
+#ifndef BOOT_STAGE_BEFORE
+#error "HYDRA_NOR_BACKUP_BEFORE_UPDATE needs a bootloader that defines BOOT_STAGE_BEFORE (the CM7 with the 768 KB slot)"
+#endif
+#endif
 
 static uint8_t FlushPageBuffer(void) {
     uint32_t page_addr = BACKUP_APP_ADDR + (current_page_index * FLASH_PAGE_SIZE);
@@ -60,6 +67,14 @@ uint8_t HandleStartUpdate(uint8_t *data) {
 
     uint32_t pages_needed = (update_total_size + FLASH_PAGE_SIZE - 1) / FLASH_PAGE_SIZE;
     CAN_SendStatus(STATUS_ERASING);
+#if defined(HYDRA_NOR_BACKUP_BEFORE_UPDATE) && HYDRA_NOR_BACKUP_BEFORE_UPDATE
+    if (!BOOT_STAGE_BEFORE(update_total_size)) {   // the backup of the running application failed and the configuration requires it: nothing is touched
+        CAN_SendStatus(STATUS_ERROR);
+        update_failed = 1;
+        update_in_progress = 0;
+        return 0;
+    }
+#endif
     if (!BOOT_STAGE_ERASE(update_total_size, pages_needed)) {
         CAN_SendStatus(STATUS_ERROR);
         update_failed = 1;

@@ -16,11 +16,18 @@
 #include "boot_nor_stage.h"
 #include "nor_backup_glue.h"
 #include "nor_spi5_pins.h"
+#if HYDRA_NOR_BACKUP_BEFORE_UPDATE
+#include "nor_update_flow.h"
+#endif
 
 extern IWDG_HandleTypeDef hiwdg;
 
 static BootNorStage g_stage;
 static NorbGlue g_glue;
+static NorbOps g_ops;
+#if HYDRA_NOR_BACKUP_BEFORE_UPDATE
+static NufConfig g_flow;           // the current region (the staging) and the previous one (the application that ran before the update)
+#endif
 static NorOps g_fed_ops;           // the operations of SPI5 with a watchdog refresh in front of every transfer: an erase of the whole image area takes seconds
 static const NorOps *g_chip_ops;
 static uint8_t g_state;            // 0 not tried, 1 open, 2 refused (the NOR did not answer); a refusal is not retried inside the same session
@@ -56,7 +63,6 @@ static uint8_t Open(void) {
     NorS5Pins pins;
     NorSpi5Config spi;
     NorbConfig plan;
-    NorbOps ops;
     NorbFlashLayer layer = {AppRead, AppErase, AppWrite, 0};
     if (g_state == 1) return 1;
     if (g_state == 2) return 0;
@@ -73,9 +79,12 @@ static uint8_t Open(void) {
     g_chip_ops = NorSpi5_Ops();
     g_fed_ops.select = g_chip_ops->select;
     g_fed_ops.transfer = FedTransfer;
-    if (NorbGlue_Open(&g_glue, &g_fed_ops, 0, &layer, &ops) != NOR_OK) return 0;
+    if (NorbGlue_Open(&g_glue, &g_fed_ops, 0, &layer, &g_ops) != NOR_OK) return 0;
     Norb_Defaults(&plan);
-    BootNorStage_Init(&g_stage, &plan, &ops);
+    BootNorStage_Init(&g_stage, &plan, &g_ops);
+#if HYDRA_NOR_BACKUP_BEFORE_UPDATE
+    Nuf_Defaults(&g_flow);
+#endif
     g_state = 1;
     return 1;
 }
@@ -125,5 +134,25 @@ uint8_t BootNor_RestoreIfLost(uint32_t size, uint32_t crc32) {
     if (BootNorStage_Recover(&g_stage, 0, size, crc32, &action) != BNS_OK) return 0;
     return action == BNS_RECOVER_DONE;
 }
+
+#if HYDRA_NOR_BACKUP_BEFORE_UPDATE
+uint8_t BootNor_BackupBeforeUpdate(uint8_t app_good, uint32_t app_length) {
+    int allowed = 0;
+    if (!Open()) return 0;   // the staging would be refused as well: the NOR does not answer
+    (void)Nuf_BackupBeforeUpdate(&g_ops, &g_flow, app_good, app_length, &allowed);
+    return allowed ? 1 : 0;
+}
+
+uint8_t BootNor_RecoverAtStart(uint32_t size, uint32_t crc32, uint32_t *length, uint32_t *crc, uint8_t *rolled_back) {
+    NufRestored restored;
+    int used = NUF_ACT_NONE;
+    if (!Open()) return 0;
+    if (Nuf_RecoverFor(&g_ops, &g_flow, 0, size, crc32, &restored, &used) != NUF_OK) return 0;
+    *length = restored.length;
+    *crc = restored.crc32;
+    *rolled_back = (used == NUF_ACT_ROLLBACK_PREVIOUS) ? 1 : 0;
+    return 1;
+}
+#endif // HYDRA_NOR_BACKUP_BEFORE_UPDATE
 
 #endif // HYDRA_NOR_BACKUP
