@@ -24,4 +24,13 @@ void sha256_buffer(const uint8_t *msg, uint32_t msg_len, uint8_t out[32]);
 // XOR-accumulate rather than an early-exit compare - an early exit leaks how many leading bytes matched through timing.
 uint8_t digest_constant_time_compare(const uint8_t *a, const uint8_t *b, uint32_t len);
 
+// A SHA-256 that is fed in pieces. Only the bootloader that keeps its staged update outside the memory-mapped flash (the CM7 with the 768 KB slot, HYDRA_NOR_BACKUP) needs it;
+// every other build compiles the same text without these lines, so its image does not change.
+#if defined(HYDRA_NOR_BACKUP) && HYDRA_NOR_BACKUP
+typedef struct { uint64_t opaque[16]; } Sha256Stream_t;
+void sha256_stream_begin(Sha256Stream_t *stream);
+void sha256_stream_update(Sha256Stream_t *stream, const uint8_t *data, uint32_t len);
+void sha256_stream_end(Sha256Stream_t *stream, uint8_t out[32]);
+#endif
+
 #endif // BOOTLOADER_CRYPTO_H

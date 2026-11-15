@@ -80,7 +80,7 @@ class SourcesAgree(unittest.TestCase):
         self.assertEqual(slot["length"], cfg["slot_bytes"])
         self.assertEqual((define("NORB_SECTOR"), define("NORB_BLOCK"), define("NORB_HEADER_BYTES")), (nb.SECTOR, nb.BLOCK, nb.HEADER_BYTES))
 
-    def test_the_switch_ships_off_and_nothing_in_the_firmware_calls_the_copy_yet(self):
+    def test_the_switch_ships_off_and_only_the_long_slot_part_of_the_bootloader_calls_the_copy(self):
         text = (ROOT / "config/nor_backup.cfg").read_text(encoding="utf-8")
         self.assertIn("HYDRA_NOR_BACKUP 0", text)
         users = [
@@ -88,7 +88,7 @@ class SourcesAgree(unittest.TestCase):
             for p in (ROOT / "src").rglob("*")
             if p.is_file() and p.suffix in (".c", ".h") and p.name not in {"nor_backup_plan.h", "nor_backup_glue.h"} and re.search(r'#include "nor_backup_(plan|glue)\.h"', p.read_text(encoding="utf-8", errors="ignore"))
         ]
-        self.assertEqual(users, [])
+        self.assertEqual(sorted(p.name for p in users), ["boot_nor_stage.h", "bootloader_nor.c"])
 
     def test_the_memory_map_of_a_long_slot_needs_its_copy_in_the_nor(self):
         document = pp.load()

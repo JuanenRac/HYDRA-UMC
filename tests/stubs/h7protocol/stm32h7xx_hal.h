@@ -95,6 +95,8 @@ typedef struct { volatile uint32_t MODER; } GPIO_TypeDef;
 extern GPIO_TypeDef host_gpioa, host_gpiob;
 #define GPIOA (&host_gpioa)
 #define GPIOB (&host_gpiob)
+#define GPIOA_BASE 0x58020000UL /* only the distance between two ports is used (CM7/boot/bootloader_nor.c) */
+#define GPIOB_BASE 0x58020400UL
 
 typedef struct { volatile uint32_t CTRL, LOAD, VAL; } SysTick_Type;
 extern SysTick_Type host_systick;
