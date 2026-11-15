@@ -93,6 +93,8 @@ def table() -> list[HostTest]:
         HostTest("usb_host_plan", "tests/test_usb_host_plan.c", (f"{H7}/Common",)),
         HostTest("usb_host_fs", "tests/test_usb_host_fs.c", ("tests/stubs/h7usb", f"{H7}/CM7", f"{H7}/Common",), defines=("HYDRA_USB_HOST_CM7=1",),
                  extra_sources=(f"{H7}/CM7/UsbHostFs.c",)),
+        HostTest("dsi_plan", "tests/test_dsi_plan.c", (f"{H7}/Common",)),
+        HostTest("panel_start", "tests/test_panel_start.c", (f"{H7}/Common",)),
         HostTest("adc_plan", "tests/test_adc_plan.c", (f"{H7}/Common",)),
         HostTest("adc_reader", "tests/test_adc_reader.c", ("tests/stubs/h7adc", f"{H7}/CM7", f"{H7}/Common",), defines=("HYDRA_ADC_CM7=1",),
                  extra_sources=(f"{H7}/CM7/AdcReader.c",)),

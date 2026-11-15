@@ -73,6 +73,8 @@
     "src/mcu_stm32h757/Common/dac_plan.h": 100,
     "src/mcu_stm32h757/CM7/UsbHostFs.c": 100,
     "src/mcu_stm32h757/Common/usb_host_plan.h": 100,
+    "src/mcu_stm32h757/Common/dsi_plan.h": 100,
+    "src/mcu_stm32h757/Common/panel_start.h": 100,
     "src/mcu_stm32h757/CM7/AdcReader.c": 100,
     "src/mcu_stm32h757/Common/adc_plan.h": 100,
     "src/mcu_stm32h757/CM7/DisplayLtdc.c": 100,
