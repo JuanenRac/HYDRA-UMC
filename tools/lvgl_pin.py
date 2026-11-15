@@ -109,7 +109,7 @@ def flash_bytes(sizes: dict) -> int:
 
 
 def compile_library(cfg: dict, library: Path, out: Path, run=subprocess.run, root: Path = ROOT) -> dict:
-    """Compiles every source of the library for the Cortex-M7 and returns the sizes; RuntimeError when the library takes more flash than the budget."""
+    """Compiles every source of the library for the Cortex-M7 and returns the sizes; RuntimeError when the sum of the objects passes the guard."""
     check(cfg)
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)

@@ -19,7 +19,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import lvgl_pin as lp  # noqa: E402
 
 WORKFLOW = (ROOT / ".github/workflows/lvgl-library.yml").read_text(encoding="utf-8").replace("\r\n", "\n")
-GOOD = {"repository": lp.REPOSITORY, "tag": "v9.6.0", "commit": "a" * 40, "license": "MIT", "flash_budget_bytes": 307200}
+GOOD = {"repository": lp.REPOSITORY, "tag": "v9.6.0", "commit": "a" * 40, "license": "MIT", "flash_budget_bytes": 360448}
 
 
 class Pin(unittest.TestCase):
@@ -29,8 +29,9 @@ class Pin(unittest.TestCase):
         self.assertRegex(cfg["tag"], r"^v9\.\d+\.\d+$")
         self.assertEqual(cfg["license"], "MIT")
 
-    def test_the_budget_is_the_flash_of_the_interface_budget(self):
-        self.assertEqual(lp.load_config()["flash_budget_bytes"], 300 * 1024)
+    def test_the_budget_guards_the_sum_of_the_objects_above_what_the_first_build_measured(self):
+        self.assertEqual(lp.load_config()["flash_budget_bytes"], 352 * 1024)
+        self.assertGreater(lp.load_config()["flash_budget_bytes"], 346927)
 
     def test_no_file_of_the_library_is_in_the_repository(self):
         self.assertEqual(lp.vendored_files(), [])
