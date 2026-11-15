@@ -339,6 +339,24 @@ def host_cases(root: str) -> list[Case]:
     )
     cases.append(
         _t(
+            "adc_plan host logic tests passed",
+            "host_tests_adc_plan",
+            "test_adc_plan",
+            [H757_COMMON],
+        )
+    )
+    cases.append(
+        _t(
+            "adc_reader host logic tests passed",
+            "host_tests_adc_reader",
+            "test_adc_reader",
+            ["tests/stubs/h7adc", "src/mcu_stm32h757/CM7", H757_COMMON],
+            ["-DHYDRA_ADC_CM7=1"],
+            sources=("src/mcu_stm32h757/CM7/AdcReader.c",),
+        )
+    )
+    cases.append(
+        _t(
             "dsi_plan host logic tests passed",
             "host_tests_dsi_plan",
             "test_dsi_plan",
@@ -1289,6 +1307,16 @@ class Stage2:
             r.ok("CM7 USB host (USB_OTG_FS) compiles for the H757 platform")
         else:
             r.fail("CM7 USB host (USB_OTG_FS) does NOT compile for the H757 platform - see errors above")
+            failed = True
+        adc_obj = f"{h7}/cm7_adc_reader_h757_check_obj"
+        self.makedirs(adc_obj)
+        if self.gcc(
+            self.cflags_cm7, "-DHYDRA_PLATFORM_H757", "-DHYDRA_ADC_CM7=1", f"-I{root}/src/mcu_stm32h757/CM7", *self.common_inc,
+            "-x", "c", "-c", f"{root}/src/mcu_stm32h757/CM7/AdcReader.c", "-o", f"{adc_obj}/AdcReader.o",
+        ) == 0:
+            r.ok("CM7 reader of the ADC compiles for the H757 platform")
+        else:
+            r.fail("CM7 reader of the ADC does NOT compile for the H757 platform - see errors above")
             failed = True
         if failed:
             self.stop()
