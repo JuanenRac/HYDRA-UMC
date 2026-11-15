@@ -329,6 +329,17 @@ def host_cases(root: str) -> list[Case]:
     )
     cases.append(_t("task_watchdog host logic tests passed", "host_tests_task_watchdog", "test_task_watchdog", ["tests", CM4]))
     cases.append(_t("slot_scan_node host logic tests passed", "host_tests_slot_scan_node", "test_slot_scan_node", ["tests", G474_BOOT]))
+    cases.append(_t("i2c_plan host logic tests passed", "host_tests_i2c_plan", "test_i2c_plan", [H757_COMMON]))
+    cases.append(
+        _t(
+            "fram_i2c4 host logic tests passed",
+            "host_tests_fram_i2c4",
+            "test_fram_i2c4",
+            ["tests/stubs/h7i2c4", "src/mcu_stm32h757/CM7", "src/mcu_stm32h757/CM4", H757_COMMON],
+            ["-DHYDRA_FRAM_I2C4_CM7=1"],
+            sources=("src/mcu_stm32h757/CM7/FramI2c4.c",),
+        )
+    )
     for n in (0, 1):
         cases.append(
             _t(
@@ -1167,6 +1178,16 @@ class Stage2:
             r.ok("CM7 driver of the display (LTDC and DMA2D) compiles for the H757 platform")
         else:
             r.fail("CM7 driver of the display (LTDC and DMA2D) does NOT compile for the H757 platform - see errors above")
+            failed = True
+        fr_obj = f"{h7}/cm7_fram_i2c4_h757_check_obj"
+        self.makedirs(fr_obj)
+        if self.gcc(
+            self.cflags_cm7, "-DHYDRA_PLATFORM_H757", "-DHYDRA_FRAM_I2C4_CM7=1", f"-I{root}/src/mcu_stm32h757/CM7", f"-I{root}/src/mcu_stm32h757/CM4", *self.common_inc,
+            "-x", "c", "-c", f"{root}/src/mcu_stm32h757/CM7/FramI2c4.c", "-o", f"{fr_obj}/FramI2c4.o",
+        ) == 0:
+            r.ok("CM7 bus of the F-RAM (I2C4) compiles for the H757 platform")
+        else:
+            r.fail("CM7 bus of the F-RAM (I2C4) does NOT compile for the H757 platform - see errors above")
             failed = True
         if failed:
             self.stop()
