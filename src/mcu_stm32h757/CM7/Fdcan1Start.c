@@ -27,7 +27,7 @@ uint32_t Fdcan1Start_Run(FDCAN_HandleTypeDef *hfdcan, const FdcpPlan *plan)
     hfdcan->Init.DataSyncJumpWidth = plan->sjw;
     hfdcan->Init.DataTimeSeg1 = plan->seg1;
     hfdcan->Init.DataTimeSeg2 = plan->seg2;
-    hfdcan->Init.MessageRAMOffset = 0;
+    hfdcan->Init.MessageRAMOffset = plan->ram_offset;
     hfdcan->Init.StdFiltersNbr = plan->filter_count;
     hfdcan->Init.ExtFiltersNbr = 0;
     hfdcan->Init.RxFifo0ElmtsNbr = plan->rx_elements;

@@ -97,6 +97,25 @@ int main(void)
     c = base(); c.kernel_hz = 1000000UL; c.bit_rate_bps = 10000UL; c.max_quanta = 100u; c.sjw = 1u; c.rx_elements = 32u; c.tx_elements = 1u; c.sample_permille = 500u;
     CHECK(FdcanPlan_Make(&c, &p) == FDCP_OK && p.prescaler == 1u && p.seg1 + p.seg2 + 1u == 100u && p.rx_elements == 32u && p.tx_elements == 1u, "the lowest edges");
 
+    /* the second controller (FDCAN2, the field bus) is placed after the first in the shared message RAM */
+    {
+        FdcpPlan first, field, again;
+        c = base();
+        CHECK(FdcanPlan_Make(&c, &first) == FDCP_OK && first.ram_offset == 0u && FdcanPlan_RamWords(&first) == 2u + (8u + 8u) * 4u, "the first controller starts at 0 and uses 66 words");
+        CHECK(FdcanPlan_MakeField(&c, 0x000u, 0x000u, &first, &field) == FDCP_OK && field.ram_offset == 66u && field.filter_count == 1u && field.filter[0].mask == 0u, "FDCAN2 follows at word 66 with one filter that takes every id");
+        CHECK(field.prescaler == first.prescaler && field.seg1 == first.seg1 && field.seg2 == first.seg2, "the same 1 Mbit/s timing");
+        CHECK(FdcanPlan_MakeField(&c, 0x123u, 0x7F0u, &field, &again) == FDCP_OK && again.ram_offset == 66u + 1u + 64u && again.filter[0].id == 0x123u, "a third block would follow the second");
+        CHECK(FdcanPlan_MakeField(&c, 0x800u, 0u, &first, &field) == FDCP_E_FILTER && FdcanPlan_MakeField(&c, 0u, 0x800u, &first, &field) == FDCP_E_FILTER, "a filter over 11 bits");
+        CHECK(FdcanPlan_MakeField(NULL, 0u, 0u, &first, &field) == FDCP_E_ARG && FdcanPlan_MakeField(&c, 0u, 0u, NULL, &field) == FDCP_E_ARG && FdcanPlan_MakeField(&c, 0u, 0u, &first, NULL) == FDCP_E_ARG, "missing arguments");
+        c.kernel_hz = 7000000UL;
+        CHECK(FdcanPlan_MakeField(&c, 0u, 0u, &first, &field) == FDCP_E_TIMING, "the timing errors pass through");
+        c = base();
+        first.ram_offset = 2500u; /* a first block that leaves no room */
+        memset(&field, 0x5A, sizeof field);
+        CHECK(FdcanPlan_MakeField(&c, 0u, 0u, &first, &field) == FDCP_E_RAM && field.ram_offset == 0x5A5A5A5Au, "no room in the message RAM: nothing is written");
+        CHECK(FdcanPlan_PlaceAfter(NULL, &field) == FDCP_E_ARG && FdcanPlan_PlaceAfter(&first, NULL) == FDCP_E_ARG, "placing needs both");
+    }
+
     if (failures) {
         printf("fdcan_plan host tests: %d FAILED\n", failures);
         return 1;

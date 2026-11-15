@@ -71,3 +71,38 @@ def make_plan(cfg: dict) -> dict:
             "filters": filters,
         }
     raise ValueError("no prescaler gives exactly the bit rate")
+
+
+ELEMENT_WORDS = 4
+RAM_WORDS_TOTAL = 2560
+FIELD_CFG_PATH = Path(__file__).resolve().parents[1] / "config" / "fdcan2.cfg"
+
+
+def ram_words(plan: dict) -> int:
+    return len(plan["filters"]) + (plan["rx_elements"] + plan["tx_elements"]) * ELEMENT_WORDS
+
+
+def load_field_config(path: Path = FIELD_CFG_PATH) -> dict:
+    """config/fdcan2.cfg: the bus and queue keys of fdcan.cfg and the one filter of the field bus."""
+    parser = configparser.ConfigParser(inline_comment_prefixes=None)
+    parser.read_string(path.read_text(encoding="utf-8"))
+    cfg = {key: int(parser[section][key]) for key, section in _SECTION.items()}
+    cfg["estop_filter"] = 0
+    for key, (low, high) in LIMITS.items():
+        if not low <= cfg[key] <= high:
+            raise ValueError(f"config/fdcan2.cfg: {key} {low}..{high}")
+    cfg["filter_id"] = int(parser["field"]["filter_id"], 0)
+    cfg["filter_mask"] = int(parser["field"]["filter_mask"], 0)
+    if not (0 <= cfg["filter_id"] <= 0x7FF and 0 <= cfg["filter_mask"] <= 0x7FF):
+        raise ValueError("config/fdcan2.cfg: filter_id and filter_mask are 11 bits")
+    return cfg
+
+
+def make_field_plan(cfg: dict, first: dict) -> dict:
+    """The plan of FDCAN2 placed after the plan of FDCAN1 in the message RAM; ValueError when it does not fit."""
+    plan = make_plan({**cfg, "estop_filter": 0})
+    plan["filters"] = [(cfg["filter_id"], cfg["filter_mask"])]
+    plan["ram_offset"] = first.get("ram_offset", 0) + ram_words(first)
+    if plan["ram_offset"] + ram_words(plan) > RAM_WORDS_TOTAL:
+        raise ValueError("the second controller does not fit in the message RAM")
+    return plan
