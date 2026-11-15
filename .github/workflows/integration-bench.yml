@@ -4,7 +4,8 @@
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
 # Calls the reusable workflow of HYDRA-UMC-DEV-SERVER that starts the swarm cell as real containers and runs its scenarios (the container bench). It is a light
-# check on purpose: it runs only for a pull request that touches the services of the CM5 side (src/cm5_host) or the contracts they read, and by hand; it never
+# check on purpose: it runs for a pull request that touches the services of the CM5 side (src/cm5_host) or the contracts they read, and by hand; it also runs
+# once a week on main (Monday, UTC), so that a drift in the image or the services shows even when no pull request touches them, and never
 # runs on a push to main, and a second push to the same pull request cancels the run in progress. The firmware itself is not in the cell (no board and no
 # chip): the bench says whether the host side still works with the rest of the ecosystem. The called workflow is pinned by commit hash, like every other
 # action of the repository.
@@ -18,6 +19,8 @@ on:
       - "contracts/**"
       - ".github/workflows/integration-bench.yml"
   workflow_dispatch:
+  schedule:
+    - cron: "27 3 * * 1"  # weekly (Monday, UTC), on a minute of its own so that the benches do not queue behind each other
 
 permissions:
   contents: read
