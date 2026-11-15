@@ -5,6 +5,7 @@
 # =============================================================================
 """The emergency stop on identifier 0x001: the vectors, the host reference and the contract numbers say the same thing."""
 import json
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -144,6 +145,23 @@ class ContractNumbersTests(unittest.TestCase):
         self.assertIn("tool_head_downlink", ESTOP["buses"])
         text = (ROOT / "docs" / "ESTOP_CAN.md").read_text(encoding="utf-8")
         self.assertIn("emergency_stop.tool_head", text)
+
+    def test_the_head_waits_for_the_master_as_long_as_the_nodes_of_the_stack(self):
+        # the head repository keeps its own copy of the timeout, so the two numbers are compared here
+        self.assertEqual(ESTOP["tool_head"]["alive_timeout_ms"], ESTOP["timing_ms"]["alive_timeout"])
+        header = (ROOT / "src" / "mcu_stm32g474" / "estop_can.h").read_text(encoding="utf-8")
+        self.assertEqual(int(re.search(r"#define ESTOP_ALIVE_TIMEOUT_MS (\d+)u", header).group(1)), ESTOP["tool_head"]["alive_timeout_ms"])
+
+    def test_the_head_follows_the_stop_behind_a_switch_that_starts_off(self):
+        head = ESTOP["tool_head"]
+        self.assertIn("off by default", head["switch"])
+        self.assertIn("0x80", head["switch"])
+        text = (ROOT / "docs" / "ESTOP_CAN.md").read_text(encoding="utf-8")
+        self.assertIn("ESTOP_FOLLOW", text)
+        self.assertIn("off by default", text)
+        self.assertNotIn("do not honour 0x001 yet", text)
+        bench = (ROOT / "docs" / "BENCH_TESTS.md").read_text(encoding="utf-8")
+        self.assertIn("ESTOP_FOLLOW", bench)
 
 
 if __name__ == "__main__":
