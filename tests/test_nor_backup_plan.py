@@ -54,7 +54,7 @@ class NorBackupTwin(unittest.TestCase):
         self.assertEqual(raw[4:8], (5).to_bytes(4, "little"))
         self.assertEqual(raw[8:12], (0x1000).to_bytes(4, "little"))
         self.assertEqual(raw[12:16], (0xDEADBEEF).to_bytes(4, "little"))
-        self.assertEqual(nb.header_decode(raw, 0x2000), {"sequence": 5, "length": 0x1000, "crc32": 0xDEADBEEF})
+        self.assertEqual(nb.header_decode(raw, 0x2000), {"sequence": 5, "length": 0x1000, "crc32": 0xDEADBEEF, "version": 0})
         self.assertIsNone(nb.header_decode(raw, 0x800))
         self.assertIsNone(nb.header_decode(bytes([raw[0] ^ 1]) + raw[1:], 0x2000))
         self.assertIsNone(nb.header_decode(raw[:5] + bytes([raw[5] ^ 1]) + raw[6:], 0x2000))

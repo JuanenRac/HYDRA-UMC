@@ -111,19 +111,19 @@ static uint8_t ApplicationMatchesMetadata(const FirmwareMetadata_t *meta) {
 static uint8_t BackupRunningApplication(void) {
     FirmwareMetadata_t meta;
     uint8_t good = Metadata_Read(&meta) && meta.state == META_STATE_APP_VALID && meta.hardware_id == THIS_HARDWARE_ID && meta.size != 0 && meta.size <= APP_MAX_SIZE && ApplicationMatchesMetadata(&meta);
-    return BootNor_BackupBeforeUpdate(good, good ? meta.size : 0UL);
+    return BootNor_BackupBeforeUpdate(good, good ? meta.size : 0UL, meta.version_major, meta.version_minor, meta.version_patch);
 }
 
-// The previous application is back in the flash: the metadata describes it again. The version it had is not kept in the NOR, so it is recorded as 0.0.0 (the rollback counter keeps its floor,
-// so nothing signed with a lower counter installs); the boot attempts start again.
-static uint8_t AdoptPreviousApplication(FirmwareMetadata_t *meta, uint32_t length, uint32_t crc) {
+// The previous application is back in the flash: the metadata describes it again, with the version its copy kept in the NOR (0.0.0 for a copy made before the version was kept). The rollback
+// counter keeps its floor, so nothing signed with a lower counter installs; the boot attempts start again.
+static uint8_t AdoptPreviousApplication(FirmwareMetadata_t *meta, uint32_t length, uint32_t crc, const uint32_t version[3]) {
     FirmwareMetadata_t adopted = *meta;
     adopted.state = META_STATE_APP_VALID;
     adopted.size = length;
     adopted.crc32 = crc;
-    adopted.version_major = 0;
-    adopted.version_minor = 0;
-    adopted.version_patch = 0;
+    adopted.version_major = version[0];
+    adopted.version_minor = version[1];
+    adopted.version_patch = version[2];
     adopted.boot_attempts = 0;
     sha256_prefixed_flash_region(NULL, 0, MAIN_APP_ADDR, length, adopted.sha256);
     if (!Metadata_EraseAndWrite(&adopted)) return 0;
@@ -181,10 +181,10 @@ uint8_t ApplicationIsValid(void) {
     CAN_SendStatus(STATUS_COPYING);
 #if HYDRA_NOR_BACKUP_BEFORE_UPDATE
     // With the backup before the update there are two copies: the current one (when it is the image of the metadata) and the application that ran before the update.
-    uint32_t restored_length = 0, restored_crc = 0;
+    uint32_t restored_length = 0, restored_crc = 0, restored_version[3] = {0, 0, 0};
     uint8_t rolled_back = 0;
-    if (!BootNor_RecoverAtStart(meta.size, meta.crc32, &restored_length, &restored_crc, &rolled_back)) return 0;
-    if (rolled_back) return AdoptPreviousApplication(&meta, restored_length, restored_crc);
+    if (!BootNor_RecoverAtStart(meta.size, meta.crc32, &restored_length, &restored_crc, restored_version, &rolled_back)) return 0;
+    if (rolled_back) return AdoptPreviousApplication(&meta, restored_length, restored_crc, restored_version);
 #else
     if (!BootNor_RestoreIfLost(meta.size, meta.crc32)) return 0;
 #endif

@@ -7,7 +7,7 @@
  * layout of the two regions and its refusals, the backup only when the application is good, the update refused when the backup fails and allowed when the file says so, the start-up
  * choice in all its branches, the way back to the previous application when the new one is lost, a cut of the power at every operation of the backup, after which the running
  * application is untouched and a previous copy that is restored is always an application that was saved, the start-up choice made against the metadata of the application
- * (Nuf_RecoverFor), and a cut of the power at every operation of a whole update (backup, staging, finish, commit), after which one of the two images is always in the flash. Evidence: simulator.
+ * (Nuf_RecoverFor), the version of the saved application kept in the header of the previous copy (and a copy without one reading as 0.0.0), and a cut of the power at every operation of a whole update (backup, staging, finish, commit), after which one of the two images is always in the flash. Evidence: simulator.
  *
  *   cc -std=c11 -Wall -Wextra -Werror -Isrc/mcu_stm32h757/Common -o test_nor_update_flow tests/test_nor_update_flow.c
  */
@@ -164,24 +164,24 @@ int main(void)
     /* the backup: arguments and layout */
     reset();
     fill(3, 10000);
-    CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, 0) == NUF_E_ARG, "no answer pointer");
+    CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, 0UL, 0) == NUF_E_ARG, "no answer pointer");
     allowed = 5;
-    CHECK(Nuf_BackupBeforeUpdate(0, &c, 1, 10000, &allowed) == NUF_E_ARG && allowed == 0, "no operations");
+    CHECK(Nuf_BackupBeforeUpdate(0, &c, 1, 10000, 0UL, &allowed) == NUF_E_ARG && allowed == 0, "no operations");
     d = c;
     d.previous.nor_offset = 0UL;
-    CHECK(Nuf_BackupBeforeUpdate(&ops, &d, 1, 10000, &allowed) == NUF_E_LAYOUT && allowed == 0, "a bad layout refuses the update");
-    CHECK(Nuf_BackupBeforeUpdate(&ops, 0, 1, 10000, &allowed) == NUF_E_ARG && allowed == 0, "no configuration");
+    CHECK(Nuf_BackupBeforeUpdate(&ops, &d, 1, 10000, 0UL, &allowed) == NUF_E_LAYOUT && allowed == 0, "a bad layout refuses the update");
+    CHECK(Nuf_BackupBeforeUpdate(&ops, 0, 1, 10000, 0UL, &allowed) == NUF_E_ARG && allowed == 0, "no configuration");
 
     /* a broken application is not backed up and the update is its repair */
     reset();
-    CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 0, 10000, &allowed) == NUF_SKIPPED && allowed == 1, "nothing to protect");
+    CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 0, 10000, 0UL, &allowed) == NUF_SKIPPED && allowed == 1, "nothing to protect");
     CHECK(ops_done == 0, "and nothing written");
 
     /* a good application is saved into the previous region, not the current one */
     reset();
     fill(3, 10000);
     memcpy(old_app, flash, SLOT);
-    CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, &allowed) == NUF_OK && allowed == 1, "backup");
+    CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, 0UL, &allowed) == NUF_OK && allowed == 1, "backup");
     CHECK(Norb_CopyExists(&ops, &c.previous) && !Norb_CopyExists(&ops, &c.current), "the copy is in the previous region only");
     CHECK(Nuf_Plan(&c, &lc, &lp) == NUF_OK && memcmp(nor + lp.image_offset, old_app, 10000) == 0, "and it is the running application");
 
@@ -189,18 +189,18 @@ int main(void)
     reset();
     fill(3, 10000);
     ops_left = 0;
-    CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, &allowed) == NUF_E_BACKUP && allowed == 0, "required backup that fails refuses the update");
+    CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, 0UL, &allowed) == NUF_E_BACKUP && allowed == 0, "required backup that fails refuses the update");
     d = c;
     d.require_backup = 0UL;
     ops_left = 0;
-    CHECK(Nuf_BackupBeforeUpdate(&ops, &d, 1, 10000, &allowed) == NUF_E_BACKUP && allowed == 1, "optional backup that fails lets it go on");
+    CHECK(Nuf_BackupBeforeUpdate(&ops, &d, 1, 10000, 0UL, &allowed) == NUF_E_BACKUP && allowed == 1, "optional backup that fails lets it go on");
     ops_left = -1;
 
     /* a full update: back up, stage, commit; then the new application is lost and the way back is the old one */
     reset();
     fill(3, 10000);
     memcpy(old_app, flash, SLOT);
-    CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, &allowed) == NUF_OK && allowed == 1, "backup of the old application");
+    CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, 0UL, &allowed) == NUF_OK && allowed == 1, "backup of the old application");
     fill(77, 12000);
     memcpy(new_app, flash, SLOT);
     CHECK(Norb_Save(&ops, &c.current, 12000) == NORB_OK, "the new image in the current region (what staging ends with)");
@@ -244,24 +244,94 @@ int main(void)
     /* a cut of the power at every operation of the backup: the running application is untouched, and a previous copy that is restored is one that was saved */
     reset();
     fill(3, 10000);
-    CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, &allowed) == NUF_OK, "count the operations of a backup");
+    CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, 0UL, &allowed) == NUF_OK, "count the operations of a backup");
     total = ops_done;
     CHECK(total > 10, "a backup has several operations");
     for (cut = 0; cut <= total; cut++) {
         reset();
         fill(3, 10000);
         memcpy(old_app, flash, SLOT);
-        CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, &allowed) == NUF_OK, "the first backup");
+        CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, 0UL, &allowed) == NUF_OK, "the first backup");
         fill(77, 6000);
         memcpy(snapshot, flash, SLOT);
         ops_left = cut;
-        (void)Nuf_BackupBeforeUpdate(&ops, &c, 1, 6000, &allowed);
+        (void)Nuf_BackupBeforeUpdate(&ops, &c, 1, 6000, 0UL, &allowed);
         ops_left = -1;
         CHECK(memcmp(flash, snapshot, SLOT) == 0, "the running application is untouched by a backup");
         if (Norb_CopyExists(&ops, &c.previous)) {
             memset(flash, 0x00, SLOT);
             CHECK(Nuf_Recover(&ops, &c, 0, &got, &used) == NUF_OK && used == NUF_ACT_ROLLBACK_PREVIOUS, "a surviving previous copy restores");
             CHECK((got == 10000 && memcmp(flash, old_app, 10000) == 0) || (got == 6000 && memcmp(flash, snapshot, 6000) == 0), "and it is an application that was saved");
+        }
+    }
+
+    /* the version of the application travels in the header of the previous copy */
+    {
+        NufRestored r;
+        uint32_t ma, mi, pa, v1 = Nuf_VersionPack(0, 9, 4), v2 = Nuf_VersionPack(1, 20, 1023);
+        uint8_t raw[NORB_HEADER_BYTES];
+        NorbHeader h;
+        int which;
+        CHECK(Nuf_VersionPack(0, 0, 0) == 0UL && v1 == ((9UL << 10) | 4UL) && v2 == ((1UL << 20) | (20UL << 10) | 1023UL), "the packed version");
+        Nuf_VersionUnpack(v2, &ma, &mi, &pa);
+        CHECK(ma == 1UL && mi == 20UL && pa == 1023UL, "and it unpacks");
+        CHECK(Nuf_VersionPack(1024UL, 0, 0) == 0UL && Nuf_VersionPack(0, 1024UL, 0) == 0UL && Nuf_VersionPack(0, 0, 1024UL) == 0UL, "a number that does not fit reads as not known");
+        Nuf_VersionUnpack(0x40000000UL | v1, &ma, &mi, &pa);
+        CHECK(ma == 0UL && mi == 0UL && pa == 0UL, "a word with bits outside the three fields reads as 0.0.0");
+
+        /* back up with a version: the header of the previous copy keeps it and the way back returns it */
+        reset();
+        fill(3, 10000);
+        memcpy(old_app, flash, SLOT);
+        CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, v1, &allowed) == NUF_OK && allowed == 1, "backup with a version");
+        CHECK(Nuf_Plan(&c, &lc, &lp) == NUF_OK, "layout");
+        CHECK(Norb_ReadHeaders(&ops, &lp, SLOT, &h, &which) && h.version == v1 && h.length == 10000UL, "the header of the previous copy keeps the version");
+        memcpy(raw, nor + lp.header_a, NORB_HEADER_BYTES);
+        CHECK(Norb_Get32(raw + 16) == v1, "in the word that older copies keep at zero");
+        memset(flash, 0x00, SLOT);
+        CHECK(Nuf_RecoverFor(&ops, &c, 0, 5UL, 6UL, &r, &used) == NUF_OK && used == NUF_ACT_ROLLBACK_PREVIOUS && r.length == 10000UL && r.version == v1, "the way back returns the version");
+        CHECK(memcmp(flash, old_app, 10000) == 0, "with the application");
+
+        /* a second backup replaces the version along with the image */
+        fill(77, 6000);
+        CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 6000, v2, &allowed) == NUF_OK, "second backup");
+        memset(flash, 0x00, SLOT);
+        CHECK(Nuf_RecoverFor(&ops, &c, 0, 5UL, 6UL, &r, &used) == NUF_OK && r.length == 6000UL && r.version == v2, "the newest version");
+
+        /* a copy made before the version was kept (a header with the zero word) comes back as 0.0.0, and the restore keeps working */
+        reset();
+        fill(3, 10000);
+        CHECK(Norb_Save(&ops, &c.previous, 10000) == NORB_OK, "a copy without a version");
+        r.version = 77UL;
+        memset(flash, 0x00, SLOT);
+        CHECK(Nuf_RecoverFor(&ops, &c, 0, 5UL, 6UL, &r, &used) == NUF_OK && used == NUF_ACT_ROLLBACK_PREVIOUS && r.version == 0UL && r.length == 10000UL, "an old copy reads as 0.0.0");
+        CHECK(Nuf_VersionPack(0, 0, 0) == 0UL, "which is the value of no version");
+
+        /* a lost application and a bad argument leave no stale version behind */
+        reset();
+        r.version = 77UL;
+        CHECK(Nuf_RecoverFor(&ops, &c, 0, 5UL, 6UL, &r, &used) == NUF_E_NONE && used == NUF_ACT_LOST && r.version == 0UL, "nothing to put back: no version");
+
+        /* a cut of the power at every operation of a second backup: the version that comes back always belongs to the length that comes back */
+        reset();
+        fill(3, 10000);
+        CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, v1, &allowed) == NUF_OK, "first backup");
+        fill(77, 6000);
+        CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 6000, v2, &allowed) == NUF_OK, "count the operations of the second backup");
+        total = ops_done;
+        for (cut = 0; cut <= total; cut++) {
+            reset();
+            fill(3, 10000);
+            CHECK(Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, v1, &allowed) == NUF_OK, "the first backup");
+            fill(77, 6000);
+            memcpy(snapshot, flash, SLOT);
+            ops_left = cut;
+            (void)Nuf_BackupBeforeUpdate(&ops, &c, 1, 6000, v2, &allowed);
+            ops_left = -1;
+            memset(flash, 0x00, SLOT);
+            if (Nuf_RecoverFor(&ops, &c, 0, 5UL, 6UL, &r, &used) == NUF_OK) {
+                CHECK((r.length == 10000UL && r.version == v1) || (r.length == 6000UL && r.version == v2), "after a cut the version is the one of the application that came back");
+            }
         }
     }
 
@@ -332,7 +402,7 @@ int main(void)
             reset();
             memcpy(flash, old_app, SLOT);
             ops_left = cut;
-            ok = Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, &allowed) == NUF_OK;
+            ok = Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, Nuf_VersionPack(0, 9, 4), &allowed) == NUF_OK;
             ok = ok && Norb_StageBegin(&ops, &c.current, 12000) == NORB_OK;
             for (offset = 0; ok && offset < 12000; offset += 4096) {
                 part = 12000 - offset < 4096 ? 12000 - offset : 4096;
@@ -354,7 +424,8 @@ int main(void)
                 const int good = Norb_Crc32(flash, want_len) == want_crc;
                 CHECK(Nuf_RecoverFor(&ops, &c, good, want_len, want_crc, &r, &used) == NUF_OK && used != NUF_ACT_LOST, "after a cut the board always starts");
                 CHECK(memcmp(flash, want, want_len) == 0, "and the flash holds the image of the metadata, whole");
-                CHECK(used != NUF_ACT_ROLLBACK_PREVIOUS || (r.length == 10000 && r.crc32 == old_crc), "a way back, when taken, is the old application");
+                CHECK(used != NUF_ACT_ROLLBACK_PREVIOUS || (r.length == 10000 && r.crc32 == old_crc && r.version == Nuf_VersionPack(0, 9, 4)), "a way back, when taken, is the old application with its version");
+                CHECK(used != NUF_ACT_RESTORE_CURRENT || r.version == 0UL, "the current copy carries no version: the metadata already has it");
             }
         }
         CHECK(count > 20, "a whole update has many operations");

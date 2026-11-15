@@ -40,6 +40,20 @@ def plan(cfg: dict) -> tuple[dict, dict]:
     return current, previous
 
 
+def version_pack(major: int, minor: int, patch: int) -> int:
+    """The version of an application as the one word kept in the header of its copy: 10 bits each; 0 (not known) when a number does not fit."""
+    if not all(0 <= part <= 1023 for part in (major, minor, patch)):
+        return 0
+    return (major << 20) | (minor << 10) | patch
+
+
+def version_unpack(word: int) -> tuple[int, int, int]:
+    """The three numbers of a packed version; a word with bits above the 30 that are used reads as 0.0.0 (as does a copy that kept none)."""
+    if word >> 30:
+        word = 0
+    return (word >> 20) & 1023, (word >> 10) & 1023, word & 1023
+
+
 def decide(app_good: bool, current_copy: bool, previous_copy: bool) -> int:
     if app_good:
         return NONE
@@ -121,23 +135,23 @@ class Board:
         raw = [nb.header_decode(bytes(self.nor[at : at + nb.HEADER_BYTES]), slot) for at in (layout["header_a"], layout["header_b"])]
         return nb.newest(raw[0], raw[1])
 
-    def _write_header(self, region: str, length: int, crc32: int) -> None:
+    def _write_header(self, region: str, length: int, crc32: int, version: int = 0) -> None:
         layout = self._layout(region)
         found = self.headers(region)
         sequence = found[0]["sequence"] + 1 if found else 1
         at = layout["header_b"] if found and found[1] == 0 else layout["header_a"]
         self.nor_erase(at, nb.SECTOR)
-        self.nor_write(at, nb.header_encode(sequence & 0xFFFFFFFF, length, crc32))
+        self.nor_write(at, nb.header_encode(sequence & 0xFFFFFFFF, length, crc32, version))
 
-    def save(self, region: str, length: int) -> None:
-        """The application of the flash into the region: image first, header last."""
+    def save(self, region: str, length: int, version: int = 0) -> None:
+        """The application of the flash into the region: image first, header last; `version` is the packed version kept in the header (0: not known)."""
         layout = self._layout(region)
         if not 0 < length <= self.cfg[region]["slot_bytes"]:
             raise ValueError("too big")
         self.nor_erase(layout["image_offset"], -(-length // nb.SECTOR) * nb.SECTOR)
         for done in range(0, length, 256):
             self.nor_write(layout["image_offset"] + done, bytes(self.flash[done : min(done + 256, length)]))
-        self._write_header(region, length, zlib.crc32(bytes(self.flash[:length])))
+        self._write_header(region, length, zlib.crc32(bytes(self.flash[:length])), version)
 
     def stage_begin(self, total: int) -> None:
         self.nor_erase(self._layout("current")["image_offset"], -(-total // nb.SECTOR) * nb.SECTOR)
@@ -173,33 +187,37 @@ class Board:
         return length, crc32
 
     # -- the flow --
-    def backup_before_update(self, app_good: bool, app_length: int) -> tuple[int, bool]:
+    def backup_before_update(self, app_good: bool, app_length: int, app_version: int = 0) -> tuple[int, bool]:
         """Before an update: (result, update allowed). A broken application is not saved; a failed save refuses the update when the file requires a backup."""
         if not app_good:
             return SKIPPED, True
         try:
-            self.save("previous", app_length)
+            self.save("previous", app_length, app_version)
         except (NorFailure, ValueError):
             return E_BACKUP, not self.cfg["require_backup"]
         return OK, True
 
     def recover_for(self, app_good: bool, length: int, crc32: int) -> tuple[int, int, int, int]:
         """The start-up choice against the metadata: (result, action used, restored length, restored CRC-32)."""
+        return self.recover_for_versioned(app_good, length, crc32)[:4]
+
+    def recover_for_versioned(self, app_good: bool, length: int, crc32: int) -> tuple[int, int, int, int, int]:
+        """The same, with the packed version of the previous application as the fifth item (0 for the current copy and for a copy that kept none)."""
         found = self.headers("current")
         matches = bool(found) and found[0]["length"] == length and found[0]["crc32"] == crc32 and self.copy_exists("current")
         act = decide(app_good, matches, self.copy_exists("previous"))
         if act == NONE:
-            return OK, NONE, 0, 0
+            return OK, NONE, 0, 0, 0
         if act == RESTORE_CURRENT:
             try:
                 restored = self.restore("current")
-                return OK, RESTORE_CURRENT, restored[0], restored[1]
+                return OK, RESTORE_CURRENT, restored[0], restored[1], 0
             except CopyError:
                 act = ROLLBACK_PREVIOUS
         if act == ROLLBACK_PREVIOUS:
             try:
                 restored = self.restore("previous")
-                return OK, ROLLBACK_PREVIOUS, restored[0], restored[1]
+                return OK, ROLLBACK_PREVIOUS, restored[0], restored[1], (self.headers("previous") or ({"version": 0},))[0]["version"]
             except CopyError:
                 pass
-        return E_NONE, LOST, 0, 0
+        return E_NONE, LOST, 0, 0, 0

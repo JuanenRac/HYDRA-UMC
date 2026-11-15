@@ -10,7 +10,9 @@
  * flash is good (a broken one is not worth keeping: the update is then the repair); when the backup fails the update is refused unless the configuration says it may go on without it
  * (require_backup). Nuf_Recover picks what to do at start-up: nothing, restore the current copy (a cut of the power in the middle of a commit), or fall back to the previous one.
  * Nuf_RecoverFor is the start-up choice made against the metadata of the application: the current copy is used only when it is the image the metadata describes, so an older copy never
- * replaces a newer application; otherwise the previous application comes back, and the caller learns its length and CRC-32 to describe it again.
+ * replaces a newer application; otherwise the previous application comes back, and the caller learns its length, CRC-32 and version to describe it again. The version of the saved application
+ * travels in the header of the previous copy (the word that the first copies kept at zero, packed by Nuf_VersionPack): a copy without it reads as 0.0.0, and the rollback counter of the
+ * metadata is not touched by any of this.
  * tools/nor_update_flow.py is the Python twin and reads config/nor_backup.cfg. The use of this flow ships off (HYDRA_NOR_BACKUP_BEFORE_UPDATE 0): the bootloader of the CM7 calls it
  * (src/mcu_stm32h757/CM7/boot/bootloader_nor.c) only in the long-slot build that switches it on. Evidence: simulator; nothing here has run on a board.
  * ============================================================================= */
@@ -34,6 +36,24 @@
 #define NUF_ACT_RESTORE_CURRENT 1
 #define NUF_ACT_ROLLBACK_PREVIOUS 2
 #define NUF_ACT_LOST 3
+
+/* the version of an application as one word of the header of its copy: 10 bits each of major, minor and patch (0 is "not known" and so is anything that does not fit) */
+#define NUF_VERSION_FIELD_MAX 1023UL
+
+static inline uint32_t Nuf_VersionPack(uint32_t major, uint32_t minor, uint32_t patch)
+{
+    if (major > NUF_VERSION_FIELD_MAX || minor > NUF_VERSION_FIELD_MAX || patch > NUF_VERSION_FIELD_MAX) return 0UL;
+    return (major << 20) | (minor << 10) | patch;
+}
+
+/* the three numbers of a packed version; a word with bits above the 30 that are used reads as 0.0.0 */
+static inline void Nuf_VersionUnpack(uint32_t word, uint32_t *major, uint32_t *minor, uint32_t *patch)
+{
+    if ((word >> 30) != 0UL) word = 0UL;
+    *major = (word >> 20) & NUF_VERSION_FIELD_MAX;
+    *minor = (word >> 10) & NUF_VERSION_FIELD_MAX;
+    *patch = word & NUF_VERSION_FIELD_MAX;
+}
 
 typedef struct {
     NorbConfig current;      /* the staging and mirror region */
@@ -59,8 +79,9 @@ static inline int Nuf_Plan(const NufConfig *c, NorbLayout *current, NorbLayout *
     return NUF_OK;
 }
 
-/* Before an update starts: saves the application of the flash (`app_length` bytes) into the previous region. `*allowed` is 1 when the update may go on. */
-static inline int Nuf_BackupBeforeUpdate(const NorbOps *ops, const NufConfig *c, int app_good, uint32_t app_length, int *allowed)
+/* Before an update starts: saves the application of the flash (`app_length` bytes, version `app_version` as packed by Nuf_VersionPack, 0 when not known) into the previous region.
+ * `*allowed` is 1 when the update may go on. */
+static inline int Nuf_BackupBeforeUpdate(const NorbOps *ops, const NufConfig *c, int app_good, uint32_t app_length, uint32_t app_version, int *allowed)
 {
     NorbLayout current, previous;
     int rc;
@@ -73,7 +94,7 @@ static inline int Nuf_BackupBeforeUpdate(const NorbOps *ops, const NufConfig *c,
         *allowed = 1;
         return NUF_SKIPPED;
     }
-    if (Norb_Save(ops, &c->previous, app_length) == NORB_OK) {
+    if (Norb_SaveVersioned(ops, &c->previous, app_length, app_version) == NORB_OK) {
         *allowed = 1;
         return NUF_OK;
     }
@@ -120,6 +141,7 @@ static inline int Nuf_Recover(const NorbOps *ops, const NufConfig *c, int app_go
 typedef struct {
     uint32_t length;
     uint32_t crc32;
+    uint32_t version; /* packed version of the previous application that came back; 0 for the current copy (the metadata already says its version) and for a copy that did not keep one */
 } NufRestored;
 
 /* Start-up recovery against the metadata of the application (`length`, `crc32`): the current copy comes back only when it is exactly that image; a current copy that is older, damaged or
@@ -127,10 +149,11 @@ typedef struct {
 static inline int Nuf_RecoverFor(const NorbOps *ops, const NufConfig *c, int app_good, uint32_t length, uint32_t crc32, NufRestored *out, int *used)
 {
     NorbLayout current, previous;
-    NorbHeader h = {0, 0, 0};
+    NorbHeader h = {0, 0, 0, 0};
     int act, matches, which, rc;
     if (ops == 0 || out == 0 || used == 0) return NUF_E_ARG;
     *used = NUF_ACT_NONE;
+    out->version = 0UL;
     rc = Nuf_Plan(c, &current, &previous);
     if (rc != NUF_OK) return rc;
     matches = Norb_ReadHeaders(ops, &current, c->current.slot_bytes, &h, &which) && h.length == length && h.crc32 == crc32 && Norb_CopyExists(ops, &c->current);
@@ -147,6 +170,7 @@ static inline int Nuf_RecoverFor(const NorbOps *ops, const NufConfig *c, int app
     if (act == NUF_ACT_ROLLBACK_PREVIOUS && Norb_Restore(ops, &c->previous, &out->length) == NORB_OK) {
         (void)Norb_ReadHeaders(ops, &previous, c->previous.slot_bytes, &h, &which);
         out->crc32 = h.crc32;
+        out->version = h.version;
         *used = NUF_ACT_ROLLBACK_PREVIOUS;
         return NUF_OK;
     }

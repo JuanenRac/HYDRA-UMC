@@ -136,20 +136,21 @@ uint8_t BootNor_RestoreIfLost(uint32_t size, uint32_t crc32) {
 }
 
 #if HYDRA_NOR_BACKUP_BEFORE_UPDATE
-uint8_t BootNor_BackupBeforeUpdate(uint8_t app_good, uint32_t app_length) {
+uint8_t BootNor_BackupBeforeUpdate(uint8_t app_good, uint32_t app_length, uint32_t version_major, uint32_t version_minor, uint32_t version_patch) {
     int allowed = 0;
     if (!Open()) return 0;   // the staging would be refused as well: the NOR does not answer
-    (void)Nuf_BackupBeforeUpdate(&g_ops, &g_flow, app_good, app_length, &allowed);
+    (void)Nuf_BackupBeforeUpdate(&g_ops, &g_flow, app_good, app_length, Nuf_VersionPack(version_major, version_minor, version_patch), &allowed);
     return allowed ? 1 : 0;
 }
 
-uint8_t BootNor_RecoverAtStart(uint32_t size, uint32_t crc32, uint32_t *length, uint32_t *crc, uint8_t *rolled_back) {
+uint8_t BootNor_RecoverAtStart(uint32_t size, uint32_t crc32, uint32_t *length, uint32_t *crc, uint32_t version[3], uint8_t *rolled_back) {
     NufRestored restored;
     int used = NUF_ACT_NONE;
     if (!Open()) return 0;
     if (Nuf_RecoverFor(&g_ops, &g_flow, 0, size, crc32, &restored, &used) != NUF_OK) return 0;
     *length = restored.length;
     *crc = restored.crc32;
+    Nuf_VersionUnpack(restored.version, &version[0], &version[1], &version[2]);
     *rolled_back = (used == NUF_ACT_ROLLBACK_PREVIOUS) ? 1 : 0;
     return 1;
 }
