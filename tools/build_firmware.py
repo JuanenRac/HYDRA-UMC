@@ -331,6 +331,22 @@ def host_cases(root: str) -> list[Case]:
     cases.append(_t("slot_scan_node host logic tests passed", "host_tests_slot_scan_node", "test_slot_scan_node", ["tests", G474_BOOT]))
     cases.append(
         _t(
+            "dsi_plan host logic tests passed",
+            "host_tests_dsi_plan",
+            "test_dsi_plan",
+            [H757_COMMON],
+        )
+    )
+    cases.append(
+        _t(
+            "panel_start host logic tests passed",
+            "host_tests_panel_start",
+            "test_panel_start",
+            [H757_COMMON],
+        )
+    )
+    cases.append(
+        _t(
             "usb_host_plan host logic tests passed",
             "host_tests_usb_host_plan",
             "test_usb_host_plan",
