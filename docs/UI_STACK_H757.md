@@ -35,6 +35,10 @@ The choice of the library that draws the interface of the H757 (`docs/DSI_EN_H75
 
 The firmware part does not exist yet: the library is pinned by commit when the driver phase starts, and the phase is built in Actions on a temporary branch behind the switch `HYDRA_UI_H757` (off by default).
 
+## The library in the build
+
+The library is not in this repository. `config/lvgl.cfg` pins a release of the 9.x series by its exact commit; `python tools/lvgl_pin.py --check` refuses anything that is not 40 hexadecimal digits and any file of the library inside the repository, and the workflow `.github/workflows/lvgl-library.yml` fetches that commit outside the checkout, compiles every source of it for the Cortex-M7 with `config/lv_conf.h` and fails when the sum of all its objects before linking passes the guard of the file (352 KiB; the first build measured 346927 bytes, so the 300 KiB above is checked only when the interface is linked, and the linker drops what is unused). Its tick and pace are `Common/ui_tick_plan.h` (switch `HYDRA_UI_TICK`) and its touch input is `Common/touch_gt911.h` (switch `HYDRA_TOUCH_GT911`), both off by default, with their numbers in `config/lvgl.cfg`. The model of the touch controller on the real panel is to be confirmed with its data sheet; nothing has run on a board.
+
 ## Budget against the memory map
 
 Computed by `python tools/ui_budget.py` from `docs/platform_profiles.json` (profile `h757_target`), the texts and the screens, `src/ui_h757/budget.json` and the `[budget]` section of `config/ui.cfg`; `tests/test_ui_budget.py` pins the verdicts. Origin of each figure: *data* is counted from the files, *published* is the figure of the library's project, *estimate* is replaced by a measurement.
