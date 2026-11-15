@@ -128,6 +128,7 @@ class BuildFirmwarePortTests(unittest.TestCase):
         self.env["HOST_CC"] = str(self.bin / "fakecc")
         self.env["PATH"] = f"{self.bin}{os.pathsep}{self.env['PATH']}"
         self.env.pop("HYDRA_UMC_SKIP_HOST_TESTS", None)
+        self.env.pop("HYDRA_LONG_SLOT", None)  # the manual build may run with the variant on; these runs are of the default build
 
     def run_python(self) -> tuple[list[str], list[str]]:
         root = self.work / "python"
