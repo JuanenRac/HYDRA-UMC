@@ -87,7 +87,7 @@ Two states: **LATCHED** (drivers off) and **READY** (drivers may be enabled by t
 |---|---|
 | Kinematic brain (H757) | stops generating setpoints, empties the motion queue, refuses motion until READY and an explicit enable, tells the CM5 over SPI, keeps repeating TRIP |
 | Controller board (G474) | de-asserts the enable of every motor driver and stops the pulse generation (stop category 0), switches valves, pumps and other outputs off, forwards the frame to its tool head, reports `ESTOP_STATE` |
-| Tool head (URTC) | heaters, laser, solder, spindle and ultrasonic outputs off, on a TRIP on 0x001 and also when the master falls silent. This is part of the contract (`emergency_stop.tool_head` of `bus_contract.json`): the head is part of the stop chain, and its firmware (URTC) is what has to honour it; see Pending |
+| Tool head (URTC) | heaters, laser, solder, spindle and ultrasonic outputs off, on a TRIP on 0x001 and also when the master falls silent. This is part of the contract (`emergency_stop.tool_head` of `bus_contract.json`): the head is part of the stop chain. The head firmware of URTC honours it with the feature `ESTOP_FOLLOW` (bit `0x80` of its command `0x1AE`), which is off by default and, once on, makes the head start latched, as every node does; see Tool heads below |
 | CM5 / server | announces `SAFE_STOP` as in `GLOBAL_STOP.md` of HYDRA-UMC-SERVER; a stop-all from the server asks the brain to send a TRIP |
 
 ## Relation with the other stops
@@ -109,7 +109,7 @@ These need a person to decide or hardware that does not exist yet; none is guess
    that performs the deceleration does not exist in this firmware yet, and whether the boards have a holding brake output.
 2. **Physical emergency stop input.** Decided and written (see Physical input below). Still open: the real wiring of the loop on the carrier, and
    the choice of the pin on the final board (the default is a free pin of the pinout; it is set in `config/machine.cfg`).
-3. **Tool heads.** Honouring 0x001 is a change to the head firmware of URTC. Question for the owner: should the URTC heads adopt it?
+3. **Tool heads.** Decided: the URTC heads adopt it, and the head firmware has it behind the switch `ESTOP_FOLLOW`, off by default (see Firmware). Still open: the switch in the tools of URTC that write the head features, and the bench: row 32 of `docs/BENCH_TESTS.md` measures it on a real head.
 4. **Timing.** The values above are proposals; the bench rows 17, 18, 20 and 21 of `docs/BENCH_TESTS.md` measure them.
 5. **The SPI command.** The brain has the calls that stop the stack and start a release (`KinematicBrainCan_EstopTrip`,
    `KinematicBrainCan_EstopRequestRelease`), but the SPI command that asks for them from the CM5 is not defined: it changes the protocol between
@@ -129,7 +129,7 @@ These need a person to decide or hardware that does not exist yet; none is guess
   `RobotControllerRelay_RequestDriversEnable()`, which refuses while LATCHED.
 - Kinematic brain (`KinematicBrainCan.c`): starts stopped and repeats TRIP; the STACK A task runs every millisecond (the slot queries wait at most
   20 ms and keep sending the stop frames while they wait).
-- Tool heads (URTC) do not honour 0x001 yet: that is the head firmware of another repository.
+- Tool heads (URTC): the head firmware follows 0x001 behind the switch `ESTOP_FOLLOW`, off by default. With it off the head behaves as before. With it on the head starts latched (critical error, outputs in the safe state), a TRIP or a malformed frame latches it at once, a RELEASE ends only a stop that the head took from this frame (a live master, the epoch of the stop, a newer sequence, and a new ALIVE after a bus-off), and `alive_timeout` without a new ALIVE latches it again with its own reason. The decisions are those of `estop_can.h`, written again in C in the head repository and replayed there against the frames and scenarios of the head protocol repository; the head repository is the one to read for the code. Nothing has run on a real head.
 
 ## Stop category per axis
 

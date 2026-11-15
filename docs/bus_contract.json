@@ -102,8 +102,10 @@
       "responds_to_can_id": "0x001",
       "responds_to_master_loss": true,
       "safe_state": "heaters, laser, solder, spindle and ultrasonic outputs off",
-      "implemented_by": "the firmware of the tool head (URTC); this repository only states the requirement",
-      "status": "adopted in the contract; the tool head firmware that honours it is not written or tested here"
+      "implemented_by": "the firmware of the tool head (URTC); this repository states the requirement",
+      "switch": "ESTOP_FOLLOW, bit 0x80 of the features command 0x1AE of the head, off by default",
+      "alive_timeout_ms": 100,
+      "status": "adopted in the contract and written in the head firmware behind a switch that is off by default; tested on the host in the head repository against shared scenarios; nothing has run on a real head (bench row 32)"
     }
   },
   "slot_scan": {
