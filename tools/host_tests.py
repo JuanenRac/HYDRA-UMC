@@ -95,6 +95,8 @@ def table() -> list[HostTest]:
                  extra_sources=(f"{H7}/CM7/UsbHostFs.c",)),
         HostTest("dsi_plan", "tests/test_dsi_plan.c", (f"{H7}/Common",)),
         HostTest("panel_start", "tests/test_panel_start.c", (f"{H7}/Common",)),
+        HostTest("dsi_host", "tests/test_dsi_host.c", ("tests/stubs/h7dsi", f"{H7}/CM7", f"{H7}/Common",), defines=("HYDRA_DSI_HOST=1",),
+                 extra_sources=(f"{H7}/CM7/DsiHost.c",)),
         HostTest("clock_config@h757", "tests/test_clock_config.c", (f"{H7}/Common", "tests"), defines=("HYDRA_PLATFORM_H757",)),
         HostTest("nor_flash@h757", "tests/test_nor_flash.c", (f"{H7}/Common",), defines=("HYDRA_PLATFORM_H757",)),
         HostTest("tmc_card", "tests/test_tmc_card.c", (f"{H7}/Common",)),
