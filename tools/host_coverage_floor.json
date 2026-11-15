@@ -71,6 +71,8 @@
     "src/mcu_stm32h757/CM7/I2cBuses.c": 100,
     "src/mcu_stm32h757/CM7/DacOut.c": 100,
     "src/mcu_stm32h757/Common/dac_plan.h": 100,
+    "src/mcu_stm32h757/CM7/UsbHostFs.c": 100,
+    "src/mcu_stm32h757/Common/usb_host_plan.h": 100,
     "src/mcu_stm32h757/CM7/AdcReader.c": 100,
     "src/mcu_stm32h757/Common/adc_plan.h": 100,
     "src/mcu_stm32h757/CM7/DisplayLtdc.c": 100,
