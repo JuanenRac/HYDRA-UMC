@@ -67,6 +67,8 @@
     "src/mcu_stm32h757/Common/gateway_self.h": 100,
     "src/mcu_stm32h757/CM7/FramI2c4.c": 100,
     "src/mcu_stm32h757/Common/i2c_plan.h": 100,
+    "src/mcu_stm32h757/CM7/DacOut.c": 100,
+    "src/mcu_stm32h757/Common/dac_plan.h": 100,
     "src/mcu_stm32h757/CM7/DisplayLtdc.c": 100,
     "src/mcu_stm32h757/Common/display_plan.h": 100,
     "src/mcu_stm32h757/CM7/boot/update_verify.h": 100,
