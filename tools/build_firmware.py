@@ -31,6 +31,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Sequence
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import long_slot_plan  # noqa: E402
+
 #: How a command is run: the arguments, whether its standard output is thrown away. Returns the exit status.
 Runner = Callable[[Sequence[str], bool], int]
 
@@ -859,6 +862,8 @@ class Stage2:
             self.step9()
             self.step10()
             self.step10b()
+            if self.b.env.get("HYDRA_LONG_SLOT", "0") == "1":
+                self.step10c()
 
     def step2(self) -> None:
         self.r.step("2. FreeRTOS kernel sources (shared by every application target - see docs/architecture.md)")
@@ -1242,6 +1247,50 @@ class Stage2:
             "src/*/README.md and docs/architecture.md.",
         ):
             r.out(line)
+
+    def step10c(self) -> None:
+        """The long-slot variant of the CM7 (HYDRA_LONG_SLOT=1, off as it ships): the bootloader compiled with the 768 KB slot and the application linked with the 768 KB script.
+        Nothing here touches the default set: the objects, the images and their sums are left in build/h7/<output_dir> and are never moved into firmware/."""
+        r = self.r
+        r.step("10c. Kinematic Brain CM7 long-slot variant (768 KB application slot, copy in the NOR; HYDRA_LONG_SLOT=1; nothing of the default set changes)")
+        h7 = self.h7
+        root = self.root
+        cfg = long_slot_plan.load_config(Path(root) / "config" / "long_slot.cfg")
+        out = f"{h7}/{cfg['output_dir']}"
+        boot_obj = f"{out}/cm7_boot_obj"
+        self.makedirs(boot_obj)
+        src = f"{root}/src/mcu_stm32h757/CM7"
+        header = f"{src}/boot/bootloader_common.h"
+        flags = [*self.cflags_cm7, *long_slot_plan.compile_flags(cfg)]
+        if self.compile_dir(f"{src}/boot", boot_obj, flags, [*self.common_inc, f"-I{src}"]) and self.gcc(
+            flags, f"-I{src}", *self.common_inc, "-x", "c", "-c", f"{src}/NorSpi5.c", "-o", f"{boot_obj}/NorSpi5.o"
+        ) == 0:
+            r.ok(f"CM7 bootloader sources compile for the long slot ({' '.join(long_slot_plan.compile_flags(cfg))})")
+        else:
+            self.finish_failure("CM7 bootloader sources do NOT compile for the long slot - see errors above")
+        boot_name = long_slot_plan.image_name("BOOTLOADER", self.version_tag(header, "BOOTLOADER_VERSION"), cfg)
+        boot_elf = f"{boot_obj}/{boot_name}.elf"
+        objects = [f"{h7}/cm7/startup.o", f"{h7}/cm7/system_stm32h7xx.o", *sh_glob(boot_obj, "*.o"), *sh_glob(f"{h7}/hal_obj_cm7", "*.o")]
+        if not self.link(self.ld_cm7, f"{src}/boot/STM32H757XIHx_CM7_BOOTLOADER.ld", objects, boot_elf):
+            self.finish_failure("CM7 long-slot bootloader: link failed - see errors above")
+        self.build_bin_hex(boot_elf)
+        r.ok(f"{boot_name}.bin/.hex/.elf built ({self.text_size(boot_elf)} bytes text)")
+        app_name = long_slot_plan.image_name("APP", self.version_tag(header, "FIRMWARE_VERSION"), cfg)
+        app_obj = f"{out}/cm7_app_obj"
+        self.makedirs(app_obj)
+        app_elf = f"{app_obj}/{app_name}.elf"
+        objects = [
+            f"{h7}/cm7/startup.o", f"{h7}/cm7/system_stm32h7xx.o", *sh_glob(f"{h7}/cm7_app_obj", "*.o"), *sh_glob(f"{h7}/hal_obj_cm7", "*.o"),
+            *sh_glob(f"{h7}/cm7_freertos_obj", "*.o"),
+        ]
+        if not self.link(self.ld_cm7, f"{root}/{cfg['linker']}", objects, app_elf):
+            self.finish_failure("CM7 long-slot application: link failed - see errors above")
+        self.build_bin_hex(app_elf)
+        r.ok(f"{app_name}.bin/.hex/.elf built ({self.text_size(app_elf)} bytes text) - linked with the 768 KB script")
+        if self.run(["python3", f"{root}/tools/long_slot_plan.py", "--root", root, "--link", boot_elf, app_elf], False) == 0:
+            r.ok("long-slot sizes: the bootloader keeps its margin and the application with the interface fits the 768 KB slot (budget compared at link)")
+        else:
+            self.finish_failure("long-slot sizes do NOT fit - see the lines above")
 
     def step10b(self) -> None:
         r = self.r

@@ -41,6 +41,11 @@ on:
         options:
           - dev
           - release
+      long_slot:
+        description: "Also build the long-slot variant of the CM7 (768 KB application slot, copy in the NOR) and check its sizes; its images are not part of the set and are not kept"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -156,6 +161,7 @@ jobs:
         env:
           HYDRA_UMC_CI: "1"
           HYDRA_UMC_RELEASE: ${{ inputs.flavour == 'release' && '1' || '0' }}
+          HYDRA_LONG_SLOT: ${{ inputs.long_slot && '1' || '0' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -207,6 +213,16 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/bootloader_size.py --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Sums of the long-slot variant (not part of the set)
+        if: ${{ inputs.long_slot }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "### Long-slot variant of the CM7 (768 KB slot), not shipped"
+            (cd build/h7/long_slot && find . -name 'HYDRA_*LONG_SLOT*.bin' -exec sha256sum {} + | sed 's/^/- /')
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the images
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

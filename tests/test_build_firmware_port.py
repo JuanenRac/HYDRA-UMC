@@ -193,6 +193,45 @@ class BuildFirmwarePortTests(unittest.TestCase):
         staged = [name for name in files if name.startswith("build/firmware_staging/")]
         self.assertEqual(len(staged), 18)  # six components, each as .elf, .bin and .hex
 
+    def test_the_long_slot_variant_is_built_only_with_the_switch_and_stays_out_of_the_set(self) -> None:
+        for name, text in (("arm-none-eabi-gcc", FAKE_ARM_GCC), ("arm-none-eabi-objcopy", FAKE_OBJCOPY), ("arm-none-eabi-size", FAKE_SIZE), ("git", FAKE_GIT)):
+            path = self.bin / name
+            path.write_text(text, encoding="utf-8")
+            path.chmod(path.stat().st_mode | stat.S_IEXEC)
+        results = {}
+        for switch in ("off", "on"):
+            root = self.work / f"long-{switch}"
+            root.mkdir()
+            shutil.copytree(ROOT / "src", root / "src")
+            shutil.copytree(ROOT / "config", root / "config")
+            log = self.work / f"long-{switch}.log"
+            env = dict(self.env, FAKE_LOG=str(log), LC_ALL="C")
+            for name in ("HYDRA_UMC_RELEASE", "HYDRA_EXTRA_CFLAGS", "HYDRA_LONG_SLOT"):
+                env.pop(name, None)
+            if switch == "on":
+                env["HYDRA_LONG_SLOT"] = "1"
+            command = [sys.executable, str(ROOT / "tools" / "build_firmware.py"), "--compile-only", "--root", str(root)]
+            result = subprocess.run(command, cwd=root, env=env, capture_output=True, text=True, check=False, stdin=subprocess.DEVNULL)
+            self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+            commands = log.read_text(encoding="utf-8").replace(str(root), "<root>").splitlines()
+            files = sorted(path.relative_to(root).as_posix() for path in (root / "build").rglob("*") if path.is_file())
+            results[switch] = (result.stdout, commands, files)
+        off_out, off_commands, off_files = results["off"]
+        on_out, on_commands, on_files = results["on"]
+        self.assertNotIn("10c.", off_out)
+        self.assertFalse([c for c in off_commands if "HYDRA_APP_SLOT_768K" in c or "_768K.ld" in c])
+        self.assertFalse([f for f in off_files if "long_slot" in f])
+        self.assertIn("10c. Kinematic Brain CM7 long-slot variant", on_out)
+        self.assertTrue([c for c in on_commands if "-DHYDRA_APP_SLOT_768K=1" in c and "-DHYDRA_NOR_SPI5=1" in c])
+        self.assertTrue([c for c in on_commands if "STM32H757XIHx_CM7_APP_768K.ld" in c])
+        self.assertTrue([c for c in on_commands if c.startswith("PY ") and "long_slot_plan.py" in c and "--link" in c])
+        self.assertTrue([f for f in on_files if "long_slot" in f and "HYDRA_KB_CM7_APP_LONG_SLOT_" in f and f.endswith(".elf")])
+        # the default set is the same with and without the variant: the long images are never staged
+        staged = [name for name in on_files if name.startswith("build/firmware_staging/")]
+        self.assertEqual(staged, [name for name in off_files if name.startswith("build/firmware_staging/")])
+        self.assertEqual(len(staged), 18)
+        self.assertFalse([name for name in staged if "LONG_SLOT" in name])
+
     def test_the_whole_build_prints_its_lines_runs_its_commands_and_leaves_its_files(self) -> None:
         for name, text in (
             ("arm-none-eabi-gcc", FAKE_ARM_GCC),
