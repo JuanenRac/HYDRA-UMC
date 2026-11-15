@@ -88,12 +88,10 @@ uint8_t BootNor_Page(uint32_t index, const uint8_t *data, uint32_t length) {
     return Open() && BootNorStage_Page(&g_stage, index, FLASH_PAGE_SIZE, data, length) == NORB_OK;
 }
 
-uint8_t BootNor_FirstWords(uint32_t *first, uint32_t *second) {
-    uint8_t raw[8];
-    if (!Open() || BootNorStage_Read(&g_stage, 0, raw, sizeof(raw)) != NORB_OK) return 0;
-    *first = (uint32_t)raw[0] | ((uint32_t)raw[1] << 8) | ((uint32_t)raw[2] << 16) | ((uint32_t)raw[3] << 24);
-    *second = (uint32_t)raw[4] | ((uint32_t)raw[5] << 8) | ((uint32_t)raw[6] << 16) | ((uint32_t)raw[7] << 24);
-    return 1;
+uint32_t BootNor_Word(uint32_t offset) {
+    uint8_t raw[4];
+    if (!Open() || BootNorStage_Read(&g_stage, offset, raw, sizeof(raw)) != NORB_OK) return 0;
+    return (uint32_t)raw[0] | ((uint32_t)raw[1] << 8) | ((uint32_t)raw[2] << 16) | ((uint32_t)raw[3] << 24);
 }
 
 static int DigestSink(void *ctx, const uint8_t *data, uint32_t length) {
@@ -104,6 +102,7 @@ static int DigestSink(void *ctx, const uint8_t *data, uint32_t length) {
 
 uint8_t BootNor_Digest(const uint8_t *prefix, uint32_t prefix_len, uint32_t total, uint8_t out[32]) {
     Sha256Stream_t stream;
+    memset(out, 0, 32);
     if (!Open()) return 0;
     sha256_stream_begin(&stream);
     if (prefix_len > 0) sha256_stream_update(&stream, prefix, prefix_len);

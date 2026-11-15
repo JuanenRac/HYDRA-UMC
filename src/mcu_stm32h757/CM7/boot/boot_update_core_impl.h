@@ -18,6 +18,11 @@
 #else
 #define BOOT_STAGE_ERASE(total, pages) Flash_ErasePages(BACKUP_APP_ADDR, (pages))
 #define BOOT_STAGE_PAGE(address, index, buffer, length) Flash_WriteVerified((address), (buffer), (length))
+// The SHA-256 of `prefix` and then the staged image, the 32-bit word at `offset` of the staged image, the seal of a complete update and its copy over the application.
+#define BOOT_STAGE_DIGEST(prefix, prefix_len, total, out) sha256_prefixed_flash_region((prefix), (prefix_len), BACKUP_APP_ADDR, (total), (out))
+#define BOOT_STAGE_WORD(offset) (*(volatile const uint32_t*)(BACKUP_APP_ADDR + (offset)))
+#define BOOT_STAGE_FINISH(total, crc32) 1
+#define BOOT_STAGE_COMMIT(total, crc32) Flash_CopyRegion(MAIN_APP_ADDR, BACKUP_APP_ADDR, (total))
 #endif
 
 static uint8_t FlushPageBuffer(void) {

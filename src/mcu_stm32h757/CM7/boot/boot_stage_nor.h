@@ -13,5 +13,10 @@
 
 #define BOOT_STAGE_ERASE(total, pages) ((void)(pages), BootNor_Begin(total))
 #define BOOT_STAGE_PAGE(address, index, buffer, length) ((void)(address), BootNor_Page((index), (buffer), (length)))
+// A digest that cannot be read leaves `out` zero, which no signature covers and no metadata matches.
+#define BOOT_STAGE_DIGEST(prefix, prefix_len, total, out) ((void)BootNor_Digest((prefix), (prefix_len), (total), (out)))
+#define BOOT_STAGE_WORD(offset) BootNor_Word(offset)
+#define BOOT_STAGE_FINISH(total, crc32) BootNor_Finish((total), (crc32))
+#define BOOT_STAGE_COMMIT(total, crc32) BootNor_Commit((total), (crc32))
 
 #endif // BOOT_STAGE_NOR_H

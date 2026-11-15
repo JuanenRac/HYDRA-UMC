@@ -29,8 +29,8 @@
 // All of these answer 1 on success and 0 on any failure (the same convention as bootloader_flash.h); a NOR that does not answer makes every one of them 0.
 uint8_t BootNor_Begin(uint32_t total);                                                                // erase the image area for an update of `total` bytes
 uint8_t BootNor_Page(uint32_t index, const uint8_t *data, uint32_t length);                            // page `index` of FLASH_PAGE_SIZE bytes
-uint8_t BootNor_FirstWords(uint32_t *first, uint32_t *second);                                        // the first two words of the staged image (stack pointer and reset vector)
-uint8_t BootNor_Digest(const uint8_t *prefix, uint32_t prefix_len, uint32_t total, uint8_t out[32]);  // SHA-256 of prefix + the staged image, as sha256_prefixed_flash_region does for flash
+uint32_t BootNor_Word(uint32_t offset);                                                               // the word at `offset` of the staged image, 0 when it cannot be read (an image cannot start with a stack pointer of 0)
+uint8_t BootNor_Digest(const uint8_t *prefix, uint32_t prefix_len, uint32_t total, uint8_t out[32]);  // SHA-256 of prefix + the staged image, as sha256_prefixed_flash_region does for flash; zero in `out` when it cannot be read
 uint8_t BootNor_Finish(uint32_t total, uint32_t crc32);                                               // check the CRC-32 of the staged image and write its header
 uint8_t BootNor_Commit(uint32_t total, uint32_t crc32);                                               // write the staged image over the application slot and read it back
 // Boot-time rule: an application that is not good is replaced by the copy when the copy is the image the metadata describes. Returns 1 when the application was restored.

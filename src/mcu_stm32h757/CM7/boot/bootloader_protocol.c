@@ -107,16 +107,6 @@ static uint8_t ApplicationMatchesMetadata(const FirmwareMetadata_t *meta) {
 }
 #endif
 
-// The staged update becomes the application: from the backup slot of the internal flash, or, with the long slot, from the NOR (which checks that the staged image is the one of `size` and `crc32`).
-static uint8_t StagedImageToApplication(uint32_t size, uint32_t crc32) {
-#if HYDRA_NOR_BACKUP
-    return BootNor_Commit(size, crc32);
-#else
-    (void)crc32;
-    return Flash_CopyRegion(MAIN_APP_ADDR, BACKUP_APP_ADDR, size);
-#endif
-}
-
 uint8_t ApplicationIsValid(void) {
     FirmwareMetadata_t meta;
     if (!Metadata_Read(&meta)) {
@@ -144,9 +134,15 @@ uint8_t ApplicationIsValid(void) {
 
     if (meta.state == META_STATE_COPY_PENDING) {
         CAN_SendStatus(STATUS_COPYING);
-        if (!StagedImageToApplication(meta.size, meta.crc32)) {
+#if HYDRA_NOR_BACKUP
+        if (!BootNor_Commit(meta.size, meta.crc32)) {   // the copy in the NOR is the staged image: it must be the one of this metadata
             return 0;
         }
+#else
+        if (!Flash_CopyRegion(MAIN_APP_ADDR, BACKUP_APP_ADDR, meta.size)) {
+            return 0;
+        }
+#endif
         FirmwareMetadata_t done = meta;
         done.state = META_STATE_APP_VALID;
         if (!Metadata_EraseAndWrite(&done)) return 0;
@@ -309,28 +305,6 @@ void HandleReadbackStart(void) {
 }
 
 
-// Reads of the staged update: from the backup slot of the internal flash (memory mapped), or, with the long slot, from the NOR.
-static uint8_t StagedImageDigest(const uint8_t *prefix, uint32_t prefix_len, uint32_t total, uint8_t out[32]) {
-#if HYDRA_NOR_BACKUP
-    return BootNor_Digest(prefix, prefix_len, total, out);
-#else
-    sha256_prefixed_flash_region(prefix, prefix_len, BACKUP_APP_ADDR, total, out);
-    return 1;
-#endif
-}
-
-static void StagedImageFirstWords(uint32_t *first, uint32_t *second) {
-#if HYDRA_NOR_BACKUP
-    if (!BootNor_FirstWords(first, second)) {
-        *first = 0;   // an unreadable NOR gives words no image can have: the verdict is "refused", never a guess
-        *second = 0;
-    }
-#else
-    *first = *(volatile const uint32_t*)BACKUP_APP_ADDR;
-    *second = *(volatile const uint32_t*)(BACKUP_APP_ADDR + 4UL);
-#endif
-}
-
 void HandleEndUpdate(uint8_t *data) {
     if (!update_in_progress || update_failed) return;
     update_last_activity_tick = HAL_GetTick();
@@ -359,7 +333,7 @@ void HandleEndUpdate(uint8_t *data) {
     memset(actual_digest, 0, sizeof(actual_digest));
     if (update_bytes_received == update_total_size && update_signature_chunks_received == UPDATE_SIGNATURE_CHUNKS &&
         update_header_chunks_received == UPDATE_HEADER_CHUNKS) {
-        if (!StagedImageDigest(update_header, IMAGE_HEADER_SIZE, update_total_size, actual_digest)) memset(actual_digest, 0, sizeof(actual_digest));
+        BOOT_STAGE_DIGEST(update_header, IMAGE_HEADER_SIZE, update_total_size, actual_digest);
     }
 
     UpdateVerify2Input_t input;
@@ -380,7 +354,8 @@ void HandleEndUpdate(uint8_t *data) {
     input.nonce = update_nonce;
     input.expect.hw_id = THIS_HARDWARE_ID;
     input.expect.link_address = MAIN_APP_ADDR;
-    StagedImageFirstWords(&input.expect.first_word, &input.expect.second_word);
+    input.expect.first_word = BOOT_STAGE_WORD(0UL);
+    input.expect.second_word = BOOT_STAGE_WORD(4UL);
     input.expect.ram_lo = D1_AXISRAM_BASE + 0x400UL;       // the same range StackPointerInValidRAM() accepts: this core's AXI SRAM
     input.expect.ram_hi = D1_AXISRAM_BASE + 0x80000UL;
     const TrustKeys_t *trust = Trust_Active();
@@ -409,24 +384,18 @@ void HandleEndUpdate(uint8_t *data) {
         return;
     }
 
+    // The staged update is complete and verified: the place it was staged in seals it (nothing, for the backup slot of the internal flash).
+    if (!BOOT_STAGE_FINISH(update_total_size, actual_crc)) {
+        CAN_SendStatus(STATUS_ERROR);
+        update_in_progress = 0;
+        update_failed = 1;
+        return;
+    }
+
     // What the boot-time check of ApplicationIsValid() compares with is the SHA-256 of the image as it sits in the main slot, without the
     // header (the header is never stored), so that is what the metadata keeps; it needs no key, the signature was checked above.
     uint8_t image_digest[32];
-    if (!StagedImageDigest(NULL, 0, update_total_size, image_digest)) {
-        CAN_SendStatus(STATUS_ERROR);
-        update_in_progress = 0;
-        update_failed = 1;
-        return;
-    }
-#if HYDRA_NOR_BACKUP
-    // The header of the copy in the NOR is written only now that the update is verified, and only if the CRC-32 of what is staged is the one that was checked.
-    if (!BootNor_Finish(update_total_size, actual_crc)) {
-        CAN_SendStatus(STATUS_ERROR);
-        update_in_progress = 0;
-        update_failed = 1;
-        return;
-    }
-#endif
+    BOOT_STAGE_DIGEST(NULL, 0, update_total_size, image_digest);
 
     FirmwareMetadata_t pending = {0};
     pending.magic = METADATA_MAGIC_VALID;
@@ -447,7 +416,7 @@ void HandleEndUpdate(uint8_t *data) {
     }
 
     CAN_SendStatus(STATUS_COPYING);
-    if (!StagedImageToApplication(update_total_size, actual_crc)) {
+    if (!BOOT_STAGE_COMMIT(update_total_size, actual_crc)) {
         CAN_SendStatus(STATUS_ERROR);
         update_in_progress = 0;
         update_failed = 1;

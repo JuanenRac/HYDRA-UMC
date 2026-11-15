@@ -186,13 +186,34 @@ class SharedFilesAndRegistration(unittest.TestCase):
 
     def test_the_protocol_source_calls_the_nor_only_behind_the_switch(self):
         source = (ROOT / "src/mcu_stm32h757/CM7/boot/bootloader_protocol.c").read_text(encoding="utf-8").replace("\r\n", "\n")
-        for call in ("BootNor_Commit(", "BootNor_Digest(", "BootNor_FirstWords(", "BootNor_Finish(", "BootNor_RestoreIfLost("):
+        for call in ("BootNor_Commit(", "BootNor_RestoreIfLost("):
+            self.assertIn(call, source)
             for match in re.finditer(re.escape(call), source):
                 before = source[: match.start()]
                 last_if = max(before.rfind("#if HYDRA_NOR_BACKUP"), -1)
                 last_else = max(before.rfind("#else", last_if), before.rfind("#endif", last_if))
                 self.assertGreater(last_if, -1, call)
                 self.assertLess(last_else, last_if, call)
+
+    def test_the_end_of_an_update_asks_the_staging_through_macros_that_default_to_the_backup_slot(self):
+        core = (ROOT / "firmware_base/boot/boot_update_core_impl.h").read_text(encoding="utf-8")
+        for default in (
+            "#define BOOT_STAGE_DIGEST(prefix, prefix_len, total, out) sha256_prefixed_flash_region((prefix), (prefix_len), BACKUP_APP_ADDR, (total), (out))",
+            "#define BOOT_STAGE_WORD(offset) (*(volatile const uint32_t*)(BACKUP_APP_ADDR + (offset)))",
+            "#define BOOT_STAGE_FINISH(total, crc32) 1",
+            "#define BOOT_STAGE_COMMIT(total, crc32) Flash_CopyRegion(MAIN_APP_ADDR, BACKUP_APP_ADDR, (total))",
+        ):
+            self.assertIn(default, core)
+        stage = (ROOT / "src/mcu_stm32h757/CM7/boot/boot_stage_nor.h").read_text(encoding="utf-8")
+        for name in ("BOOT_STAGE_ERASE", "BOOT_STAGE_PAGE", "BOOT_STAGE_DIGEST", "BOOT_STAGE_WORD", "BOOT_STAGE_FINISH", "BOOT_STAGE_COMMIT"):
+            self.assertIn("#define " + name + "(", stage)
+        for folder in ("src/mcu_stm32g474/boot", "src/mcu_stm32h757/CM4/boot", "src/mcu_stm32h757/CM7/boot"):
+            source = (ROOT / folder / "bootloader_protocol.c").read_text(encoding="utf-8")
+            self.assertEqual(source.count("BOOT_STAGE_DIGEST("), 2, folder)
+            self.assertEqual(source.count("BOOT_STAGE_WORD("), 2, folder)
+            self.assertEqual(source.count("BOOT_STAGE_FINISH("), 1, folder)
+            self.assertEqual(source.count("BOOT_STAGE_COMMIT("), 1, folder)
+            self.assertNotIn("BACKUP_APP_ADDR, update_total_size", source, folder)
 
     def test_the_common_text_keeps_the_nor_files_in_the_cm7_boot_folder_only(self):
         for folder in ("src/mcu_stm32g474/boot", "src/mcu_stm32h757/CM4/boot"):
