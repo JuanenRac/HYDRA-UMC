@@ -124,6 +124,22 @@ void sha256_buffer(const uint8_t *msg, uint32_t msg_len, uint8_t out[32]) {
     sha256_final(&ctx, out);
 }
 
+#if defined(HYDRA_NOR_BACKUP) && HYDRA_NOR_BACKUP
+_Static_assert(sizeof(SHA256_CTX) <= sizeof(Sha256Stream_t), "the opaque stream holds a SHA-256 state");
+
+void sha256_stream_begin(Sha256Stream_t *stream) {
+    sha256_init((SHA256_CTX*)stream);
+}
+
+void sha256_stream_update(Sha256Stream_t *stream, const uint8_t *data, uint32_t len) {
+    if (len > 0) sha256_update((SHA256_CTX*)stream, data, len);
+}
+
+void sha256_stream_end(Sha256Stream_t *stream, uint8_t out[32]) {
+    sha256_final((SHA256_CTX*)stream, out);
+}
+#endif
+
 uint8_t digest_constant_time_compare(const uint8_t *a, const uint8_t *b, uint32_t len) {
     uint8_t diff = 0;
     for (uint32_t i = 0; i < len; i++) diff |= (uint8_t)(a[i] ^ b[i]);

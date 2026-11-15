@@ -382,7 +382,7 @@ void HandleEndUpdate(uint8_t *data) {
     memset(actual_digest, 0, sizeof(actual_digest));
     if (update_bytes_received == update_total_size && update_signature_chunks_received == UPDATE_SIGNATURE_CHUNKS &&
         update_header_chunks_received == UPDATE_HEADER_CHUNKS) {
-        sha256_prefixed_flash_region(update_header, IMAGE_HEADER_SIZE, BACKUP_APP_ADDR, update_total_size, actual_digest);
+        BOOT_STAGE_DIGEST(update_header, IMAGE_HEADER_SIZE, update_total_size, actual_digest);
     }
 
     UpdateVerify2Input_t input;
@@ -403,8 +403,8 @@ void HandleEndUpdate(uint8_t *data) {
     input.nonce = update_nonce;
     input.expect.hw_id = THIS_HARDWARE_ID;
     input.expect.link_address = MAIN_APP_ADDR;
-    input.expect.first_word = *(volatile const uint32_t*)BACKUP_APP_ADDR;
-    input.expect.second_word = *(volatile const uint32_t*)(BACKUP_APP_ADDR + 4UL);
+    input.expect.first_word = BOOT_STAGE_WORD(0UL);
+    input.expect.second_word = BOOT_STAGE_WORD(4UL);
     input.expect.ram_lo = SRAM_BASE + 0x100UL;       // the same range StackPointerInValidRAM() accepts
     input.expect.ram_hi = SRAM_BASE + 0x18000UL;
     const TrustKeys_t *trust = Trust_Active();
@@ -433,10 +433,18 @@ void HandleEndUpdate(uint8_t *data) {
         return;
     }
 
+    // The staged update is complete and verified: the place it was staged in seals it (nothing, for the backup slot of the internal flash).
+    if (!BOOT_STAGE_FINISH(update_total_size, actual_crc)) {
+        CAN_SendStatus(STATUS_ERROR);
+        update_in_progress = 0;
+        update_failed = 1;
+        return;
+    }
+
     // What the boot-time check of ApplicationIsValid() compares with is the SHA-256 of the image as it sits in the main slot, without the
     // header (the header is never stored), so that is what the metadata keeps; it needs no key, the signature was checked above.
     uint8_t image_digest[32];
-    sha256_prefixed_flash_region(NULL, 0, BACKUP_APP_ADDR, update_total_size, image_digest);
+    BOOT_STAGE_DIGEST(NULL, 0, update_total_size, image_digest);
 
     FirmwareMetadata_t pending = {0};
     pending.magic = METADATA_MAGIC_VALID;
@@ -457,7 +465,7 @@ void HandleEndUpdate(uint8_t *data) {
     }
 
     CAN_SendStatus(STATUS_COPYING);
-    if (!Flash_CopyRegion(MAIN_APP_ADDR, BACKUP_APP_ADDR, update_total_size)) {
+    if (!BOOT_STAGE_COMMIT(update_total_size, actual_crc)) {
         CAN_SendStatus(STATUS_ERROR);
         update_in_progress = 0;
         update_failed = 1;

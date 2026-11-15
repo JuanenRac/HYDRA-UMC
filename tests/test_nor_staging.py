@@ -40,14 +40,17 @@ class Spi5Driver(unittest.TestCase):
         source = (CM7 / "NorSpi5.c").read_text(encoding="utf-8")
         self.assertIsNone(re.search(r"GPIO_PIN_\d+|GPIO[A-K]\b", source))
 
-    def test_nothing_in_the_firmware_includes_the_driver_or_the_glue_yet(self):
+    def test_only_the_long_slot_part_of_the_bootloader_includes_the_driver_and_the_glue(self):
         users = [
             p.name
             for p in (ROOT / "src").rglob("*")
             if p.is_file() and p.suffix in (".c", ".h") and p.name not in {"NorSpi5.c", "NorSpi5.h", "nor_backup_glue.h"}
             and re.search(r'#include "(NorSpi5|nor_backup_glue)\.h"', p.read_text(encoding="utf-8", errors="ignore"))
         ]
-        self.assertEqual(users, [])
+        self.assertEqual(users, ["bootloader_nor.c"])
+        # and that file compiles to nothing unless the switch is on
+        source = (CM7 / "boot/bootloader_nor.c").read_text(encoding="utf-8")
+        self.assertIn("#if HYDRA_NOR_BACKUP", source)
 
 
 class SlotSize(unittest.TestCase):
@@ -60,10 +63,14 @@ class SlotSize(unittest.TestCase):
         regions = {r["name"]: r for r in pp.profile("h757_target")["memory_map"]["regions"]}
         self.assertEqual(regions["FLASH_APP_CM7"]["length"], 768 * 1024)
 
-    def test_the_build_does_not_define_the_switches(self):
+    def test_the_build_defines_the_switches_only_to_check_the_syntax_of_the_long_slot(self):
         build = (ROOT / "tools/build_firmware.py").read_text(encoding="utf-8")
+        start = build.index("def protocol_nor_commands")
+        end = build.index("\n\n\n", start)
         for name in ("HYDRA_APP_SLOT_768K", "HYDRA_NOR_BACKUP"):
-            self.assertNotIn(name, build)
+            self.assertEqual(build.count(name), build[start:end].count(name), name)
+            self.assertIn(name, build[start:end])
+            self.assertEqual(build.count("-fsyntax-only"), build[:start].count("-fsyntax-only") + 1 + build[end:].count("-fsyntax-only"))
 
 
 class Registered(unittest.TestCase):

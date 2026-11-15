@@ -20,6 +20,7 @@
 #include "bootloader_protocol.h"
 #include "bootloader_crypto.h"
 #include "bootloader_flash.h"
+#include "bootloader_nor.h"
 #include "update_signature.h"
 #include "update_verify.h"
 #include "bootloader_trust.h"
@@ -92,6 +93,20 @@ static uint8_t StackPointerInValidRAM(uint32_t sp) {
     return (sp >= D1_AXISRAM_BASE + 0x400UL && sp <= D1_AXISRAM_BASE + 0x80000UL);
 }
 
+#if HYDRA_NOR_BACKUP
+// The CRC-32 and the SHA-256 of the application in the flash are those the metadata keeps (the same two checks that end ApplicationIsValid, made twice in the long-slot build: before and after a restore).
+static uint8_t ApplicationMatchesMetadata(const FirmwareMetadata_t *meta) {
+    uint32_t crc = 0xFFFFFFFFUL;
+    crc = CRC32_Update(crc, (const uint8_t*)MAIN_APP_ADDR, meta->size);
+    crc = CRC32_Finalize(crc);
+    if (crc != meta->crc32) return 0;
+
+    uint8_t actual_digest[32];
+    sha256_prefixed_flash_region(NULL, 0, MAIN_APP_ADDR, meta->size, actual_digest);
+    return digest_constant_time_compare(actual_digest, meta->sha256, 32);
+}
+#endif
+
 uint8_t ApplicationIsValid(void) {
     FirmwareMetadata_t meta;
     if (!Metadata_Read(&meta)) {
@@ -119,15 +134,28 @@ uint8_t ApplicationIsValid(void) {
 
     if (meta.state == META_STATE_COPY_PENDING) {
         CAN_SendStatus(STATUS_COPYING);
+#if HYDRA_NOR_BACKUP
+        if (!BootNor_Commit(meta.size, meta.crc32)) {   // the copy in the NOR is the staged image: it must be the one of this metadata
+            return 0;
+        }
+#else
         if (!Flash_CopyRegion(MAIN_APP_ADDR, BACKUP_APP_ADDR, meta.size)) {
             return 0;
         }
+#endif
         FirmwareMetadata_t done = meta;
         done.state = META_STATE_APP_VALID;
         if (!Metadata_EraseAndWrite(&done)) return 0;
         meta = done;
     }
 
+#if HYDRA_NOR_BACKUP
+    if (ApplicationMatchesMetadata(&meta)) return 1;
+    // The application is damaged. With the long slot the copy lives in the NOR: it replaces the application only when it is the image this metadata describes, and the result is checked again.
+    CAN_SendStatus(STATUS_COPYING);
+    if (!BootNor_RestoreIfLost(meta.size, meta.crc32)) return 0;
+    return ApplicationMatchesMetadata(&meta);
+#else
     uint32_t crc = 0xFFFFFFFFUL;
     crc = CRC32_Update(crc, (const uint8_t*)MAIN_APP_ADDR, meta.size);
     crc = CRC32_Finalize(crc);
@@ -138,6 +166,7 @@ uint8_t ApplicationIsValid(void) {
     if (!digest_constant_time_compare(actual_digest, meta.sha256, 32)) return 0;
 
     return 1;
+#endif
 }
 
 void JumpToApplication(void) {
@@ -304,7 +333,7 @@ void HandleEndUpdate(uint8_t *data) {
     memset(actual_digest, 0, sizeof(actual_digest));
     if (update_bytes_received == update_total_size && update_signature_chunks_received == UPDATE_SIGNATURE_CHUNKS &&
         update_header_chunks_received == UPDATE_HEADER_CHUNKS) {
-        sha256_prefixed_flash_region(update_header, IMAGE_HEADER_SIZE, BACKUP_APP_ADDR, update_total_size, actual_digest);
+        BOOT_STAGE_DIGEST(update_header, IMAGE_HEADER_SIZE, update_total_size, actual_digest);
     }
 
     UpdateVerify2Input_t input;
@@ -325,8 +354,8 @@ void HandleEndUpdate(uint8_t *data) {
     input.nonce = update_nonce;
     input.expect.hw_id = THIS_HARDWARE_ID;
     input.expect.link_address = MAIN_APP_ADDR;
-    input.expect.first_word = *(volatile const uint32_t*)BACKUP_APP_ADDR;
-    input.expect.second_word = *(volatile const uint32_t*)(BACKUP_APP_ADDR + 4UL);
+    input.expect.first_word = BOOT_STAGE_WORD(0UL);
+    input.expect.second_word = BOOT_STAGE_WORD(4UL);
     input.expect.ram_lo = D1_AXISRAM_BASE + 0x400UL;       // the same range StackPointerInValidRAM() accepts: this core's AXI SRAM
     input.expect.ram_hi = D1_AXISRAM_BASE + 0x80000UL;
     const TrustKeys_t *trust = Trust_Active();
@@ -355,10 +384,18 @@ void HandleEndUpdate(uint8_t *data) {
         return;
     }
 
+    // The staged update is complete and verified: the place it was staged in seals it (nothing, for the backup slot of the internal flash).
+    if (!BOOT_STAGE_FINISH(update_total_size, actual_crc)) {
+        CAN_SendStatus(STATUS_ERROR);
+        update_in_progress = 0;
+        update_failed = 1;
+        return;
+    }
+
     // What the boot-time check of ApplicationIsValid() compares with is the SHA-256 of the image as it sits in the main slot, without the
     // header (the header is never stored), so that is what the metadata keeps; it needs no key, the signature was checked above.
     uint8_t image_digest[32];
-    sha256_prefixed_flash_region(NULL, 0, BACKUP_APP_ADDR, update_total_size, image_digest);
+    BOOT_STAGE_DIGEST(NULL, 0, update_total_size, image_digest);
 
     FirmwareMetadata_t pending = {0};
     pending.magic = METADATA_MAGIC_VALID;
@@ -379,7 +416,7 @@ void HandleEndUpdate(uint8_t *data) {
     }
 
     CAN_SendStatus(STATUS_COPYING);
-    if (!Flash_CopyRegion(MAIN_APP_ADDR, BACKUP_APP_ADDR, update_total_size)) {
+    if (!BOOT_STAGE_COMMIT(update_total_size, actual_crc)) {
         CAN_SendStatus(STATUS_ERROR);
         update_in_progress = 0;
         update_failed = 1;

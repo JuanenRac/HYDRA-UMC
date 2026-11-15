@@ -13,7 +13,7 @@
  *
  * Everything reaches the memories through the callbacks of NorbOps, so the same code runs on the host against two RAM doubles and on the board against the SPI5 driver and the flash
  * driver. The sector and block sizes are those of the GD25Q128E. tools/nor_backup_plan.py is the Python twin and reads config/nor_backup.cfg. The use of the copy ships off
- * (HYDRA_NOR_BACKUP 0): nothing in the bootloader calls this file yet. Evidence: simulator; nothing here has run on a board.
+ * (HYDRA_NOR_BACKUP 0): the bootloader of the CM7 calls it, through boot_nor_stage.h, only in the long-slot build. Evidence: simulator; nothing here has run on a board.
  * ============================================================================= */
 #ifndef HYDRA_UMC_NOR_BACKUP_PLAN_H
 #define HYDRA_UMC_NOR_BACKUP_PLAN_H

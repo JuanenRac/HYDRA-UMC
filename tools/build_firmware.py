@@ -442,6 +442,8 @@ def host_cases(root: str) -> list[Case]:
     )
     cases.append(_t("i2c_plan host logic tests passed", "host_tests_i2c_plan", "test_i2c_plan", [H757_COMMON]))
     cases.append(_t("nor_backup_plan host logic tests passed", "host_tests_nor_backup_plan", "test_nor_backup_plan", [H757_COMMON]))
+    cases.append(_t("boot_nor_stage host logic tests passed", "host_tests_boot_nor_stage", "test_boot_nor_stage", [H757_COMMON]))
+    cases.append(_t("nor_spi5_pins host logic tests passed", "host_tests_nor_spi5_pins", "test_nor_spi5_pins", [H757_COMMON]))
     cases.append(_t("nor_update_flow host logic tests passed", "host_tests_nor_update_flow", "test_nor_update_flow", [H757_COMMON]))
     cases.append(
         _t(
@@ -618,6 +620,33 @@ def protocol_commands(root: str, cc: str) -> list[tuple[str, list[str]]]:
             f"{root}/src/mcu_stm32h757/{core}/boot/bootloader_protocol.c",
         ]
         out.append((f"H745 {core} bootloader protocol source compiles against the stand-in HAL", command))
+    return out + protocol_nor_commands(root, cc)
+
+
+def protocol_nor_commands(root: str, cc: str) -> list[tuple[str, list[str]]]:
+    """The long-slot build of the CM7 bootloader (the staging and the copy in the NOR, off as it ships), compiled for its syntax only: the protocol source and the part that touches the board."""
+    out = []
+    for source in ("bootloader_protocol.c", "bootloader_nor.c"):
+        command = [
+            cc,
+            "-std=gnu11",
+            "-fsyntax-only",
+            "-Wall",
+            "-Wextra",
+            "-Wno-int-to-pointer-cast",
+            "-DHYDRA_PLATFORM_H757",
+            "-DHYDRA_APP_SLOT_768K=1",
+            "-DHYDRA_NOR_BACKUP=1",
+            "-DHYDRA_NOR_SPI5=1",
+            f"-I{root}/tests/stubs/h7protocol",
+            f"-I{root}/src/mcu_stm32h757/CM7/boot",
+            f"-I{root}/src/mcu_stm32h757/Common",
+            f"-I{root}/src/mcu_stm32h757/CM7",
+            f"-I{root}/src/mcu_stm32h757",
+            f"-I{root}/tests",
+            f"{root}/src/mcu_stm32h757/CM7/boot/{source}",
+        ]
+        out.append((f"CM7 long-slot bootloader source {source} (staging in the NOR) compiles against the stand-in HAL", command))
     return out
 
 

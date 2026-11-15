@@ -11,12 +11,26 @@
 #ifndef BOOT_UPDATE_CORE_IMPL_H
 #define BOOT_UPDATE_CORE_IMPL_H
 
+// Where the update is staged. By default it is the backup slot of the internal flash; a bootloader that stages elsewhere (the CM7 with the 768 KB slot keeps the update in the NOR, HYDRA_NOR_BACKUP)
+// defines BOOT_STAGE_ERASE and BOOT_STAGE_PAGE in its own boot_stage_nor.h. Without them the text below is what the three bootloaders always had.
+#if defined(HYDRA_NOR_BACKUP) && HYDRA_NOR_BACKUP
+#include "boot_stage_nor.h"
+#else
+#define BOOT_STAGE_ERASE(total, pages) Flash_ErasePages(BACKUP_APP_ADDR, (pages))
+#define BOOT_STAGE_PAGE(address, index, buffer, length) Flash_WriteVerified((address), (buffer), (length))
+// The SHA-256 of `prefix` and then the staged image, the 32-bit word at `offset` of the staged image, the seal of a complete update and its copy over the application.
+#define BOOT_STAGE_DIGEST(prefix, prefix_len, total, out) sha256_prefixed_flash_region((prefix), (prefix_len), BACKUP_APP_ADDR, (total), (out))
+#define BOOT_STAGE_WORD(offset) (*(volatile const uint32_t*)(BACKUP_APP_ADDR + (offset)))
+#define BOOT_STAGE_FINISH(total, crc32) 1
+#define BOOT_STAGE_COMMIT(total, crc32) Flash_CopyRegion(MAIN_APP_ADDR, BACKUP_APP_ADDR, (total))
+#endif
+
 static uint8_t FlushPageBuffer(void) {
     uint32_t page_addr = BACKUP_APP_ADDR + (current_page_index * FLASH_PAGE_SIZE);
     for (uint32_t i = page_buffer_fill; i < FLASH_PAGE_SIZE; i++) {
         page_buffer[i] = 0xFF;
     }
-    uint8_t ok = Flash_WriteVerified(page_addr, page_buffer, FLASH_PAGE_SIZE);
+    uint8_t ok = BOOT_STAGE_PAGE(page_addr, current_page_index, page_buffer, FLASH_PAGE_SIZE);
     if (ok) {
         CAN_SendPageAck(current_page_index);
         current_page_index++;
@@ -46,7 +60,7 @@ uint8_t HandleStartUpdate(uint8_t *data) {
 
     uint32_t pages_needed = (update_total_size + FLASH_PAGE_SIZE - 1) / FLASH_PAGE_SIZE;
     CAN_SendStatus(STATUS_ERASING);
-    if (!Flash_ErasePages(BACKUP_APP_ADDR, pages_needed)) {
+    if (!BOOT_STAGE_ERASE(update_total_size, pages_needed)) {
         CAN_SendStatus(STATUS_ERROR);
         update_failed = 1;
         update_in_progress = 0;
