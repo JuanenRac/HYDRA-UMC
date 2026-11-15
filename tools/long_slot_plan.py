@@ -12,7 +12,7 @@
 
 The variant is the CM7 bootloader compiled with the 768 KB slot (HYDRA_APP_SLOT_768K, which needs the copy in the NOR: HYDRA_NOR_BACKUP and HYDRA_NOR_SPI5) and the CM7 application linked
 with the 768 KB script. It is a build option that ships OFF (HYDRA_LONG_SLOT=1 in the environment of tools/build_firmware.py, step 10c): without it the build is the one it was, and the long
-images are left in build/h7/<output_dir>, never in firmware/. The link check is where the budget of the interface library is compared with a linked firmware: the 300 KiB that
+images are left in build/h745/<output_dir>, never in firmware/. The link check is where the budget of the interface library is compared with a linked firmware: the 300 KiB that
 docs/UI_STACK_H757.md counts are for the linked image, so the size of the application that was just linked is added to the interface of tools/ui_budget.py and the sum must leave the configured share
 of the slot free. Evidence: simulator (the sizes are those of a build, nothing ran on a board)."""
 from __future__ import annotations
@@ -156,7 +156,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.plan:
         print("bootloader flags:", " ".join(compile_flags(cfg)))
         print("application linker:", cfg["linker"])
-        print("folder:", f"build/h7/{cfg['output_dir']}")
+        print("folder:", f"build/h745/{cfg['output_dir']}")
         print("names:", image_name("BOOTLOADER", "vX.Y.Z", cfg), image_name("APP", "vX.Y.Z", cfg))
         return 0
     if args.link:

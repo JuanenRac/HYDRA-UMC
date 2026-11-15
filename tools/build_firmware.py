@@ -1250,7 +1250,7 @@ class Stage2:
 
     def step10c(self) -> None:
         """The long-slot variant of the CM7 (HYDRA_LONG_SLOT=1, off as it ships): the bootloader compiled with the 768 KB slot and the application linked with the 768 KB script.
-        Nothing here touches the default set: the objects, the images and their sums are left in build/h7/<output_dir> and are never moved into firmware/."""
+        Nothing here touches the default set: the objects, the images and their sums are left in build/h745/<output_dir> and are never moved into firmware/."""
         r = self.r
         r.step("10c. Kinematic Brain CM7 long-slot variant (768 KB application slot, copy in the NOR; HYDRA_LONG_SLOT=1; nothing of the default set changes)")
         h7 = self.h7

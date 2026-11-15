@@ -221,7 +221,7 @@ jobs:
           set -euo pipefail
           {
             echo "### Long-slot variant of the CM7 (768 KB slot), not shipped"
-            (cd build/h7/long_slot && find . -name 'HYDRA_*LONG_SLOT*.bin' -exec sha256sum {} + | sed 's/^/- /')
+            (cd build/h745/long_slot && find . -name 'HYDRA_*LONG_SLOT*.bin' -exec sha256sum {} + | sed 's/^/- /')
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the images
