@@ -20,6 +20,10 @@ The internal flash (2 MB in two banks) and the SRAM are those of the STM32H745/H
 
 The SDRAM is not usable for heap, framebuffer or DMA before the JEDEC start-up sequence, the real refresh and the data, address, marching and temperature tests the CubeMX guide asks for. The CubeMX values (CAS 3, 13 rows, 10 columns, SDCLK period 2, read burst, tMRD 2, tXSR 7, tRAS 5, tRC 7, tWR 2, tRP 3, tRCD 3) are starting values. Since then the start-up is planned from the profile (`tools/sdram_plan.py`: the registers of the FMC and the JEDEC sequence, with the size of each bank and whether it is enabled as settings of the profile) and written in C as `src/mcu_stm32h757/Common/sdram_init.h`, run on the host against a double of the FMC; the memory tests are written (`memtest.h`) and `src/mcu_stm32h757/Common/sdram_banks.h` can run them on the optional second bank and drop that bank when it fails (`HYDRA_SDRAM_BANK2_PROBE`, off by default, run on the host against a RAM double only); nothing has run on a board.
 
+## Linker scripts and the backup of the 768 KB slot
+
+`python tools/linker_memory_gen.py` writes the MEMORY block of the application linker scripts from the profile (`--check` fails when a script differs). The scripts of the default platform keep 384 KB for each core; `STM32H757XIHx_CM7_APP_768K.ld` is the script of the H757 slot and is not built by default. With 768 KB the second half of bank 1 is the application, so its backup copy lives in the NOR flash (`app_backup_cm7` in the profile; layout and restore in `src/mcu_stm32h757/Common/nor_backup_plan.h`, numbers in `config/nor_backup.cfg`, switch `HYDRA_NOR_BACKUP`, off by default). The bootloader does not call the copy yet and `APP_MAX_SIZE` stays at 384 KB until the SPI5 driver of the NOR and the staging of the update there exist; nothing has run on a board.
+
 ## Not memory mapped
 
 The GD25Q128E NOR flash (16 MiB) is on **SPI5** in standard SPI mode (6.25 Mbit/s in the CubeMX project), written and read through the SPI5 driver. It has no region.

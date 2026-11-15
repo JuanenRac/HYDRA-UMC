@@ -82,6 +82,7 @@ def table() -> list[HostTest]:
         HostTest("ipc_link@h757_crc0", "tests/test_ipc_link.c", (f"{H7}/Common",), defines=("HYDRA_PLATFORM_H757",)),
         HostTest("ipc_link@h757_crc1", "tests/test_ipc_link.c", (f"{H7}/Common",), defines=("HYDRA_PLATFORM_H757", "HYDRA_IPC_REQUIRE_CRC=1",)),
         HostTest("i2c_plan", "tests/test_i2c_plan.c", (f"{H7}/Common",)),
+        HostTest("nor_backup_plan", "tests/test_nor_backup_plan.c", (f"{H7}/Common",)),
         HostTest("fram_i2c4", "tests/test_fram_i2c4.c", ("tests/stubs/h7i2c4", f"{H7}/CM7", f"{H7}/CM4", f"{H7}/Common"), defines=("HYDRA_FRAM_I2C4_CM7=1",),
                  extra_sources=(f"{H7}/CM7/FramI2c4.c",)),
         HostTest("i2c_buses", "tests/test_i2c_buses.c", ("tests/stubs/h7i2cbuses", f"{H7}/CM7", f"{H7}/Common"), defines=("HYDRA_I2C_BUSES_CM7=1",),

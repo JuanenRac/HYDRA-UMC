@@ -21,6 +21,9 @@ PROFILES_PATH = Path(__file__).resolve().parents[1] / "docs" / "platform_profile
 BUS_CONTRACT_PATH = Path(__file__).resolve().parents[1] / "docs" / "bus_contract.json"
 NODES = ("CM4", "CM7")
 SPI_ROLES = ("master", "slave")
+INTERNAL_BACKUP_SLOT_BYTES = 393216  # the sectors 5 to 7 of bank 1
+NOR_SECTOR_BYTES = 4096
+NOR_BLOCK_BYTES = 65536
 
 
 def load(path: Path = PROFILES_PATH) -> dict:
@@ -165,6 +168,29 @@ def memory_problems(name: str, profile: dict) -> list[str]:
     for r in regions:
         if not r.get("source") or not r.get("status"):
             found.append(f"{name}: {r['name']} says nowhere where it comes from")
+    found += backup_problems(name, profile)
+    return found
+
+
+def backup_problems(name: str, profile: dict) -> list[str]:
+    """A CM7 application slot longer than the 384 KB the internal backup slot can hold needs its copy elsewhere: the NOR flash of SPI5, large enough and with the offset and size on the erase units."""
+    found: list[str] = []
+    memory = profile["memory_map"]
+    slot = next((r for r in memory["regions"] if r["name"] == "FLASH_APP_CM7"), None)
+    if slot is None or slot["length"] <= INTERNAL_BACKUP_SLOT_BYTES:
+        return found
+    backup = memory.get("app_backup_cm7")
+    if backup is None:
+        return [f"{name}: FLASH_APP_CM7 is {slot['length'] // 1024} KB, more than the internal backup slot, and the profile says nowhere where its copy lives"]
+    nor = next((n for n in memory.get("not_memory_mapped", []) if n["name"] == backup.get("where")), None)
+    if nor is None:
+        return [f"{name}: the copy of the CM7 application is in {backup.get('where')}, which is not a memory of the profile"]
+    if backup["length_bytes"] < slot["length"]:
+        found.append(f"{name}: the copy of the CM7 application ({backup['length_bytes']} bytes) is smaller than its slot ({slot['length']} bytes)")
+    if backup["offset_bytes"] % NOR_BLOCK_BYTES or backup["length_bytes"] % NOR_SECTOR_BYTES:
+        found.append(f"{name}: the copy of the CM7 application is not on the erase units of the NOR flash")
+    if backup["offset_bytes"] + NOR_BLOCK_BYTES + backup["length_bytes"] > nor["size_bytes"]:
+        found.append(f"{name}: the copy of the CM7 application (with its headers) does not fit in {nor['name']}")
     return found
 
 
