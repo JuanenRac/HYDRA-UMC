@@ -60,6 +60,7 @@ typedef struct {
 
 typedef struct {
     uint32_t sequence, length, crc32;
+    uint32_t version; /* the packed version of the application saved (Nuf_VersionPack), 0 when it is not known: the word that older headers kept at zero */
 } NorbHeader;
 
 typedef struct {
@@ -125,14 +126,14 @@ static inline uint32_t Norb_Get32(const uint8_t *p)
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
-/* the 24 bytes of a header: magic, sequence, length, CRC-32 of the image, a zero word, CRC-32 of the first 20 bytes (all little-endian) */
+/* the 24 bytes of a header: magic, sequence, length, CRC-32 of the image, the version word (zero in a copy that does not know it), CRC-32 of the first 20 bytes (all little-endian) */
 static inline void Norb_HeaderEncode(const NorbHeader *h, uint8_t out[NORB_HEADER_BYTES])
 {
     Norb_Put32(out, NORB_MAGIC);
     Norb_Put32(out + 4, h->sequence);
     Norb_Put32(out + 8, h->length);
     Norb_Put32(out + 12, h->crc32);
-    Norb_Put32(out + 16, 0UL);
+    Norb_Put32(out + 16, h->version);
     Norb_Put32(out + 20, Norb_Crc32(out, 20UL));
 }
 
@@ -145,6 +146,7 @@ static inline int Norb_HeaderDecode(const uint8_t in[NORB_HEADER_BYTES], uint32_
     h->sequence = Norb_Get32(in + 4);
     h->length = Norb_Get32(in + 8);
     h->crc32 = Norb_Get32(in + 12);
+    h->version = Norb_Get32(in + 16);
     return 1;
 }
 
@@ -212,8 +214,8 @@ static inline int Norb_WriteHeader(const NorbOps *ops, const NorbLayout *l, cons
     return NORB_OK;
 }
 
-/* Saves the application of the flash (`length` bytes) into the NOR: image first, header last, into the header that is NOT the newest. */
-static inline int Norb_Save(const NorbOps *ops, const NorbConfig *c, uint32_t length)
+/* Saves the application of the flash (`length` bytes) into the NOR: image first, header last, into the header that is NOT the newest. `version` is kept in the header (0: not known). */
+static inline int Norb_SaveVersioned(const NorbOps *ops, const NorbConfig *c, uint32_t length, uint32_t version)
 {
     NorbLayout l;
     NorbHeader newest, h;
@@ -235,7 +237,14 @@ static inline int Norb_Save(const NorbOps *ops, const NorbConfig *c, uint32_t le
     }
     h.length = length;
     h.crc32 = ~crc;
+    h.version = version;
     return Norb_WriteHeader(ops, &l, &h, have && which == 0);
+}
+
+/* the same save without a version (the header keeps zero there, as the first copies did) */
+static inline int Norb_Save(const NorbOps *ops, const NorbConfig *c, uint32_t length)
+{
+    return Norb_SaveVersioned(ops, c, length, 0UL);
 }
 
 /* A staged update (the 768 KB slot has no room in the flash for the second copy, so the update that arrives page by page is written into the image area of the NOR, checked there and
@@ -277,6 +286,7 @@ static inline int Norb_StageFinish(const NorbOps *ops, const NorbConfig *c, uint
     h.sequence = have ? newest.sequence + 1UL : 1UL;
     h.length = total;
     h.crc32 = crc32;
+    h.version = 0UL;
     return Norb_WriteHeader(ops, &l, &h, have && which == 0);
 }
 

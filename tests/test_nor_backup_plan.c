@@ -161,11 +161,21 @@ int main(void)
     h.sequence = 5;
     h.length = 0x1000;
     h.crc32 = 0xDEADBEEFUL;
+    h.version = 0UL;
     Norb_HeaderEncode(&h, raw);
     CHECK(raw[0] == 0x4E && raw[1] == 0x4F && raw[2] == 0x52 && raw[3] == 0x42, "magic NORB");
     CHECK(raw[4] == 5 && raw[8] == 0x00 && raw[9] == 0x10 && raw[12] == 0xEF && raw[15] == 0xDE && raw[16] == 0, "header fields little-endian");
     CHECK(Norb_Get32(raw + 20) == Norb_Crc32(raw, 20), "header crc");
-    CHECK(Norb_HeaderDecode(raw, 0x2000UL, &h2) && h2.sequence == 5 && h2.length == 0x1000 && h2.crc32 == 0xDEADBEEFUL, "header round trip");
+    CHECK(Norb_HeaderDecode(raw, 0x2000UL, &h2) && h2.sequence == 5 && h2.length == 0x1000 && h2.crc32 == 0xDEADBEEFUL && h2.version == 0UL, "header round trip");
+    /* the version word: an old header keeps zero there and reads back as no version; a version survives the round trip under the header CRC */
+    h.version = 0x00100203UL;
+    Norb_HeaderEncode(&h, raw);
+    CHECK(raw[16] == 0x03 && raw[17] == 0x02 && raw[18] == 0x10 && raw[19] == 0x00, "the version word is little-endian");
+    CHECK(Norb_Get32(raw + 20) == Norb_Crc32(raw, 20), "and the header CRC covers it");
+    CHECK(Norb_HeaderDecode(raw, 0x2000UL, &h2) && h2.version == 0x00100203UL, "a version round trip");
+    raw[17] ^= 1;
+    CHECK(!Norb_HeaderDecode(raw, 0x2000UL, &h2), "a damaged version word is refused");
+    h.version = 0UL;
     CHECK(!Norb_HeaderDecode(raw, 0x800UL, &h2), "length above the slot");
     raw[0] ^= 1;
     CHECK(!Norb_HeaderDecode(raw, 0x2000UL, &h2), "damaged magic");

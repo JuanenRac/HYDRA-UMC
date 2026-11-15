@@ -44,16 +44,17 @@ def plan(cfg: dict) -> dict:
     return {"header_a": start, "header_b": start + SECTOR, "image_offset": start + BLOCK, "image_bytes_max": cfg["slot_bytes"], "end": start + BLOCK + image_bytes}
 
 
-def header_encode(sequence: int, length: int, crc32: int) -> bytes:
-    body = struct.pack("<5I", MAGIC, sequence, length, crc32, 0)
+def header_encode(sequence: int, length: int, crc32: int, version: int = 0) -> bytes:
+    """The 24 bytes of a header; `version` is the packed version of the application saved (0 when it is not known, as in the first copies)."""
+    body = struct.pack("<5I", MAGIC, sequence, length, crc32, version)
     return body + struct.pack("<I", zlib.crc32(body))
 
 
 def header_decode(raw: bytes, slot_bytes: int) -> dict | None:
-    magic, sequence, length, crc32, _zero, check = struct.unpack("<6I", raw)
+    magic, sequence, length, crc32, version, check = struct.unpack("<6I", raw)
     if magic != MAGIC or check != zlib.crc32(raw[:20]) or not 0 < length <= slot_bytes:
         return None
-    return {"sequence": sequence, "length": length, "crc32": crc32}
+    return {"sequence": sequence, "length": length, "crc32": crc32, "version": version}
 
 
 def newest(a: dict | None, b: dict | None) -> tuple[dict, int] | None:

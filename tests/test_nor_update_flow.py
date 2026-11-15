@@ -181,7 +181,7 @@ class PowerCuts(unittest.TestCase):
         b.left = cut
         state = {"finished": False}
         try:
-            b.backup_before_update(True, len(self.OLD))
+            b.backup_before_update(True, len(self.OLD), nu.version_pack(0, 9, 4))
             b.stage_begin(len(self.NEW))
             for offset in range(0, len(self.NEW), 4096):
                 b.stage_page(offset, self.NEW[offset : offset + 4096])
@@ -202,12 +202,13 @@ class PowerCuts(unittest.TestCase):
             b, finished, _ = self.run_update(cut)
             want, crc = (self.NEW, zlib.crc32(self.NEW)) if finished else (self.OLD, zlib.crc32(self.OLD))
             good = zlib.crc32(bytes(b.flash[: len(want)])) == crc
-            result, used, length, restored_crc = b.recover_for(good, len(want), crc)
+            result, used, length, restored_crc, version = b.recover_for_versioned(good, len(want), crc)
             self.assertEqual(result, nu.OK, cut)
             self.assertNotEqual(used, nu.LOST, cut)
             self.assertEqual(bytes(b.flash[: len(want)]), want, cut)
             if used == nu.ROLLBACK_PREVIOUS:
                 self.assertEqual((length, restored_crc), (len(self.OLD), zlib.crc32(self.OLD)), cut)
+                self.assertEqual(version, nu.version_pack(0, 9, 4), cut)
 
     def test_a_cut_during_the_backup_leaves_the_running_application_untouched(self):
         for cut in range(40):
@@ -218,6 +219,79 @@ class PowerCuts(unittest.TestCase):
             except nu.PowerCut:
                 pass
             self.assertEqual(bytes(b.flash[: len(self.OLD)]), self.OLD, cut)
+
+
+class PreviousVersion(unittest.TestCase):
+    """The version of the saved application travels in the header of the previous copy; a copy without one reads as 0.0.0."""
+
+    V1, V2 = nu.version_pack(0, 9, 4), nu.version_pack(1, 20, 1023)
+
+    def test_the_packing_is_the_one_of_c(self):
+        self.assertEqual(nu.version_pack(0, 0, 0), 0)
+        self.assertEqual(self.V1, (9 << 10) | 4)
+        self.assertEqual(self.V2, (1 << 20) | (20 << 10) | 1023)
+        self.assertEqual(nu.version_unpack(self.V2), (1, 20, 1023))
+        for bad in ((1024, 0, 0), (0, 1024, 0), (0, 0, 1024), (-1, 0, 0)):
+            self.assertEqual(nu.version_pack(*bad), 0, bad)
+        self.assertEqual(nu.version_unpack(0x40000000 | self.V1), (0, 0, 0))
+
+    def test_the_header_keeps_it_under_its_crc(self):
+        import nor_backup_plan as nb
+
+        raw = nb.header_encode(7, 100, 5, self.V1)
+        self.assertEqual(nb.header_decode(raw, 200)["version"], self.V1)
+        self.assertEqual(raw[16:20], self.V1.to_bytes(4, "little"))
+        self.assertIsNone(nb.header_decode(raw[:17] + bytes([raw[17] ^ 1]) + raw[18:], 200))
+        self.assertEqual(nb.header_decode(nb.header_encode(7, 100, 5), 200)["version"], 0)  # the first copies kept zero there
+
+    def test_the_way_back_returns_the_version(self):
+        old, new = image(3, 10000), image(77, 12000)
+        b = board(old)
+        self.assertEqual(b.backup_before_update(True, 10000, self.V1), (nu.OK, True))
+        b.flash[:] = b"\x00" * len(b.flash)
+        self.assertEqual(b.recover_for_versioned(False, 5, 6), (nu.OK, nu.ROLLBACK_PREVIOUS, 10000, zlib.crc32(old), self.V1))
+        self.assertEqual(b.recover_for(False, 5, 6), (nu.OK, nu.ROLLBACK_PREVIOUS, 10000, zlib.crc32(old)))
+        b.flash[:12000] = new
+        self.assertEqual(b.backup_before_update(True, 12000, self.V2), (nu.OK, True))
+        self.assertEqual(b.recover_for_versioned(False, 5, 6)[4], self.V2)
+
+    def test_an_old_copy_and_the_current_copy_carry_no_version(self):
+        old = image(3, 10000)
+        b = board(old)
+        b.save("previous", 10000)  # as the first copies were made
+        b.flash[:] = b"\x00" * len(b.flash)
+        self.assertEqual(b.recover_for_versioned(False, 5, 6), (nu.OK, nu.ROLLBACK_PREVIOUS, 10000, zlib.crc32(old), 0))
+        self.assertEqual(nu.version_unpack(0), (0, 0, 0))
+        current = board(old)
+        current.save("current", 10000, self.V1)
+        current.flash[:] = b"\x00" * len(current.flash)
+        self.assertEqual(current.recover_for_versioned(False, 10000, zlib.crc32(old)), (nu.OK, nu.RESTORE_CURRENT, 10000, zlib.crc32(old), 0))
+        self.assertEqual(board().recover_for_versioned(False, 5, 6), (nu.E_NONE, nu.LOST, 0, 0, 0))
+        self.assertEqual(board(old).recover_for_versioned(True, 5, 6), (nu.OK, nu.NONE, 0, 0, 0))
+
+    def test_a_cut_in_a_second_backup_never_mixes_the_version_with_another_image(self):
+        first, second = image(3, 10000), image(77, 6000)
+        probe = board(first)
+        probe.backup_before_update(True, 10000, self.V1)
+        probe.flash[:6000] = second
+        probe.done = 0
+        probe.backup_before_update(True, 6000, self.V2)
+        total = probe.done
+        self.assertGreater(total, 5)
+        for cut in range(total + 1):
+            b = board(first)
+            b.backup_before_update(True, 10000, self.V1)
+            b.flash[:6000] = second
+            b.left = cut
+            try:
+                b.backup_before_update(True, 6000, self.V2)
+            except nu.PowerCut:
+                pass
+            b.left = None
+            b.flash[:] = b"\x00" * len(b.flash)
+            result, _used, length, _crc, version = b.recover_for_versioned(False, 5, 6)
+            if result == nu.OK:
+                self.assertIn((length, version), ((10000, self.V1), (6000, self.V2)), cut)
 
 
 class File(unittest.TestCase):
@@ -282,8 +356,8 @@ class Wiring(unittest.TestCase):
 
     def test_the_start_up_choice_is_the_one_of_the_python_twin(self):
         protocol = self.read("src/mcu_stm32h757/CM7/boot/bootloader_protocol.c")
-        self.assertIn("if (!BootNor_RecoverAtStart(meta.size, meta.crc32, &restored_length, &restored_crc, &rolled_back)) return 0;\n    if (rolled_back) return AdoptPreviousApplication(", protocol)
-        self.assertIn("return BootNor_BackupBeforeUpdate(good, good ? meta.size : 0UL);", protocol)
+        self.assertIn("if (!BootNor_RecoverAtStart(meta.size, meta.crc32, &restored_length, &restored_crc, restored_version, &rolled_back)) return 0;\n    if (rolled_back) return AdoptPreviousApplication(", protocol)
+        self.assertIn("return BootNor_BackupBeforeUpdate(good, good ? meta.size : 0UL, meta.version_major, meta.version_minor, meta.version_patch);", protocol)
         # the rollback counter is not lowered by the metadata that describes the previous application
         adopt = protocol[protocol.index("static uint8_t AdoptPreviousApplication") :]
         adopt = adopt[: adopt.index("\n}\n")]

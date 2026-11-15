@@ -42,12 +42,12 @@ uint8_t BootNor_Commit(uint32_t total, uint32_t crc32);                         
 uint8_t BootNor_RestoreIfLost(uint32_t size, uint32_t crc32);
 
 #if HYDRA_NOR_BACKUP_BEFORE_UPDATE
-// Before an update starts: saves the application of the flash (`app_length` bytes, when `app_good`) into the second region. Returns 1 when the update may go on (the backup worked, there was
+// Before an update starts: saves the application of the flash (`app_length` bytes and its version, when `app_good`; the header of the copy keeps the three numbers packed) into the second region. Returns 1 when the update may go on (the backup worked, there was
 // nothing to protect, or the configuration lets it go on without) and 0 when it is refused.
-uint8_t BootNor_BackupBeforeUpdate(uint8_t app_good, uint32_t app_length);
+uint8_t BootNor_BackupBeforeUpdate(uint8_t app_good, uint32_t app_length, uint32_t version_major, uint32_t version_minor, uint32_t version_patch);
 // Boot-time rule for an application that is not good, against the metadata (`size`, `crc32`): the current copy when it is that image, otherwise the application that ran before the update.
-// Returns 1 when an application was written to the flash; `*length` and `*crc32` describe it and `*rolled_back` says it is the previous one (the metadata then has to be written again).
-uint8_t BootNor_RecoverAtStart(uint32_t size, uint32_t crc32, uint32_t *length, uint32_t *crc, uint8_t *rolled_back);
+// Returns 1 when an application was written to the flash; `*length`, `*crc32` and `version[3]` (major, minor, patch; 0.0.0 when the copy kept none) describe it and `*rolled_back` says it is the previous one (the metadata then has to be written again).
+uint8_t BootNor_RecoverAtStart(uint32_t size, uint32_t crc32, uint32_t *length, uint32_t *crc, uint32_t version[3], uint8_t *rolled_back);
 #endif // HYDRA_NOR_BACKUP_BEFORE_UPDATE
 
 #endif // HYDRA_NOR_BACKUP
