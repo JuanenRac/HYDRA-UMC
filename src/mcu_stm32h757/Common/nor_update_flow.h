@@ -9,8 +9,10 @@
  * one is put back. The two regions are two NorbConfig (two plans of nor_backup_plan.h) that must not overlap and must fit the NOR. The backup is made only when the application in the
  * flash is good (a broken one is not worth keeping: the update is then the repair); when the backup fails the update is refused unless the configuration says it may go on without it
  * (require_backup). Nuf_Recover picks what to do at start-up: nothing, restore the current copy (a cut of the power in the middle of a commit), or fall back to the previous one.
- * tools/nor_update_flow.py is the Python twin and reads config/nor_backup.cfg. The use of this flow ships off (HYDRA_NOR_BACKUP_BEFORE_UPDATE 0): nothing in the bootloader calls it
- * yet. Evidence: simulator; nothing here has run on a board.
+ * Nuf_RecoverFor is the start-up choice made against the metadata of the application: the current copy is used only when it is the image the metadata describes, so an older copy never
+ * replaces a newer application; otherwise the previous application comes back, and the caller learns its length and CRC-32 to describe it again.
+ * tools/nor_update_flow.py is the Python twin and reads config/nor_backup.cfg. The use of this flow ships off (HYDRA_NOR_BACKUP_BEFORE_UPDATE 0): the bootloader of the CM7 calls it
+ * (src/mcu_stm32h757/CM7/boot/bootloader_nor.c) only in the long-slot build that switches it on. Evidence: simulator; nothing here has run on a board.
  * ============================================================================= */
 #ifndef HYDRA_UMC_NOR_UPDATE_FLOW_H
 #define HYDRA_UMC_NOR_UPDATE_FLOW_H
@@ -107,6 +109,44 @@ static inline int Nuf_Recover(const NorbOps *ops, const NufConfig *c, int app_go
         act = NUF_ACT_ROLLBACK_PREVIOUS;
     }
     if (act == NUF_ACT_ROLLBACK_PREVIOUS && Norb_Restore(ops, &c->previous, restored_length) == NORB_OK) {
+        *used = NUF_ACT_ROLLBACK_PREVIOUS;
+        return NUF_OK;
+    }
+    *used = NUF_ACT_LOST;
+    return NUF_E_NONE;
+}
+
+/* the image that came back into the flash */
+typedef struct {
+    uint32_t length;
+    uint32_t crc32;
+} NufRestored;
+
+/* Start-up recovery against the metadata of the application (`length`, `crc32`): the current copy comes back only when it is exactly that image; a current copy that is older, damaged or
+ * refused by the flash gives way to the previous application. `*used` is the action that worked and `out` describes what is now in the flash. */
+static inline int Nuf_RecoverFor(const NorbOps *ops, const NufConfig *c, int app_good, uint32_t length, uint32_t crc32, NufRestored *out, int *used)
+{
+    NorbLayout current, previous;
+    NorbHeader h = {0, 0, 0};
+    int act, matches, which, rc;
+    if (ops == 0 || out == 0 || used == 0) return NUF_E_ARG;
+    *used = NUF_ACT_NONE;
+    rc = Nuf_Plan(c, &current, &previous);
+    if (rc != NUF_OK) return rc;
+    matches = Norb_ReadHeaders(ops, &current, c->current.slot_bytes, &h, &which) && h.length == length && h.crc32 == crc32 && Norb_CopyExists(ops, &c->current);
+    act = Nuf_Decide(app_good, matches, Norb_CopyExists(ops, &c->previous));
+    if (act == NUF_ACT_NONE) return NUF_OK;
+    if (act == NUF_ACT_RESTORE_CURRENT) {
+        if (Norb_Restore(ops, &c->current, &out->length) == NORB_OK) {
+            out->crc32 = crc32;
+            *used = NUF_ACT_RESTORE_CURRENT;
+            return NUF_OK;
+        }
+        act = NUF_ACT_ROLLBACK_PREVIOUS;
+    }
+    if (act == NUF_ACT_ROLLBACK_PREVIOUS && Norb_Restore(ops, &c->previous, &out->length) == NORB_OK) {
+        (void)Norb_ReadHeaders(ops, &previous, c->previous.slot_bytes, &h, &which);
+        out->crc32 = h.crc32;
         *used = NUF_ACT_ROLLBACK_PREVIOUS;
         return NUF_OK;
     }

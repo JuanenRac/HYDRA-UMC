@@ -5,8 +5,9 @@
  * =============================================================================
  * Host test of the backup of the application slot before an update (src/mcu_stm32h757/Common/nor_update_flow.h) against two RAM doubles (a NOR with erase-before-write and a flash): the
  * layout of the two regions and its refusals, the backup only when the application is good, the update refused when the backup fails and allowed when the file says so, the start-up
- * choice in all its branches, the way back to the previous application when the new one is lost, and a cut of the power at every operation of the backup, after which the running
- * application is untouched and a previous copy that is restored is always an application that was saved. Evidence: simulator.
+ * choice in all its branches, the way back to the previous application when the new one is lost, a cut of the power at every operation of the backup, after which the running
+ * application is untouched and a previous copy that is restored is always an application that was saved, the start-up choice made against the metadata of the application
+ * (Nuf_RecoverFor), and a cut of the power at every operation of a whole update (backup, staging, finish, commit), after which one of the two images is always in the flash. Evidence: simulator.
  *
  *   cc -std=c11 -Wall -Wextra -Werror -Isrc/mcu_stm32h757/Common -o test_nor_update_flow tests/test_nor_update_flow.c
  */
@@ -68,13 +69,14 @@ static int d_flash_read(void *ctx, uint32_t o, uint8_t *d, uint32_t n)
 static int d_flash_erase(void *ctx, uint32_t n)
 {
     (void)ctx;
-    if (flash_erase_fails || n > SLOT) return 1;
+    if (tick() || flash_erase_fails || n > SLOT) return 1;
     memset(flash, 0xFF, SLOT);
     return 0;
 }
 static int d_flash_write(void *ctx, uint32_t o, const uint8_t *d, uint32_t n)
 {
     (void)ctx;
+    if (tick()) return 1;
     if (flash_write_fails_once) {
         flash_write_fails_once = 0;
         return 1;
@@ -261,6 +263,101 @@ int main(void)
             CHECK(Nuf_Recover(&ops, &c, 0, &got, &used) == NUF_OK && used == NUF_ACT_ROLLBACK_PREVIOUS, "a surviving previous copy restores");
             CHECK((got == 10000 && memcmp(flash, old_app, 10000) == 0) || (got == 6000 && memcmp(flash, snapshot, 6000) == 0), "and it is an application that was saved");
         }
+    }
+
+    /* the start-up choice against the metadata: arguments, layout, a good application */
+    {
+        NufRestored r;
+        uint32_t old_crc, new_crc;
+        reset();
+        fill(3, 10000);
+        memcpy(old_app, flash, SLOT);
+        old_crc = Norb_Crc32(old_app, 10000);
+        CHECK(Nuf_RecoverFor(0, &c, 0, 10000, old_crc, &r, &used) == NUF_E_ARG && Nuf_RecoverFor(&ops, &c, 0, 10000, old_crc, 0, &used) == NUF_E_ARG && Nuf_RecoverFor(&ops, &c, 0, 10000, old_crc, &r, 0) == NUF_E_ARG, "null arguments of the recovery against the metadata");
+        d = c;
+        d.previous.nor_offset = 0UL;
+        CHECK(Nuf_RecoverFor(&ops, &d, 0, 10000, old_crc, &r, &used) == NUF_E_LAYOUT && used == NUF_ACT_NONE, "a bad layout stops it");
+        CHECK(Nuf_RecoverFor(&ops, &c, 1, 10000, old_crc, &r, &used) == NUF_OK && used == NUF_ACT_NONE, "a good application is left alone");
+        CHECK(Nuf_RecoverFor(&ops, &c, 0, 10000, old_crc, &r, &used) == NUF_E_NONE && used == NUF_ACT_LOST, "no copy at all");
+
+        /* the current copy is the image of the metadata: it comes back */
+        CHECK(Norb_Save(&ops, &c.current, 10000) == NORB_OK, "current copy");
+        memset(flash, 0x00, SLOT);
+        CHECK(Nuf_RecoverFor(&ops, &c, 0, 10000, old_crc, &r, &used) == NUF_OK && used == NUF_ACT_RESTORE_CURRENT && r.length == 10000 && r.crc32 == old_crc, "the current copy comes back");
+        CHECK(memcmp(flash, old_app, 10000) == 0, "and it is the image of the metadata");
+
+        /* the current copy is another image than the metadata describes (a different CRC-32, a different length): it is not used and, with no previous copy, the application is lost */
+        memset(flash, 0x00, SLOT);
+        CHECK(Nuf_RecoverFor(&ops, &c, 0, 10000, old_crc ^ 1UL, &r, &used) == NUF_E_NONE && used == NUF_ACT_LOST, "an older copy never replaces the application of the metadata");
+        CHECK(Nuf_RecoverFor(&ops, &c, 0, 9999, old_crc, &r, &used) == NUF_E_NONE && used == NUF_ACT_LOST, "nor one of another length");
+        CHECK(flash[0] == 0x00, "and the flash was left as it was");
+
+        /* a previous copy takes over from a current copy that does not match: its length and CRC-32 come back for the new metadata */
+        fill(77, 12000);
+        new_crc = Norb_Crc32(flash, 12000);
+        memcpy(new_app, flash, SLOT);
+        CHECK(Norb_Save(&ops, &c.previous, 12000) == NORB_OK, "previous copy");
+        memset(flash, 0x00, SLOT);
+        CHECK(Nuf_RecoverFor(&ops, &c, 0, 10000, old_crc ^ 1UL, &r, &used) == NUF_OK && used == NUF_ACT_ROLLBACK_PREVIOUS && r.length == 12000 && r.crc32 == new_crc, "the previous application comes back and says what it is");
+        CHECK(memcmp(flash, new_app, 12000) == 0, "and it is that application");
+        /* the current copy matches but the flash refuses the first write: the previous application is next */
+        memset(flash, 0x00, SLOT);
+        flash_write_fails_once = 1;
+        CHECK(Nuf_RecoverFor(&ops, &c, 0, 10000, old_crc, &r, &used) == NUF_OK && used == NUF_ACT_ROLLBACK_PREVIOUS && r.length == 12000, "a restore that fails falls back to the previous application");
+        /* neither can be written: lost */
+        flash_erase_fails = 1;
+        CHECK(Nuf_RecoverFor(&ops, &c, 0, 10000, old_crc, &r, &used) == NUF_E_NONE && used == NUF_ACT_LOST, "a flash that cannot be erased loses the application");
+        flash_erase_fails = 0;
+        /* a current copy whose image was damaged after its header is not a copy */
+        nor[65536UL + 100UL] ^= 0x10;
+        memset(flash, 0x00, SLOT);
+        CHECK(Nuf_RecoverFor(&ops, &c, 0, 10000, old_crc, &r, &used) == NUF_OK && used == NUF_ACT_ROLLBACK_PREVIOUS, "a damaged current copy gives way to the previous one");
+    }
+
+    /* a cut of the power at every operation of a whole update: backup of the running application, staging of the new one, finish, commit over the flash. After the cut the board starts with
+     * the metadata of its moment (the old image until the staging is finished, the new one after) and the start-up choice must leave one of the two images in the flash, whole. */
+    {
+        NufRestored r;
+        uint32_t old_crc, new_crc, offset, part;
+        long count = -1;
+        int finished, ok;
+        reset();
+        fill(3, 10000);
+        memcpy(old_app, flash, SLOT);
+        old_crc = Norb_Crc32(old_app, 10000);
+        fill(77, 12000);
+        memcpy(new_app, flash, SLOT);
+        new_crc = Norb_Crc32(new_app, 12000);
+        for (cut = -1; cut <= count; cut++) {
+            reset();
+            memcpy(flash, old_app, SLOT);
+            ops_left = cut;
+            ok = Nuf_BackupBeforeUpdate(&ops, &c, 1, 10000, &allowed) == NUF_OK;
+            ok = ok && Norb_StageBegin(&ops, &c.current, 12000) == NORB_OK;
+            for (offset = 0; ok && offset < 12000; offset += 4096) {
+                part = 12000 - offset < 4096 ? 12000 - offset : 4096;
+                ok = Norb_StagePage(&ops, &c.current, offset, new_app + offset, part) == NORB_OK;
+            }
+            ok = ok && Norb_StageFinish(&ops, &c.current, 12000, new_crc) == NORB_OK;
+            finished = ok;
+            ok = ok && Norb_Restore(&ops, &c.current, &got) == NORB_OK;
+            if (cut < 0) {
+                count = ops_done;
+                CHECK(ok && memcmp(flash, new_app, 12000) == 0, "an update with no cut ends with the new application");
+                continue;
+            }
+            ops_left = -1;
+            {
+                const uint8_t *want = finished ? new_app : old_app;
+                const uint32_t want_len = finished ? 12000UL : 10000UL;
+                const uint32_t want_crc = finished ? new_crc : old_crc;
+                const int good = Norb_Crc32(flash, want_len) == want_crc;
+                CHECK(Nuf_RecoverFor(&ops, &c, good, want_len, want_crc, &r, &used) == NUF_OK && used != NUF_ACT_LOST, "after a cut the board always starts");
+                CHECK(memcmp(flash, want, want_len) == 0, "and the flash holds the image of the metadata, whole");
+                CHECK(used != NUF_ACT_ROLLBACK_PREVIOUS || (r.length == 10000 && r.crc32 == old_crc), "a way back, when taken, is the old application");
+            }
+        }
+        CHECK(count > 20, "a whole update has many operations");
     }
 
     if (failures == 0) printf("nor_update_flow host logic tests passed\n");
