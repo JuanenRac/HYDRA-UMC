@@ -331,6 +331,24 @@ def host_cases(root: str) -> list[Case]:
     cases.append(_t("slot_scan_node host logic tests passed", "host_tests_slot_scan_node", "test_slot_scan_node", ["tests", G474_BOOT]))
     cases.append(
         _t(
+            "dac_plan host logic tests passed",
+            "host_tests_dac_plan",
+            "test_dac_plan",
+            [H757_COMMON],
+        )
+    )
+    cases.append(
+        _t(
+            "dac_out host logic tests passed",
+            "host_tests_dac_out",
+            "test_dac_out",
+            ["tests/stubs/h7dac", "src/mcu_stm32h757/CM7", H757_COMMON],
+            ["-DHYDRA_DAC_CM7=1"],
+            sources=("src/mcu_stm32h757/CM7/DacOut.c",),
+        )
+    )
+    cases.append(
+        _t(
             "i2c_buses host logic tests passed",
             "host_tests_i2c_buses",
             "test_i2c_buses",
@@ -1209,6 +1227,16 @@ class Stage2:
             r.ok("CM7 buses I2C1 to I2C3 compile for the H757 platform")
         else:
             r.fail("CM7 buses I2C1 to I2C3 do NOT compile for the H757 platform - see errors above")
+            failed = True
+        dac_obj = f"{h7}/cm7_dac_out_h757_check_obj"
+        self.makedirs(dac_obj)
+        if self.gcc(
+            self.cflags_cm7, "-DHYDRA_PLATFORM_H757", "-DHYDRA_DAC_CM7=1", f"-I{root}/src/mcu_stm32h757/CM7", *self.common_inc,
+            "-x", "c", "-c", f"{root}/src/mcu_stm32h757/CM7/DacOut.c", "-o", f"{dac_obj}/DacOut.o",
+        ) == 0:
+            r.ok("CM7 analog outputs (DAC1) compiles for the H757 platform")
+        else:
+            r.fail("CM7 analog outputs (DAC1) does NOT compile for the H757 platform - see errors above")
             failed = True
         if failed:
             self.stop()
