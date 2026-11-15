@@ -1,0 +1,60 @@
+# =============================================================================
+# HYDRA-UMC - the interface library of the STM32H757, fetched by its commit and compiled for the Cortex-M7
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# The library is not part of this repository. This check reads the pin of config/lvgl.cfg, fetches exactly that commit into a folder outside the checkout, compiles every source of the
+# library for the Cortex-M7 with the settings of config/lv_conf.h, and fails when the library takes more of the flash than the budget of the file. It holds no secret and builds no
+# image of the board. Started by hand and by a pull request or a push to main that touches the pin, the settings or this file. Nothing here runs on a board.
+
+name: Interface library
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "config/lvgl.cfg"
+      - "config/lv_conf.h"
+      - "tools/lvgl_pin.py"
+      - ".github/workflows/lvgl-library.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "config/lvgl.cfg"
+      - "config/lv_conf.h"
+      - "tools/lvgl_pin.py"
+      - ".github/workflows/lvgl-library.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  library:
+    name: Pinned library compiles for the Cortex-M7
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install the cross compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gcc-arm-none-eabi binutils-arm-none-eabi
+
+      - name: Check the pin and that no file of the library is in the repository
+        run: python tools/lvgl_pin.py --check
+
+      - name: Fetch the pinned commit outside the checkout
+        run: python tools/lvgl_pin.py --fetch "$RUNNER_TEMP/lvgl"
+
+      - name: Compile the library and check the flash budget
+        run: python tools/lvgl_pin.py --compile "$RUNNER_TEMP/lvgl" "$RUNNER_TEMP/lvgl-objects"
