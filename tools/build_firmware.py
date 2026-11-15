@@ -350,6 +350,16 @@ def host_cases(root: str) -> list[Case]:
     )
     cases.append(
         _t(
+            "dsi_host host logic tests passed",
+            "host_tests_dsi_host",
+            "test_dsi_host",
+            ["tests/stubs/h7dsi", "src/mcu_stm32h757/CM7", H757_COMMON],
+            ["-DHYDRA_DSI_HOST=1"],
+            sources=("src/mcu_stm32h757/CM7/DsiHost.c",),
+        )
+    )
+    cases.append(
+        _t(
             "adc_plan host logic tests passed",
             "host_tests_adc_plan",
             "test_adc_plan",
@@ -1338,6 +1348,16 @@ class Stage2:
             r.ok("CM7 reader of the ADC compiles for the H757 platform")
         else:
             r.fail("CM7 reader of the ADC does NOT compile for the H757 platform - see errors above")
+            failed = True
+        dsih_obj = f"{h7}/cm7_dsi_host_h757_check_obj"
+        self.makedirs(dsih_obj)
+        if self.gcc(
+            self.cflags_cm7, "-DHYDRA_PLATFORM_H757", "-DHYDRA_DSI_HOST=1", f"-I{root}/src/mcu_stm32h757/CM7", *self.common_inc,
+            "-x", "c", "-c", f"{root}/src/mcu_stm32h757/CM7/DsiHost.c", "-o", f"{dsih_obj}/DsiHost.o",
+        ) == 0:
+            r.ok("CM7 DSI host compiles for the H757 platform")
+        else:
+            r.fail("CM7 DSI host does NOT compile for the H757 platform - see errors above")
             failed = True
         if failed:
             self.stop()

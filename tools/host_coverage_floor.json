@@ -79,6 +79,7 @@
     "src/mcu_stm32h757/Common/panel_start.h": 100,
     "src/mcu_stm32h757/CM7/AdcReader.c": 100,
     "src/mcu_stm32h757/Common/adc_plan.h": 100,
+    "src/mcu_stm32h757/CM7/DsiHost.c": 100,
     "src/mcu_stm32h757/Common/ui_flush_plan.h": 100,
     "src/mcu_stm32h757/CM7/DisplayLtdc.c": 100,
     "src/mcu_stm32h757/Common/display_plan.h": 100,
