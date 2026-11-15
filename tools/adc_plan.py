@@ -66,7 +66,7 @@ def load_config(path: Path = CFG_PATH) -> dict:
         fields = [int(x) for x in value.split(",")]
         if len(fields) != 5:
             raise ValueError(f"channel {name}: adc, channel, num, den, offset_mv")
-        channel = dict(zip(("adc", "channel", "num", "den", "offset_mv"), fields))
+        channel = dict(zip(("adc", "channel", "num", "den", "offset_mv"), fields, strict=True))
         if channel["adc"] != 0:
             check_channel(channel)
         channels[name] = channel
