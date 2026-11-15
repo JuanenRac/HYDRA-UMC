@@ -176,5 +176,45 @@ class ConfigAndSources(unittest.TestCase):
             self.assertEqual(floors["src/mcu_stm32h757/" + module], 100)
 
 
+class FieldBus(unittest.TestCase):
+    """FDCAN2 of the field bus: the same cases as tests/test_fdcan_plan.c and tests/test_fdcan1_start.c."""
+
+    def test_the_second_controller_follows_the_first(self):
+        first = fp.make_plan(fp.load_config())
+        first["ram_offset"] = 0
+        self.assertEqual(fp.ram_words(first), 66)
+        field_cfg = fp.load_field_config()
+        field = fp.make_field_plan(field_cfg, first)
+        self.assertEqual((field["ram_offset"], field["filters"]), (66, [(0, 0)]))
+        self.assertEqual((field["prescaler"], field["seg1"], field["seg2"]), (first["prescaler"], first["seg1"], first["seg2"]))
+        third = fp.make_field_plan({**field_cfg, "filter_id": 0x123, "filter_mask": 0x7F0}, field)
+        self.assertEqual(third["ram_offset"], 66 + 1 + 64)
+
+    def test_no_room_in_the_message_ram(self):
+        first = fp.make_plan(fp.load_config())
+        first["ram_offset"] = 2500
+        with self.assertRaises(ValueError):
+            fp.make_field_plan(fp.load_field_config(), first)
+
+    def test_the_file_is_valid_and_takes_the_numbers_of_the_stack_bus(self):
+        field, stack = fp.load_field_config(), fp.load_config()
+        for key in ("kernel_hz", "bit_rate_bps", "sample_permille", "max_quanta", "sjw", "rx_elements", "tx_elements"):
+            self.assertEqual(field[key], stack[key], key)
+        base = (ROOT / "config/fdcan2.cfg").read_text(encoding="utf-8")
+        for good, bad in (("filter_id = 0x000", "filter_id = 0x800"), ("filter_mask = 0x000", "filter_mask = 0x800"), ("sjw = 4", "sjw = 5")):
+            with tempfile.TemporaryDirectory() as folder:
+                path = Path(folder) / "fdcan2.cfg"
+                path.write_text(base.replace(good, bad), encoding="utf-8")
+                with self.assertRaises(ValueError, msg=bad):
+                    fp.load_field_config(path)
+
+    def test_the_ram_numbers_and_pins_are_the_same_in_c_and_the_profile(self):
+        self.assertEqual((macro(PLAN_H, "FDCP_RAM_WORDS_TOTAL"), macro(PLAN_H, "FDCP_ELEMENT_WORDS")), (fp.RAM_WORDS_TOTAL, fp.ELEMENT_WORDS))
+        text = json.dumps(json.loads((ROOT / "docs/platform_profiles.json").read_text(encoding="utf-8")))
+        self.assertIn('"peripheral": "FDCAN2"', text)
+        self.assertIn("PB12", text)
+        self.assertIn("MessageRAMOffset = plan->ram_offset", START_C)
+
+
 if __name__ == "__main__":
     unittest.main()

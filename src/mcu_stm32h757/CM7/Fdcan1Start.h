@@ -29,7 +29,7 @@
 #define FDS_FAULT_FILTER 0x04u /* a filter or the global filter was refused: the peripheral is not started */
 #define FDS_FAULT_START 0x08u  /* HAL_FDCAN_Start failed */
 
-/* Starts `hfdcan` (its Instance already set to FDCAN1) with `plan`. Returns FDS_OK or the faults found, one bit each. */
+/* Starts `hfdcan` (its Instance already set to FDCAN1, or to FDCAN2 with a plan placed after the one of FDCAN1: `plan->ram_offset` is its place in the shared message RAM) with `plan`. Returns FDS_OK or the faults found, one bit each. */
 uint32_t Fdcan1Start_Run(FDCAN_HandleTypeDef *hfdcan, const FdcpPlan *plan);
 
 /* The counters of the bus, as the callback `error_counters` of Common/gateway_self.h takes them (`ctx` is the FDCAN_HandleTypeDef). Returns 1 when the HAL read them. */
