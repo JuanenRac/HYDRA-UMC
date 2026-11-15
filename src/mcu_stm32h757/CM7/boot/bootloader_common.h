@@ -46,7 +46,17 @@ extern IWDG_HandleTypeDef hiwdg;
 #define METADATA_ADDR        0x08020000UL // sector 1, own dedicated sector
 #define MAIN_APP_ADDR        0x08040000UL // sectors 2-4
 #define BACKUP_APP_ADDR      0x080A0000UL // sectors 5-7
+// HYDRA_APP_SLOT_768K (off as it ships) is the slot of the H757 board that runs to the end of bank 1 (linker script STM32H757XIHx_CM7_APP_768K.ld): the second half of the bank is then
+// the application, so the update is staged and the copy kept in the NOR flash (Common/nor_backup_plan.h, nor_backup_glue.h) and BACKUP_APP_ADDR above is NOT a free slot. It needs
+// HYDRA_NOR_BACKUP, and the protocol code that still stages into BACKUP_APP_ADDR is moved to the NOR before a build with it is made.
+#if defined(HYDRA_APP_SLOT_768K) && HYDRA_APP_SLOT_768K
+#if !defined(HYDRA_NOR_BACKUP) || !HYDRA_NOR_BACKUP
+#error "HYDRA_APP_SLOT_768K needs HYDRA_NOR_BACKUP=1: the copy of the application lives in the NOR flash"
+#endif
+#define APP_MAX_SIZE         (768UL * 1024UL) // sectors 2-7
+#else
 #define APP_MAX_SIZE         (384UL * 1024UL) // 3 sectors
+#endif
 #define METADATA_MAGIC_VALID 0x55415043UL // "CPAU" - CM7, distinct from G474's "UPAU" and CM4's "CPA4" so a metadata page from the wrong core/chip is never mistaken for this one's
 #define FLASH_PAGE_SIZE       0x800UL // 2048 bytes - LOGICAL transfer-chunk size for the OTA protocol/page_buffer (matches every other tier for page-count/PAGE_ACK math), NOT this chip's hardware erase granularity - see bootloader_flash.c
 

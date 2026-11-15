@@ -97,7 +97,14 @@
       "release_ack_timeout": 500
     },
     "timing_note": "proposals to be confirmed on the bench (docs/BENCH_TESTS.md rows 17, 18, 20 and 21); they move to the configuration file of the machine when the firmware reads them",
-    "stop_category": "0 (drivers off at once) until the owner decides otherwise per axis"
+    "stop_category": "0 (drivers off at once) until the owner decides otherwise per axis",
+    "tool_head": {
+      "responds_to_can_id": "0x001",
+      "responds_to_master_loss": true,
+      "safe_state": "heaters, laser, solder, spindle and ultrasonic outputs off",
+      "implemented_by": "the firmware of the tool head (URTC); this repository only states the requirement",
+      "status": "adopted in the contract; the tool head firmware that honours it is not written or tested here"
+    }
   },
   "slot_scan": {
     "contract": "docs/SLOT_SCAN.md",

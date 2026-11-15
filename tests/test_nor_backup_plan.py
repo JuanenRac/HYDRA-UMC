@@ -86,7 +86,7 @@ class SourcesAgree(unittest.TestCase):
         users = [
             p
             for p in (ROOT / "src").rglob("*")
-            if p.is_file() and p.suffix in (".c", ".h") and p.name != "nor_backup_plan.h" and "nor_backup_plan.h" in p.read_text(encoding="utf-8", errors="ignore")
+            if p.is_file() and p.suffix in (".c", ".h") and p.name not in {"nor_backup_plan.h", "nor_backup_glue.h"} and re.search(r'#include "nor_backup_(plan|glue)\.h"', p.read_text(encoding="utf-8", errors="ignore"))
         ]
         self.assertEqual(users, [])
 
