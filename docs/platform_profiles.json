@@ -438,6 +438,15 @@
             "note": "an external storage on SPI5 (6.25 Mbit/s in the CubeMX project), read and written through the SPI5 driver; the earlier note that called it QSPI is wrong"
           }
         ],
+        "app_backup_cm7": {
+          "where": "NOR_FLASH_SPI5",
+          "offset_bytes": 0,
+          "length_bytes": 786432,
+          "restored_by": "bootloader",
+          "switch": "HYDRA_NOR_BACKUP",
+          "source": "decision of the owner: the copy of the 768 KB slot of the CM7 lives in the NOR flash of SPI5 and the bootloader restores it; layout in src/mcu_stm32h757/Common/nor_backup_plan.h, numbers in config/nor_backup.cfg",
+          "status": "simulator_only"
+        },
         "contradictions_with_the_h745_repository": [
           "the H745 repository has no external memory at all; the H757 board has 256 MiB of SDR SDRAM on FMC (two banks of 128 MiB) that no linker script or driver uses yet",
           "the migration note called the NOR flash QSPI; the board documents put it on SPI5 in standard SPI mode, so it is not memory mapped and needs no linker region",
