@@ -11,7 +11,7 @@
 
 The header holds, for each profile, the SPI role of the link to the host, the owner of each peripheral, the bit timing of the stack bus and the regions of the memory map,
 and selects one profile with `HYDRA_PLATFORM` (`HYDRA_PLATFORM_H745` is the default, because that is what the sources build for today; `HYDRA_PLATFORM_H757` selects the
-board of production). `HYDRA_SPI_ROLE` may be set on the command line (`HYDRA_SPI_ROLE_MASTER` or `HYDRA_SPI_ROLE_SLAVE`) and otherwise follows the profile: master on the H757,
+board of production, and `-DHYDRA_DEFAULT_PLATFORM_H757=1` makes it the default of a build that names no platform; the switch ships off and a platform named on the command line always wins). `HYDRA_SPI_ROLE` may be set on the command line (`HYDRA_SPI_ROLE_MASTER` or `HYDRA_SPI_ROLE_SLAVE`) and otherwise follows the profile: master on the H757,
 slave on the H745 (the CM5 path). The stack-bus timing of the CM4 sources is read from it. Evidence: simulator (the header is checked against the profiles)."""
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ import platform_profile as pp
 ROOT = Path(__file__).resolve().parents[1]
 HEADER_PATH = ROOT / "src" / "mcu_stm32h757" / "Common" / "platform_profile.h"
 OWNER_CODE = {"CM4": 4, "CM7": 7}
+SPI45SEL_CODE = {"apb2": 0, "pll2_q": 1, "pll3_q": 2}  # the field SPI45SEL of D2CCIP1R (tools/rcc_plan.py holds the same table)
 
 
 def _macro(name: str) -> str:
@@ -49,7 +50,11 @@ def render(document: dict | None = None) -> str:
     w("#define HYDRA_OWNER_CM7 7")
     w("")
     w("#if !defined(HYDRA_PLATFORM_H745) && !defined(HYDRA_PLATFORM_H757)")
+    w("#if defined(HYDRA_DEFAULT_PLATFORM_H757) && HYDRA_DEFAULT_PLATFORM_H757")
+    w("#define HYDRA_PLATFORM_H757 1 /* the board of production, chosen as the default by the switch (off as it ships) */")
+    w("#else")
     w("#define HYDRA_PLATFORM_H745 1 /* what the sources build for today */")
+    w("#endif")
     w("#endif")
     w("#if defined(HYDRA_PLATFORM_H745) && defined(HYDRA_PLATFORM_H757)")
     w("#error \"choose one platform: HYDRA_PLATFORM_H745 or HYDRA_PLATFORM_H757\"")
@@ -94,6 +99,8 @@ def render(document: dict | None = None) -> str:
                 w(f"#define HYDRA_CLOCK_POLL_LIMIT {profile['rcc_poll_limit']}UL /* polls of a ready flag before the clock set-up gives up */")
             for output, hz in profile["clocks_hz"].items():
                 w(f"#define HYDRA_CLOCK_{output.upper()}_HZ {hz}UL")
+            for peripheral, source in profile.get("kernel_select", {}).items():
+                w(f"#define HYDRA_CLOCK_{peripheral.upper()}_SEL {SPI45SEL_CODE[source]}UL /* the source of the kernel clock of {peripheral.upper()}: {source} */")
         nor = profile.get("new_peripherals", {}).get("SPI5_NOR_FLASH")
         if nor and "capacity_bytes" in nor:
             w(f"#define HYDRA_NOR_CAPACITY_BYTES {nor['capacity_bytes']}UL")

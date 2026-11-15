@@ -49,9 +49,12 @@ _Static_assert(HYDRA_STACK_BUS_KERNEL_CLOCK_HZ == HYDRA_CLOCK_KERNEL_FDCAN_HZ, "
 _Static_assert(HYDRA_CLOCK_KERNEL_FDCAN_HZ / (HYDRA_STACK_BUS_PRESCALER * (1U + HYDRA_STACK_BUS_TIME_SEG1 + HYDRA_STACK_BUS_TIME_SEG2)) == HYDRA_STACK_BUS_BIT_RATE_BPS,
                "the stack bus is not at its bit rate with this clock");
 _Static_assert(HYDRA_CLOCK_KERNEL_FDCAN_HZ % (HYDRA_STACK_BUS_PRESCALER * (1U + HYDRA_STACK_BUS_TIME_SEG1 + HYDRA_STACK_BUS_TIME_SEG2)) == 0U, "the bit rate is not exact");
-// the I2C4, SPI4, SPI5 and SPI6 kernel clocks follow the APB / PLL2 values of the profile
+// the I2C4, SPI5 and SPI6 kernel clocks follow the APB / PLL2 values of the profile
 _Static_assert(HYDRA_CLOCK_KERNEL_I2C4_HZ == HYDRA_CLOCK_APB4_HZ, "I2C4 runs from the APB4 clock");
-_Static_assert(HYDRA_CLOCK_KERNEL_SPI5_HZ == HYDRA_CLOCK_APB2_HZ, "SPI5 runs from the APB2 clock");
+// the kernel clock of SPI5 is chosen by the field SPI45SEL (HYDRA_CLOCK_SPI5_SEL of the profile: 0 the APB2 clock, 1 PLL2_Q, 2 PLL3_Q) and must give the frequency the table lists for it
+#define HYDRA_CLOCK_SPI5_SOURCE_HZ (HYDRA_CLOCK_SPI5_SEL == 0UL ? HYDRA_CLOCK_APB2_HZ : HYDRA_CLOCK_SPI5_SEL == 1UL ? HYDRA_CLOCK_PLL2_Q_HZ : HYDRA_CLOCK_SPI5_SEL == 2UL ? HYDRA_CLOCK_PLL3_Q_HZ : 0UL)
+_Static_assert(HYDRA_CLOCK_SPI5_SEL <= 2UL, "the source of the kernel clock of SPI5 is not one of APB2, PLL2_Q and PLL3_Q");
+_Static_assert(HYDRA_CLOCK_KERNEL_SPI5_HZ == HYDRA_CLOCK_SPI5_SOURCE_HZ, "the kernel clock of SPI5 is not the frequency of the source that is selected for it");
 _Static_assert(HYDRA_CLOCK_KERNEL_SPI6_HZ == HYDRA_CLOCK_APB4_HZ, "SPI6 runs from the APB4 clock");
 
 #endif // HYDRA_PLATFORM_H757
