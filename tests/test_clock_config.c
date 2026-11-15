@@ -86,6 +86,8 @@ int main(void)
     CHECK(((rcc.reg[RCC_REG_PLLCFGR] >> 16) & 7UL) == 1UL && ((rcc.reg[RCC_REG_PLLCFGR] >> 19) & 7UL) == 7UL, "PLLCFGR: PLL1 P and PLL2 P, Q and R are on, nothing else");
     CHECK(((rcc.reg[RCC_REG_PLLCFGR] >> 22) & 7UL) == 0UL, "PLLCFGR: the outputs of PLL3 are off");
     CHECK(((rcc.reg[RCC_REG_D2CCIP1R] >> 28) & 3UL) == 2UL, "D2CCIP1R: the FDCAN kernel clock is PLL2_Q");
+    CHECK(((rcc.reg[RCC_REG_D2CCIP1R] >> 16) & 7UL) == HYDRA_CLOCK_SPI5_SEL, "D2CCIP1R: the kernel clock of SPI5 is the source the profile names");
+    CHECK((rcc.reg[RCC_REG_D2CCIP1R] & ~((3UL << 28) | (7UL << 16))) == 0UL, "D2CCIP1R: no other field is written");
     CHECK((rcc.reg[RCC_REG_CR] & (RCC_CR_PLL1ON | RCC_CR_PLL2ON | RCC_CR_HSEON)) == (RCC_CR_PLL1ON | RCC_CR_PLL2ON | RCC_CR_HSEON), "CR: crystal and both PLLs on");
     CHECK((rcc.reg[RCC_REG_CR] & (1UL << 28)) == 0UL, "CR: PLL3 is not started");
 

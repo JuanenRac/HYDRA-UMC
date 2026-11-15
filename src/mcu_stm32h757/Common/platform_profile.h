@@ -13,7 +13,11 @@
 #define HYDRA_OWNER_CM7 7
 
 #if !defined(HYDRA_PLATFORM_H745) && !defined(HYDRA_PLATFORM_H757)
+#if defined(HYDRA_DEFAULT_PLATFORM_H757) && HYDRA_DEFAULT_PLATFORM_H757
+#define HYDRA_PLATFORM_H757 1 /* the board of production, chosen as the default by the switch (off as it ships) */
+#else
 #define HYDRA_PLATFORM_H745 1 /* what the sources build for today */
+#endif
 #endif
 #if defined(HYDRA_PLATFORM_H745) && defined(HYDRA_PLATFORM_H757)
 #error "choose one platform: HYDRA_PLATFORM_H745 or HYDRA_PLATFORM_H757"
@@ -100,6 +104,7 @@
 #define HYDRA_CLOCK_KERNEL_SPI5_HZ 100000000UL
 #define HYDRA_CLOCK_KERNEL_SPI6_HZ 100000000UL
 #define HYDRA_CLOCK_KERNEL_SPI3_HZ 200000000UL
+#define HYDRA_CLOCK_SPI5_SEL 0UL /* the source of the kernel clock of SPI5: apb2 */
 #define HYDRA_NOR_CAPACITY_BYTES 16777216UL
 #define HYDRA_NOR_PAGE_BYTES 256U
 #define HYDRA_NOR_SECTOR_BYTES 4096U
