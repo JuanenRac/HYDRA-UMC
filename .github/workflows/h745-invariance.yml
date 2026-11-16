@@ -1,17 +1,22 @@
 # =============================================================================
-# HYDRA-UMC - H745 images must not change (manual comparison of two commits)
+# HYDRA-UMC - H745 images must not change (comparison of two commits)
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-# Started by hand only (workflow_dispatch): it never runs on a push or a pull request. It builds the six firmware images of the default platform from two commits (the base, main
+# It runs when the owner starts it (workflow_dispatch) and, without anybody asking, on every pull request of this repository that touches src/mcu_* (the base is the base of the pull
+# request, the head is its last commit; a pull request that touches nothing there costs nothing). A pull request that is MEANT to change an image says so in its description with one
+# line, `Expected image change: KB_CM4_BOOTLOADER,KB_CM7_BOOTLOADER` (component names only); without that line no image may change. It builds the six firmware images of the default platform from two commits (the base, main
 # by default, and the head, the branch that is being checked) with tools/build_firmware.py in CI mode, and compares the sha256 of every image with tools/h745_invariance.py. A change made
 # for the H757 platform only, behind the platform profile, must leave every image exactly as it was; the comparison fails when one differs, is missing or is new. Both builds run in
 # the same job layout (the same path and toolchain) so that nothing but the code can make an image differ.
-# It holds no key, signs nothing and makes no release: the images are not kept, only their sums. The owner is the only one who starts it.
+# It holds no key, signs nothing and makes no release: the images are not kept, only their sums. By hand only the owner can start it; a pull request from a fork is not built.
 
-name: H745 images unchanged (manual)
+name: H745 images unchanged
 
 on:
+  pull_request:
+    paths:
+      - "src/mcu_*/**"
   workflow_dispatch:
     inputs:
       base:
@@ -33,19 +38,23 @@ permissions:
   contents: read
 
 concurrency:
-  group: h745-invariance-${{ inputs.head }}
+  group: h745-invariance-${{ github.event.pull_request.number || inputs.head }}
   cancel-in-progress: false
 
 jobs:
   plan:
     name: Resolve the two commits
+    # a pull request from a fork is never built here; the jobs that need this one are skipped with it
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
       base_sha: ${{ steps.resolve.outputs.base_sha }}
       head_sha: ${{ steps.resolve.outputs.head_sha }}
+      expected: ${{ steps.inputs.outputs.expected }}
     steps:
-      - name: Only the owner starts the comparison
+      - name: Only the owner starts the comparison by hand
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         env:
           ACTOR: ${{ github.actor }}
@@ -54,12 +63,40 @@ jobs:
           set -euo pipefail
           [ "$ACTOR" = "$OWNER" ] || { echo "::error::only the owner of the repository starts this comparison"; exit 1; }
 
+      - name: Decide what is compared
+        id: inputs
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_BASE: ${{ inputs.base }}
+          INPUT_HEAD: ${{ inputs.head }}
+          INPUT_EXPECTED: ${{ inputs.expected_change }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "pull_request" ]; then
+            base="$PR_BASE"
+            head="$PR_HEAD"
+            expected="$(printf '%s\n' "$PR_BODY" | tr -d '\r' | sed -n 's/^Expected image change: *\([A-Z0-9_,]*\) *$/\1/p' | head -n 1)"
+          else
+            base="$INPUT_BASE"
+            head="$INPUT_HEAD"
+            expected="$INPUT_EXPECTED"
+          fi
+          {
+            echo "base=$base"
+            echo "head=$head"
+            echo "expected=$expected"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Check the inputs
         shell: bash
         env:
-          BASE: ${{ inputs.base }}
-          HEAD_REF: ${{ inputs.head }}
-          EXPECTED: ${{ inputs.expected_change }}
+          BASE: ${{ steps.inputs.outputs.base }}
+          HEAD_REF: ${{ steps.inputs.outputs.head }}
+          EXPECTED: ${{ steps.inputs.outputs.expected }}
         run: |
           set -euo pipefail
           for value in "$BASE" "$HEAD_REF"; do
@@ -77,8 +114,8 @@ jobs:
         id: resolve
         shell: bash
         env:
-          BASE: ${{ inputs.base }}
-          HEAD_REF: ${{ inputs.head }}
+          BASE: ${{ steps.inputs.outputs.base }}
+          HEAD_REF: ${{ steps.inputs.outputs.head }}
         run: |
           set -euo pipefail
           resolve() {
@@ -172,7 +209,7 @@ jobs:
       - name: Compare
         shell: bash
         env:
-          EXPECTED: ${{ inputs.expected_change }}
+          EXPECTED: ${{ needs.plan.outputs.expected }}
         run: |
           set -euo pipefail
           [[ "$EXPECTED" =~ ^[A-Z0-9_,]{0,200}$ ]] || { echo "::error::expected_change has characters that a list of component names does not have"; exit 1; }
