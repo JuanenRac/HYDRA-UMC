@@ -173,8 +173,7 @@ Il firmware si configura al momento della compilazione, tramite variabili d'ambi
 
 | Variabile | Predefinito | Cosa imposta |
 |---|---|---|
-| `HYDRA_FW_UPDATE_PUBKEY_HEX` | nessuna | 64 cifre esadecimali: la chiave pubblica Ed25519 con cui `tools/sign_release.py verify` controlla le firme delle immagini applicative; non sceglie la chiave di cui si fidano i bootloader |
-| `HYDRA_UMC_RELEASE` | `0` | con `1` i bootloader portano la tabella di fiducia di `docs/image_trust.json` al posto della chiave di sviluppo |
+| `HYDRA_UMC_RELEASE` | `0` | con `1` i bootloader portano la tabella di fiducia di `docs/image_trust.json` al posto della chiave di sviluppo; la compilazione si ferma se `HYDRA_FW_UPDATE_PUBKEY_HEX` o `HYDRA_FW_HMAC_KEY_HEX` è definita, perché non le legge |
 | `HYDRA_UMC_SKIP_HOST_TESTS`, `HOST_CC` | `0`, il compilatore di sistema | salta i test logici host del passo 1b, o indica il compilatore C che usano |
 | `python -m spi_bridge run --spi-speed-hz --host --port --collector-url` | `10000000`, `127.0.0.1`, `8765` | il clock SPI, dove ascolta il servizio HTTP locale e l'indirizzo dell'HYDRA-UMC-TELEMETRY-COLLECTOR a cui il bridge può riferire (al massimo un rapporto al secondo) |
 

@@ -173,8 +173,7 @@ flowchart LR
 
 | 变量 | 默认值 | 设置内容 |
 |---|---|---|
-| `HYDRA_FW_UPDATE_PUBKEY_HEX` | 无 | 64 位十六进制数字：`tools/sign_release.py verify` 用来检查应用镜像签名的 Ed25519 公钥；它不决定引导程序信任哪把密钥 |
-| `HYDRA_UMC_RELEASE` | `0` | 设为 `1` 时，引导程序带有 `docs/image_trust.json` 的信任表，而不是开发密钥 |
+| `HYDRA_UMC_RELEASE` | `0` | 设为 `1` 时，引导程序带有 `docs/image_trust.json` 的信任表，而不是开发密钥；如果设置了 `HYDRA_FW_UPDATE_PUBKEY_HEX` 或 `HYDRA_FW_HMAC_KEY_HEX`，构建会停止，因为它不读取这两个变量 |
 | `HYDRA_UMC_SKIP_HOST_TESTS`, `HOST_CC` | `0`，系统编译器 | 跳过 1b 步骤的主机逻辑测试，或指定它们所用的 C 编译器 |
 | `python -m spi_bridge run --spi-speed-hz --host --port --collector-url` | `10000000`, `127.0.0.1`, `8765` | SPI 时钟、本地 HTTP 服务的监听位置，以及桥可以向其报告的 HYDRA-UMC-TELEMETRY-COLLECTOR 的地址（每秒最多一次报告） |
 
