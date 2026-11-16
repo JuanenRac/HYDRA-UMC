@@ -152,7 +152,7 @@ flowchart LR
 |---|---|---|
 | 偽造または編集されたファームウェアイメージ | 固定の 64 バイトのヘッダー（マジック、バージョン、ハードウェア ID、サイズ、ベクターワード、CRC-32）にイメージと、ヘッダーとイメージにかけた 64 バイトの Ed25519 署名が続きます。ブートローダーはまず署名を確認し、検証が通るまでヘッダーの内容を一切信用しません | `image_header.h`, `tools/image_header.py` |
 | 古い署名付きイメージの再送（ロールバック） | 新しいイメージはインストール済みのものより厳密に新しくなければなりません（メジャー・マイナー・パッチを比較）。古いイメージは、インストール済みと対象のバージョンおよびイメージのダイジェストにかけた Ed25519 署名であるダウングレードトークンがある場合にだけ受け入れられ、ファームウェアにはダウングレードを許す定数はありません | `image_header.h`, `ImageHeader_CheckRollback` |
-| 開発用の鍵でビルドされたイメージ | `HYDRA_FW_UPDATE_PUBKEY_HEX` と `HYDRA_FW_HMAC_KEY_HEX` がないと、ブートローダーには秘密部分がリポジトリで公開されている開発用の鍵が入ります。ビルドは警告し、`HYDRA_UMC_RELEASE=1` ではビルドを拒否します。基板が持つのは公開鍵だけで、秘密のシードは所有者の手元に残ります | `tools/build_firmware.py` |
+| 開発用の鍵でビルドされたイメージ | 既定ではブートローダーは、秘密のシードがリポジトリで公開されている開発用のイメージ鍵を信頼し、ビルドは警告します。`HYDRA_UMC_RELEASE=1` では `docs/image_trust.json` の信頼テーブル（公開鍵のみ。`python tools/image_trust.py headers` がヘッダーを書き出します）でビルドされ、イメージ署名鍵がそのファイルに入るまでテーブルは閉じたままです。基板が持つのは公開鍵だけで、秘密のシードは所有者の手元に残ります | `tools/build_firmware.py` |
 | ハングする基板 | G474 のブートローダーは `main()` の最初の処理として、`HAL_Init()` より前に独立ウォッチドッグ（IWDG）を有効にするため、起動中のハングはチップをリセットします | `src/mcu_stm32g474/boot/bootloader_main.c` |
 | SPI ブリッジのローカル HTTP サービスに他者が到達する | 既定では 127.0.0.1 で待ち受け、ファームウェア本体は最大 4 MiB まで受け付け、署名鍵は持ちません。署名は秘密のシードを持つマシンで作られてリクエストに含まれます。TLS も独自のサインインもないため、中継する側が誰がフラッシュできるかを決める必要があります | `src/cm5_host/spi_bridge/spi_bridge/http_service.py` |
 
@@ -173,9 +173,8 @@ flowchart LR
 
 | 変数 | 既定値 | 設定する内容 |
 |---|---|---|
-| `HYDRA_FW_UPDATE_PUBKEY_HEX` | 開発用の鍵 | 64 桁の 16 進数：更新が署名されていなければならない Ed25519 公開鍵 |
-| `HYDRA_FW_HMAC_KEY_HEX` | 開発用の鍵 | リポジトリの外に保管する 64 桁の 16 進数：インストール済みアプリケーションのローカル整合性検査の鍵 |
-| `HYDRA_UMC_RELEASE` | `0` | `1` にするとビルドは開発用の鍵の使用を拒否します |
+| `HYDRA_FW_UPDATE_PUBKEY_HEX` | なし | 64 桁の 16 進数：`tools/sign_release.py verify` がアプリケーションイメージの署名を検証する Ed25519 公開鍵。ブートローダーが信頼する鍵を選ぶものではありません |
+| `HYDRA_UMC_RELEASE` | `0` | `1` にするとブートローダーは開発用の鍵の代わりに `docs/image_trust.json` の信頼テーブルを持ちます |
 | `HYDRA_UMC_SKIP_HOST_TESTS`, `HOST_CC` | `0`、システムのコンパイラー | ステップ 1b のホストロジックテストを省略するか、それが使う C コンパイラーを指定します |
 | `python -m spi_bridge run --spi-speed-hz --host --port --collector-url` | `10000000`, `127.0.0.1`, `8765` | SPI クロック、ローカル HTTP サービスの待ち受け先、ブリッジが報告できる HYDRA-UMC-TELEMETRY-COLLECTOR のアドレス（報告は 1 秒に 1 回まで） |
 
@@ -226,7 +225,7 @@ python3 tools/build_firmware.py --clean  # ベンダリング済み HAL/CMSIS �
 
 | 表示 | 原因 | 対処 |
 |---|---|---|
-| 「ブートローダーは公開されている開発用シードで署名された更新を受け入れます」 | ビルドに `HYDRA_FW_UPDATE_PUBKEY_HEX`（または `HYDRA_FW_HMAC_KEY_HEX`）がなかった | 作業台なら問題ありません。他人が触れる基板には、`python tools/image_header.py keygen` で鍵ペアを作り、公開鍵でビルドし、リリースは `HYDRA_UMC_RELEASE=1` でビルドします |
+| 「ブートローダーは公開されている開発用シードで署名された更新を受け入れます」 | ビルドを `HYDRA_UMC_RELEASE=1` なしで行った | 作業台なら問題ありません。他人が触れる基板には、`python tools/image_header.py keygen` で鍵ペアを作り、公開鍵を `docs/image_trust.json` に入れ、`python tools/image_trust.py headers` でヘッダーを書き出し、リリースは `HYDRA_UMC_RELEASE=1` でビルドします |
 | 「arm-none-eabi-gcc が見つかりません」 | Arm GNU ツールチェーンがインストールされていないか、`PATH` にありません | インストールして（スクリプトは Linux で `apt` を試します）再ビルドします。ステップ 1b のホストテストに必要なのは通常の C コンパイラーだけです |
 | SPI ブリッジがデバイスを開けない、または `SPI transfer returned ... bytes` | 実際のトランスポートには、SPI デバイスを有効にした CM5 上の `spidev` と `gpiod`、反対側の STM32H757 が必要です。どちらもまだ存在しないため、ブリッジは模擬相手でしか試していません | 基板ができるまでは、テストの模擬トランスポートを使う |
 | `tools/build_firmware.py` がホストテストで FAIL で終わる | 3 つのブートローダーが共有するソースのコピーがずれたか、`tests/image_header_vectors.h` が `tools/image_header.py` より古い | `python tools/gen_image_header_vectors.py` と `python -m unittest discover -s tests` を実行して、どのコピーが違うかを確認する |

@@ -152,7 +152,7 @@ flowchart LR
 |---|---|---|
 | 伪造或被篡改的固件镜像 | 固定的 64 字节头部（魔数、版本、硬件 ID、大小、向量字、CRC-32）之后是镜像和对头部与镜像的 64 字节 Ed25519 签名；引导程序先验签，验证通过之前不相信头部的任何内容 | `image_header.h`, `tools/image_header.py` |
 | 重新发送的旧签名镜像（回滚） | 新镜像必须严格比已安装的更新（比较主版本、次版本和补丁号）；更旧的镜像只有在带有降级令牌时才被接受，该令牌是对已安装版本、目标版本和镜像摘要的 Ed25519 签名；固件中没有任何允许降级的常量 | `image_header.h`, `ImageHeader_CheckRollback` |
-| 用开发密钥构建的镜像 | 没有 `HYDRA_FW_UPDATE_PUBKEY_HEX` 和 `HYDRA_FW_HMAC_KEY_HEX` 时，引导程序带有私有部分已公布在仓库中的开发密钥；构建会发出警告，设置 `HYDRA_UMC_RELEASE=1` 时会拒绝构建；电路板只持有公钥，私钥种子由所有者保管 | `tools/build_firmware.py` |
+| 用开发密钥构建的镜像 | 默认情况下，引导程序信任一把开发用的镜像密钥，其私钥种子已公布在仓库中，构建会发出警告；设置 `HYDRA_UMC_RELEASE=1` 时，引导程序使用 `docs/image_trust.json` 中的信任表构建（只含公钥；`python tools/image_trust.py headers` 生成头文件），在镜像签名密钥写入该文件之前，该表保持关闭；电路板只持有公钥，私钥种子由所有者保管 | `tools/build_firmware.py` |
 | 死机的电路板 | G474 引导程序在 `main()` 的第一个动作中、早于 `HAL_Init()` 启用独立看门狗（IWDG），因此启动期间的挂起会使芯片复位 | `src/mcu_stm32g474/boot/bootloader_main.c` |
 | SPI 桥的本地 HTTP 服务被他人访问 | 默认监听 127.0.0.1，接受的固件正文最大为 4 MiB，且不持有签名密钥：签名随请求而来，由持有私钥种子的机器生成；它没有 TLS，也没有自己的登录，因此向它转发请求的一方必须决定谁可以刷写 | `src/cm5_host/spi_bridge/spi_bridge/http_service.py` |
 
@@ -173,9 +173,8 @@ flowchart LR
 
 | 变量 | 默认值 | 设置内容 |
 |---|---|---|
-| `HYDRA_FW_UPDATE_PUBKEY_HEX` | 开发密钥 | 64 位十六进制数字：更新必须为其签名的 Ed25519 公钥 |
-| `HYDRA_FW_HMAC_KEY_HEX` | 开发密钥 | 保存在仓库之外的 64 位十六进制数字：已安装应用的本地完整性检查的密钥 |
-| `HYDRA_UMC_RELEASE` | `0` | 设为 `1` 时，构建拒绝使用开发密钥 |
+| `HYDRA_FW_UPDATE_PUBKEY_HEX` | 无 | 64 位十六进制数字：`tools/sign_release.py verify` 用来检查应用镜像签名的 Ed25519 公钥；它不决定引导程序信任哪把密钥 |
+| `HYDRA_UMC_RELEASE` | `0` | 设为 `1` 时，引导程序带有 `docs/image_trust.json` 的信任表，而不是开发密钥 |
 | `HYDRA_UMC_SKIP_HOST_TESTS`, `HOST_CC` | `0`，系统编译器 | 跳过 1b 步骤的主机逻辑测试，或指定它们所用的 C 编译器 |
 | `python -m spi_bridge run --spi-speed-hz --host --port --collector-url` | `10000000`, `127.0.0.1`, `8765` | SPI 时钟、本地 HTTP 服务的监听位置，以及桥可以向其报告的 HYDRA-UMC-TELEMETRY-COLLECTOR 的地址（每秒最多一次报告） |
 
@@ -226,7 +225,7 @@ python3 tools/build_firmware.py --clean  # 先清空已缓存的 HAL/CMSIS
 
 | 你看到 | 原因 | 处理 |
 |---|---|---|
-| “引导程序接受用公开的开发种子签名的更新” | 构建时没有 `HYDRA_FW_UPDATE_PUBKEY_HEX`（或没有 `HYDRA_FW_HMAC_KEY_HEX`） | 在工作台上没问题；对任何别人可能接触到的电路板，请用 `python tools/image_header.py keygen` 生成密钥对，用公钥构建，并用 `HYDRA_UMC_RELEASE=1` 构建发布版 |
+| “引导程序接受用公开的开发种子签名的更新” | 构建时没有设置 `HYDRA_UMC_RELEASE=1` | 在工作台上没问题；对任何别人可能接触到的电路板，请用 `python tools/image_header.py keygen` 生成密钥对，把公钥写入 `docs/image_trust.json`，用 `python tools/image_trust.py headers` 生成头文件，并用 `HYDRA_UMC_RELEASE=1` 构建发布版 |
 | “未找到 arm-none-eabi-gcc” | 未安装 Arm GNU 工具链，或它不在 `PATH` 中 | 安装它（脚本在 Linux 上会尝试 `apt`）并重新构建；1b 步骤的主机测试只需要普通的 C 编译器 |
 | SPI 桥无法打开设备，或出现 `SPI transfer returned ... bytes` | 真实传输需要在启用 SPI 设备的 CM5 上有 `spidev` 和 `gpiod`，另一端还要有 STM32H757；两者目前都不存在，因此桥只对模拟对象试过 | 在有电路板之前，使用测试中的模拟传输 |
 | `tools/build_firmware.py` 在某个主机测试处以 FAIL 结束 | 三个引导程序共用的某个源文件的副本已出现差异，或 `tests/image_header_vectors.h` 比 `tools/image_header.py` 旧 | 运行 `python tools/gen_image_header_vectors.py` 和 `python -m unittest discover -s tests`，看看是哪份副本不同 |
