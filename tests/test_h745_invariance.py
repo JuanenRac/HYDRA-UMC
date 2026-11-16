@@ -129,10 +129,19 @@ class ExpectedChangeTests(unittest.TestCase):
 
 
 class WorkflowTests(unittest.TestCase):
-    def test_it_is_started_by_hand_and_only_by_the_owner(self):
+    def test_it_is_started_by_the_owner_by_hand_and_by_pull_requests_that_touch_the_mcu_sources(self):
         self.assertIn("workflow_dispatch:", WORKFLOW)
-        self.assertNotRegex(WORKFLOW, r"(?m)^  (push|pull_request|schedule):")
+        self.assertNotRegex(WORKFLOW, r"(?m)^  (push|schedule):")
         self.assertIn('[ "$ACTOR" = "$OWNER" ]', WORKFLOW)
+        # a pull request starts it only when it touches src/mcu_*, and a pull request from a fork is not built
+        self.assertRegex(WORKFLOW, r'(?m)^  pull_request:\n    paths:\n      - "src/mcu_\*/\*\*"\n')
+        self.assertIn("github.event.pull_request.head.repo.full_name == github.repository", WORKFLOW)
+        self.assertIn("if: github.event_name == 'workflow_dispatch'", WORKFLOW)
+
+    def test_a_pull_request_declares_an_intended_change_with_one_line_of_its_description(self):
+        self.assertIn("PR_BODY: ${{ github.event.pull_request.body }}", WORKFLOW)
+        self.assertIn("Expected image change:", WORKFLOW)
+        self.assertIn("EXPECTED: ${{ needs.plan.outputs.expected }}", WORKFLOW)
 
     def test_both_commits_are_pinned_and_built_in_the_same_layout(self):
         self.assertIn("base_sha=", WORKFLOW)
