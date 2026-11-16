@@ -457,7 +457,8 @@ void Relay_ToStackA(uint8_t slot, const SpiOtaFrame_t *in, SpiOtaFrame_t *out) {
                                         in->frame_type == OFS_VERSION_RESPONSE || in->frame_type == OFS_BOOTLOADER_VERSION ||
                                         in->frame_type == OFS_ERROR_COUNTERS_RESPONSE || in->frame_type == OFS_BACKUP_READ_RESPONSE ||
                                         in->frame_type == OFS_DOWNGRADE_NONCE_RESPONSE ||
-                                        in->frame_type == OFS_FRAM_ERASE_RESPONSE || in->frame_type == OFS_FRAM_SELFTEST_RESPONSE);
+                                        in->frame_type == OFS_FRAM_ERASE_RESPONSE || in->frame_type == OFS_FRAM_SELFTEST_RESPONSE ||
+                                        in->frame_type == OFS_AXIS_STEP_TELEMETRY || in->frame_type == OFS_ESTOP_STATE || in->frame_type == OFS_SLOT_SCAN_REPLY);
     if (transmitted_by_the_board) {
         memset(out, 0, sizeof(*out));
         out->target_tier = SPI_TARGET_STACKA;

@@ -90,6 +90,7 @@ extern IWDG_HandleTypeDef  hiwdg;
 #define OFS_RELAY_SEND                                      0x12 // opaque to this core - just forwarded, see this file's own header
 #define OFS_RELAY_RECV                                        0x13 // opaque to this core - just forwarded
 // One emitter per identifier (tools/can_ids.py): the controller board answers on its own identifiers, not on the one the request came in on.
+#define OFS_AXIS_STEP_TELEMETRY                               0x11 // sent BY the controller board's application (axis step telemetry and, with the switch on, the health frame)
 #define OFS_AXIS_STATUS_RESPONSE                              0x16 // sent BY the controller board's application
 #define OFS_POLL_STATUS                                       0x17 // SPI frame type from the CM5, DLC=1: the frame type to wait for; nothing is transmitted on CAN
 #define OFS_RELAY_RECV_RESPONSE                               0x18 // sent BY the controller board's application

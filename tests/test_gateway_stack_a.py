@@ -48,7 +48,7 @@ class StackTierGuards(unittest.TestCase):
         names = re.findall(r"OFS_[A-Z_0-9]+", expression)
         values = offsets()
         expected = sorted({values[name] for name in names})
-        self.assertEqual(len(expected), 12)
+        self.assertEqual(len(expected), 15)
         start = STACK.index("#define GSA_TX_BY_BOARD_MASK")
         mask = STACK[start: STACK.index("typedef struct", start)]
         in_mask = sorted(int(bit, 16) for bit in re.findall(r"1ULL << (0x[0-9A-Fa-f]+)", mask))

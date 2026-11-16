@@ -26,9 +26,9 @@
 #define GSA_TIMEOUT_MAX_MS 1000u
 
 /* the types that the boards transmit themselves (page ack, status, heartbeat, version, bootloader version, error counters, backup read, axis status, relay receive, downgrade nonce,
- * FRAM erase and self-test answers), one bit per type: tests/test_gateway_stack_a.py compares them with the list of the CM4 bootloader */
+ * FRAM erase and self-test answers, axis step telemetry or health frame, stop state, slot scan reply), one bit per type: tests/test_gateway_stack_a.py compares them with the list of the CM4 bootloader */
 #define GSA_TX_BY_BOARD_MASK                                                                                                                                                \
-    ((1ULL << 0x03) | (1ULL << 0x05) | (1ULL << 0x06) | (1ULL << 0x09) | (1ULL << 0x0A) | (1ULL << 0x0C) | (1ULL << 0x0F) | (1ULL << 0x16) | (1ULL << 0x18) | (1ULL << 0x1C) | \
+    ((1ULL << 0x03) | (1ULL << 0x05) | (1ULL << 0x06) | (1ULL << 0x09) | (1ULL << 0x0A) | (1ULL << 0x0C) | (1ULL << 0x0F) | (1ULL << 0x11) | (1ULL << 0x16) | (1ULL << 0x18) | (1ULL << 0x1C) | (1ULL << 0x1D) | (1ULL << 0x1F) | \
      (1ULL << 0x21) | (1ULL << 0x23))
 
 typedef struct {
