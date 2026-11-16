@@ -137,7 +137,7 @@ int main(void)
     CHECK(GatewayStackA_Exchange(&stack, 8u, 0x01u, payload, 1u, &reply) == 0, "slot 8 does not exist");
     CHECK(GatewayStackA_Exchange(&stack, 0u, 0x40u, payload, 1u, &reply) == 0, "type 0x40 is outside the window");
     CHECK(GatewayStackA_Exchange(&stack, 0u, 0xFFu, payload, 1u, &reply) == 0, "type 0xFF is outside the window");
-    const uint8_t by_board[] = {0x03, 0x05, 0x06, 0x09, 0x0A, 0x0C, 0x0F, 0x16, 0x18, 0x1C, 0x21, 0x23};
+    const uint8_t by_board[] = {0x03, 0x05, 0x06, 0x09, 0x0A, 0x0C, 0x0F, 0x11, 0x16, 0x18, 0x1C, 0x1D, 0x1F, 0x21, 0x23};
     for (unsigned i = 0; i < sizeof by_board; i++) CHECK(GatewayStackA_Exchange(&stack, 1u, by_board[i], payload, 1u, &reply) == 0, "a type that the boards transmit is not sent");
     CHECK(bus.sent_count == 0u && stack.counters.refused == 3u + sizeof by_board, "nothing was sent, all counted");
     for (unsigned t = 0; t < 0x40u; t++) {
