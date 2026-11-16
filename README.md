@@ -152,7 +152,7 @@ The detailed specification of the design (eleven subsystems, from the host compu
 |---|---|---|
 | A forged or edited firmware image | A fixed 64-byte header (magic, version, hardware id, size, vector words, CRC-32) is followed by the image and a 64-byte Ed25519 signature over header and image; the bootloader checks the signature first and believes nothing in the header before it verifies | `image_header.h`, `tools/image_header.py` |
 | An old signed image sent again (rollback) | A new image must be strictly newer than the installed one (major, minor and patch are compared); an older one is accepted only with a downgrade token, an Ed25519 signature over the installed and target versions and the image digest; the firmware holds no constant that allows a downgrade | `image_header.h`, `ImageHeader_CheckRollback` |
-| Images built with the development keys | Without `HYDRA_FW_UPDATE_PUBKEY_HEX` and `HYDRA_FW_HMAC_KEY_HEX` the bootloaders carry development keys whose private part is published in the repository; the build warns, and with `HYDRA_UMC_RELEASE=1` it refuses to build; the board holds only the public key, the private seed stays with the owner | `tools/build_firmware.py` |
+| Images built with the development keys | By default the bootloaders trust a development image key whose private seed is published in the repository, and the build warns; with `HYDRA_UMC_RELEASE=1` they are built with the trust table of `docs/image_trust.json` (public keys only; `python tools/image_trust.py headers` writes the headers), which stays closed until the image-signing key is in that file; the board holds only public keys, the private seed stays with the owner | `tools/build_firmware.py` |
 | A board that hangs | The G474 bootloader arms the independent watchdog (IWDG) as the very first action of `main()`, before `HAL_Init()`, so a hang during start-up resets the chip | `src/mcu_stm32g474/boot/bootloader_main.c` |
 | The local HTTP service of the SPI bridge reached by someone else | It listens on 127.0.0.1 by default, accepts a firmware body of at most 4 MiB, and holds no signing key: the signature comes in the request, made on the machine that holds the private seed; it has no TLS and no sign-in of its own, so whatever relays to it must decide who may flash | `src/cm5_host/spi_bridge/spi_bridge/http_service.py` |
 
@@ -173,9 +173,8 @@ The firmware is configured when it is built, through environment variables; the 
 
 | Variable | Default | What it sets |
 |---|---|---|
-| `HYDRA_FW_UPDATE_PUBKEY_HEX` | development key | 64 hexadecimal digits: the Ed25519 public key that an update must be signed for |
-| `HYDRA_FW_HMAC_KEY_HEX` | development key | 64 hexadecimal digits kept outside the repository: the key of the local integrity check of the installed application |
-| `HYDRA_UMC_RELEASE` | `0` | with `1` the build refuses to use the development keys |
+| `HYDRA_FW_UPDATE_PUBKEY_HEX` | none | 64 hexadecimal digits: the Ed25519 public key that `tools/sign_release.py verify` checks the signatures of the application images against; it does not choose the key the bootloaders trust |
+| `HYDRA_UMC_RELEASE` | `0` | with `1` the bootloaders carry the trust table of `docs/image_trust.json` instead of the development key |
 | `HYDRA_UMC_SKIP_HOST_TESTS`, `HOST_CC` | `0`, the system compiler | skip the host logic tests of step 1b, or name the C compiler they use |
 | `python -m spi_bridge run --spi-speed-hz --host --port --collector-url` | `10000000`, `127.0.0.1`, `8765` | the SPI clock, where the local HTTP service listens, and the address of the HYDRA-UMC-TELEMETRY-COLLECTOR that the bridge can report to (at most one report a second) |
 
@@ -269,7 +268,7 @@ All six firmware components (three bootloaders and three applications, one pair 
 
 | You see | Because | Do |
 |---|---|---|
-| "bootloaders accept updates signed with the DEVELOPMENT seed, which is public" | The build had no `HYDRA_FW_UPDATE_PUBKEY_HEX` (or no `HYDRA_FW_HMAC_KEY_HEX`) | Fine for a bench; for any board that someone else can reach, make a key pair with `python tools/image_header.py keygen`, build with the public key and build releases with `HYDRA_UMC_RELEASE=1` |
+| "bootloaders accept updates signed with the DEVELOPMENT seed, which is public" | The build was made without `HYDRA_UMC_RELEASE=1` | Fine for a bench; for any board that someone else can reach, make a key pair with `python tools/image_header.py keygen`, put the public key in `docs/image_trust.json`, write the headers with `python tools/image_trust.py headers` and build the releases with `HYDRA_UMC_RELEASE=1` |
 | "arm-none-eabi-gcc not found" | The Arm GNU Toolchain is not installed or not on `PATH` | Install it (the script tries `apt` on Linux) and run the build again; the host tests of step 1b need only a plain C compiler |
 | The SPI bridge fails to open the device, or `SPI transfer returned ... bytes` | The real transport needs `spidev` and `gpiod` on a CM5 with the SPI device enabled, and an STM32H757 on the other end; neither exists yet, so the bridge was only exercised against fakes | Use the fake transport of the tests until a board exists |
 | `tools/build_firmware.py` ends with FAIL at a host test | The copies of a source that the three bootloaders share have drifted apart, or `tests/image_header_vectors.h` is older than `tools/image_header.py` | Run `python tools/gen_image_header_vectors.py` and `python -m unittest discover -s tests` to see which copy differs |

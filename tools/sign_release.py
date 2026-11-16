@@ -14,8 +14,8 @@ signature over the signed image header and the image (tools/image_header.py). Th
 outside this repository: --seed-file, or the file named by HYDRA_FW_SIGNING_SEED_FILE. Without a seed nothing is signed and the command says
 so (exit 0); with --require, or HYDRA_UMC_RELEASE=1, a missing seed is an error. The seed is never printed.
 
-`verify` checks every .sig against the public key (--public-key-hex or HYDRA_FW_UPDATE_PUBKEY_HEX, the same variable the bootloaders are
-built with). A .bin without a .sig is reported; with --require it is an error. Signatures only ever cover application images: the
+`verify` checks every .sig against the public key (--public-key-hex or HYDRA_FW_UPDATE_PUBKEY_HEX; the key the bootloaders trust is chosen by
+HYDRA_UMC_RELEASE and docs/image_trust.json, not by this variable). A .bin without a .sig is reported; with --require it is an error. Signatures only ever cover application images: the
 bootloaders are flashed over the debug port, not updated through the bootloader.
 """
 from __future__ import annotations

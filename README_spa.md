@@ -152,7 +152,7 @@ La especificación detallada del diseño (once subsistemas, del ordenador anfitr
 |---|---|---|
 | Una imagen de firmware falsa o editada | Una cabecera fija de 64 bytes (magia, versión, id de hardware, tamaño, palabras de vector, CRC-32) va seguida de la imagen y de una firma Ed25519 de 64 bytes sobre cabecera e imagen; el cargador comprueba primero la firma y no cree nada de la cabecera antes de que verifique | `image_header.h`, `tools/image_header.py` |
 | Una imagen firmada antigua enviada de nuevo (retroceso) | Una imagen nueva debe ser estrictamente más nueva que la instalada (se comparan mayor, menor y parche); una más antigua solo se acepta con un token de bajada de versión, una firma Ed25519 sobre las versiones instalada y destino y el resumen de la imagen; el firmware no contiene ninguna constante que permita bajar de versión | `image_header.h`, `ImageHeader_CheckRollback` |
-| Imágenes compiladas con las claves de desarrollo | Sin `HYDRA_FW_UPDATE_PUBKEY_HEX` y `HYDRA_FW_HMAC_KEY_HEX` los cargadores llevan claves de desarrollo cuya parte privada está publicada en el repositorio; la compilación avisa, y con `HYDRA_UMC_RELEASE=1` se niega a compilar; la placa solo guarda la clave pública, la semilla privada queda con el dueño | `tools/build_firmware.py` |
+| Imágenes compiladas con las claves de desarrollo | Por defecto los cargadores confían en una clave de imagen de desarrollo cuya semilla privada está publicada en el repositorio, y la compilación avisa; con `HYDRA_UMC_RELEASE=1` se compilan con la tabla de confianza de `docs/image_trust.json` (solo claves públicas; `python tools/image_trust.py headers` escribe las cabeceras), que sigue cerrada hasta que la clave de firma de imágenes esté en ese fichero; la placa solo guarda claves públicas, la semilla privada queda con el dueño | `tools/build_firmware.py` |
 | Una placa que se cuelga | El cargador de la G474 arma el perro guardián independiente (IWDG) como primerísima acción de `main()`, antes de `HAL_Init()`, así que un cuelgue durante el arranque reinicia el chip | `src/mcu_stm32g474/boot/bootloader_main.c` |
 | El servicio HTTP local del puente SPI alcanzado por otra persona | Escucha en 127.0.0.1 por defecto, acepta un cuerpo de firmware de 4 MiB como máximo y no guarda ninguna clave de firma: la firma llega en la petición, hecha en la máquina que tiene la semilla privada; no tiene TLS ni inicio de sesión propio, así que quien le reenvíe debe decidir quién puede flashear | `src/cm5_host/spi_bridge/spi_bridge/http_service.py` |
 
@@ -173,9 +173,8 @@ El firmware se configura al compilarse, mediante variables de entorno; el puente
 
 | Variable | Por defecto | Qué fija |
 |---|---|---|
-| `HYDRA_FW_UPDATE_PUBKEY_HEX` | clave de desarrollo | 64 dígitos hexadecimales: la clave pública Ed25519 para la que debe estar firmada una actualización |
-| `HYDRA_FW_HMAC_KEY_HEX` | clave de desarrollo | 64 dígitos hexadecimales guardados fuera del repositorio: la clave de la comprobación de integridad local de la aplicación instalada |
-| `HYDRA_UMC_RELEASE` | `0` | con `1` la compilación se niega a usar las claves de desarrollo |
+| `HYDRA_FW_UPDATE_PUBKEY_HEX` | ninguna | 64 dígitos hexadecimales: la clave pública Ed25519 con la que `tools/sign_release.py verify` comprueba las firmas de las imágenes de aplicación; no elige la clave en la que confían los cargadores |
+| `HYDRA_UMC_RELEASE` | `0` | con `1` los cargadores llevan la tabla de confianza de `docs/image_trust.json` en lugar de la clave de desarrollo |
 | `HYDRA_UMC_SKIP_HOST_TESTS`, `HOST_CC` | `0`, el compilador del sistema | omite las pruebas lógicas de host del paso 1b, o nombra el compilador de C que usan |
 | `python -m spi_bridge run --spi-speed-hz --host --port --collector-url` | `10000000`, `127.0.0.1`, `8765` | el reloj SPI, dónde escucha el servicio HTTP local y la dirección del HYDRA-UMC-TELEMETRY-COLLECTOR al que el puente puede informar (como mucho un informe por segundo) |
 
@@ -278,7 +277,7 @@ Los seis componentes del firmware (tres cargadores de arranque y tres aplicacion
 
 | Ves | Porque | Haz |
 |---|---|---|
-| «los cargadores aceptan actualizaciones firmadas con la semilla de DESARROLLO, que es pública» | La compilación no tenía `HYDRA_FW_UPDATE_PUBKEY_HEX` (o no tenía `HYDRA_FW_HMAC_KEY_HEX`) | Vale para un banco de pruebas; para cualquier placa que otra persona pueda alcanzar, crea un par de claves con `python tools/image_header.py keygen`, compila con la clave pública y compila las versiones con `HYDRA_UMC_RELEASE=1` |
+| «los cargadores aceptan actualizaciones firmadas con la semilla de DESARROLLO, que es pública» | La compilación se hizo sin `HYDRA_UMC_RELEASE=1` | Vale para un banco de pruebas; para cualquier placa que otra persona pueda alcanzar, crea un par de claves con `python tools/image_header.py keygen`, pon la clave pública en `docs/image_trust.json`, escribe las cabeceras con `python tools/image_trust.py headers` y compila las versiones con `HYDRA_UMC_RELEASE=1` |
 | «arm-none-eabi-gcc no encontrado» | La cadena de herramientas Arm GNU no está instalada o no está en `PATH` | Instálala (el script prueba `apt` en Linux) y vuelve a compilar; las pruebas de host del paso 1b solo necesitan un compilador de C normal |
 | El puente SPI no abre el dispositivo, o `SPI transfer returned ... bytes` | El transporte real necesita `spidev` y `gpiod` en una CM5 con el dispositivo SPI activado, y un STM32H757 al otro lado; ninguno existe aún, así que el puente solo se ha ejercitado con simulaciones | Usa el transporte simulado de las pruebas hasta que exista una placa |
 | `tools/build_firmware.py` termina con FAIL en una prueba de host | Las copias de una fuente que comparten los tres cargadores se han separado, o `tests/image_header_vectors.h` es más viejo que `tools/image_header.py` | Ejecuta `python tools/gen_image_header_vectors.py` y `python -m unittest discover -s tests` para ver qué copia difiere |
