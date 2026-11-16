@@ -25,6 +25,8 @@
 #define RELAY_SEND_FIRST_FRAGMENT_BYTES   5U
 #define RELAY_SEND_REASSEMBLY_TIMEOUT_MS  20U /* the second fragment follows the first at once; older than this and it is gone */
 #define RELAY_SEND_MAX_CAN_ID             0x7FFU
+#define RELAY_SEND_ESTOP_CAN_ID           0x001U /* the stop frames (TRIP, ALIVE, RELEASE) and the safety-zones heartbeat are never sent inside the tunnel */
+#define RELAY_SEND_ZONES_CAN_ID           0x002U
 
 typedef struct {
     uint8_t  pending;
@@ -42,14 +44,14 @@ static inline void RelaySendReassembly_Reset(RelaySendReassembly_t *r)
 
 /* Feeds one fragment. Returns 1 and fills out_id/out_data/out_dlc when a whole
  * frame is ready to send; returns 0 when more is awaited or the fragment was
- * dropped (target id above 0x7FF, total above 8, lengths that do not fit, a
+ * dropped (target id above 0x7FF or one of the stop identifiers 0x001 and 0x002, total above 8, lengths that do not fit, a
  * second fragment with no first one, or one that arrived too late). */
 static inline uint8_t RelaySendReassembly_Feed(
     RelaySendReassembly_t *r, uint32_t now_ms,
     uint16_t target_id, uint8_t total_dlc, const uint8_t *fragment, uint8_t fragment_len,
     uint16_t *out_id, uint8_t out_data[8], uint8_t *out_dlc)
 {
-    if (target_id > RELAY_SEND_MAX_CAN_ID || total_dlc > 8U || fragment_len > 8U) {
+    if (target_id > RELAY_SEND_MAX_CAN_ID || target_id == RELAY_SEND_ESTOP_CAN_ID || target_id == RELAY_SEND_ZONES_CAN_ID || total_dlc > 8U || fragment_len > 8U) {
         return 0;
     }
     if (r->pending && (uint32_t)(now_ms - r->start_ms) >= RELAY_SEND_REASSEMBLY_TIMEOUT_MS) {

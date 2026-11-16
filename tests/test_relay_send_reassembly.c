@@ -66,6 +66,9 @@ int main(void)
 
     /* bad ids and lengths */
     TEST_ASSERT(RelaySendReassembly_Feed(&r, 700, 0x804, 4, four, 4, &id, data, &dlc) == 0, "id above 0x7FF dropped");
+    TEST_ASSERT(RelaySendReassembly_Feed(&r, 700, 0x001, 4, four, 4, &id, data, &dlc) == 0, "the stop identifier 0x001 is not sent through the tunnel");
+    TEST_ASSERT(RelaySendReassembly_Feed(&r, 700, 0x002, 4, four, 4, &id, data, &dlc) == 0, "the safety-zones identifier 0x002 is not sent through the tunnel");
+    TEST_ASSERT(RelaySendReassembly_Feed(&r, 700, 0x003, 4, four, 4, &id, data, &dlc) == 1, "the next identifier still passes");
     TEST_ASSERT(RelaySendReassembly_Feed(&r, 701, 0x100, 9, first, 5, &id, data, &dlc) == 0, "total above 8 dropped");
     TEST_ASSERT(RelaySendReassembly_Feed(&r, 702, 0x100, 4, first, 5, &id, data, &dlc) == 0, "fragment longer than the frame dropped");
     TEST_ASSERT(RelaySendReassembly_Feed(&r, 703, 0x100, 8, first, 4, &id, data, &dlc) == 0, "second-sized fragment with no first dropped");

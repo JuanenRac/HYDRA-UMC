@@ -72,7 +72,7 @@ NONCE_SIZE = 16
 IMAGE_DOMAIN = b"hydra-umc-image-sig\x00"
 DOWNGRADE_DOMAIN = b"hydra-umc-downgrade\x00"
 # Published development seeds (one per bootloader), only for bench builds: the matching public keys are what a build without
-# HYDRA_FW_UPDATE_PUBKEY_HEX carries, and a release build refuses them. Never use them for anything that is to be trusted.
+# HYDRA_UMC_RELEASE=1 carries, and a release build refuses them. Never use them for anything that is to be trusted.
 DEV_SEEDS = {
     "G401": b"HYDRA-UMC-DEV-SEED-G401-0001!!!!",
     "H7C4": b"HYDRA-UMC-DEV-SEED-H7C4-0001!!!!",
