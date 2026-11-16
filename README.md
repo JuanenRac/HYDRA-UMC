@@ -173,8 +173,7 @@ The firmware is configured when it is built, through environment variables; the 
 
 | Variable | Default | What it sets |
 |---|---|---|
-| `HYDRA_FW_UPDATE_PUBKEY_HEX` | none | 64 hexadecimal digits: the Ed25519 public key that `tools/sign_release.py verify` checks the signatures of the application images against; it does not choose the key the bootloaders trust |
-| `HYDRA_UMC_RELEASE` | `0` | with `1` the bootloaders carry the trust table of `docs/image_trust.json` instead of the development key |
+| `HYDRA_UMC_RELEASE` | `0` | with `1` the bootloaders carry the trust table of `docs/image_trust.json` instead of the development key; the build stops if `HYDRA_FW_UPDATE_PUBKEY_HEX` or `HYDRA_FW_HMAC_KEY_HEX` is set, because it does not read them |
 | `HYDRA_UMC_SKIP_HOST_TESTS`, `HOST_CC` | `0`, the system compiler | skip the host logic tests of step 1b, or name the C compiler they use |
 | `python -m spi_bridge run --spi-speed-hz --host --port --collector-url` | `10000000`, `127.0.0.1`, `8765` | the SPI clock, where the local HTTP service listens, and the address of the HYDRA-UMC-TELEMETRY-COLLECTOR that the bridge can report to (at most one report a second) |
 

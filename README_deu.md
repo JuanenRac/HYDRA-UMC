@@ -173,8 +173,7 @@ Die Firmware wird beim Bauen über Umgebungsvariablen konfiguriert; die SPI-Brü
 
 | Variable | Standard | Was sie festlegt |
 |---|---|---|
-| `HYDRA_FW_UPDATE_PUBKEY_HEX` | keiner | 64 Hexadezimalziffern: der öffentliche Ed25519-Schlüssel, gegen den `tools/sign_release.py verify` die Signaturen der Anwendungs-Images prüft; er bestimmt nicht, welchem Schlüssel die Bootloader vertrauen |
-| `HYDRA_UMC_RELEASE` | `0` | mit `1` tragen die Bootloader die Vertrauenstabelle aus `docs/image_trust.json` statt des Entwicklungsschlüssels |
+| `HYDRA_UMC_RELEASE` | `0` | mit `1` tragen die Bootloader die Vertrauenstabelle aus `docs/image_trust.json` statt des Entwicklungsschlüssels; der Build bricht ab, wenn `HYDRA_FW_UPDATE_PUBKEY_HEX` oder `HYDRA_FW_HMAC_KEY_HEX` gesetzt ist, weil er sie nicht liest |
 | `HYDRA_UMC_SKIP_HOST_TESTS`, `HOST_CC` | `0`, der System-Compiler | überspringt die Host-Logiktests von Schritt 1b oder benennt den C-Compiler, den sie verwenden |
 | `python -m spi_bridge run --spi-speed-hz --host --port --collector-url` | `10000000`, `127.0.0.1`, `8765` | der SPI-Takt, wo der lokale HTTP-Dienst lauscht, und die Adresse des HYDRA-UMC-TELEMETRY-COLLECTOR, an den die Brücke berichten kann (höchstens ein Bericht pro Sekunde) |
 

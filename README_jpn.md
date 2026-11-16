@@ -173,8 +173,7 @@ flowchart LR
 
 | 変数 | 既定値 | 設定する内容 |
 |---|---|---|
-| `HYDRA_FW_UPDATE_PUBKEY_HEX` | なし | 64 桁の 16 進数：`tools/sign_release.py verify` がアプリケーションイメージの署名を検証する Ed25519 公開鍵。ブートローダーが信頼する鍵を選ぶものではありません |
-| `HYDRA_UMC_RELEASE` | `0` | `1` にするとブートローダーは開発用の鍵の代わりに `docs/image_trust.json` の信頼テーブルを持ちます |
+| `HYDRA_UMC_RELEASE` | `0` | `1` にするとブートローダーは開発用の鍵の代わりに `docs/image_trust.json` の信頼テーブルを持ちます。`HYDRA_FW_UPDATE_PUBKEY_HEX` または `HYDRA_FW_HMAC_KEY_HEX` が設定されているとビルドは停止します（ビルドはそれらを読まないためです） |
 | `HYDRA_UMC_SKIP_HOST_TESTS`, `HOST_CC` | `0`、システムのコンパイラー | ステップ 1b のホストロジックテストを省略するか、それが使う C コンパイラーを指定します |
 | `python -m spi_bridge run --spi-speed-hz --host --port --collector-url` | `10000000`, `127.0.0.1`, `8765` | SPI クロック、ローカル HTTP サービスの待ち受け先、ブリッジが報告できる HYDRA-UMC-TELEMETRY-COLLECTOR のアドレス（報告は 1 秒に 1 回まで） |
 
