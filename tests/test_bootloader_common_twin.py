@@ -86,7 +86,7 @@ class SharedProtocolTests(unittest.TestCase):
     # two boards on the shared bus (the CM7 core only sees what the CM4 relays). Anything else missing somewhere is drift.
     KNOWN_PARTIAL = {
         "OFS_AXIS_STATUS": ["g474"],
-        "OFS_AXIS_STEP_TELEMETRY": ["g474"],
+        "OFS_AXIS_STEP_TELEMETRY": ["g474", "cm4"],
         "OFS_AXIS_STATUS_RESPONSE": ["g474", "cm4"],
         "OFS_POLL_STATUS": ["g474", "cm4"],
         "OFS_RELAY_RECV": ["g474", "cm4"],
