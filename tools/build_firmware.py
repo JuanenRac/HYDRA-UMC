@@ -549,17 +549,20 @@ def bootloader_cases(root: str) -> list[Case]:
         )
     for core in ("CM4", "CM7"):
         for layer in (False, True):
-            cases.append(
-                _t(
-                    f"H745 {core} bootloader flash write, region copy and metadata log host logic tests passed" + (" through the common flash layer (HYDRA_FLASH_LAYER=1)" if layer else ""),
-                    f"host_tests_bootloader_h745_{core}_flash_ops" + ("_flash_layer" if layer else ""),
-                    "test_bootloader_h745_flash_host",
-                    ("tests/stubs", f"src/mcu_stm32h757/{core}/boot"),
-                    [f"-DHYDRA_TEST_{core}"] + (["-DHYDRA_FLASH_LAYER=1"] if layer else []),
-                    rerun_on_failure=True,
-                    **GNU,
+            for two_sectors in (False, True):
+                cases.append(
+                    _t(
+                        f"H745 {core} bootloader flash write, region copy and metadata log host logic tests passed"
+                        + (" through the common flash layer (HYDRA_FLASH_LAYER=1)" if layer else "")
+                        + (" with the metadata log in two sectors (HYDRA_META_AB=1)" if two_sectors else ""),
+                        f"host_tests_bootloader_h745_{core}_flash_ops" + ("_flash_layer" if layer else "") + ("_meta_ab" if two_sectors else ""),
+                        "test_bootloader_h745_flash_host",
+                        ("tests/stubs", f"src/mcu_stm32h757/{core}/boot"),
+                        [f"-DHYDRA_TEST_{core}"] + (["-DHYDRA_FLASH_LAYER=1"] if layer else []) + (["-DHYDRA_META_AB=1"] if two_sectors else []),
+                        rerun_on_failure=True,
+                        **GNU,
+                    )
                 )
-            )
     for d in BOOT_DIRS:
         for test in ("test_image_header", "test_update_verify", "test_format2_decision"):
             cases.append(

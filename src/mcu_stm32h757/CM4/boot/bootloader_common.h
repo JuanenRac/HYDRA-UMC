@@ -45,7 +45,17 @@ extern IWDG_HandleTypeDef  hiwdg;
 #define METADATA_ADDR        0x08120000UL // sector 1, own dedicated sector
 #define MAIN_APP_ADDR        0x08140000UL // sectors 2-4
 #define BACKUP_APP_ADDR      0x081A0000UL // sectors 5-7
+// HYDRA_META_AB (off as it ships) keeps the metadata in two sectors that take turns (meta_ab.h): sector 1 as always and a second one, METADATA_B_ADDR, which is
+// the last sector of the application backup slot, so the longest application is then 256 KB.
+#ifndef HYDRA_META_AB
+#define HYDRA_META_AB 0
+#endif
+#if HYDRA_META_AB
+#define METADATA_B_ADDR      0x081E0000UL // sector 7, the second metadata sector
+#define APP_MAX_SIZE         (256UL * 1024UL) // 2 sectors
+#else
 #define APP_MAX_SIZE         (384UL * 1024UL)
+#endif
 #define METADATA_MAGIC_VALID 0x55415034UL // "4PAU" - CM4, distinct from CM7's "CPAU" and G474's "UPAU"
 #define FLASH_PAGE_SIZE       0x800UL // 2048 bytes - logical OTA transfer-chunk size, not hardware erase granularity (see ../../CM7/boot/bootloader_flash.c's own header, identical reasoning here)
 
