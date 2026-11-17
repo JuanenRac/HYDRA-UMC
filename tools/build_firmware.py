@@ -304,6 +304,17 @@ def host_cases(root: str) -> list[Case]:
                 ["-DHYDRA_TEST_ADOPTION"] if d == G474_BOOT else [],
             )
         )
+    for d in (CM4_BOOT, "src/mcu_stm32h757/CM7/boot"):
+        for gate in (0, 1):
+            cases.append(
+                _t(
+                    f"readout_gate host logic tests passed ({d}, read-out gate {gate})",
+                    "host_tests_readout_gate_" + d.replace("/", "_") + f"_gate{gate}",
+                    "test_readout_gate_h7",
+                    [d],
+                    [f"-DHYDRA_READBACK_GATE={gate}"],
+                )
+            )
     cases.append(
         Case(
             ok="estop_can host logic tests passed (controller board node, kinematic brain)",
