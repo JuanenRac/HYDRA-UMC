@@ -28,6 +28,7 @@
 #
 # Usage: python3 generate_manifest.py [repo_root]
 #   repo_root defaults to this script's own parent directory.
+#   --meta-ab-report prints the room the CM7 and CM4 applications leave in 256 KB (exit 1 when one does not fit) and writes nothing.
 # =============================================================================
 import sys
 import os
@@ -148,9 +149,46 @@ CM7_RAM = (0x24000000, 0x24080000)
 CM4_RAM = (0x30000000, 0x30048000)
 
 
+# The longest application the H757 bootloaders take. With HYDRA_META_AB=1 the metadata takes the last sector of the backup slot and the application is limited to
+# two sectors; the manifest follows the switch of the build in the environment, so an image that would not fit is refused here and not found out on the board.
+APP_SLOT_BYTES = 384 * 1024
+APP_SLOT_BYTES_META_AB = 256 * 1024
+
+
+def kb_app_region_bytes(environ=None):
+    """The room of a Kinematic Brain application (CM7 or CM4): 256 KB with HYDRA_META_AB=1 in the environment of the build, 384 KB otherwise."""
+    environ = os.environ if environ is None else environ
+    return APP_SLOT_BYTES_META_AB if environ.get("HYDRA_META_AB") == "1" else APP_SLOT_BYTES
+
+
+def check_image_fits(bin_path, flash_region_max_bytes):
+    """Refuse an image that is longer than the region it will be installed in."""
+    size = os.path.getsize(bin_path)
+    if size > flash_region_max_bytes:
+        raise SystemExit(
+            f"generate_manifest.py: {os.path.basename(bin_path)} is {size} bytes, longer than its region of "
+            f"{flash_region_max_bytes} bytes - manifest NOT written."
+        )
+
+
+def meta_ab_report(fw_out):
+    """(lines, fits): the room the CM7 and CM4 applications leave in the 256 KB that HYDRA_META_AB=1 allows."""
+    lines = ["### Room for the metadata in two sectors (HYDRA_META_AB)", "", "| Application | Size (bytes) | Room in 256 KB (bytes) |", "| --- | ---: | ---: |"]
+    fits = True
+    for prefix, label in (("HYDRA_KB_CM7_APP", "CM7"), ("HYDRA_KB_CM4_APP", "CM4")):
+        size = os.path.getsize(find_versioned_bin(fw_out, prefix))
+        room = APP_SLOT_BYTES_META_AB - size
+        fits = fits and room >= 0
+        lines.append(f"| {label} | {size} | {room} |")
+    lines.append("")
+    lines.append("Both fit." if fits else "At least one application does not fit in 256 KB: the two-sector metadata stays off.")
+    return lines, fits
+
+
 def component(fw_out, prefix, display_name, chip, hw_id, ver, flash_address, flash_region_max_bytes, ram_range):
     bin_path = find_versioned_bin(fw_out, prefix)
     check_link_address(bin_path, flash_address, flash_region_max_bytes, ram_range)
+    check_image_fits(bin_path, flash_region_max_bytes)
     return {
         "display_name": display_name,
         "chip": chip,
@@ -169,8 +207,14 @@ def component(fw_out, prefix, display_name, chip, hw_id, ver, flash_address, fla
 
 
 def main():
-    root = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.path.abspath(__file__))
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    root = args[0] if args else os.path.dirname(os.path.abspath(__file__))
     fw_out = os.path.join(root, "firmware")
+    if "--meta-ab-report" in sys.argv[1:]:
+        # only measures: it writes nothing and exits 1 when an application does not fit in the 256 KB of HYDRA_META_AB=1
+        lines, fits = meta_ab_report(fw_out)
+        print("\n".join(lines))
+        sys.exit(0 if fits else 1)
 
     g4_h = os.path.join(root, "src", "mcu_stm32g474", "boot", "bootloader_common.h")
     g4_boot_ver = {k: int(read_define(g4_h, f"BOOTLOADER_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
@@ -253,7 +297,7 @@ def main():
             ),
             "h745_cm7_application": component(
                 fw_out, "HYDRA_KB_CM7_APP", "Kinematic Brain Application (CM7)",
-                "STM32H745ZIT6 (CM7)", cm7_hwid, cm7_app_ver, "0x08040000", 384 * 1024, CM7_RAM,
+                "STM32H745ZIT6 (CM7)", cm7_hwid, cm7_app_ver, "0x08040000", kb_app_region_bytes(), CM7_RAM,
             ),
             "h745_cm4_bootloader": component(
                 fw_out, "HYDRA_KB_CM4_BOOTLOADER", "Kinematic Brain Bootloader (CM4)",
@@ -261,7 +305,7 @@ def main():
             ),
             "h745_cm4_application": component(
                 fw_out, "HYDRA_KB_CM4_APP", "Kinematic Brain Application (CM4)",
-                "STM32H745ZIT6 (CM4)", cm4_hwid, cm4_app_ver, "0x08140000", 384 * 1024, CM4_RAM,
+                "STM32H745ZIT6 (CM4)", cm4_hwid, cm4_app_ver, "0x08140000", kb_app_region_bytes(), CM4_RAM,
             ),
         },
     }
