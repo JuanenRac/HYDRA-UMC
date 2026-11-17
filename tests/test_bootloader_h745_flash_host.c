@@ -223,7 +223,7 @@ static void test_a_copy_equals_the_source_and_leaves_it_alone(void)
 {
     printf("  Flash_CopyRegion: sizes from one byte to the whole slot\n");
     static uint8_t source[APP_MAX_SIZE];
-    static const uint32_t sizes[] = {1, 2047, 2048, 2049, 5000, 131072, 131073, 300000, APP_MAX_SIZE};
+    static const uint32_t sizes[] = {1, 2047, 2048, 2049, 5000, 131072, 131073, 250000, APP_MAX_SIZE};
     for (unsigned k = 0; k < sizeof(sizes) / sizeof(sizes[0]); k++) {
         uint32_t size = sizes[k];
         reset_world();
