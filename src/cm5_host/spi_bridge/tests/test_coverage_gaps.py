@@ -364,7 +364,8 @@ class BusyAndFailedTests(unittest.TestCase):
 
     def call(self, path, *, data=None, method="GET"):
         try:
-            with urlopen(Request(self.base_url + path, data=data, method=method)) as response:
+            headers = {"X-Hydra-Confirm": "ERASE"} if path.startswith("/fram/erase") else {}
+            with urlopen(Request(self.base_url + path, data=data, method=method, headers=headers)) as response:
                 return response.status, json.loads(response.read().decode("utf-8").splitlines()[0])
         except HTTPError as error:
             with error:
