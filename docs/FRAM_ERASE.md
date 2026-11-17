@@ -54,7 +54,7 @@ On the H757 board the CM7 owns I2C4, and `src/mcu_stm32h757/CM7/FramI2c4.c` (swi
 
 `src/cm5_host/spi_bridge/spi_bridge/fram_client.py` sends the request to the brain and waits for the answer. The local service offers, only when started with `--enable-fram-erase`:
 
-- `POST /fram/erase?confirm=ERASE` (an erase without the word `ERASE` is refused with 400)
+- `POST /fram/erase?confirm=ERASE` with the header `X-Hydra-Confirm: ERASE` (an erase without the word in the query or in the header is refused with 400). The service reads the telemetry of the brain first and erases only while the emergency stop is latched: with the stop not latched it answers 409, and when the state of the stop cannot be read it answers 504 and the chip is not touched
 - `POST /fram/selftest`
 - `GET /version` carries `capabilities.fram_erase`, so an app offers the operation only when the bridge does.
 

@@ -290,7 +290,7 @@ def make_handler(
                 lock.release()
 
         def _fram(self, parsed) -> None:
-            """The F-RAM erase and self-test of the brain: off unless the service was started for it, and an erase needs the word `ERASE` as a confirmation."""
+            """The F-RAM erase and self-test of the brain: off unless the service was started for it, and an erase needs the word `ERASE` as a confirmation, the same word in the header `X-Hydra-Confirm`, and the emergency stop latched."""
             if not fram_erase:
                 self._send_json(403, {"error": "the F-RAM operations are switched off in this service (start it with --enable-fram-erase)"})
                 return
@@ -299,10 +299,22 @@ def make_handler(
             if is_erase and params.get("confirm", [""])[0] != "ERASE":
                 self._send_json(400, {"error": "an erase needs confirm=ERASE"})
                 return
+            if is_erase and self.headers.get("X-Hydra-Confirm", "") != "ERASE":
+                # a browser page or a script that can only reach a URL cannot send this header on its own
+                self._send_json(400, {"error": "an erase needs the header X-Hydra-Confirm: ERASE"})
+                return
             if not lock.acquire(blocking=False):
                 self._send_json(409, {"error": "the SPI link is busy with another operation"})
                 return
             try:
+                if is_erase:
+                    telemetry = read_telemetry(transport)
+                    if telemetry is None:
+                        self._send_json(504, {"error": "the state of the stop could not be read (the board is absent, or the telemetry is off), so the F-RAM was not erased"})
+                        return
+                    if not telemetry.estop_latched:
+                        self._send_json(409, {"error": "the F-RAM is erased only while the emergency stop is latched: latch it first"})
+                        return
                 result = (erase_fram if is_erase else fram_selftest)(transport)
             finally:
                 lock.release()

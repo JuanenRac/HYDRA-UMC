@@ -12,6 +12,7 @@ import sys
 import threading
 import unittest
 from pathlib import Path
+from unittest import mock
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -19,6 +20,7 @@ from sim_fram_board import SimulatedFramBoard
 
 from spi_bridge import fram_client as fc
 from spi_bridge.http_service import serve
+from spi_bridge.system_client import Telemetry
 from spi_bridge.protocol import (
     OFS_STATUS,
     OFS_VERSION_RESPONSE,
@@ -216,9 +218,10 @@ class HttpRoutes(unittest.TestCase):
         self.addCleanup(stop)
         return f"http://127.0.0.1:{server.server_port}"
 
-    def post(self, base, path):
+    def post(self, base, path, confirm=True):
+        headers = {"X-Hydra-Confirm": "ERASE"} if confirm and path.startswith("/fram/erase") else {}
         try:
-            with urlopen(Request(base + path, method="POST", data=b"")) as response:
+            with urlopen(Request(base + path, method="POST", data=b"", headers=headers)) as response:
                 return response.status, json.loads(response.read())
         except HTTPError as error:
             with error:
@@ -246,14 +249,55 @@ class HttpRoutes(unittest.TestCase):
             self.assertEqual(self.post(base, path)[0], 400, path)
         self.assertEqual(board.requests, [])
 
+    def latched(self, latched=True):
+        """The brain answers its telemetry with the emergency stop latched (or not); the simulated F-RAM board only knows the F-RAM requests."""
+        telemetry = Telemetry(True, latched, True, 0, 0, 0, 0, 0, 0)
+        patcher = mock.patch("spi_bridge.http_service.read_telemetry", return_value=telemetry)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_with_the_switch_on_both_operations_run(self):
+        self.latched()
         base = self.start(SimulatedFramBoard(), fram_erase=True)
         status, body = self.post(base, "/fram/erase?confirm=ERASE")
         self.assertEqual((status, body["status"], body["ok"], body["value"]), (200, "ok", True, 256))
         status, body = self.post(base, "/fram/selftest")
         self.assertEqual((status, body["operation"], body["ok"]), (200, "selftest", True))
 
+    def test_an_erase_without_the_header_is_refused_and_the_board_is_not_touched(self):
+        self.latched()
+        board = SimulatedFramBoard()
+        base = self.start(board, fram_erase=True)
+        status, body = self.post(base, "/fram/erase?confirm=ERASE", confirm=False)
+        self.assertEqual(status, 400)
+        self.assertIn("X-Hydra-Confirm", body["error"])
+        self.assertEqual(board.requests, [])
+
+    def test_an_erase_needs_the_emergency_stop_latched(self):
+        self.latched(False)
+        board = SimulatedFramBoard()
+        base = self.start(board, fram_erase=True)
+        status, body = self.post(base, "/fram/erase?confirm=ERASE")
+        self.assertEqual(status, 409)
+        self.assertIn("latched", body["error"])
+        self.assertEqual(board.requests, [])
+
+    def test_an_erase_is_refused_when_the_state_of_the_stop_cannot_be_read(self):
+        patcher = mock.patch("spi_bridge.http_service.read_telemetry", return_value=None)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        board = SimulatedFramBoard()
+        base = self.start(board, fram_erase=True)
+        status, body = self.post(base, "/fram/erase?confirm=ERASE")
+        self.assertEqual(status, 504)
+        self.assertEqual(board.requests, [])
+
+    def test_the_self_test_does_not_need_the_stop_or_the_header(self):
+        base = self.start(SimulatedFramBoard(), fram_erase=True)
+        self.assertEqual(self.post(base, "/fram/selftest")[0], 200)
+
     def test_a_board_that_says_no_chip_is_reported_as_it_is(self):
+        self.latched()
         base = self.start(SimulatedFramBoard(chip_size=0), fram_erase=True)
         status, body = self.post(base, "/fram/erase?confirm=ERASE")
         self.assertEqual((status, body["status"], body["ok"]), (200, "no-chip", False))
