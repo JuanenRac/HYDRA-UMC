@@ -394,6 +394,9 @@ static void test_a_failed_erase_leaves_the_old_log_readable(void)
         FirmwareMetadata_t m = make_meta(200u + i);
         poke_record(i, 1u + i, &m);
     }
+#if HYDRA_META_AB
+    memset(at(METADATA_B_ADDR), 0xA5, FLASH_SECTOR_SIZE);   /* the second sector is not blank, so the log has to erase it */
+#endif
     fail_erase_on_call = 1;
     FirmwareMetadata_t next = make_meta(6000);
     CHECK(Metadata_EraseAndWrite(&next) == 0, "the write is reported bad");
