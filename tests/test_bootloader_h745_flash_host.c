@@ -399,6 +399,30 @@ static void test_a_failed_erase_leaves_the_old_log_readable(void)
     CHECK(Metadata_Read(&got) == 1 && same_meta(&got, &last), "the log that was full is still read");
 }
 
+static void test_a_cut_after_the_erase_of_a_full_log_loses_the_rollback_counter(void)
+{
+    /* The twin of the weakness of the single metadata sector: when the log is full the sector is erased and the new record is written after it, so a power
+     * cut between the two leaves no record at all and the board reads as a first boot, with the rollback counter back at the floor compiled into the
+     * bootloader. This test states what happens TODAY; the layout of two alternating sectors (HYDRA_META_AB) is the change that makes it keep the counter,
+     * and this is the case it has to turn around. */
+    printf("  the metadata log: a power cut right after the erase of a full sector\n");
+    reset_world();
+    FirmwareMetadata_t got;
+    for (uint32_t i = 0; i < META_RECORD_SLOTS; i++) {
+        FirmwareMetadata_t m = make_meta(300u + i);
+        m.counter = 7u;
+        poke_record(i, 1u + i, &m);
+    }
+    CHECK(Metadata_Read(&got) == 1 && got.counter == 7u, "before the cut the log holds the counter");
+    FirmwareMetadata_t next = make_meta(7000);
+    next.counter = 8u;
+    fail_program_on_call = program_calls + 1;    /* the erase works, the first program call after it is the cut */
+    CHECK(Metadata_EraseAndWrite(&next) == 0, "the write is reported bad");
+    CHECK(erase_calls == 1, "the sector had been erased by then");
+    CHECK(Metadata_Read(&got) == 0, "no record is left: the board reads as a first boot");
+    CHECK(got.counter == 0u, "and the rollback counter is gone with it");
+}
+
 static void test_a_write_that_fails_adds_no_record(void)
 {
     printf("  the metadata log: the program call fails\n");
@@ -427,6 +451,7 @@ static void run_all(void)
     test_a_torn_newest_record_falls_back_to_the_previous_one();
     test_a_full_sector_is_erased_before_the_first_record_of_the_next_log();
     test_a_failed_erase_leaves_the_old_log_readable();
+    test_a_cut_after_the_erase_of_a_full_log_loses_the_rollback_counter();
     test_a_write_that_fails_adds_no_record();
 }
 
