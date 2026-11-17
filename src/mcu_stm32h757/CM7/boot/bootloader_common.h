@@ -46,6 +46,14 @@ extern IWDG_HandleTypeDef hiwdg;
 #define METADATA_ADDR        0x08020000UL // sector 1, own dedicated sector
 #define MAIN_APP_ADDR        0x08040000UL // sectors 2-4
 #define BACKUP_APP_ADDR      0x080A0000UL // sectors 5-7
+// HYDRA_META_AB (off as it ships) keeps the metadata in two sectors that take turns (meta_ab.h): sector 1 as always and a second one, METADATA_B_ADDR, which is
+// the last sector of the application backup slot, so the longest application is then 256 KB. It needs the short slot (the long one uses all the sectors).
+#ifndef HYDRA_META_AB
+#define HYDRA_META_AB 0
+#endif
+#if HYDRA_META_AB
+#define METADATA_B_ADDR      0x080E0000UL // sector 7, the second metadata sector
+#endif
 // HYDRA_APP_SLOT_768K (off as it ships) is the slot of the H757 board that runs to the end of bank 1 (linker script STM32H757XIHx_CM7_APP_768K.ld): the second half of the bank is then
 // the application, so the update is staged and the copy kept in the NOR flash (Common/nor_backup_plan.h, nor_backup_glue.h) and BACKUP_APP_ADDR above is NOT a free slot. It needs
 // HYDRA_NOR_BACKUP, and the protocol code that still stages into BACKUP_APP_ADDR is moved to the NOR before a build with it is made.
@@ -53,7 +61,12 @@ extern IWDG_HandleTypeDef hiwdg;
 #if !defined(HYDRA_NOR_BACKUP) || !HYDRA_NOR_BACKUP
 #error "HYDRA_APP_SLOT_768K needs HYDRA_NOR_BACKUP=1: the copy of the application lives in the NOR flash"
 #endif
+#if HYDRA_META_AB
+#error "HYDRA_META_AB needs the short application slot: the long one uses the sector of the second metadata log"
+#endif
 #define APP_MAX_SIZE         (768UL * 1024UL) // sectors 2-7
+#elif HYDRA_META_AB
+#define APP_MAX_SIZE         (256UL * 1024UL) // 2 sectors: the last sector of the backup slot is the second metadata sector
 #else
 #define APP_MAX_SIZE         (384UL * 1024UL) // 3 sectors
 #endif

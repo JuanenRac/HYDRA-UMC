@@ -49,15 +49,17 @@ class Registered(unittest.TestCase):
         found = {test.name: test for test in host_tests.table() if test.source == FLASH_SOURCE}
         self.assertEqual(
             sorted(found),
-            [f"bootloader_h745_{core}_flash_ops{layer}" for core in ("CM4", "CM7") for layer in ("", "_flash_layer")],
+            sorted(f"bootloader_h745_{core}_flash_ops{layer}{ab}" for core in ("CM4", "CM7") for layer in ("", "_flash_layer") for ab in ("", "_meta_ab")),
         )
         for name, test in found.items():
             self.assertIn("tests/stubs", test.includes)
-            self.assertEqual("HYDRA_FLASH_LAYER=1" in test.defines, name.endswith("_flash_layer"), name)
+            self.assertEqual("HYDRA_FLASH_LAYER=1" in test.defines, "_flash_layer" in name, name)
+            self.assertEqual("HYDRA_META_AB=1" in test.defines, name.endswith("_meta_ab"), name)
             self.assertEqual(sum(d.startswith("HYDRA_TEST_CM") for d in test.defines), 1, name)
         compiles = [c for case in build_firmware.bootloader_cases("root") for c in case.compiles if c.test == "test_bootloader_h745_flash_host"]
-        self.assertEqual(len(compiles), 4)
-        self.assertEqual(sum("-DHYDRA_FLASH_LAYER=1" in c.defines for c in compiles), 2)
+        self.assertEqual(len(compiles), 8)
+        self.assertEqual(sum("-DHYDRA_FLASH_LAYER=1" in c.defines for c in compiles), 4)
+        self.assertEqual(sum("-DHYDRA_META_AB=1" in c.defines for c in compiles), 4)
 
     def test_the_h745_flash_test_names_what_it_covers(self):
         text = (ROOT / FLASH_SOURCE).read_text(encoding="utf-8")

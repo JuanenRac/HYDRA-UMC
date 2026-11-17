@@ -363,6 +363,7 @@ static void test_a_torn_newest_record_falls_back_to_the_previous_one(void)
     CHECK(Metadata_Read(&got) == 0, "when the only record is torn there is none");
 }
 
+#if !HYDRA_META_AB
 static void test_a_full_sector_is_erased_before_the_first_record_of_the_next_log(void)
 {
     printf("  the metadata log: the sector is full\n");
@@ -382,6 +383,7 @@ static void test_a_full_sector_is_erased_before_the_first_record_of_the_next_log
     CHECK(Metadata_Read(&got) == 1 && same_meta(&got, &next), "and it is the one that is read");
     CHECK(is_erased(METADATA_ADDR + META_RECORD_SIZE, META_RECORD_SIZE), "the second slot is blank");
 }
+#endif
 
 static void test_a_failed_erase_leaves_the_old_log_readable(void)
 {
@@ -399,6 +401,7 @@ static void test_a_failed_erase_leaves_the_old_log_readable(void)
     CHECK(Metadata_Read(&got) == 1 && same_meta(&got, &last), "the log that was full is still read");
 }
 
+#if !HYDRA_META_AB
 static void test_a_cut_after_the_erase_of_a_full_log_loses_the_rollback_counter(void)
 {
     /* The twin of the weakness of the single metadata sector: when the log is full the sector is erased and the new record is written after it, so a power
@@ -422,6 +425,7 @@ static void test_a_cut_after_the_erase_of_a_full_log_loses_the_rollback_counter(
     CHECK(Metadata_Read(&got) == 0, "no record is left: the board reads as a first boot");
     CHECK(got.counter == 0u, "and the rollback counter is gone with it");
 }
+#endif
 
 static void test_a_write_that_fails_adds_no_record(void)
 {
@@ -433,6 +437,160 @@ static void test_a_write_that_fails_adds_no_record(void)
     CHECK(Metadata_EraseAndWrite(&b) == 0, "the next one fails");
     CHECK(Metadata_Read(&got) == 1 && same_meta(&got, &a), "and the log still ends with the first");
 }
+
+#if HYDRA_META_AB
+/* ---- the metadata log in two sectors that take turns (HYDRA_META_AB=1) ----------------------------------------------------------- */
+#define REGION_A METADATA_ADDR
+#define REGION_B METADATA_B_ADDR
+
+static uint32_t sector_of(uint32_t address) { return (address - BANK_BASE_ADDR) / FLASH_SECTOR_SIZE; }
+
+static void poke_in(uint32_t base, uint32_t index, uint32_t generation, const FirmwareMetadata_t *meta)
+{
+    MetaRecord_t record;
+    memset(&record, 0, sizeof(record));
+    record.generation = generation;
+    record.meta = *meta;
+    record.crc = meta_record_crc(&record);
+    memcpy(at(base + index * META_RECORD_SIZE), &record, sizeof(record));
+}
+
+static void fill_region(uint32_t base, uint32_t first_generation, uint32_t seed, uint32_t counter)
+{
+    for (uint32_t i = 0; i < META_RECORD_SLOTS; i++) {
+        FirmwareMetadata_t m = make_meta(seed + i);
+        m.counter = counter;
+        poke_in(base, i, first_generation + i, &m);
+    }
+}
+
+static void test_ab_the_second_sector_is_the_last_of_the_backup_slot(void)
+{
+    printf("  the two metadata sectors: where they are\n");
+    CHECK(sector_of(REGION_B) == 7u && sector_of(REGION_A) == 1u, "sectors 1 and 7 of the bank");
+    CHECK(REGION_B >= BACKUP_APP_ADDR + APP_MAX_SIZE, "and the longest application ends before the second one");
+}
+
+static void test_ab_a_board_with_the_single_sector_log_goes_on_in_it(void)
+{
+    printf("  the two metadata sectors: a board that has only the first sector (no migration)\n");
+    reset_world();
+    memset(at(REGION_B), 0xA5, FLASH_SECTOR_SIZE);                /* the sector was part of the backup slot: it holds an old application */
+    FirmwareMetadata_t got;
+    for (uint32_t i = 0; i < 40u; i++) {
+        FirmwareMetadata_t m = make_meta(10u + i);
+        m.counter = 3u;
+        poke_in(REGION_A, i, 1u + i, &m);
+    }
+    CHECK(Metadata_Read(&got) == 1 && got.counter == 3u && got.version_major == 10u + 39u, "its newest record is the state");
+    FirmwareMetadata_t next = make_meta(500);
+    next.counter = 4u;
+    CHECK(Metadata_EraseAndWrite(&next) == 1, "the next record is written");
+    CHECK(erase_calls == 0, "nothing was erased");
+    CHECK(meta_slot(40)->generation == 41u, "it is the next slot of the same log, with the next generation");
+    CHECK(Metadata_Read(&got) == 1 && same_meta(&got, &next), "and it is read back");
+    CHECK(*at(REGION_B) == 0xA5 && *at(REGION_B + FLASH_SECTOR_SIZE - 1u) == 0xA5, "the second sector is not touched");
+}
+
+static void test_ab_a_full_first_sector_goes_on_in_the_second_without_touching_itself(void)
+{
+    printf("  the two metadata sectors: the first one is full\n");
+    reset_world();
+    memset(at(REGION_B), 0xA5, FLASH_SECTOR_SIZE);
+    fill_region(REGION_A, 1u, 100u, 7u);
+    FirmwareMetadata_t next = make_meta(5000), got;
+    next.counter = 8u;
+    CHECK(Metadata_EraseAndWrite(&next) == 1, "the write works");
+    CHECK(erase_calls == 1 && erased_sectors[0] == sector_of(REGION_B), "only the second sector was erased");
+    CHECK(meta_slot_in(REGION_B, 0)->generation == META_RECORD_SLOTS + 1u, "the new record is the first of the second sector, with the next generation");
+    CHECK(Metadata_Read(&got) == 1 && same_meta(&got, &next) && got.counter == 8u, "and it is the state");
+    CHECK(meta_slot(META_RECORD_SLOTS - 1u)->generation == META_RECORD_SLOTS && meta_slot_valid(meta_slot(0)), "the full sector keeps its records");
+}
+
+static void test_ab_the_sectors_take_turns(void)
+{
+    printf("  the two metadata sectors: the second one fills and the first one is used again\n");
+    reset_world();
+    fill_region(REGION_A, 1u, 100u, 5u);
+    fill_region(REGION_B, META_RECORD_SLOTS + 1u, 2000u, 6u);
+    FirmwareMetadata_t next = make_meta(9000), got;
+    next.counter = 7u;
+    CHECK(Metadata_EraseAndWrite(&next) == 1, "the write after both are full works");
+    CHECK(erase_calls == 1 && erased_sectors[0] == sector_of(REGION_A), "the first sector, which holds the older records, was erased");
+    CHECK(meta_slot(0)->generation == 2u * META_RECORD_SLOTS + 1u, "the new record starts it with the next generation");
+    CHECK(Metadata_Read(&got) == 1 && same_meta(&got, &next), "and it is the state");
+    CHECK(meta_slot_valid(meta_slot_in(REGION_B, META_RECORD_SLOTS - 1u)), "the second sector keeps its records");
+}
+
+static void test_ab_a_cut_at_any_point_of_the_change_of_sector_keeps_the_rollback_counter(void)
+{
+    printf("  the two metadata sectors: a power cut at every point of the change of sector\n");
+    /* A record is 96 bytes: 3 flash words. The cut is the erase, or the first, second or third program call; each is tried on its own. */
+    for (int cut = 0; cut < 4; cut++) {
+        reset_world();
+        FirmwareMetadata_t got;
+        fill_region(REGION_A, 1u, 300u, 7u);
+        FirmwareMetadata_t next = make_meta(7000);
+        next.counter = 8u;
+        if (cut == 0) fail_erase_on_call = 1;
+        else fail_program_on_call = program_calls + cut;
+        CHECK(Metadata_EraseAndWrite(&next) == 0, "the write is reported bad");
+        CHECK(Metadata_Read(&got) == 1, "a record is left");
+        CHECK(got.counter == 7u && got.version_major == 300u + META_RECORD_SLOTS - 1u, "it is the state before the cut, with its rollback counter");
+        /* power is back: the retry completes the change */
+        int erases = erase_calls;
+        fail_erase_on_call = fail_program_on_call = 0;
+        CHECK(Metadata_EraseAndWrite(&next) == 1, "the retry works");
+        if (cut == 0) CHECK(erase_calls == erases + 1, "the sector whose erase failed is erased by the retry");
+        else CHECK(erase_calls == erases, "a sector that is blank already is not erased again");
+        CHECK(Metadata_Read(&got) == 1 && same_meta(&got, &next) && got.counter == 8u, "the state is now the new one");
+    }
+}
+
+static void test_ab_a_cut_in_the_second_sector_keeps_the_state_of_the_first(void)
+{
+    printf("  the two metadata sectors: a power cut on the way back to the first sector\n");
+    reset_world();
+    FirmwareMetadata_t got;
+    fill_region(REGION_A, 1u, 100u, 5u);
+    fill_region(REGION_B, META_RECORD_SLOTS + 1u, 2000u, 6u);
+    FirmwareMetadata_t next = make_meta(9100);
+    next.counter = 7u;
+    fail_program_on_call = program_calls + 1;
+    CHECK(Metadata_EraseAndWrite(&next) == 0, "the write is reported bad");
+    CHECK(Metadata_Read(&got) == 1 && got.counter == 6u && got.version_major == 2000u + META_RECORD_SLOTS - 1u, "the newest record of the second sector is still the state");
+}
+
+static void test_ab_the_newest_generation_wins_whichever_sector_holds_it(void)
+{
+    printf("  the two metadata sectors: the newest of the two is the state\n");
+    reset_world();
+    FirmwareMetadata_t a = make_meta(1), b = make_meta(2), got;
+    a.counter = 1u;
+    b.counter = 2u;
+    poke_in(REGION_A, 0, 5u, &a);
+    poke_in(REGION_B, 0, 9u, &b);
+    CHECK(Metadata_Read(&got) == 1 && got.counter == 2u, "the higher generation is in the second sector");
+    reset_world();
+    poke_in(REGION_A, 0, 9u, &a);
+    poke_in(REGION_B, 0, 5u, &b);
+    CHECK(Metadata_Read(&got) == 1 && got.counter == 1u, "the higher generation is in the first sector");
+    CHECK(Metadata_EraseAndWrite(&a) == 1 && program_calls == 0, "the state that is the last already writes nothing");
+}
+
+static void test_ab_a_failed_erase_of_the_other_sector_leaves_the_state_readable(void)
+{
+    printf("  the two metadata sectors: the erase of the other sector fails\n");
+    reset_world();
+    FirmwareMetadata_t got;
+    fill_region(REGION_A, 1u, 200u, 4u);
+    memset(at(REGION_B), 0xA5, FLASH_SECTOR_SIZE);
+    fail_erase_on_call = 1;
+    FirmwareMetadata_t next = make_meta(6000);
+    CHECK(Metadata_EraseAndWrite(&next) == 0, "the write is reported bad");
+    CHECK(Metadata_Read(&got) == 1 && got.counter == 4u && got.version_major == 200u + META_RECORD_SLOTS - 1u, "the full sector is still the state");
+}
+#endif /* HYDRA_META_AB */
 
 /* ---- the driver: all of the above on a stack in the low 2 GB -------------------------------------------------------------------- */
 static void run_all(void)
@@ -449,10 +607,24 @@ static void run_all(void)
     test_a_state_that_is_already_the_last_writes_nothing();
     test_a_new_state_appends_with_the_next_generation();
     test_a_torn_newest_record_falls_back_to_the_previous_one();
+#if !HYDRA_META_AB
     test_a_full_sector_is_erased_before_the_first_record_of_the_next_log();
+#endif
     test_a_failed_erase_leaves_the_old_log_readable();
+#if !HYDRA_META_AB
     test_a_cut_after_the_erase_of_a_full_log_loses_the_rollback_counter();
+#endif
     test_a_write_that_fails_adds_no_record();
+#if HYDRA_META_AB
+    test_ab_the_second_sector_is_the_last_of_the_backup_slot();
+    test_ab_a_board_with_the_single_sector_log_goes_on_in_it();
+    test_ab_a_full_first_sector_goes_on_in_the_second_without_touching_itself();
+    test_ab_the_sectors_take_turns();
+    test_ab_a_cut_at_any_point_of_the_change_of_sector_keeps_the_rollback_counter();
+    test_ab_a_cut_in_the_second_sector_keeps_the_state_of_the_first();
+    test_ab_the_newest_generation_wins_whichever_sector_holds_it();
+    test_ab_a_failed_erase_of_the_other_sector_leaves_the_state_readable();
+#endif
 }
 
 static ucontext_t main_context, test_context;

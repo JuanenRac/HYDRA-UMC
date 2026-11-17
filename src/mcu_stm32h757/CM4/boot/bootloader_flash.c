@@ -183,6 +183,7 @@ _Static_assert(sizeof(MetaRecord_t) == META_RECORD_SIZE, "a metadata record has 
 
 #include "boot_meta_record_impl.h"
 
+#if !HYDRA_META_AB   // the single-sector log (as it ships); with HYDRA_META_AB=1 the two-sector log of meta_ab.h takes its place
 static const MetaRecord_t *meta_slot(uint32_t index) {
     return (const MetaRecord_t*)(METADATA_ADDR + index * META_RECORD_SIZE);
 }
@@ -242,3 +243,6 @@ uint8_t Metadata_EraseAndWrite(const FirmwareMetadata_t *meta) {
     record.crc = meta_record_crc(&record);
     return Flash_WriteVerified((uint32_t)(METADATA_ADDR + slot * META_RECORD_SIZE), (const uint8_t*)&record, META_RECORD_SIZE);
 }
+#else
+#include "meta_ab.h"
+#endif
