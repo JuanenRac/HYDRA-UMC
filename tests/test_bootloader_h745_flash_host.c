@@ -530,6 +530,7 @@ static void test_ab_a_cut_at_any_point_of_the_change_of_sector_keeps_the_rollbac
         reset_world();
         FirmwareMetadata_t got;
         fill_region(REGION_A, 1u, 300u, 7u);
+        memset(at(REGION_B), 0xA5, FLASH_SECTOR_SIZE);            /* the second sector holds an old application, so it has to be erased */
         FirmwareMetadata_t next = make_meta(7000);
         next.counter = 8u;
         if (cut == 0) fail_erase_on_call = 1;
@@ -541,8 +542,8 @@ static void test_ab_a_cut_at_any_point_of_the_change_of_sector_keeps_the_rollbac
         int erases = erase_calls;
         fail_erase_on_call = fail_program_on_call = 0;
         CHECK(Metadata_EraseAndWrite(&next) == 1, "the retry works");
-        if (cut == 0) CHECK(erase_calls == erases + 1, "the sector whose erase failed is erased by the retry");
-        else CHECK(erase_calls == erases, "a sector that is blank already is not erased again");
+        if (cut == 1) CHECK(erase_calls == erases, "a sector that is blank already is not erased again");
+        else CHECK(erase_calls == erases + 1, "a sector that is not blank (the erase failed, or a record was cut in it) is erased by the retry");
         CHECK(Metadata_Read(&got) == 1 && same_meta(&got, &next) && got.counter == 8u, "the state is now the new one");
     }
 }
