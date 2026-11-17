@@ -4,6 +4,8 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **The CM7 and CM4 bootloaders can refuse the read-back of the application while the read-out protection is on (`HYDRA_READBACK_GATE`, off):** `readout_gate.h` (the same file in both folders, with no HAL) decodes the `RDP` byte of `FLASH->OPTSR_CUR` (0xAA is level 0, 0xCC is level 2, anything else is level 1) and, with the switch at 1, `HandleReadbackStart` answers a length of 0 and serves no data on a protected board, as the controller board already does. With the switch at 0, the default, the compiled code does not change. Host tests (`tests/test_readout_gate_h7.c`) run in both folders and with the switch at 0 and at 1, and both bootloader protocol files are also checked with the switch at 1; not run on a board.
+
 - **The F-RAM erase of the SPI bridge needs a header and the emergency stop latched:** `POST /fram/erase` is refused with 400 unless the request carries `X-Hydra-Confirm: ERASE` besides `confirm=ERASE`, and the service reads the telemetry of the brain and answers 409 unless the emergency stop is latched (504 when the state of the stop cannot be read); the self-test keeps working as before. Whoever calls the route with `--enable-fram-erase` on has to send the header; `docs/FRAM_ERASE.md` says so.
 - **Every fault path of the G474 cuts the driver enables:** the memory-management, bus and usage fault handlers and the allocation-failure hook of the FreeRTOS kernel now call `MotionOutputs_ForceDisabled()` before they stop, like the hard fault handler and the stack-overflow hook already did, so the rule of the production protection covers all of them. A host test reads the source and checks each one.
 

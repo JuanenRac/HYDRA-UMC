@@ -23,6 +23,7 @@
 #include "bootloader_nor.h"
 #include "update_signature.h"
 #include "update_verify.h"
+#include "readout_gate.h" // read-out protection gate for the read-back (off by default)
 #include "bootloader_trust.h"
 #include "ipc_mailbox.h"
 #include "ipc_hal.h"
@@ -312,6 +313,11 @@ void HandleReadbackStart(void) {
         meta.size > 0 && meta.size <= APP_MAX_SIZE) {
         total_size = meta.size;
     }
+
+#if HYDRA_READBACK_GATE
+    // On a board with the read-out protection on, the bootloader does not serve the application (readout_gate.h): the answer is a length of 0.
+    if (!H7_ReadbackAllowed(FLASH->OPTSR_CUR, 1)) total_size = 0;
+#endif
 
     uint8_t d[4] = {
         (uint8_t)(total_size >> 24), (uint8_t)(total_size >> 16),

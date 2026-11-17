@@ -72,6 +72,10 @@ typedef struct {
 #define __DSB() ((void)0)
 #define __ISB() ((void)0)
 
+typedef struct { volatile uint32_t OPTSR_CUR; } FLASH_TypeDef;
+extern FLASH_TypeDef host_flash_registers;
+#define FLASH (&host_flash_registers)
+
 HAL_StatusTypeDef HAL_FLASH_Unlock(void);
 HAL_StatusTypeDef HAL_FLASH_Lock(void);
 HAL_StatusTypeDef HAL_FLASHEx_Erase(FLASH_EraseInitTypeDef *erase_init, uint32_t *sector_error);

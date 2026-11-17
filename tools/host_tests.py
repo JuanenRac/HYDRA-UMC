@@ -191,6 +191,12 @@ def table() -> list[HostTest]:
         tests.append(HostTest(f"bootloader_h745_{core}_protocol", f"{H7}/{core}/boot/bootloader_protocol.c",
                               ("tests/stubs/h7protocol", f"{H7}/{core}/boot", f"{H7}/Common", f"{H7}/{core}", H7, "tests"),
                               ("-std=gnu11", "-Wall", "-Wno-int-to-pointer-cast"), syntax_only=True))
+        # the same file with the read-out gate on: the code behind HYDRA_READBACK_GATE is only compiled with the switch at 1
+        tests.append(HostTest(f"bootloader_h745_{core}_protocol@gate1", f"{H7}/{core}/boot/bootloader_protocol.c",
+                              ("tests/stubs/h7protocol", f"{H7}/{core}/boot", f"{H7}/Common", f"{H7}/{core}", H7, "tests"),
+                              ("-std=gnu11", "-Wall", "-Wno-int-to-pointer-cast"), defines=("HYDRA_READBACK_GATE=1",), syntax_only=True))
+        for gate in (0, 1):
+            tests.append(HostTest(f"readout_gate@{core}@gate{gate}", "tests/test_readout_gate_h7.c", (f"{H7}/{core}/boot",), defines=(f"HYDRA_READBACK_GATE={gate}",)))
     return tests
 
 

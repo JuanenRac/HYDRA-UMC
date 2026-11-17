@@ -69,7 +69,7 @@ class HostTestTableTests(unittest.TestCase):
 
     def test_only_the_protocol_units_are_syntax_only_and_they_need_no_binary(self):
         syntax = [test.name for test in host_tests.table() if test.syntax_only]
-        self.assertEqual(sorted(syntax), ["bootloader_h745_CM4_protocol", "bootloader_h745_CM7_protocol"])
+        self.assertEqual(sorted(syntax), ["bootloader_h745_CM4_protocol", "bootloader_h745_CM4_protocol@gate1", "bootloader_h745_CM7_protocol", "bootloader_h745_CM7_protocol@gate1"])
 
     def test_the_tests_that_need_the_signature_library_say_so(self):
         for test in host_tests.table():
@@ -141,9 +141,9 @@ class RunAllTests(unittest.TestCase):
         self.assertEqual(len(lines) - 1, len(host_tests.table()))
         self.assertTrue(all(line.startswith("PASS ") for line in lines[:-1]))
         syntax = [line for line in lines if line.endswith("(syntax)")]
-        self.assertEqual(len(syntax), 2)
+        self.assertEqual(len(syntax), 4)
         # the library once, then one compile per test, and a run for every test that is not syntax only
-        runs = len(host_tests.table()) - 2
+        runs = len(host_tests.table()) - 4
         self.assertEqual(len(calls), 1 + len(host_tests.table()) + runs)
 
     def test_a_test_that_does_not_compile_is_a_failure_and_is_not_run(self):
