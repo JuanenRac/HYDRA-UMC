@@ -148,6 +148,12 @@ class DriverEnableOutputsModel(unittest.TestCase):
         self.assertRegex(MAIN, r"static void Error_Handler\(void\)\s*\{\s*MotionOutputs_ForceDisabled\(\);")
         self.assertIn("MotionOutputs_ForceDisabledMask(stop_policy.cut_mask);", RELAY)
 
+    def test_the_other_fault_handlers_and_the_allocation_hook_cut_the_drivers_too(self):
+        for name in ("MemManage_Handler", "BusFault_Handler", "UsageFault_Handler"):
+            self.assertRegex(MAIN, rf"void {name}\(void\) \{{ MotionOutputs_ForceDisabled\(\); while \(1\)")
+        hook = MAIN[MAIN.index("void vApplicationMallocFailedHook(void)"):]
+        self.assertLess(hook.index("MotionOutputs_ForceDisabled();"), hook.index("while (1)"))
+
 
 if __name__ == "__main__":
     unittest.main()
