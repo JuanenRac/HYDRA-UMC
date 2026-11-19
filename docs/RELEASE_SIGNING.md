@@ -169,6 +169,17 @@ The Android phone app checks the digest of what it downloads (rule 1). The watch
 
 The checks use no network and no private key; their tests make throwaway keys at run time.
 
+## The update manifest
+
+The `UpdateManifest` that names an artifact (`artifact_url`, `sha256`, and optionally `target` and `min_bootloader`) is signed apart from the firmware image,
+also with Ed25519 and also with a key of the releases, never with a shared secret. The signed bytes, the list of trusted public keys (each `current`, `next`,
+`retired` or `revoked`, with a validity window, which is how a key is rotated) and the rule are in the SDK page `docs/MANIFEST_SIGNING.md`; the programs that
+read a manifest are the updater (`manifest verify`) and the server. The switch `require_asymmetric_signature` is off by default while the ecosystem moves over: a
+manifest without a signature passes as a legacy manifest, and with the switch on it is refused as a downgrade, whereas a signature that is present is always
+checked. The firmware image itself is checked by the bootloader against its trust table (`docs/SIGNATURE_SEPARATION.md`); the SPI bridge never holds a signing
+key and a controller board of HYDRA-UMC never takes the old shared-key (HMAC) check, which only the URTC bootloaders behind the relay still use. Both are
+covered on the host; the check on a real board is pending (see the hardware list).
+
 ## Losing or replacing the key
 
 Publish a new public key in a release signed with the old one and on this page, and ship it with the next version of every program that pins it. The
