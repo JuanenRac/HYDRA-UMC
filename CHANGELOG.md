@@ -4,6 +4,8 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **The release-signing page covers the update manifest:** it says that the manifest is signed with Ed25519 under a key of the releases and not with a shared secret, where the list of trusted keys and their rotation are written, how the switch `require_asymmetric_signature` treats a manifest without a signature, and that a controller board of HYDRA-UMC never takes the old shared-key check.
+
 ## [0.3.0] - Two-sector bootloader metadata and read-back gate behind switches that are off, the H757 board drivers in simulation, the stop paths of the G474 and the SPI bridge hardened
 
 - **The manifest of the firmware refuses an image longer than its region, and the build measures the room for the metadata in two sectors:** `generate_manifest.py` now stops when a binary is longer than the region of its component, follows `HYDRA_META_AB=1` of the build environment (the Kinematic Brain applications then have 256 KB instead of 384 KB), and `--meta-ab-report` prints how much room the CM7 and CM4 applications leave in 256 KB; the manual firmware build writes that table in its summary. The switch itself stays off.
