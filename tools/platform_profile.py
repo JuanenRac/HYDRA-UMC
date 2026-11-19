@@ -109,7 +109,7 @@ def problems(name: str, p: dict) -> list[str]:
         found.append(f"{name}: the SPI role {p['host']['spi_role']!r} is not one of {', '.join(SPI_ROLES)}")
     if bus["kernel_clock_hz"] != p["clocks_hz"].get("kernel_fdcan"):
         found.append(f"{name}: the kernel clock of the bus timing is not the FDCAN kernel clock of the clock table")
-    if bus["sync_jump_width"] > bus["time_segment_2"] + 1 and name != "h745_current":
+    if bus["sync_jump_width"] > bus["time_segment_2"] and name != "h745_current":
         found.append(f"{name}: the synchronisation jump is wider than the second segment")
     if bus["time_segment_1"] > 256 or bus["time_segment_2"] > 128 or bus["prescaler"] > 512:
         found.append(f"{name}: the bit timing does not fit the registers of the FDCAN")

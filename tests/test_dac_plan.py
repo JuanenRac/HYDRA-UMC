@@ -53,6 +53,24 @@ class Codes(unittest.TestCase):
         for needle in ("414u", "2457u", "2048u", "4095u"):
             self.assertIn(needle, source)
 
+    def test_the_gain_of_the_board_and_the_ceiling_keep_the_output_under_10_v(self):
+        """config/dac.cfg carries the gain of the amplifier (1 + 20.0 k / 9.76 k = 186 / 61) and a ceiling of 9.9 V: the highest code that is accepted never gives more than 10 V, with the
+        0.1 percent resistors at their worst, and the full code would (which is why the ceiling is there). Evidence: simulator; the gain and the ceiling are measured on a board."""
+        config = dp.load_config()
+        self.assertEqual((config["gain_num"], config["gain_den"]), (186, 61))
+        self.assertEqual(config["ceiling_mv"], [9900, 9900])
+        self.assertLessEqual(max(config["ceiling_mv"]), dp.OUT_MAX_MV)
+        self.assertEqual(config["gain_num"] * 9760, (9760 + 20000) * config["gain_den"])   # the same ratio as the resistors of the amplifier
+        worst_gain = (1 + 20000 * 1.001 / (9760 * 0.999))
+        for channel in (1, 2):
+            code = dp.code_for(config, channel, config["ceiling_mv"][channel - 1])
+            nominal_mv = code * config["vref_mv"] / dp.CODE_MAX * config["gain_num"] / config["gain_den"]
+            self.assertLess(nominal_mv, dp.OUT_MAX_MV)
+            self.assertLess(code * config["vref_mv"] / dp.CODE_MAX * worst_gain, dp.OUT_MAX_MV)
+        full_scale_mv = config["vref_mv"] * config["gain_num"] / config["gain_den"]
+        self.assertGreater(full_scale_mv, dp.OUT_MAX_MV)   # without the ceiling the full code would pass 10 V
+        self.assertRaises(ValueError, dp.code_for, config, 1, config["ceiling_mv"][0] + 1)
+
     def test_refusals(self):
         for config, channel, mv in (
             (cfg(), 1, 9901),
@@ -82,7 +100,7 @@ class Codes(unittest.TestCase):
 
 class ConfigAndSources(unittest.TestCase):
     def test_the_file_is_valid(self):
-        self.assertEqual(dp.load_config(), cfg())
+        self.assertEqual(dp.load_config(), cfg(gain_num=186, gain_den=61))
 
     def test_the_pins_are_those_of_the_profile(self):
         text = json.dumps(json.loads((ROOT / "docs/platform_profiles.json").read_text(encoding="utf-8")))
@@ -96,7 +114,7 @@ class ConfigAndSources(unittest.TestCase):
 
     def test_a_bad_file_is_refused(self):
         base = (ROOT / "config/dac.cfg").read_text(encoding="utf-8").replace("\r\n", "\n")
-        for good, bad in (("vref_mv = 3300", "vref_mv = 1000"), ("gain_num = 3", "gain_num = 0"), ("ao1_mv = 9900", "ao1_mv = 10001"), ("ao2_mv = 9900", "ao2_mv = 12000")):
+        for good, bad in (("vref_mv = 3300", "vref_mv = 1000"), ("gain_num = 186", "gain_num = 0"), ("ao1_mv = 9900", "ao1_mv = 10001"), ("ao2_mv = 9900", "ao2_mv = 12000")):
             text = base.replace(good, bad, 1)
             self.assertNotEqual(text, base, bad)
             with tempfile.TemporaryDirectory() as folder:
