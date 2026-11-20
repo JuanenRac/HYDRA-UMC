@@ -41,7 +41,7 @@ GPL-3.0-or-later - see LICENSE
 | Tests | 1500 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | Technologie | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | Cible | Une carte à microcontrôleur (le firmware) ; compilé sur un PC |
-| Sur matériel réel | Simulé seulement : testé avec des émulateurs, des doubles de test ou des simulateurs ; aucune exécution sur du matériel réel n'est consignée pour cette version |
+| Sur matériel réel | En usage quotidien sur du matériel réel : la vérification d'honnêteté de ce README indique où |
 
 **Aller à :** [Présentation](#-présentation) · [Architecture](#-architecture) · [Fonctionnalités](#-fonctionnalités) · [Sécurité et protection](#-sécurité-et-protection) · [Interfaces](#-interfaces) · [Configuration](#-configuration) · [Démarrage rapide](#-démarrage-rapide) · [Tests](#-tests) · [Dépannage](#-dépannage) · [Structure du dépôt](#-structure-du-dépôt) · [Projets liés](#-projets-liés)
 
@@ -55,7 +55,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 |---|---|---|
 | Logiciel | 🟠 | Seulement la structure et les premières pièces ; l'essentiel du travail reste à faire |
 | Tests | 🟡 | 1500 tests automatiques consignés ; le nombre exact, ou un workflow qui les exécute à chaque modification, n'est pas encore confirmé |
-| Matériel réel | 🟠 | Simulé seulement : testé avec des émulateurs, des doubles de test ou des simulateurs ; aucune exécution sur du matériel réel n'est consignée pour cette version |
+| Matériel réel | 🟡 | En usage quotidien sur du matériel réel : la vérification d'honnêteté de ce README indique où |
 | Documentation | 🟡 | README en huit langues, vérifié par rapport au manifeste à chaque modification |
 
 ## 🎯 Présentation

@@ -41,7 +41,7 @@ GPL-3.0-or-later - see LICENSE
 | Tests | 1500 (`python -m unittest discover -s tests -p 'test_*.py'`) |
 | Technik | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
 | Ziel | Eine Mikrocontroller-Platine (die Firmware); wird auf einem PC gebaut |
-| Auf echter Hardware | Nur simuliert: gegen Emulatoren, Attrappen oder Simulatoren getestet; für diese Version ist kein Lauf auf echter Hardware vermerkt |
+| Auf echter Hardware | Im täglichen Einsatz auf echter Hardware: die Ehrlichkeitsprüfung in diesem README sagt, wo |
 
 **Springe zu:** [Überblick](#-überblick) · [Architektur](#-architektur) · [Funktionen](#-funktionen) · [Sicherheit und Schutz](#-sicherheit-und-schutz) · [Schnittstellen](#-schnittstellen) · [Konfiguration](#-konfiguration) · [Schnellstart](#-schnellstart) · [Tests](#-tests) · [Fehlerbehebung](#-fehlerbehebung) · [Struktur des Repositorys](#-struktur-des-repositorys) · [Verwandte Projekte](#-verwandte-projekte)
 
@@ -55,7 +55,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 |---|---|---|
 | Software | 🟠 | Nur Struktur und erste Teile; der größte Teil der Arbeit steht noch aus |
 | Tests | 🟡 | 1500 automatische Tests vermerkt; die genaue Anzahl oder ein Workflow, der sie bei jeder Änderung ausführt, ist noch nicht bestätigt |
-| Echte Hardware | 🟠 | Nur simuliert: gegen Emulatoren, Attrappen oder Simulatoren getestet; für diese Version ist kein Lauf auf echter Hardware vermerkt |
+| Echte Hardware | 🟡 | Im täglichen Einsatz auf echter Hardware: die Ehrlichkeitsprüfung in diesem README sagt, wo |
 | Dokumentation | 🟡 | README in acht Sprachen, bei jeder Änderung gegen das Manifest geprüft |
 
 ## 🎯 Überblick
