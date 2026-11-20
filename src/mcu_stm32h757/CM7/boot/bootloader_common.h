@@ -89,11 +89,11 @@ extern IWDG_HandleTypeDef hiwdg;
 // rule applies here verbatim.
 #define FIRMWARE_VERSION_MAJOR 0
 #define FIRMWARE_VERSION_MINOR 1
-#define FIRMWARE_VERSION_PATCH 7
+#define FIRMWARE_VERSION_PATCH 8
 
 #define BOOTLOADER_VERSION_MAJOR 0
 #define BOOTLOADER_VERSION_MINOR 1
-#define BOOTLOADER_VERSION_PATCH 8
+#define BOOTLOADER_VERSION_PATCH 9
 
 // Image authentication: the bootloader holds no secret and no key of its own. An update is installed only when its Ed25519 signature verifies under a
 // PUBLIC key of the trust table (bootloader_trust.h); with an empty table nothing installs. What the metadata keeps to notice a damaged flash is a plain
