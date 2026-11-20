@@ -40,7 +40,7 @@ int main(void)
     CHECK(FDCP_DEFAULT_KERNEL_HZ == HYDRA_STACK_BUS_KERNEL_CLOCK_HZ && FDCP_DEFAULT_BIT_RATE_BPS == HYDRA_STACK_BUS_BIT_RATE_BPS, "the defaults are the profile");
     CHECK(FdcanPlan_Make(&c, &p) == FDCP_OK, "the defaults give a plan");
     CHECK(p.prescaler == HYDRA_STACK_BUS_PRESCALER && p.seg1 == HYDRA_STACK_BUS_TIME_SEG1 && p.seg2 == HYDRA_STACK_BUS_TIME_SEG2, "the timing of the profile");
-    CHECK(p.sjw == 3u && HYDRA_STACK_BUS_SYNC_JUMP_WIDTH == 4u, "the jump width is held to segment 2");
+    CHECK(p.sjw == 3u && HYDRA_STACK_BUS_SYNC_JUMP_WIDTH == 3u && p.sjw <= p.seg2, "the jump width is the one of the profile and not longer than segment 2");
     CHECK(p.actual_bps == 1000000u && p.actual_sample_permille == 850u, "1 Mbit/s with the sample point at 85 percent");
     CHECK(p.rx_elements == 8u && p.tx_elements == 8u, "the FIFOs");
     CHECK(p.filter_count == 2u && p.filter[0].id == 0x600u && p.filter[0].mask == 0x600u && p.filter[1].id == 0x001u && p.filter[1].mask == 0x7FFu, "the two filters of the CM4");

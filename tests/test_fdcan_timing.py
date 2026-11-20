@@ -111,6 +111,25 @@ class FdcanTimingTests(unittest.TestCase):
         self.assertLessEqual(values["NominalSyncJumpWidth"], values["NominalTimeSeg2"])
         self.assertLessEqual(values["DataSyncJumpWidth"], values["DataTimeSeg2"])
 
+    def test_the_h757_profile_and_the_config_files_give_exactly_one_megabit_with_a_legal_jump_width(self):
+        """Prescaler 5, segments 16 and 3, jump width 3 at 100 MHz: 20 quanta of 50 ns is 1 Mbit/s exactly, the sample point is 85 percent and the jump width is not longer than segment 2."""
+        import configparser
+        import json
+        profile = json.loads((ROOT / "docs/platform_profiles.json").read_text(encoding="utf-8"))["profiles"]["h757_target"]["stack_bus"]
+        self.assertEqual((profile["prescaler"], profile["time_segment_1"], profile["time_segment_2"], profile["sync_jump_width"]), (5, 16, 3, 3))
+        self.assertEqual(bit_rate(profile["prescaler"], profile["time_segment_1"], profile["time_segment_2"], profile["kernel_clock_hz"]), EXPECTED_BIT_RATE)
+        self.assertEqual(sample_point(profile["time_segment_1"], profile["time_segment_2"]), 0.85)
+        self.assertLessEqual(profile["sync_jump_width"], profile["time_segment_2"])
+        bus = platform_values("HYDRA_PLATFORM_H757")
+        self.assertEqual(bus["HYDRA_STACK_BUS_SYNC_JUMP_WIDTH"], profile["sync_jump_width"])
+        self.assertLessEqual(bus["HYDRA_STACK_BUS_SYNC_JUMP_WIDTH"], bus["HYDRA_STACK_BUS_TIME_SEG2"])
+        for name in ("fdcan.cfg", "fdcan2.cfg"):
+            parser = configparser.ConfigParser(inline_comment_prefixes=None)
+            parser.read_string((ROOT / "config" / name).read_text(encoding="utf-8"))
+            self.assertEqual(int(parser["bus"]["sjw"]), profile["sync_jump_width"], name)
+            self.assertLessEqual(int(parser["bus"]["sjw"]), profile["time_segment_2"], name)
+            self.assertEqual(int(parser["bus"]["bit_rate_bps"]), EXPECTED_BIT_RATE, name)
+
     def test_a_different_kernel_clock_would_change_the_rate(self):
         """The reason bench row 10 exists: the same timing at another clock is another bit rate."""
         values = resolved(next(iter(self.blocks.values())), "HYDRA_PLATFORM_H745")

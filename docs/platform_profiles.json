@@ -151,10 +151,10 @@
       "stack_bus": {
         "kernel_clock_hz": 100000000,
         "prescaler": 5,
-        "sync_jump_width": 4,
+        "sync_jump_width": 3,
         "time_segment_1": 16,
         "time_segment_2": 3,
-        "note": "the CubeMX project has prescaler 10 (500 kbit/s); the owner decided the stack bus stays at 1 Mbit/s, so the prescaler is 5; the segments give a sample point of 85 %, close to the 87.5 % of the controller boards"
+        "note": "the CubeMX project has prescaler 10 (500 kbit/s); the owner decided the stack bus stays at 1 Mbit/s, so the prescaler is 5; the segments give a sample point of 85 %, close to the 87.5 % of the controller boards; the jump width is 3 because it may not be longer than segment 2"
       },
       "cubemx_stack_bus": {
         "kernel_clock_hz": 100000000,
@@ -347,7 +347,8 @@
           "use": "touch controller of the display",
           "display_lines": {
             "interrupt": "PC14",
-            "reset": "PC15"
+            "spare": "PC15",
+            "note": "PC15 is a spare net that is not wired to the display connector on this revision, so the board has no reset line for the panel"
           }
         }
       },

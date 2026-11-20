@@ -97,9 +97,10 @@ class ProfileAndCm4(unittest.TestCase):
         self.assertEqual(plan["seg2"], values["HYDRA_STACK_BUS_TIME_SEG2"])
         self.assertEqual(fp.load_config()["kernel_hz"], values["HYDRA_STACK_BUS_KERNEL_CLOCK_HZ"])
         self.assertEqual(fp.load_config()["bit_rate_bps"], values["HYDRA_STACK_BUS_BIT_RATE_BPS"])
-        # the profile sets a jump width of 4 with a segment 2 of 3: the plan holds it to segment 2 (a finding for the bench, not changed in the sources of the CM4)
-        self.assertEqual(values["HYDRA_STACK_BUS_SYNC_JUMP_WIDTH"], 4)
+        # the profile, the header, the C default, the two config files and the plan agree on a jump width that is not longer than segment 2
+        self.assertEqual(values["HYDRA_STACK_BUS_SYNC_JUMP_WIDTH"], 3)
         self.assertEqual(plan["sjw"], 3)
+        self.assertLessEqual(plan["sjw"], plan["seg2"])
 
     def test_the_filters_are_the_ones_of_the_cm4(self):
         ids = {name: int(value, 16) for name, value in re.findall(r"#define (BOOT_\w+)\s+(0x[0-9A-Fa-f]+)u", CM4_MAIN)}
@@ -146,7 +147,7 @@ class ConfigAndSources(unittest.TestCase):
 
     def test_values_out_of_range_in_the_file_are_refused(self):
         base = (ROOT / "config/fdcan.cfg").read_text(encoding="utf-8")
-        for good, bad in (("kernel_hz = 100000000", "kernel_hz = 999999"), ("sjw = 4", "sjw = 5"), ("estop = 1", "estop = 2"), ("tx_elements = 8", "tx_elements = 33")):
+        for good, bad in (("kernel_hz = 100000000", "kernel_hz = 999999"), ("sjw = 3", "sjw = 5"), ("estop = 1", "estop = 2"), ("tx_elements = 8", "tx_elements = 33")):
             with tempfile.TemporaryDirectory() as folder:
                 path = Path(folder) / "fdcan.cfg"
                 path.write_text(base.replace(good, bad), encoding="utf-8")
@@ -201,7 +202,7 @@ class FieldBus(unittest.TestCase):
         for key in ("kernel_hz", "bit_rate_bps", "sample_permille", "max_quanta", "sjw", "rx_elements", "tx_elements"):
             self.assertEqual(field[key], stack[key], key)
         base = (ROOT / "config/fdcan2.cfg").read_text(encoding="utf-8")
-        for good, bad in (("filter_id = 0x000", "filter_id = 0x800"), ("filter_mask = 0x000", "filter_mask = 0x800"), ("sjw = 4", "sjw = 5")):
+        for good, bad in (("filter_id = 0x000", "filter_id = 0x800"), ("filter_mask = 0x000", "filter_mask = 0x800"), ("sjw = 3", "sjw = 5")):
             with tempfile.TemporaryDirectory() as folder:
                 path = Path(folder) / "fdcan2.cfg"
                 path.write_text(base.replace(good, bad), encoding="utf-8")
