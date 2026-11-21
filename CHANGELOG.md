@@ -4,6 +4,7 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **The firmware build can prepare its draft pre-release:** the draft job names the repository itself, so `gh release view` and `gh release create` work in a job that has no checkout.
 - **The release-signing page covers the update manifest:** it says that the manifest is signed with Ed25519 under a key of the releases and not with a shared secret, where the list of trusted keys and their rotation are written, how the switch `require_asymmetric_signature` treats a manifest without a signature, and that a controller board of HYDRA-UMC never takes the old shared-key check.
 
 ## [0.3.0] - Two-sector bootloader metadata and read-back gate behind switches that are off, the H757 board drivers in simulation, the stop paths of the G474 and the SPI bridge hardened
