@@ -4,6 +4,9 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+## [0.3.1] - Firmware manifest in the release, format 2 header over the SPI bridge and the functional safety basis
+
+- **The version of the controller application is raised for this release:** it goes from 0.3.0 to 0.3.1 (`bump_firmware_versions.py g474-app`); the five other components keep their versions.
 - **The functional safety basis of the design is written down:** the hardware specification (eight languages) states the design target (PL d, category 3, after ISO 13849-1), the market (CE, European Union, no date) and a foreseen input for a person-presence sensor (laser scanner or light curtain), and says what has not been done. It claims no certification; nothing in the firmware changes.
 
 - **A firmware release carries `firmware_manifest.json`:** the index of the six images that HYDRA-UMC-STUDIO and HYDRA-UMC-SUITE read from the latest release is written from the signed set itself (`generate_manifest.py --release-set DIR`: version from each file name, size, CRC32 and SHA-256 over the very bytes), gets its `.sha256` and `.sig` like every other file, and `tools/publish_release_assets.py` and `tools/verify_release_set.py` refuse an official set without it or with one that does not describe its images. No firmware source changes.
