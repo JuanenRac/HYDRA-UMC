@@ -249,11 +249,10 @@ convertit avec `arm-none-eabi-objcopy` en `.bin`/`.hex`. Ces deux fichiers
 vous préférez ne pas exécuter l'un des deux scripts - les scripts existent
 pour les automatiser, pas pour les remplacer comme source de vérité.
 
-La sortie atterrit dans `firmware/`, qui est commitée et poussée vers ce
-repository (même convention que le propre dossier de sortie `firmware/`
-d'URTC) afin que la fonctionnalité de téléchargement depuis GitHub de
-HYDRA-UMC-STUDIO puisse réellement y trouver de vrais fichiers `.bin` via
-`firmware_manifest.json` - ce n'est PAS dans gitignore.
+La sortie atterrit dans `firmware/`, qui n'est pas conservé dans git (il figure
+dans `.gitignore`) : les images officielles sont construites par le workflow
+manuel de compilation du firmware et publiées comme fichiers d'une release,
+d'où HYDRA-UMC-STUDIO et HYDRA-UMC-SUITE les téléchargent.
 Voir `docs/COMPILE_STM32G474.md` et `docs/COMPILE_STM32H745.md` pour ce que
 fait exactement chaque étape et pourquoi - et le propre `README.md` de
 chaque dossier firmware pour l'état actuel. Les **bootloaders** pour les 3
@@ -305,7 +304,6 @@ HYDRA-UMC/
 ├── os/                              Image OS de l'hôte (banc pilote CM5 aujourd'hui, image du Jetson à définir) - choix de l'OS de base, unités systemd, provisionnement au premier démarrage
 ├── images/                          Bannière du README + icône + écran de démarrage (SVG)
 ├── tools/                           outils du projet et vérifications de la CI
-├── firmware/                        Sortie de build commitée (.bin/.hex/.elf + manifest) - PAS dans gitignore, même convention que le propre dossier de sortie d'URTC, voir "Compiler le Firmware" ci-dessous
 ├── firmware_base/                   Les fichiers identiques dans les trois bootloaders STM32, que tools/sync_firmware_base.py garde égaux à leurs copies
 ├── .github/                         workflow de CI et modèles de tickets
 ├── build-test.sh / build-test.bat   Contrôle build/compilation sans gestion de version

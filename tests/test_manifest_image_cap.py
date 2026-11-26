@@ -63,11 +63,6 @@ class ImageCapTests(unittest.TestCase):
             self.assertIn("| CM4 | 262145 | -1 |", lines)
             self.assertIn("stays off", lines[-1])
 
-    def test_the_committed_images_fit_in_the_room_they_have(self):
-        for prefix in ("HYDRA_KB_CM7_APP", "HYDRA_KB_CM4_APP"):
-            path = manifest.find_versioned_bin(str(ROOT / "firmware"), prefix)
-            manifest.check_image_fits(path, manifest.APP_SLOT_BYTES)
-
 
 if __name__ == "__main__":
     unittest.main()

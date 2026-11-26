@@ -217,14 +217,18 @@ class SpiOtaFlasher:
         allow_downgrade: bool = False,
         downgrade_from: tuple[int, int, int] | None = None,
         signature: bytes | None = None,
+        header: bytes | None = None,
+        rollback_counter: int | None = None,
+        key_id: bytes | None = None,
         page_timeout_seconds: float = 3.0,
         min_bootloader: str | None = None,
         target: str | None = None,
     ) -> Iterator[FlashProgress]:
         """Flash `firmware` to the board. The HYDRA-UMC bootloaders (image_header.is_signed_header_target) take a signed 64-byte header
-        with the full version (major.minor.patch) and accept only an image strictly newer than the installed one. The 64-byte Ed25519
-        `signature` of that header and image (made with tools/image_header.py sign, on the machine that holds the private seed) is sent
-        as it is; without it `image_signer` is asked for it, and without either nothing is sent. To go back to an older one
+        of format 2 with the full version (major.minor.patch) and accept only an image strictly newer than the installed one. The header
+        is `header` (the <image>.hdr2 of the release, refused when it does not describe this image) or is built from `rollback_counter`
+        and `key_id`; with neither nothing is sent. The 64-byte Ed25519 `signature` of that header and image (<image>.sig2, made on the
+        machine that holds the private seed) is sent as it is; without it `image_signer` is asked for it. To go back to an older one
         `downgrade_from` must give the installed (major, minor, patch): the board is asked for a nonce and `downgrade_signer` signs a
         token bound to this session, those two versions and this image. `allow_downgrade` is the old constant-magic frame: only the
         URTC bootloaders behind the relay still understand it, and for a HYDRA-UMC one it is refused here rather than sent.
@@ -245,8 +249,18 @@ class SpiOtaFlasher:
             return
         digest = b""
         if signed:
+            if header is not None and (rollback_counter is not None or key_id is not None):
+                yield FlashProgress("error", 0, pages_total, 0, "give the header of the image, or its rollback counter and key id, not both")
+                return
+            if header is None and (rollback_counter is None or key_id is None):
+                yield FlashProgress("error", 0, pages_total, 0, "a HYDRA-UMC board needs the header of the image (<image>.hdr2), or the rollback counter and the key id it was signed with")
+                return
             try:
-                header = image_header.build_header(hardware_id, version, firmware)
+                if header is None:
+                    assert rollback_counter is not None and key_id is not None  # refused above without them
+                    header = image_header.build_header(hardware_id, version, firmware, rollback_counter, key_id)
+                else:
+                    image_header.check_header(header, hardware_id, version, firmware)
             except image_header.ImageHeaderError as error:
                 yield FlashProgress("error", 0, pages_total, 0, str(error))
                 return
@@ -254,7 +268,7 @@ class SpiOtaFlasher:
             if signature is None and self._image_signer is not None:
                 signature = self._image_signer(header, firmware, digest)
             if signature is None:
-                yield FlashProgress("error", 0, pages_total, 0, "a HYDRA-UMC board needs the Ed25519 signature of the image: this side holds no signing key (sign it with tools/image_header.py)")
+                yield FlashProgress("error", 0, pages_total, 0, "a HYDRA-UMC board needs the Ed25519 signature of the image: this side holds no signing key (it is the <image>.sig2 of the release)")
                 return
             if len(signature) != image_header.SIGNATURE_SIZE:
                 yield FlashProgress("error", 0, pages_total, 0, f"the signature is {image_header.SIGNATURE_SIZE} bytes, got {len(signature)}")

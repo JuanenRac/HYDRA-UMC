@@ -4,6 +4,9 @@
 # project's own code.
 build/
 
+# Output of tools/build_firmware.py. The official images are built in GitHub Actions and published as release assets, never committed.
+firmware/
+
 # HYDRA-UMC shared secret protection
 .env
 .env.*

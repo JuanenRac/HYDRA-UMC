@@ -22,7 +22,7 @@ from test_system_client import make
 
 # The Hydra bootloaders verify an Ed25519 signature; the service holds no key, so a flash arrives with the 64 bytes already made. The
 # fake transport under these tests does not check it (tests/test_signed_flash.py does, against the reference).
-SIG_Q = "&signature=" + "ab" * 64
+SIG_Q = "&signature=" + "ab" * 64 + "&rollback_counter=1&key_id=" + "cd" * 8
 
 
 class HttpServiceTests(unittest.TestCase):
@@ -179,6 +179,19 @@ class HttpServiceGuardTests(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertIn("downgrade", json.loads(body)["error"])
         self.assertFalse(transport.sent_frames)
+
+    def test_a_hydra_board_is_not_flashed_without_the_signed_fields_of_the_header_and_nothing_touches_the_bus(self):
+        transport = FakeBootloaderTransport()
+        base = self._serve(transport)
+        query = "tier=2&slot=0&hardware_id=0x48374334&version_major=0&version_minor=1&signature=" + "ab" * 64
+        for extra in ("", "&rollback_counter=1", "&key_id=" + "cd" * 8, "&header=" + "ab" * 64 + "&rollback_counter=1"):
+            status, body = self._status(f"{base}/flash?{query}{extra}", data=bytes(2048), method="POST")
+            self.assertEqual(status, 400, extra)
+            self.assertIn("rollback_counter", json.loads(body)["error"])
+        for broken in ("&header=zz", "&header=" + "ab" * 63, "&key_id=abcd&rollback_counter=1", "&rollback_counter=x&key_id=" + "cd" * 8):
+            status, _ = self._status(f"{base}/flash?{query}{broken}", data=bytes(2048), method="POST")
+            self.assertEqual(status, 400, broken)
+        self.assertFalse(transport.sent_frames, "the board was not even entered")
 
     def test_a_board_behind_the_relay_does_not_need_a_signature(self):
         transport = FakeBootloaderTransport(hardware_id=0x0303CC01)

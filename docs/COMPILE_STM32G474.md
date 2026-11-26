@@ -31,8 +31,8 @@ Head):
                   section 2) - see section 3a below for the extra vendoring
                   step this needs beyond the bootloader.
 
-Both outputs land in firmware/ at the repo root once built (committed on
-purpose, see the README - they are indexed by firmware_manifest.json; the
+Both outputs land in firmware/ at the repo root once built (not kept in git;
+the official images are release assets, indexed by firmware_manifest.json; the
 application is the AXIS_STATUS responder and relay tunnel, not the motion
 firmware yet - see src/mcu_stm32g474/README.md for what's still real
 engineering work).

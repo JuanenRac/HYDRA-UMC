@@ -3,11 +3,11 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see repo root LICENSE
 # =============================================================================
-"""What SpiOtaFlasher sends to a HYDRA-UMC bootloader (a 64-byte header, the Ed25519 signature of the digest of header || image, and for a
-downgrade a second signature over the nonce the board hands out) is checked against tools/image_header.py, the host reference of the
-repository whose vectors the C code of the three bootloaders is tested against. The flasher holds no signing key: the signatures come from
-a signer the test gives it, or are handed to it already made. The bootloader here is a model that reassembles the frames the way the C does and applies the
-reference's own verification: so an update that this client builds and the model accepts is one the reference accepts."""
+"""What SpiOtaFlasher sends to a HYDRA-UMC bootloader (a 64-byte header of format 2, the Ed25519 signature of the digest of header || image, and
+for a downgrade a second signature over the nonce the board hands out) is checked against tools/image_header2.py, the host reference of the
+header the bootloaders read. The flasher holds no signing key: the signatures come from a signer the test gives it, or are handed to it already
+made. The bootloader here is a model that reassembles the frames the way the C does and applies the reference's own decision: so an update that
+this client builds and the model accepts is one the reference accepts. tests/test_header_against_bootloader.py gives the same bytes to the C."""
 import struct
 import sys
 import unittest
@@ -20,6 +20,7 @@ if TOOLS.is_dir():
     sys.path.insert(0, str(TOOLS))
     import ed25519_ref  # noqa: E402
     import image_header as reference  # noqa: E402
+    import image_header2 as reference2  # noqa: E402
 else:  # the package deployed on its own: nothing to compare with
     reference = None
 
@@ -47,6 +48,14 @@ from spi_bridge.protocol import (
 KEY = bytes(range(0x40, 0x60))  # the key of the URTC bootloaders behind the relay (an HMAC)
 SEED = bytes(range(0x50, 0x70))  # the private seed of the owner in these tests; the board holds only its public key
 PUBLIC = ed25519_ref.public_key(SEED) if reference is not None else b""
+KEY_ID = reference2.key_id(PUBLIC) if reference is not None else bytes(8)
+COUNTER = 3
+SIGNED = {"rollback_counter": COUNTER, "key_id": KEY_ID}
+
+
+def sign(header: bytes, image: bytes, seed: bytes = SEED) -> bytes:
+    """The <image>.sig2 of a release, for a header and an image."""
+    return ed25519_ref.sign(seed, reference2.image_message2(header, image))
 G401 = 0x47343031
 H7C4 = 0x48374334
 RAM = (0x20000100, 0x20018000)
@@ -58,9 +67,10 @@ def firmware(size: int = 3000, seed: int = 7, link: int = 0x08009000) -> bytes:
 
 
 class BootloaderModel:
-    """The frames of the C bootloader's update, reassembled, and its decision made by the reference (tools/image_header.py)."""
+    """The frames of the C bootloader's update, reassembled, and its decision made by the reference (tools/image_header2.py)."""
 
-    def __init__(self, hardware_id=G401, installed=(0, 2, 2), public_key=None):
+    def __init__(self, hardware_id=G401, installed=(0, 2, 2), public_key=None, floor=0):
+        self.floor = floor
         self.hardware_id = hardware_id
         self.installed = installed
         self.public_key = PUBLIC if public_key is None else public_key
@@ -120,20 +130,14 @@ class BootloaderModel:
             return 0x02
         blob = bytes(self.header) + bytes(self.image) + bytes(self.signature)
         link = client_header.LINK_ADDRESS_BY_HARDWARE_ID[self.hardware_id]
-        try:
-            parsed = reference.verify_image(
-                blob, self.public_key, hw_id=self.hardware_id, link_address=link, installed_version=self.installed, ram_range=RAM,
-                nonce=self.nonce, token=self.token if len(self.token) == 64 else b"",
-            )
-        except reference.ImageError as error:
-            text = str(error)
-            if "signature" in text:
-                return 0x03
-            if "anti-rollback" in text:
-                return VERIFY_FAIL_REASON_ROLLBACK
-            if "hardware" in text:
-                return 0x04
-            return 0x06
+        status = reference2.decide2(
+            blob, [self.public_key], hw_id=self.hardware_id, link_address=link, floor=self.floor, installed_version=self.installed,
+            nonce=self.nonce, token=self.token if len(self.token) == 64 else b"",
+        )
+        if status != "ok":
+            codes = {"bad_signature": 0x03, "rollback_version": VERIFY_FAIL_REASON_ROLLBACK, "hardware_mismatch": 0x04}
+            return codes.get(status, 0x06)
+        parsed = reference2.parse_header2(blob)
         return 0 if (parsed.major, parsed.minor) == (major, minor) else 0x06
 
 
@@ -141,7 +145,7 @@ def signers(seed=SEED):
     """What the owner's machine would do, given to the flasher as callables: the flasher itself never sees the seed."""
 
     def image_signer(header, image, digest):
-        return reference.sign_image(seed, header, image)
+        return sign(header, image, seed)
 
     def downgrade_signer(nonce, installed, target, digest):
         return reference.downgrade_token(seed, nonce, installed, target, digest)
@@ -149,7 +153,9 @@ def signers(seed=SEED):
     return image_signer, downgrade_signer
 
 
-def flash(model, image, version, with_signers=True, seed=SEED, **options):
+def flash(model, image, version, with_signers=True, seed=SEED, signed=True, **options):
+    if signed:
+        options = {**SIGNED, **options}
     image_signer, downgrade_signer = signers(seed) if with_signers else (None, None)
     flasher = SpiOtaFlasher(model, KEY, image_signer=image_signer, downgrade_signer=downgrade_signer)
     import spi_bridge.bootloader_client as module
@@ -166,24 +172,29 @@ def flash(model, image, version, with_signers=True, seed=SEED, **options):
 class SignedFlashTests(unittest.TestCase):
     def test_what_the_client_builds_is_what_the_reference_builds(self):
         image = firmware()
-        header = client_header.build_header(G401, (0, 2, 3), image)
-        stack, reset = struct.unpack_from("<II", image, 0)
-        expected = reference.ImageHeader(
-            hw_id=G401, major=0, minor=2, patch=3, image_size=len(image), link_address=0x08009000, vector_sp=stack, vector_reset=reset,
-            image_crc32=zlib.crc32(image) & 0xFFFFFFFF,
-        )
+        header = client_header.build_header(G401, (0, 2, 3), image, COUNTER, KEY_ID)
+        expected = reference2.make_header2(SEED, image, G401, (0, 2, 3), 0x08009000, COUNTER)
         self.assertEqual(header, expected.pack())
+        self.assertEqual(client_header.FORMAT, reference2.FORMAT)
         digest = client_header.image_digest(header, image)
         self.assertEqual(digest, reference.image_digest(header, image))
-        self.assertEqual(client_header.image_message(digest), reference.image_message(digest))
-        self.assertEqual(reference.sign_image(SEED, header, image), reference.build_signed_image(expected, image, SEED)[-64:])
+        self.assertEqual(client_header.image_message(digest), reference2.image_message2(header, image))
+        self.assertEqual(sign(header, image), reference2.sign_image2(SEED, expected, image))
         nonce = bytes(range(16))
         self.assertEqual(
             client_header.downgrade_message(nonce, (0, 2, 2), (0, 1, 8), digest),
             reference.downgrade_message(nonce, (0, 2, 2), (0, 1, 8), digest),
         )
-        self.assertEqual(client_header.IMAGE_DOMAIN, reference.IMAGE_DOMAIN)
+        self.assertEqual(client_header.IMAGE_DOMAIN, reference2.IMAGE_DOMAIN_2)
         self.assertEqual(client_header.DOWNGRADE_DOMAIN, reference.DOWNGRADE_DOMAIN)
+
+    def test_the_header_of_the_signing_step_is_the_one_the_client_builds(self):
+        import gen_image_format2_vectors as vectors
+
+        image, hdr2 = bytes.fromhex(vectors.TOOL_IMAGE), bytes.fromhex(vectors.TOOL_HDR2)
+        parsed = reference2.parse_header2(hdr2)
+        self.assertEqual(client_header.build_header(parsed.hw_id, parsed.version, image, parsed.rollback_counter, parsed.key_id), hdr2)
+        client_header.check_header(hdr2, parsed.hw_id, parsed.version, image)
 
     def test_the_link_addresses_are_the_ones_of_the_three_bootloaders(self):
         sources = {
@@ -266,8 +277,8 @@ class SignedFlashTests(unittest.TestCase):
 
     def test_a_signature_made_elsewhere_is_sent_as_it_is(self):
         image = firmware()
-        header = client_header.build_header(G401, (0, 2, 3), image)
-        signature = reference.sign_image(SEED, header, image)
+        header = client_header.build_header(G401, (0, 2, 3), image, COUNTER, KEY_ID)
+        signature = sign(header, image)
         model = BootloaderModel()
         result = flash(model, image, (0, 2, 3), with_signers=False, signature=signature)
         self.assertEqual(result[-1].phase, "done", result[-1])
@@ -279,11 +290,55 @@ class SignedFlashTests(unittest.TestCase):
         self.assertEqual(result[-1].phase, "error")
         self.assertFalse(model.sent)
 
+    def test_a_header_made_elsewhere_is_sent_as_it_is(self):
+        image = firmware()
+        header = reference2.make_header2(SEED, image, G401, (0, 2, 3), 0x08009000, 9).pack()
+        model = BootloaderModel(floor=9)
+        result = flash(model, image, (0, 2, 3), with_signers=False, signed=False, header=header, signature=sign(header, image))
+        self.assertEqual(result[-1].phase, "done", result[-1])
+        self.assertEqual(b"".join(bytes(f.payload[: f.dlc]) for f in model.sent if f.frame_type == OFS_IMAGE_HEADER), header)
+
+    def test_a_counter_below_the_floor_of_the_board_is_refused_by_the_board(self):
+        model = BootloaderModel(floor=COUNTER + 1)
+        self.assertEqual(flash(model, firmware(), (0, 2, 3))[-1].phase, "error")
+        self.assertEqual(model.verdict, 0x06)
+
+    def test_without_the_header_or_its_signed_fields_nothing_is_sent(self):
+        for options in ({}, {"rollback_counter": 1}, {"key_id": KEY_ID}):
+            model = BootloaderModel()
+            result = flash(model, firmware(), (0, 2, 3), signed=False, **options)
+            self.assertEqual(result[-1].phase, "error", options)
+            self.assertIn("rollback counter", result[-1].error)
+            self.assertFalse(model.sent)
+
+    def test_a_header_and_its_fields_together_are_refused(self):
+        model = BootloaderModel()
+        result = flash(model, firmware(), (0, 2, 3), header=bytes(64))
+        self.assertIn("not both", result[-1].error)
+        self.assertFalse(model.sent)
+
+    def test_a_header_that_does_not_describe_the_image_is_not_sent(self):
+        image = firmware()
+        good = client_header.build_header(G401, (0, 2, 3), image, COUNTER, KEY_ID)
+        format1 = good[:4] + struct.pack("<H", 1) + good[6:]
+        for header, version in ((good, (0, 2, 4)), (format1, (0, 2, 3)), (b"XXXX" + good[4:], (0, 2, 3)), (good[:-1], (0, 2, 3)), (good[:-1] + b"\x01", (0, 2, 3))):
+            model = BootloaderModel()
+            result = flash(model, image, version, signed=False, header=header)
+            self.assertEqual(result[-1].phase, "error", header.hex())
+            self.assertIn("header", result[-1].error)
+            self.assertFalse(model.sent)
+
+    def test_a_counter_or_a_key_id_that_does_not_fit_is_refused(self):
+        for fields in ({"rollback_counter": -1, "key_id": KEY_ID}, {"rollback_counter": 1 << 32, "key_id": KEY_ID}, {"rollback_counter": 1, "key_id": b"short"}):
+            model = BootloaderModel()
+            self.assertEqual(flash(model, firmware(), (0, 2, 3), signed=False, **fields)[-1].phase, "error", fields)
+            self.assertFalse(model.sent)
+
     def test_a_downgrade_without_a_signer_for_the_token_is_refused_before_anything_is_sent(self):
         image = firmware()
-        header = client_header.build_header(G401, (0, 1, 8), image)
+        header = client_header.build_header(G401, (0, 1, 8), image, COUNTER, KEY_ID)
         model = BootloaderModel(installed=(0, 2, 2))
-        result = flash(model, image, (0, 1, 8), with_signers=False, signature=reference.sign_image(SEED, header, image), downgrade_from=(0, 2, 2))
+        result = flash(model, image, (0, 1, 8), with_signers=False, signature=sign(header, image), downgrade_from=(0, 2, 2))
         self.assertEqual(result[-1].phase, "error")
         self.assertIn("downgrade", result[-1].error)
         self.assertFalse(model.sent)
@@ -321,11 +376,11 @@ class HeaderBuilderTests(unittest.TestCase):
             self.assertTrue(client_header.is_signed_header_target(hardware_id))
         self.assertFalse(client_header.is_signed_header_target(0x0303CC01))
         with self.assertRaises(client_header.ImageHeaderError):
-            client_header.build_header(0x0303CC01, (0, 1, 0), firmware())
+            client_header.build_header(0x0303CC01, (0, 1, 0), firmware(), 1, bytes(8))
 
     def test_an_image_without_a_vector_table_is_refused(self):
         with self.assertRaises(client_header.ImageHeaderError):
-            client_header.build_header(G401, (0, 1, 0), b"\x00" * 4)
+            client_header.build_header(G401, (0, 1, 0), b"\x00" * 4, 1, bytes(8))
 
     def test_nonce_and_digest_sizes_are_checked(self):
         with self.assertRaises(client_header.ImageHeaderError):

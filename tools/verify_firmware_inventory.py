@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 # =============================================================================
-# HYDRA-UMC - Verify committed firmware artifact inventory
+# HYDRA-UMC - Verify the firmware artifact inventory
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
 """Fail closed if firmware_manifest.json no longer describes firmware/.
 
-This is intentionally a read-only check.  It verifies the six expected MCU
-components, their binary filename/version, byte count and CRC32 before a
-release consumer is allowed to trust the committed firmware inventory.
+This is intentionally a read-only check.  The repository keeps no firmware
+image, so a clean checkout has nothing to verify and passes.  Where a build
+has written firmware/, it verifies the six expected MCU components, their
+binary filename/version, byte count and CRC32, and refuses images that no
+manifest describes.
 """
 
 from __future__ import annotations
@@ -40,6 +42,12 @@ def fail(message: str) -> None:
 
 
 def main() -> int:
+    if not MANIFEST.is_file():
+        images = sorted(path.name for pattern in ("*.bin", "*.hex", "*.elf") for path in FIRMWARE.glob(pattern))
+        if images:
+            fail(f"firmware images without a manifest: {', '.join(images)}")
+        print("FIRMWARE_INVENTORY=PASS no firmware build here")
+        return 0
     try:
         payload = json.loads(MANIFEST.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:

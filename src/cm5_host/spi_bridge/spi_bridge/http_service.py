@@ -23,7 +23,7 @@ Real routes:
                                         Both answer 403 unless the service was started with fram_erase=True (--enable-fram-erase); `GET /version`
                                         says so in `capabilities.fram_erase`, so an app offers the operation only when the bridge does. The brain
                                         has its own switch (HYDRA_FRAM_ERASE) and needs the I2C timing of the build: it then answers `disabled` or `no-chip`.
-  POST /flash?tier=&slot=&hardware_id=&relay=&version_major=&version_minor=[&version_patch=][&downgrade_from=x.y.z][&signature=HEX][&target=NAME][&min_bootloader=x.y.z] -> SpiOtaFlasher.flash(),
+  POST /flash?tier=&slot=&hardware_id=&relay=&version_major=&version_minor=[&version_patch=][&downgrade_from=x.y.z][&signature=HEX][&header=HEX | &rollback_counter=N&key_id=HEX][&target=NAME][&min_bootloader=x.y.z] -> SpiOtaFlasher.flash(),
                                         streamed as newline-delimited JSON. The HYDRA-UMC bootloaders verify an Ed25519 signature of the image
                                         (128 hexadecimal digits in `signature`, made with tools/image_header.py sign on the machine that holds the
                                         private seed): this service holds no signing key. A downgrade needs a signer of the token of the session,
@@ -61,7 +61,7 @@ from urllib.parse import parse_qs, urlparse
 from .fram_client import erase_fram, fram_selftest
 from .system_client import read_health, read_telemetry
 from .bootloader_client import SpiOtaFlasher, check_manifest_requirements, query_error_counters, query_version
-from .image_header import DowngradeSigner, ImageSigner, SIGNATURE_SIZE, is_signed_header_target
+from .image_header import HEADER_SIZE, KEY_ID_SIZE, SIGNATURE_SIZE, DowngradeSigner, ImageSigner, is_signed_header_target
 from .relay_tunnel import RelayedTransport
 from .transport import SpiOtaTransport
 
@@ -230,13 +230,23 @@ def make_handler(
                 signature = bytes.fromhex(signature_hex) if signature_hex else None
                 if signature is not None and len(signature) != SIGNATURE_SIZE:
                     raise ValueError("signature must be 128 hexadecimal digits")
+                header_hex = params.get("header", [""])[0]
+                header = bytes.fromhex(header_hex) if header_hex else None
+                if header is not None and len(header) != HEADER_SIZE:
+                    raise ValueError("header must be 128 hexadecimal digits")
+                counter_text = params.get("rollback_counter", [""])[0]
+                rollback_counter = int(counter_text) if counter_text else None
+                key_id_hex = params.get("key_id", [""])[0]
+                key_id = bytes.fromhex(key_id_hex) if key_id_hex else None
+                if key_id is not None and len(key_id) != KEY_ID_SIZE:
+                    raise ValueError("key_id must be 16 hexadecimal digits")
             except KeyError:
                 # Without the version of the image the board would compare it as 0.0 and
                 # refuse it as a rollback only AFTER the whole transfer.
                 self._send_json(400, {"error": "version_major and version_minor are required"})
                 return
             except ValueError:
-                self._send_json(400, {"error": "tier/slot/hardware_id/version_major/version_minor/version_patch must be integers, downgrade_from major.minor.patch and signature 128 hexadecimal digits"})
+                self._send_json(400, {"error": "tier/slot/hardware_id/version_major/version_minor/version_patch must be integers, downgrade_from major.minor.patch, signature and header 128 hexadecimal digits, rollback_counter an integer and key_id 16 hexadecimal digits"})
                 return
             if tier not in VALID_TIERS or slot not in VALID_SLOTS:
                 self._send_json(400, {"error": "tier must be 0, 1 or 2 and slot 0-7"})
@@ -249,6 +259,11 @@ def make_handler(
                 # Said before the body is read and before the bootloader is touched: nothing the board would refuse after the whole transfer.
                 if signature is None and image_signer is None:
                     self._send_json(400, {"error": "a HYDRA-UMC board needs the Ed25519 signature of the image (signature=...): this service holds no signing key"})
+                    return
+                described = rollback_counter is not None or key_id is not None
+                complete = rollback_counter is not None and key_id is not None
+                if (header is None and not complete) or (header is not None and described):
+                    self._send_json(400, {"error": "a HYDRA-UMC board needs the header of the image (header=...), or rollback_counter and key_id, and not both"})
                     return
                 if downgrade_from is not None and downgrade_signer is None:
                     self._send_json(400, {"error": "a downgrade of a HYDRA-UMC board needs a signer for the token of the session, which this service does not have"})
@@ -280,7 +295,8 @@ def make_handler(
                     for progress in flasher.flash(
                         tier, slot, hardware_id, firmware, version_major, version_minor,
                         version_patch=version_patch, allow_downgrade=downgrade_from is not None, downgrade_from=downgrade_from,
-                        signature=signature, min_bootloader=min_bootloader, target=target,
+                        signature=signature, header=header, rollback_counter=rollback_counter, key_id=key_id,
+                        min_bootloader=min_bootloader, target=target,
                     ):
                         self._write_progress(progress.phase, progress.pages_sent, progress.pages_total, progress.percent, progress.error)
                 except (OSError, ValueError) as error:

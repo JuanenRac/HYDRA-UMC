@@ -252,11 +252,10 @@ falls Sie lieber keines der beiden Skripte ausführen möchten - die Skripte
 existieren, um sie zu automatisieren, nicht um sie als Wahrheitsquelle zu
 ersetzen.
 
-Die Ausgabe landet in `firmware/`, was committet und in dieses Repository
-gepusht wird (dieselbe Konvention wie der eigene `firmware/`-Ausgabeordner
-von URTC), damit die GitHub-Download-Funktion von HYDRA-UMC-STUDIO dort
-tatsächlich echte `.bin`-Dateien über `firmware_manifest.json` finden kann -
-es ist NICHT in gitignore.
+Die Ausgabe landet in `firmware/`, das nicht in git geführt wird (es steht in
+`.gitignore`): Die offiziellen Images baut der manuelle Firmware-Build-Workflow;
+sie werden als Dateien eines Releases veröffentlicht, und von dort laden
+HYDRA-UMC-STUDIO und HYDRA-UMC-SUITE sie herunter.
 Siehe `docs/COMPILE_STM32G474.md` und `docs/COMPILE_STM32H745.md` für
 genau das, was jeder Schritt tut und warum - und das eigene `README.md`
 jedes Firmware-Ordners für den aktuellen Status. Die **Bootloader** für alle
@@ -307,7 +306,6 @@ HYDRA-UMC/
 ├── os/                              OS-Image des Hosts (heute CM5-Pilotprüfstand, Jetson-Image noch zu definieren) - Basis-Betriebssystemwahl, systemd-Units, Erstinbetriebnahme-Provisionierung
 ├── images/                          README-Banner + Icon + Splashscreen (SVG)
 ├── tools/                           Projektwerkzeuge und CI-Prüfungen
-├── firmware/                        Committete Build-Ausgabe (.bin/.hex/.elf + Manifest) - NICHT in gitignore, dieselbe Konvention wie der eigene Ausgabeordner von URTC, siehe "Die Firmware bauen" unten
 ├── firmware_base/                   Die Dateien, die in den drei STM32-Bootloadern gleich sind; tools/sync_firmware_base.py hält ihre Kopien identisch
 ├── .github/                         CI-Workflow und Issue-Vorlagen
 ├── build-test.sh / build-test.bat   Build-/Kompilierprüfung ohne Versionserhöhung

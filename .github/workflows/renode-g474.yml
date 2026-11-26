@@ -58,7 +58,7 @@ jobs:
           fi
 
   run-bootloader:
-    name: Run the committed bootloader ELF
+    name: Compile and run the bootloader ELF
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -80,11 +80,21 @@ jobs:
           echo "${RENODE_SHA256}  $RUNNER_TEMP/renode.tar.gz" | sha256sum --check -
           tar -xzf "$RUNNER_TEMP/renode.tar.gz" -C "$RUNNER_TEMP/renode" --strip-components=1
 
+      - name: Install the ARM GNU toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
+
+      - name: Compile the controller board without a version bump
+        env:
+          HYDRA_UMC_CI: "1"
+        run: python3 tools/build_firmware.py --compile-only g474
+
       - name: Run the bootloader of the controller board for one virtual second
         shell: bash
         run: |
           set -uo pipefail
-          elf=$(ls firmware/HYDRA_RCB_BOOTLOADER_v*.elf | sort -V | tail -n 1)
+          elf=$(ls build/firmware_staging/HYDRA_RCB_BOOTLOADER_v*.elf | sort -V | tail -n 1)
           echo "ELF: $elf"
           "$RUNNER_TEMP/renode/renode" --disable-xwt --plain --console \
             -e "\$bin=@${elf}; include @tools/renode/run_bootloader.resc; quit" 2>&1 | tee "$RUNNER_TEMP/run.log"
