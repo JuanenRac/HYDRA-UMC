@@ -45,7 +45,7 @@ Every file of the repository with a line on what it does: the annotated tree tha
 ├── show_component_version.py    # Prints the version a component already has
 ├── bump_manifest_version.py     # Syncs hydra-umc.project.json's version to the native one (--sync)
 ├── tools/
-│   ├── verify_firmware_inventory.py # Read-only verification of the committed six-component inventory
+│   ├── verify_firmware_inventory.py # Read-only verification of the six-component inventory of a build
 │   ├── build_test.py                # Non-versioning build/compile check
 │   ├── ci_validate.py               # Manifest/CHANGELOG/docs validation used by CI
 │   ├── image_header.py              # Host reference of the signed firmware image header, its Ed25519 signature and the anti-rollback rule

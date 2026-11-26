@@ -234,7 +234,7 @@
         {
           "name": "os/",
           "desc": {
-            "en": "OS image of the host (CM5 pilot bench today, Jetson image to be defined) - base OS choice",
+            "en": "OS image of the host",
             "es": "Imagen de SO del anfitrión (banco piloto CM5 hoy, imagen del Jetson por definir)",
             "de": "OS-Image des Hosts (heute CM5-Pilotprüfstand, Jetson-Image noch zu definieren) - Basis-Betriebssystemwahl",
             "fr": "Image OS de l'hôte (banc pilote CM5 aujourd'hui, image du Jetson à définir)",
@@ -298,29 +298,6 @@
             "ja": "プロジェクトのツールと CI の検査",
             "zh": "项目工具和 CI 检查",
             "pt": "ferramentas do projeto e verificações da CI"
-          }
-        },
-        {
-          "name": "firmware/",
-          "desc": {
-            "en": "Committed build output",
-            "es": "Salida de compilación comiteada",
-            "de": "Committete Build-Ausgabe",
-            "fr": "Sortie de build commitée",
-            "it": "Output di build committato",
-            "ja": "コミット済みのビルド成果物（.bin/.he",
-            "zh": "已提交的构建产物（.bin/.hex/.el",
-            "pt": "Saída de build registada"
-          },
-          "tree_desc": {
-            "en": "Committed build output (.bin/.hex/.elf + manifest) - NOT gitignored, same convention as URTC's own output folder, see \"Building the Firmware\" below",
-            "es": "Salida de compilación comiteada (.bin/.hex/.elf + manifest) - NO en gitignore, misma convención que la propia carpeta de salida de URTC, ver \"Compilando el Firmware\" abajo",
-            "de": "Committete Build-Ausgabe (.bin/.hex/.elf + Manifest) - NICHT in gitignore, dieselbe Konvention wie der eigene Ausgabeordner von URTC, siehe \"Die Firmware bauen\" unten",
-            "fr": "Sortie de build commitée (.bin/.hex/.elf + manifest) - PAS dans gitignore, même convention que le propre dossier de sortie d'URTC, voir \"Compiler le Firmware\" ci-dessous",
-            "it": "Output di build committato (.bin/.hex/.elf + manifest) - NON in gitignore, stessa convenzione della cartella di output propria di URTC, vedi \"Compilare il Firmware\" sotto",
-            "ja": "コミット済みのビルド成果物（.bin/.hex/.elf + マニフェスト）— gitignore 対象外、URTC 自身の出力フォルダと同じ規約、下記「ファームウェアのビルド」参照",
-            "zh": "已提交的构建产物（.bin/.hex/.elf + 清单文件）—— 未被 gitignore 排除，与 URTC 自身的输出文件夹约定一致，见下方“构建固件”",
-            "pt": "Saída de build registada (.bin/.hex/.elf + manifesto) - NÃO está no gitignore, mesma convenção da pasta de saída do URTC, ver \"Compilar o firmware\" abaixo"
           }
         },
         {

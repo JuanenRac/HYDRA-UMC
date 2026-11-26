@@ -245,10 +245,10 @@ files are the authoritative, step-by-step reference if you'd rather not run
 either script - the scripts exist to automate them, not replace them as the
 source of truth.
 
-Output lands in `firmware/`, which is committed and pushed to this
-repo (same convention as URTC's own `firmware/` output folder) so that
-HYDRA-UMC-STUDIO's GitHub-download feature can actually find real
-`.bin` files there via `firmware_manifest.json` - it is NOT gitignored.
+Output lands in `firmware/`, which is not kept in git (it is listed in
+`.gitignore`): the official images are built by the manual firmware build
+workflow and published as assets of a release, which is where
+HYDRA-UMC-STUDIO and HYDRA-UMC-SUITE download them from.
 See `docs/COMPILE_STM32G474.md` and `docs/COMPILE_STM32H745.md` for
 exactly what each step does and why - and each firmware folder's own
 `README.md` for current status. The **bootloaders** for all 3 targets
@@ -297,7 +297,6 @@ HYDRA-UMC/
 ├── os/                              OS image of the host (CM5 pilot bench today, Jetson image to be defined) - base OS choice, systemd units, first-boot provisioning
 ├── images/                          README banner + icon + splashscreen (SVG)
 ├── tools/                           project tools and CI checks
-├── firmware/                        Committed build output (.bin/.hex/.elf + manifest) - NOT gitignored, same convention as URTC's own output folder, see "Building the Firmware" below
 ├── firmware_base/                   The files that are the same in the three STM32 bootloaders, kept equal to their copies by tools/sync_firmware_base.py
 ├── .github/                         CI workflow and issue templates
 ├── build-test.sh / build-test.bat   Non-versioning build/compile check
