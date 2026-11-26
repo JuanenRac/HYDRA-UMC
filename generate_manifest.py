@@ -319,7 +319,7 @@ def main():
         try:
             manifest = release_set_manifest(sys.argv[2])
         except (OSError, ValueError) as error:
-            raise SystemExit(f"generate_manifest.py: {error} - manifest NOT written")
+            raise SystemExit(f"generate_manifest.py: {error} - manifest NOT written") from error
         write_manifest(os.path.join(sys.argv[2], "firmware_manifest.json"), manifest)
         print(f"firmware_manifest.json written for the release set in {sys.argv[2]}")
         return
