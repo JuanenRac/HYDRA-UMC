@@ -5,6 +5,7 @@
 # =============================================================================
 """tools/publish_release_assets.py: what counts as a complete, consistent, official firmware set (made with throw-away keys)."""
 import contextlib
+import hashlib
 import io
 import json
 import shutil
@@ -68,10 +69,35 @@ class PublishReleaseAssetsTests(unittest.TestCase):
         self.assertFalse(plan["prerelease"])
         self.assertEqual(plan["tag"], "v" + fx.VERSION)
         names = {Path(p).name for p in plan["files"]}
-        # 6 components x (bin, hex) + SHA256SUMS + build-manifest + 3 x (hdr2, sig2) = 20 files, each with .sha256 and .sig
-        self.assertEqual(len(names), 60)
-        for expected in ("HYDRA_RCB_APP_v1.2.3.hdr2", "HYDRA_RCB_APP_v1.2.3.sig2", "HYDRA_RCB_APP_v1.2.3.hdr2.sig", "SHA256SUMS.sha256", "build-manifest.json.sig"):
+        # 6 components x (bin, hex) + SHA256SUMS + build-manifest + firmware_manifest + 3 x (hdr2, sig2) = 21 files, each with .sha256 and .sig
+        self.assertEqual(len(names), 63)
+        for expected in ("firmware_manifest.json", "firmware_manifest.json.sig", "HYDRA_RCB_APP_v1.2.3.hdr2", "HYDRA_RCB_APP_v1.2.3.sig2", "HYDRA_RCB_APP_v1.2.3.hdr2.sig", "SHA256SUMS.sha256", "build-manifest.json.sig"):
             self.assertIn(expected, names)
+
+    def test_an_official_set_needs_the_firmware_manifest(self):
+        (self.folder / "firmware_manifest.json").unlink()
+        self.assertTrue(any("firmware_manifest.json is missing" in p for p in self.plan()["problems"]))
+
+    def test_a_firmware_manifest_that_does_not_describe_the_images_is_refused(self):
+        path = self.folder / "firmware_manifest.json"
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        manifest["components"]["g474_application"]["files"]["bin"]["crc32"] = "0x00000000"
+        path.write_text(json.dumps(manifest), encoding="utf-8")
+        self.resign("firmware_manifest.json")
+        self.assertTrue(any("does not describe the images" in p for p in self.plan()["problems"]))
+
+    def test_the_firmware_manifest_of_a_set_names_each_image_with_its_own_version_and_digests(self):
+        manifest = json.loads((self.folder / "firmware_manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["schema_version"], 1)
+        self.assertEqual(len(manifest["components"]), 6)
+        application = manifest["components"]["h745_cm7_application"]
+        name = application["files"]["bin"]["filename"]
+        self.assertEqual(name, f"HYDRA_KB_CM7_APP_v{fx.VERSIONS['KB_CM7_APP']}.bin")
+        self.assertEqual(application["version_string"], fx.VERSIONS["KB_CM7_APP"])
+        data = (self.folder / name).read_bytes()
+        self.assertEqual(application["files"]["bin"]["size_bytes"], len(data))
+        self.assertEqual(application["files"]["bin"]["sha256"], hashlib.sha256(data).hexdigest())
+        self.assertEqual(application["hardware_id"], "0x%08X" % pra.BOARDS["KB_CM7"][1])
 
     def test_the_older_signature_file_is_accepted_when_it_is_there_and_never_required(self):
         legacy = Path(self.work.name) / "legacy"
@@ -175,7 +201,7 @@ class PublishReleaseAssetsTests(unittest.TestCase):
                 code = pra.main(["--firmware-dir", str(self.folder), "--repo", "o/r", "--draft", "--list-file", str(listing), "--tag-file", str(tag)])
             self.assertEqual(code, 0)
             self.assertIn("RELEASE_ASSETS=PASS", out.getvalue())
-            self.assertEqual(len(listing.read_text(encoding="utf-8").split()), 60)
+            self.assertEqual(len(listing.read_text(encoding="utf-8").split()), 63)
             self.assertEqual(tag.read_text(encoding="utf-8").split(), ["v1.2.3", "official"])
             (self.folder / "SHA256SUMS.sig").unlink()
             listing.unlink()

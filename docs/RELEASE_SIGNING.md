@@ -47,6 +47,7 @@ For the version V of `hydra-umc.project.json`, the tag is `vV` and the set is:
 
 `tools/publish_release_assets.py` and `tools/verify_release_set.py` refuse a set when:
 
+* an official set has no `firmware_manifest.json`, or the file does not describe the images next to it;
 * the build was not made with the release table (`signing_key_kind` is not `release`) or a bootloader does not hold exactly the release table of
   `docs/image_trust.json` at its fixed offset: **a set built with the public development key is never official**;
 * a file, a digest, a size or a version differs between the files and the two lists, or a component is missing;
@@ -68,11 +69,13 @@ bootloaders do not hold exactly the release table fails.
 **2. On the maintainer's machine (nothing leaves it yet).** Download the artifact of that run, verify its attestation and its digests, check that
 the bootloaders carry exactly the release table (the signing tool refuses to read a key otherwise), and then:
 
-1. make the image signature of each application image with the image key and the rollback counter of the release (`<image>.hdr2`, `<image>.sig2`);
+1. write the index of the images, `python generate_manifest.py --release-set <folder>`: `firmware_manifest.json`, which HYDRA-UMC-STUDIO and
+   HYDRA-UMC-SUITE read from the release;
+2. make the image signature of each application image with the image key and the rollback counter of the release (`<image>.hdr2`, `<image>.sig2`);
    the tool checks every result the way a bootloader with the release table would decide it before it writes anything;
-2. sign every file of the set with the key of the releases (`hydra-sign sign --key <releases PEM> FILE...`), which writes `FILE.sha256` and
+3. sign every file of the set with the key of the releases (`hydra-sign sign --key <releases PEM> FILE...`), which writes `FILE.sha256` and
    `FILE.sig`;
-3. collect the whole set in one folder, and check it:
+4. collect the whole set in one folder, and check it:
 
 ```
 python tools/verify_release_set.py <folder> --tag v<version>        # the very check the workflow will repeat
@@ -125,8 +128,13 @@ every image, decides each result the way the bootloader decides it, and writes `
 writes is checked by `tests/test_image_format2.py` and by the host test of the bootloader against fixed bytes (`tests/image_format2_vectors.json`):
 the board receives `header || image || signature`.
 
-**3. The release signature (every file, including the two lists).** `SHA256SUMS` and `build-manifest.json` are the manifest of the set: signing them
-signs what each image is called and what its digest is. Build `hydra-sign` from HYDRA-UMC-TOOL-CLI and sign the whole folder:
+**3. The release signature (every file, including the lists).** `SHA256SUMS` and `build-manifest.json` are the manifest of the set: signing them
+signs what each image is called and what its digest is. First write the index that the applications read, then build `hydra-sign` from
+HYDRA-UMC-TOOL-CLI and sign the whole folder:
+
+```powershell
+python generate_manifest.py --release-set $set
+```
 
 ```powershell
 $cli = "<path to>\HYDRA-UMC-TOOL-CLI\src"
@@ -137,7 +145,7 @@ $files = Get-ChildItem $set -File | Where-Object { $_.Extension -notin ".sha256"
 & "$work\hydra-sign.exe" sign --key "$keys\hydra_release_ed25519.pem" @files
 ```
 
-`$set` is the folder with the six components, `SHA256SUMS`, `build-manifest.json` and the `.hdr2` / `.sig2` files. Each file gets `<file>.sha256` and
+`$set` is the folder with the six components, `SHA256SUMS`, `build-manifest.json`, `firmware_manifest.json` and the `.hdr2` / `.sig2` files. Each file gets `<file>.sha256` and
 `<file>.sig`.
 
 **4. Check the set, then the draft** (public keys only, the very check the workflow repeats):
