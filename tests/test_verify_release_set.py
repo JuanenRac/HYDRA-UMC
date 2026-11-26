@@ -57,7 +57,7 @@ class VerifyReleaseSetTests(unittest.TestCase):
     def test_a_complete_signed_set_passes_and_lists_every_file(self):
         problems, names = self.check()
         self.assertEqual(problems, [])
-        self.assertEqual(len(names), 60)
+        self.assertEqual(len(names), 63)
         self.assertEqual(sorted(names), sorted(p.name for p in self.folder.iterdir()))
 
     def test_the_command_line_writes_the_list_only_for_a_good_set(self):
@@ -73,7 +73,7 @@ class VerifyReleaseSetTests(unittest.TestCase):
                 try:
                     self.assertEqual(vrs.main([str(self.folder), "--tag", "v1.2.3", "--list-file", str(listing)]), 0)
                     self.assertIn("VERIFY_RELEASE_SET=PASS", out.getvalue())
-                    self.assertEqual(len(listing.read_text(encoding="utf-8").split()), 60)
+                    self.assertEqual(len(listing.read_text(encoding="utf-8").split()), 63)
                     (self.folder / "SHA256SUMS").write_bytes(b"x")
                     listing.unlink()
                     self.assertEqual(vrs.main([str(self.folder), "--tag", "v1.2.3", "--list-file", str(listing)]), 1)
