@@ -62,6 +62,11 @@ class WorkflowAndDocs(unittest.TestCase):
         self.assertNotIn("push:", text)
         self.assertNotIn("pull_request", text)
 
+    def test_the_run_loads_the_image_again_after_a_reset_of_the_watchdog(self):
+        script = (ROOT / "tools" / "renode" / "run_bootloader.resc").read_text(encoding="utf-8")
+        self.assertIn('macro reset\n"""\n    sysbus LoadELF $bin\n"""\nrunMacro $reset\n', script)
+        self.assertLess(script.index("runMacro $reset"), script.index("emulation RunFor"))
+
     def test_the_documentation_says_what_is_not_modelled(self):
         text = (ROOT / "docs" / "RENODE.md").read_text(encoding="utf-8")
         for word in ("RCC", "flash controller", "FDCAN protocol engine"):
