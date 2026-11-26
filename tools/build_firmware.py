@@ -530,7 +530,7 @@ def bootloader_cases(root: str) -> list[Case]:
                 f"host_tests_bootloader_h745_{core}",
                 "test_bootloader_h745_host",
                 ("tests/stubs", f"src/mcu_stm32h757/{core}/boot"),
-                [f"-DHYDRA_TEST_{core}"],
+                [f"-DHYDRA_TEST_{core}", "-DHYDRA_META_AB=0"],
                 rerun_on_failure=True,
                 **GNU,
             )
@@ -542,7 +542,7 @@ def bootloader_cases(root: str) -> list[Case]:
                 f"host_tests_bootloader_h745_{core}_flash_layer",
                 "test_bootloader_h745_host",
                 ("tests/stubs", f"src/mcu_stm32h757/{core}/boot"),
-                [f"-DHYDRA_TEST_{core}", "-DHYDRA_FLASH_LAYER=1"],
+                [f"-DHYDRA_TEST_{core}", "-DHYDRA_FLASH_LAYER=1", "-DHYDRA_META_AB=0"],
                 rerun_on_failure=True,
                 **GNU,
             )

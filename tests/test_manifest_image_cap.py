@@ -22,7 +22,7 @@ def _image(folder: Path, name: str, size: int) -> Path:
 
 class ImageCapTests(unittest.TestCase):
     def test_the_room_follows_the_switch_of_the_build(self):
-        self.assertEqual(manifest.kb_app_region_bytes({}), 384 * KB)
+        self.assertEqual(manifest.kb_app_region_bytes({}), 256 * KB)
         self.assertEqual(manifest.kb_app_region_bytes({"HYDRA_META_AB": "0"}), 384 * KB)
         self.assertEqual(manifest.kb_app_region_bytes({"HYDRA_META_AB": "1"}), 256 * KB)
         for environ in ({}, {"HYDRA_META_AB": ""}, {"HYDRA_META_AB": "yes"}):
