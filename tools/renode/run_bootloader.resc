@@ -4,8 +4,16 @@
 # It prints the program counter and the stack pointer before and after the run, so the workflow can check that the reset vector was taken and that the
 # code executed from the flash. The clock tree, the flash controller and the FDCAN engine are not modelled (docs/RENODE.md): a loop that waits on them
 # keeps running, which is all this run shows. Evidence: simulator.
+#
+# The run crosses a reset of the independent watchdog: with no FDCAN model the link of the bootloader does not come up, and with no valid application it
+# stops refreshing the watchdog on purpose so the reset tries the set-up again. Renode runs the macro named "reset" when a machine resets; without it
+# the core restarts with no image loaded again and reads its vector table at address 0, which this platform does not alias to the flash (PC = 0).
 include @tools/renode/stm32g474.resc
-sysbus LoadELF $bin
+macro reset
+"""
+    sysbus LoadELF $bin
+"""
+runMacro $reset
 echo "HYDRA_RENODE_START"
 cpu PC
 cpu SP
