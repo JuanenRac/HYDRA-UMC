@@ -33,7 +33,7 @@ def run(transport, hardware_id=H7C4, **options):
     original = client.time.sleep
     client.time.sleep = lambda _seconds: None
     try:
-        return list(flasher.flash(SPI_TARGET_STACKA, 0, hardware_id, IMAGE, 0, 3, version_patch=1, signature=SIGNATURE, **options))
+        return list(flasher.flash(SPI_TARGET_STACKA, 0, hardware_id, IMAGE, 0, 3, version_patch=1, signature=SIGNATURE, rollback_counter=1, key_id=bytes(8), **options))
     finally:
         client.time.sleep = original
 
@@ -136,7 +136,7 @@ class HttpManifestRequirementsTests(unittest.TestCase):
         self.server = serve(self.transport, hmac_key=b"\x00" * 32, port=0)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
-        self.url = f"http://127.0.0.1:{self.server.server_port}/flash?tier=2&slot=0&hardware_id={H7C4}&version_major=0&version_minor=3&signature={'ab' * 64}"
+        self.url = f"http://127.0.0.1:{self.server.server_port}/flash?tier=2&slot=0&hardware_id={H7C4}&version_major=0&version_minor=3&signature={'ab' * 64}&rollback_counter=1&key_id={'cd' * 8}"
         original = client.time.sleep
         client.time.sleep = lambda _seconds: None
         self.addCleanup(setattr, client.time, "sleep", original)

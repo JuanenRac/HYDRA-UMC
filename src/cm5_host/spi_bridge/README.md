@@ -18,9 +18,10 @@ framing to this project's real SPI framing.
   `SpiOtaFlasher.flash()` cycle (ENTER_BOOTLOADER → START_UPDATE →
   HMAC_CHUNK → DATA page-by-page → END_UPDATE → STATUS verify), a real
   CRC32 over the actual firmware bytes, not a placeholder. The URTC bootloaders behind the relay take an HMAC-SHA256 in four
-  `HMAC_CHUNK` frames; the HYDRA-UMC bootloaders take a 64-byte Ed25519 signature in eight, made by the owner with
-  `tools/image_header.py sign` (this package holds no signing key: pass `signature=` to `flash()`, or the `signature` parameter of
-  `POST /flash`, or give the flasher a signer).
+  `HMAC_CHUNK` frames; the HYDRA-UMC bootloaders take a header of format 2 and a 64-byte Ed25519 signature in eight, the
+  `<image>.hdr2` and `<image>.sig2` of a release (this package holds no signing key: pass `header=` and `signature=` to `flash()`,
+  or the `header` and `signature` parameters of `POST /flash`, as hexadecimal; `rollback_counter` and `key_id` can be given instead
+  of the header, which is then built here; or give the flasher a signer).
 - `spi_bridge/transport.py` — `RealSpiOtaTransport` (real `spidev` +
   `gpiod` v2, lazily imported so the rest of this package needs neither
   installed) plus the `SpiOtaTransport` protocol every other module here

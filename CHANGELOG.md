@@ -4,6 +4,7 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **An update through the SPI bridge uses the header the bootloaders read:** the bridge built a header of format 1, which the three bootloaders refuse. It now sends format 2, with the rollback counter and the key id inside the signed bytes. `POST /flash` and `SpiOtaFlasher.flash()` need either the header of the image (`header`, the `<image>.hdr2` of a release) or `rollback_counter` and `key_id`, and refuse before the board is touched without them or when the header does not describe the image. A new host test gives the header to the parser and the decision of the three bootloaders. No bootloader or firmware source changes.
 - **The firmware build can prepare its draft pre-release:** the draft job names the repository itself, so `gh release view` and `gh release create` work in a job that has no checkout.
 - **The release-signing page covers the update manifest:** it says that the manifest is signed with Ed25519 under a key of the releases and not with a shared secret, where the list of trusted keys and their rotation are written, how the switch `require_asymmetric_signature` treats a manifest without a signature, and that a controller board of HYDRA-UMC never takes the old shared-key check.
 

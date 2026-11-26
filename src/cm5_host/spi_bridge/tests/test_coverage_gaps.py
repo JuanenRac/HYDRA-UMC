@@ -35,7 +35,7 @@ from spi_bridge.relay_tunnel import RelayedTransport, RelayFrame, build_relay_se
 from spi_bridge.system_client import poll_probe
 from spi_bridge.transport import RealSpiOtaTransport, _parse_spidev_path, open_spi_transport, seal_frame
 
-SIG_Q = "&signature=" + "ab" * 64
+SIG_Q = "&signature=" + "ab" * 64 + "&rollback_counter=1&key_id=" + "cd" * 8
 
 
 def _status_frame_bytes(*, sealed: bool = True, damaged: bool = False) -> bytes:

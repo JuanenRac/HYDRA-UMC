@@ -47,6 +47,9 @@ class ConfirmHealthyTests(unittest.TestCase):
 SIGNATURE = bytes(range(64))  # any 64 bytes: the fake transport does not check it (test_signed_flash.py checks real ones against the reference)
 
 
+SIGNED = {"rollback_counter": 1, "key_id": bytes(range(8))}  # the signed fields of the header besides what the image says by itself
+
+
 class SpiOtaFlasherTests(unittest.TestCase):
     def test_a_full_flash_cycle_ends_in_done(self):
         transport = FakeBootloaderTransport()
@@ -54,14 +57,14 @@ class SpiOtaFlasherTests(unittest.TestCase):
         firmware = bytes(range(256)) * 8  # 2048 bytes - exactly one page
         phases = [
             progress.phase
-            for progress in flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, firmware, version_major=0, version_minor=2, signature=SIGNATURE)
+            for progress in flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, firmware, version_major=0, version_minor=2, signature=SIGNATURE, **SIGNED)
         ]
         self.assertEqual(phases, ["entering_bootloader", "transferring", "verifying", "done"])
 
     def test_the_real_enter_bootloader_magic_payload_is_sent_first(self):
         transport = FakeBootloaderTransport()
         flasher = SpiOtaFlasher(transport, hmac_key=b"\x00" * 32)
-        list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, b"\x00" * 2048, 0, 1, signature=SIGNATURE))
+        list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, b"\x00" * 2048, 0, 1, signature=SIGNATURE, **SIGNED))
         first_frame = transport.sent_frames[0]
         self.assertEqual(first_frame.frame_type, 0x00)  # OFS_ENTER_BOOTLOADER
         self.assertEqual(first_frame.payload, bytes((0xB0, 0x07, 0x1D, 0x5A)))
@@ -72,7 +75,7 @@ class SpiOtaFlasherTests(unittest.TestCase):
         transport = FakeBootloaderTransport()
         flasher = SpiOtaFlasher(transport, hmac_key=b"\x00" * 32)
         firmware = b"\xAB" * 2048
-        list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, firmware, 1, 2, signature=SIGNATURE))
+        list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, firmware, 1, 2, signature=SIGNATURE, **SIGNED))
         end_update_frames = [f for f in transport.sent_frames if f.frame_type == 0x04]  # OFS_END_UPDATE
         self.assertEqual(len(end_update_frames), 1)
         import struct
@@ -103,7 +106,7 @@ class SpiOtaFlasherTests(unittest.TestCase):
         transport = FakeBootloaderTransport()
         flasher = SpiOtaFlasher(transport, hmac_key=b"\x11" * 32)
         firmware = b"\xCD" * 2048
-        list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, firmware, 0, 1, version_patch=4, signature=SIGNATURE))
+        list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, firmware, 0, 1, version_patch=4, signature=SIGNATURE, **SIGNED))
         signature_frames = [f for f in transport.sent_frames if f.frame_type == 0x07]
         header = b"".join(f.payload for f in transport.sent_frames if f.frame_type == 0x19)  # OFS_IMAGE_HEADER
         self.assertEqual(len(header), 64)
@@ -114,7 +117,7 @@ class SpiOtaFlasherTests(unittest.TestCase):
     def test_the_hmac_key_never_signs_an_image_for_a_hydra_board(self):
         transport = FakeBootloaderTransport()
         flasher = SpiOtaFlasher(transport, hmac_key=b"\x11" * 32)
-        progress = list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, b"\xCD" * 2048, 0, 1))
+        progress = list(flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, b"\xCD" * 2048, 0, 1, **SIGNED))
         self.assertEqual(progress[-1].phase, "error")
         self.assertIn("signature", progress[-1].error)
         self.assertFalse(transport.sent_frames, "nothing was sent: the key of the URTC bootloaders is not a signing key")
@@ -136,7 +139,7 @@ class SpiOtaFlasherTests(unittest.TestCase):
                 return SpiOtaFrame(frame.target_tier, frame.target_slot, 0x03, 4, b"\xff\xff\xff\xff")
 
         flasher = SpiOtaFlasher(NeverAcksTransport(), hmac_key=b"\x00" * 32)
-        phases = [progress.phase for progress in flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, b"\x00" * 2048, 0, 1, page_timeout_seconds=0.05)]
+        phases = [progress.phase for progress in flasher.flash(SPI_TARGET_STACKA, 2, 0x48374334, b"\x00" * 2048, 0, 1, signature=SIGNATURE, page_timeout_seconds=0.05, **SIGNED)]
         self.assertEqual(phases[-1], "error")
 
 
