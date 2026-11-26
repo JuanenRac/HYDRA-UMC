@@ -154,7 +154,7 @@ flowchart LR
 | 重新发送的旧签名镜像（回滚） | 新镜像必须严格比已安装的更新（比较主版本、次版本和补丁号）；更旧的镜像只有在带有降级令牌时才被接受，该令牌是对已安装版本、目标版本和镜像摘要的 Ed25519 签名；固件中没有任何允许降级的常量 | `image_header.h`, `ImageHeader_CheckRollback` |
 | 用开发密钥构建的镜像 | 默认情况下，引导程序信任一把开发用的镜像密钥，其私钥种子已公布在仓库中，构建会发出警告；设置 `HYDRA_UMC_RELEASE=1` 时，引导程序使用 `docs/image_trust.json` 中的信任表构建（只含公钥；`python tools/image_trust.py headers` 生成头文件），在镜像签名密钥写入该文件之前，该表保持关闭；电路板只持有公钥，私钥种子由所有者保管 | `tools/build_firmware.py` |
 | 从受保护芯片回读的应用程序 | 设置 `HYDRA_READBACK_GATE=1` 后，只要读出保护（RDP）处于开启状态，引导程序就不提供应用程序的回读；该开关在出厂构建中是关闭的，等待其台架测试行 | `docs/FIRMWARE_SWITCHES.md` |
-| 引导程序写入元数据时断电 | 设置 `HYDRA_META_AB=1` 后，元数据日志保存在轮流使用的两个扇区中，因此在换扇区时断电也能保住回滚计数器（此时最长的应用程序为 256 KB）；出厂构建中关闭，还没有任何板子运行过 | `docs/FIRMWARE_SWITCHES.md` |
+| 引导程序写入元数据时断电 | 设置 `HYDRA_META_AB=1` 后，元数据日志保存在轮流使用的两个扇区中，因此在换扇区时断电也能保住回滚计数器（此时最长的应用程序为 256 KB）；出厂构建中默认开启（仅长插槽变体关闭），还没有任何板子运行过 | `docs/FIRMWARE_SWITCHES.md` |
 | 死机的电路板 | G474 引导程序在 `main()` 的第一个动作中、早于 `HAL_Init()` 启用独立看门狗（IWDG），因此启动期间的挂起会使芯片复位 | `src/mcu_stm32g474/boot/bootloader_main.c` |
 | SPI 桥的本地 HTTP 服务被他人访问 | 默认监听 127.0.0.1，接受的固件正文最大为 4 MiB，且不持有签名密钥：签名随请求而来，由持有私钥种子的机器生成；它没有 TLS，也没有自己的登录，因此向它转发请求的一方必须决定谁可以刷写 | `src/cm5_host/spi_bridge/spi_bridge/http_service.py` |
 

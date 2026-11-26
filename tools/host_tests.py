@@ -161,15 +161,15 @@ def table() -> list[HostTest]:
     ]
     for core in ("CM4", "CM7"):
         tests.append(HostTest(f"bootloader_h745_{core}", "tests/test_bootloader_h745_host.c", ("tests/stubs", f"{H7}/{core}/boot"), GNU,
-                              defines=(f"HYDRA_TEST_{core}",)))
+                              defines=(f"HYDRA_TEST_{core}", "HYDRA_META_AB=0")))
         tests.append(HostTest(f"bootloader_h745_{core}_flash_layer", "tests/test_bootloader_h745_host.c", ("tests/stubs", f"{H7}/{core}/boot"), GNU,
-                              defines=(f"HYDRA_TEST_{core}", "HYDRA_FLASH_LAYER=1")))
+                              defines=(f"HYDRA_TEST_{core}", "HYDRA_FLASH_LAYER=1", "HYDRA_META_AB=0")))
     for core in ("CM4", "CM7"):
         tests.append(HostTest(f"bootloader_h745_{core}_flash_ops", "tests/test_bootloader_h745_flash_host.c", ("tests/stubs", f"{H7}/{core}/boot"), GNU,
-                              defines=(f"HYDRA_TEST_{core}",)))
+                              defines=(f"HYDRA_TEST_{core}", "HYDRA_META_AB=0")))
         tests.append(HostTest(f"bootloader_h745_{core}_flash_ops_flash_layer", "tests/test_bootloader_h745_flash_host.c", ("tests/stubs", f"{H7}/{core}/boot"), GNU,
-                              defines=(f"HYDRA_TEST_{core}", "HYDRA_FLASH_LAYER=1")))
-        # the same test with the metadata log in two sectors that take turns (HYDRA_META_AB=1, off as it ships)
+                              defines=(f"HYDRA_TEST_{core}", "HYDRA_FLASH_LAYER=1", "HYDRA_META_AB=0")))
+        # the same test with the metadata log in two sectors that take turns (HYDRA_META_AB=1, as it ships)
         tests.append(HostTest(f"bootloader_h745_{core}_flash_ops_meta_ab", "tests/test_bootloader_h745_flash_host.c", ("tests/stubs", f"{H7}/{core}/boot"), GNU,
                               defines=(f"HYDRA_TEST_{core}", "HYDRA_META_AB=1")))
         tests.append(HostTest(f"bootloader_h745_{core}_flash_ops_flash_layer_meta_ab", "tests/test_bootloader_h745_flash_host.c", ("tests/stubs", f"{H7}/{core}/boot"), GNU,

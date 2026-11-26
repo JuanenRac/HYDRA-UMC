@@ -5,8 +5,8 @@
  * AUTHOR: JuanenRac (Electro Hobby 3D) - electrohobby3d@gmail.com
  * LICENSE: GPL-3.0-or-later - see repo root LICENSE
  *
- * Included by bootloader_flash.c in place of the single-sector log, only when HYDRA_META_AB is 1 (it is 0 as it ships, and then this file is not read
- * and the binary does not change). Region A is the metadata sector the single-sector log has always used (METADATA_ADDR); region B is a second sector
+ * Included by bootloader_flash.c in place of the single-sector log, only when HYDRA_META_AB is 1 (the default; 0 in the long slot variant, and then this file
+ * is not read). Region A is the metadata sector the single-sector log has always used (METADATA_ADDR); region B is a second sector
  * (METADATA_B_ADDR). Both hold the same records (MetaRecord_t), and the newest valid record of the two is the state.
  *
  * - A log is appended to its sector until it is full. Nothing about this changes for a board that has only region A: its records stay where they are
