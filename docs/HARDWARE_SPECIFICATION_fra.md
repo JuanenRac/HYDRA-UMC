@@ -7,6 +7,13 @@ Voici la spécification de la conception prévue de la carte et de son firmware,
 
 > HYDRA-UMC est conçu dans une optique de sécurité fonctionnelle, mais il n'est pas certifié selon l'ISO 13849-1 ni selon aucune autre norme de sécurité fonctionnelle, et aucune de ses fonctions d'arrêt ou de protection ne doit être considérée comme une fonction de sécurité certifiée.
 
+## 1. 🛡️ BASE DE SÉCURITÉ FONCTIONNELLE (OBJECTIF DE CONCEPTION)
+
+* **Objectif de conception :** niveau de performance d (PL d), catégorie 3, au sens de l'ISO 13849-1, pour les fonctions de sécurité de la machine (d'abord les fonctions d'arrêt).
+* **Marché :** marquage CE, Union européenne. Aucune date n'est fixée.
+* **Capteur de présence de personnes :** une entrée pour un capteur qui détecte les personnes (scrutateur laser de sécurité ou barrière immatérielle) est prévue. Il n'existe encore ni broche, ni connecteur, ni logiciel pour elle.
+* **Non réalisé :** aucune appréciation du risque, aucune définition ni calcul des fonctions de sécurité, aucune validation selon l'ISO 13849-2 et aucune évaluation par un tiers. Cette section dit ce que vise la conception, pas ce que la carte atteint.
+
 ## 2. 🖥️ SOUS-SYSTÈME DE CALCUL HÔTE (HMI ET HAUT NIVEAU)
 
 * 🧩 **Module :** Raspberry Pi Compute Module 5 (CM5)

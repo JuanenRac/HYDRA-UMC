@@ -7,6 +7,13 @@ Esta es la especificación del diseño previsto de la placa y su firmware, trasl
 
 > HYDRA-UMC se diseña pensando en la seguridad funcional, pero no está certificado conforme a ISO 13849-1 ni a ninguna otra norma de seguridad funcional, y no se debe confiar en ninguna de sus funciones de parada o de protección como función de seguridad certificada.
 
+## 1. 🛡️ BASE DE SEGURIDAD FUNCIONAL (OBJETIVO DE DISEÑO)
+
+* **Objetivo de diseño:** nivel de prestaciones d (PL d), categoría 3, en el sentido de ISO 13849-1, para las funciones de seguridad de la máquina (primero las de parada).
+* **Mercado:** marcado CE, Unión Europea. No hay fecha fijada.
+* **Sensor de presencia de personas:** está prevista una entrada para un sensor que detecte personas (escáner láser de seguridad o cortina fotoeléctrica). Todavía no existe pin, conector ni software para ella.
+* **Sin hacer:** no hay evaluación de riesgos, ni definición y cálculo de las funciones de seguridad, ni validación según ISO 13849-2, ni evaluación por un tercero. Esta sección dice a qué aspira el diseño, no lo que la placa consigue.
+
 ## 2. 🖥️ SUBSISTEMA DE COMPUTACIÓN HOST (HMI Y ALTO NIVEL)
 
 * 🧩 **Módulo:** Raspberry Pi Compute Module 5 (CM5)

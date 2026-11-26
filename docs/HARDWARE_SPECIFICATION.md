@@ -7,6 +7,13 @@ This is the specification of the intended design of the board and its firmware, 
 
 > HYDRA-UMC is designed with functional safety in mind, but it is not certified to ISO 13849-1 or any other functional safety standard, and none of its stop or protection functions may be relied on as a certified safety function.
 
+## 1. 🛡️ FUNCTIONAL SAFETY BASIS (DESIGN TARGET)
+
+* **Design target:** Performance Level d (PL d), category 3, in the sense of ISO 13849-1, for the safety functions of the machine (the stop functions first).
+* **Market:** CE marking, European Union. No date is set.
+* **Person-presence sensor:** an input for a sensor that detects people (a safety laser scanner or a light curtain) is foreseen. No pin, connector or software for it exists yet.
+* **Not done:** no risk assessment, no definition and calculation of the safety functions, no validation after ISO 13849-2 and no assessment by a third party. This section states what the design aims at, not what the board achieves.
+
 ## 2. 🖥️ HOST COMPUTING SUBSYSTEM (HMI & HIGH-LEVEL)
 
 * 🧩 **Module:** Raspberry Pi Compute Module 5 (CM5)
