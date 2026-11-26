@@ -7,6 +7,13 @@ Questa è la specifica del progetto previsto della scheda e del suo firmware, sp
 
 > HYDRA-UMC è progettato con la sicurezza funzionale in mente, ma non è certificato secondo la ISO 13849-1 né secondo nessun'altra norma di sicurezza funzionale, e nessuna delle sue funzioni di arresto o di protezione può essere considerata una funzione di sicurezza certificata.
 
+## 1. 🛡️ BASE DI SICUREZZA FUNZIONALE (OBIETTIVO DI PROGETTO)
+
+* **Obiettivo di progetto:** livello di prestazione d (PL d), categoria 3, ai sensi della ISO 13849-1, per le funzioni di sicurezza della macchina (prima le funzioni di arresto).
+* **Mercato:** marcatura CE, Unione europea. Non è fissata alcuna data.
+* **Sensore di presenza di persone:** è previsto un ingresso per un sensore che rilevi le persone (scanner laser di sicurezza o barriera fotoelettrica). Non esistono ancora pin, connettore o software.
+* **Non fatto:** nessuna valutazione del rischio, nessuna definizione e calcolo delle funzioni di sicurezza, nessuna validazione secondo la ISO 13849-2 e nessuna valutazione di terzi. Questa sezione dice a che cosa mira il progetto, non che cosa raggiunge la scheda.
+
 ## 2. 🖥️ SOTTOSISTEMA DI COMPUTAZIONE HOST (HMI E ALTO LIVELLO)
 
 * 🧩 **Modulo:** Raspberry Pi Compute Module 5 (CM5)

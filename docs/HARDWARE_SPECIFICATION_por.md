@@ -7,6 +7,13 @@ Esta é a especificação do desenho previsto da placa e do seu firmware, passad
 
 > O HYDRA-UMC é concebido a pensar na segurança funcional, mas não está certificado segundo a ISO 13849-1 nem segundo qualquer outra norma de segurança funcional, e nenhuma das suas funções de paragem ou de proteção pode ser tomada como uma função de segurança certificada.
 
+## 1. 🛡️ BASE DE SEGURANÇA FUNCIONAL (OBJETIVO DE PROJETO)
+
+* **Objetivo de projeto:** nível de desempenho d (PL d), categoria 3, no sentido da ISO 13849-1, para as funções de segurança da máquina (primeiro as de paragem).
+* **Mercado:** marcação CE, União Europeia. Não há data marcada.
+* **Sensor de presença de pessoas:** está prevista uma entrada para um sensor que detete pessoas (scanner laser de segurança ou cortina de luz). Ainda não existe pino, conector nem software para ela.
+* **Por fazer:** não há avaliação de riscos, nem definição e cálculo das funções de segurança, nem validação segundo a ISO 13849-2, nem avaliação por terceiros. Esta secção diz o que o projeto pretende, não o que a placa atinge.
+
 ## 2. 🖥️ SUBSISTEMA DE COMPUTAÇÃO ANFITRIÃO (HMI E ALTO NÍVEL)
 
 * 🧩 **Módulo:** Raspberry Pi Compute Module 5 (CM5)
