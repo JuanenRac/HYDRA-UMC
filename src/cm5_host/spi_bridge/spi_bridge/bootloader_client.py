@@ -257,6 +257,7 @@ class SpiOtaFlasher:
                 return
             try:
                 if header is None:
+                    assert rollback_counter is not None and key_id is not None  # refused above without them
                     header = image_header.build_header(hardware_id, version, firmware, rollback_counter, key_id)
                 else:
                     image_header.check_header(header, hardware_id, version, firmware)
