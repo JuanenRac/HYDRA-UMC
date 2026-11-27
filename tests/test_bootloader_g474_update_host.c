@@ -391,6 +391,73 @@ static int main_slot_holds(const Update *u)
 }
 
 /* ---- tests ----------------------------------------------------------------------------------------------------------------------- */
+static void test_a_refused_start_in_the_middle_of_an_update_changes_nothing(void)
+{
+    printf("  a START_UPDATE that is refused while an update runs leaves it as it was\n");
+    reset_world();
+    install(0, 1, 8);
+    ImageVersion_t v = {0, 1, 9};
+    Update u = make_update(v, 5, 4096);
+    start(&u);
+    for (int i = 0; i < u.signature_chunks; i++) HandleHmacChunk(u.signature + 8 * i);
+    for (int i = 0; i < u.header_chunks; i++) HandleImageHeaderChunk(u.header + 8 * i);
+    for (uint32_t at = 0; at < u.size / 2u; at += 8) HandleData(u.image + at, 8);
+    uint8_t d[8];
+    put_be32(d, u.size);
+    put_be32(d + 4, THIS_HARDWARE_ID ^ 1UL);
+    CHECK(HandleStartUpdate(d) == 0, "another hardware id is refused");
+    put_be32(d, 0UL);
+    put_be32(d + 4, THIS_HARDWARE_ID);
+    CHECK(HandleStartUpdate(d) == 0, "an empty image is refused");
+    put_be32(d, 0xFFFFFFFFUL);
+    CHECK(HandleStartUpdate(d) == 0, "an image larger than the slot is refused");
+    CHECK(update_total_size == u.size, "the size of the running update is the one it started with");
+    for (uint32_t at = u.size / 2u; at < u.size; at += 8) HandleData(u.image + at, 8);
+    finish(&u);
+    CHECK(last_verdict() == 0 && main_slot_holds(&u), "the update that was running installs");
+    CHECK(metadata().hardware_id == THIS_HARDWARE_ID, "and the metadata names this board");
+    free_update(&u);
+}
+
+static void test_no_page_is_written_past_the_staging_area(void)
+{
+    printf("  a page past the end of the staging area is not written and ends the update\n");
+    reset_world();
+    install(0, 1, 8);
+    ImageVersion_t v = {0, 1, 9};
+    Update u = make_update(v, 5, 4096);
+    start(&u);
+    current_page_index = APP_MAX_SIZE / FLASH_PAGE_SIZE; /* a state no accepted request can reach: the guard itself */
+    for (uint32_t at = 0; at < FLASH_PAGE_SIZE; at += 8) HandleData(u.image + (at % u.size), 8);
+    CHECK(last_verdict() == 0xFF && update_failed == 1 && update_in_progress == 0, "the update ends with an error");
+    CHECK(main_slot_untouched() && resets == 0, "nothing was installed");
+    free_update(&u);
+}
+
+static void test_an_unfinished_copy_still_counts_as_the_installed_version(void)
+{
+    printf("  with the metadata in COPY_PENDING an older image is refused like with a valid application\n");
+    ImageVersion_t none = {0, 0, 0};
+    ImageVersion_t older = {0, 1, 8}, newer = {0, 2, 3};
+    for (int round = 0; round < 2; round++) {
+        reset_world();
+        install(0, 2, 2);
+        MetaRecord_t record;
+        memcpy(&record, flash_mem + (METADATA_ADDR - FLASH_BASE_ADDR), sizeof(record));
+        record.meta.state = META_STATE_COPY_PENDING;
+        record.crc = meta_record_crc(&record);
+        memcpy(flash_mem + (METADATA_ADDR - FLASH_BASE_ADDR), &record, sizeof(record));
+        Update u = make_update(round == 0 ? older : newer, 5, 512);
+        if (round == 0) {
+            CHECK(run_update(&u, none, none, 0) == VERIFY_FAIL_REASON_ROLLBACK, "an older version needs a downgrade token");
+            CHECK(main_slot_untouched() && resets == 0, "nothing was installed");
+        } else {
+            CHECK(run_update(&u, none, none, 0) == 0 && main_slot_holds(&u), "a newer version installs");
+        }
+        free_update(&u);
+    }
+}
+
 static uint32_t make_table(uint8_t out[100], uint8_t count, const uint8_t *key0, uint8_t flags0, const uint8_t *key1, uint8_t flags1)
 {
     memset(out, 0, 100);
@@ -1066,6 +1133,9 @@ int main(void)
         return 0;
     }
 
+    test_a_refused_start_in_the_middle_of_an_update_changes_nothing();
+    test_an_unfinished_copy_still_counts_as_the_installed_version();
+    test_no_page_is_written_past_the_staging_area();
     test_the_reference_image_installs_over_the_installed_version();
     test_the_session_nonce_is_asked_for_and_changes();
     test_a_replayed_old_image_cannot_claim_a_higher_version();

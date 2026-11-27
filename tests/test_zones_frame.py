@@ -59,6 +59,14 @@ class FilterTests(unittest.TestCase):
         self.assertFalse(f.tick(3000))
         self.assertTrue(f.tick(3600))
 
+    def test_a_service_that_starts_again_with_a_lower_counter_arms_the_watch_again_after_the_loss(self):
+        f = z.ZonesFilter()
+        f.on_frame(0, 2, z.frame(z.KIND_HEARTBEAT, 40_000))
+        self.assertTrue(f.tick(1001))
+        f.on_frame(2000, 2, z.frame(z.KIND_HEARTBEAT, 1))
+        self.assertFalse(f.tick(2500))
+        self.assertTrue(f.tick(3001))  # a second silence of the restarted service trips again
+
     def test_a_replayed_or_old_heartbeat_cannot_keep_a_dead_service_alive(self):
         f = z.ZonesFilter()
         f.on_frame(0, 2, z.frame(z.KIND_HEARTBEAT, 10))

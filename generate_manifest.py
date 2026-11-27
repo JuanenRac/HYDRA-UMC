@@ -27,8 +27,12 @@
 #
 # Usage: python3 generate_manifest.py [repo_root]
 #   repo_root defaults to this script's own parent directory.
+#   --release-set DIR writes DIR/firmware_manifest.json for the files of a release (the images of a build, whose
+#   versions are in their names); tools/publish_release_assets.py and tools/verify_release_set.py require that file in an
+#   official set and check it against the images next to it.
 #   --meta-ab-report prints the room the CM7 and CM4 applications leave in 256 KB (exit 1 when one does not fit) and writes nothing.
 # =============================================================================
+import hashlib
 import sys
 import os
 import re
@@ -205,32 +209,9 @@ def component(fw_out, prefix, display_name, chip, hw_id, ver, flash_address, fla
     }
 
 
-def main():
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    root = args[0] if args else os.path.dirname(os.path.abspath(__file__))
-    fw_out = os.path.join(root, "firmware")
-    if "--meta-ab-report" in sys.argv[1:]:
-        # only measures: it writes nothing and exits 1 when an application does not fit in the 256 KB of HYDRA_META_AB=1
-        lines, fits = meta_ab_report(fw_out)
-        print("\n".join(lines))
-        sys.exit(0 if fits else 1)
-
-    g4_h = os.path.join(root, "src", "mcu_stm32g474", "boot", "bootloader_common.h")
-    g4_boot_ver = {k: int(read_define(g4_h, f"BOOTLOADER_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
-    g4_app_ver = {k: int(read_define(g4_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
-    g4_hwid = read_define(g4_h, "THIS_HARDWARE_ID")
-
-    cm7_h = os.path.join(root, "src", "mcu_stm32h757", "CM7", "boot", "bootloader_common.h")
-    cm7_boot_ver = {k: int(read_define(cm7_h, f"BOOTLOADER_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
-    cm7_app_ver = {k: int(read_define(cm7_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
-    cm7_hwid = read_define(cm7_h, "THIS_HARDWARE_ID")
-
-    cm4_h = os.path.join(root, "src", "mcu_stm32h757", "CM4", "boot", "bootloader_common.h")
-    cm4_boot_ver = {k: int(read_define(cm4_h, f"BOOTLOADER_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
-    cm4_app_ver = {k: int(read_define(cm4_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
-    cm4_hwid = read_define(cm4_h, "THIS_HARDWARE_ID")
-
-    manifest = {
+def manifest_header():
+    """The part of the manifest that does not depend on the images."""
+    return {
         "schema_version": 1,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "project": {
@@ -280,6 +261,94 @@ def main():
             "are published as assets of a release, which is where "
             "HYDRA-UMC-STUDIO and HYDRA-UMC-SUITE download them from.",
         ],
+    }
+
+
+# The components of a release set, by the prefix of their file names: key of the manifest, shown name, chip, load address, room.
+RELEASE_COMPONENTS = (
+    ("g474_bootloader", "RCB_BOOTLOADER", "Robot Controller Board Bootloader", "STM32G474RET6", "0x47343031", "0x08000000", 32 * 1024),
+    ("g474_application", "RCB_APP", "Robot Controller Board Application", "STM32G474RET6", "0x47343031", "0x08009000", 236 * 1024),
+    ("h745_cm7_bootloader", "KB_CM7_BOOTLOADER", "Kinematic Brain Bootloader (CM7)", "STM32H745ZIT6 (CM7)", "0x48374337", "0x08000000", 128 * 1024),
+    ("h745_cm7_application", "KB_CM7_APP", "Kinematic Brain Application (CM7)", "STM32H745ZIT6 (CM7)", "0x48374337", "0x08040000", None),
+    ("h745_cm4_bootloader", "KB_CM4_BOOTLOADER", "Kinematic Brain Bootloader (CM4)", "STM32H745ZIT6 (CM4)", "0x48374334", "0x08100000", 128 * 1024),
+    ("h745_cm4_application", "KB_CM4_APP", "Kinematic Brain Application (CM4)", "STM32H745ZIT6 (CM4)", "0x48374334", "0x08140000", None),
+)
+
+
+def release_set_manifest(folder):
+    """The manifest of the files of a release, made from the images of the folder alone: each name carries the version of its
+    component, and size, CRC32 and SHA-256 are computed over the very bytes. A component has exactly one image."""
+    folder = str(folder)
+    components = {}
+    for key, prefix, display_name, chip, hardware_id, flash_address, region in RELEASE_COMPONENTS:
+        names = [name for name in sorted(os.listdir(folder)) if re.fullmatch(rf"HYDRA_{prefix}_v\d+\.\d+\.\d+\.bin", name)]
+        if len(names) != 1:
+            raise ValueError(f"the folder needs exactly one HYDRA_{prefix}_v*.bin, it holds {len(names)}")
+        bin_path = os.path.join(folder, names[0])
+        region = kb_app_region_bytes() if region is None else region
+        size = os.path.getsize(bin_path)
+        if size > region:
+            raise ValueError(f"{names[0]} is {size} bytes, longer than its region of {region} bytes")
+        major, minor, patch = (int(part) for part in names[0][:-len(".bin")].rsplit("_v", 1)[1].split("."))
+        with open(bin_path, "rb") as handle:
+            digest = hashlib.sha256(handle.read()).hexdigest()
+        components[key] = {
+            "display_name": display_name,
+            "chip": chip,
+            "hardware_id": hardware_id,
+            "version": {"major": major, "minor": minor, "patch": patch},
+            "version_string": f"{major}.{minor}.{patch}",
+            "version_code": major * 10000 + minor * 100 + patch,
+            "flash_address": flash_address,
+            "flash_region_max_bytes": region,
+            "files": {"bin": {**bin_info(bin_path), "sha256": digest}, "hex": file_info(bin_path, "hex"), "elf": None},
+        }
+    return {**manifest_header(), "components": components}
+
+
+def write_manifest(path, manifest):
+    with open(path, "w", encoding="utf-8", newline="\n") as handle:
+        json.dump(manifest, handle, indent=2)
+        handle.write("\n")
+
+
+def main():
+    if sys.argv[1:2] == ["--release-set"]:
+        if len(sys.argv) != 3:
+            raise SystemExit("generate_manifest.py: --release-set needs the folder of the release files")
+        try:
+            manifest = release_set_manifest(sys.argv[2])
+        except (OSError, ValueError) as error:
+            raise SystemExit(f"generate_manifest.py: {error} - manifest NOT written") from error
+        write_manifest(os.path.join(sys.argv[2], "firmware_manifest.json"), manifest)
+        print(f"firmware_manifest.json written for the release set in {sys.argv[2]}")
+        return
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    root = args[0] if args else os.path.dirname(os.path.abspath(__file__))
+    fw_out = os.path.join(root, "firmware")
+    if "--meta-ab-report" in sys.argv[1:]:
+        # only measures: it writes nothing and exits 1 when an application does not fit in the 256 KB of HYDRA_META_AB=1
+        lines, fits = meta_ab_report(fw_out)
+        print("\n".join(lines))
+        sys.exit(0 if fits else 1)
+
+    g4_h = os.path.join(root, "src", "mcu_stm32g474", "boot", "bootloader_common.h")
+    g4_boot_ver = {k: int(read_define(g4_h, f"BOOTLOADER_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
+    g4_app_ver = {k: int(read_define(g4_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
+    g4_hwid = read_define(g4_h, "THIS_HARDWARE_ID")
+
+    cm7_h = os.path.join(root, "src", "mcu_stm32h757", "CM7", "boot", "bootloader_common.h")
+    cm7_boot_ver = {k: int(read_define(cm7_h, f"BOOTLOADER_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
+    cm7_app_ver = {k: int(read_define(cm7_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
+    cm7_hwid = read_define(cm7_h, "THIS_HARDWARE_ID")
+
+    cm4_h = os.path.join(root, "src", "mcu_stm32h757", "CM4", "boot", "bootloader_common.h")
+    cm4_boot_ver = {k: int(read_define(cm4_h, f"BOOTLOADER_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
+    cm4_app_ver = {k: int(read_define(cm4_h, f"FIRMWARE_VERSION_{k.upper()}")) for k in ("major", "minor", "patch")}
+    cm4_hwid = read_define(cm4_h, "THIS_HARDWARE_ID")
+
+    manifest = {
+        **manifest_header(),
         "components": {
             "g474_bootloader": component(
                 fw_out, "HYDRA_RCB_BOOTLOADER", "Robot Controller Board Bootloader",

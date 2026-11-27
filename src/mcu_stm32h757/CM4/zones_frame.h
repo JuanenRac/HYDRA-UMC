@@ -77,7 +77,8 @@ static inline uint8_t ZonesFilter_OnFrame(ZonesFilter_t *z, uint32_t now_ms, uin
     }
     if (data[0] == ZONES_KIND_HEARTBEAT) {
         uint16_t ahead = (uint16_t)(sequence - z->last_sequence);
-        if (z->seen && !(ahead > 0u && ahead < 0x8000u)) {
+        /* after a loss the service may have started again with a lower counter: its next heartbeat is a new origin, so the watch is armed again */
+        if (z->seen && !z->lost && !(ahead > 0u && ahead < 0x8000u)) {
             z->ignored++; /* a replayed or old heartbeat does not refresh the clock */
             return 0;
         }

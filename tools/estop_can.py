@@ -108,6 +108,7 @@ class Node:
     last_alive_ms: int | None = None
     drivers_enabled: bool = False
     busoff_wait: bool = False  # after a bus-off a RELEASE is refused until a new ALIVE arrives
+    resync_on_new_epoch: bool = False  # ESTOP_RESYNC_ON_NEW_EPOCH of estop_can.h (off by default)
 
     def _latch(self) -> None:
         self.state = LATCHED
@@ -115,6 +116,10 @@ class Node:
 
     def on_frame(self, now_ms: int, data: bytes) -> None:
         frame = decode(data)
+        if self.resync_on_new_epoch and frame is not None and self.epoch is not None and frame.epoch != self.epoch:
+            if frame.kind == KIND_TRIP or (frame.kind == KIND_ALIVE and frame.detail == ALIVE_TRIPPED):
+                self.last_seq = None  # the master may have started again: its counter is taken from here
+                self.last_alive_ms = None
         if frame is None or frame.kind == KIND_TRIP:
             self._latch()
             if frame is not None:

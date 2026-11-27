@@ -142,6 +142,7 @@ def table() -> list[HostTest]:
         HostTest("flash_layer@cm4", "tests/test_flash_layer.c", (f"{H7}/CM4/boot",)),
         HostTest("flash_layer@cm7", "tests/test_flash_layer.c", (f"{H7}/CM7/boot",)),
         HostTest("estop_can@g474", "tests/test_estop_can.c", ("tests", G4)),
+        HostTest("estop_can@g474_resync", "tests/test_estop_can.c", ("tests", G4), defines=("ESTOP_RESYNC_ON_NEW_EPOCH=1",)),
         HostTest("estop_can@cm4_brain", "tests/test_estop_can.c", ("tests", f"{H7}/CM4"), STRICT, defines=("ESTOP_TEST_BRAIN",)),
         HostTest("estop_input", "tests/test_estop_input.c", (G4,)),
         HostTest("enabling_device", "tests/test_enabling_device.c", ("tests", f"{H7}/CM4"), STRICT),

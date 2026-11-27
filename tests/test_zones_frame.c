@@ -54,6 +54,25 @@ int main(void)
             failures++;
         }
     }
+    if (HYDRA_ZONES_CAN_FILTER) {
+        /* the service starts again with a lower counter after the loss: its heartbeat arms the watch again */
+        const uint8_t high[7] = {2, 1, 0x40, 0x9C, 0, 0, 0};
+        const uint8_t low[7] = {2, 1, 0x01, 0x00, 0, 0, 0};
+        uint8_t frame[8];
+        ZonesFilter_t z;
+        ZonesFilter_Init(&z);
+        memcpy(frame, high, 7);
+        frame[7] = Zones_Crc8(high, 7);
+        (void)ZonesFilter_OnFrame(&z, 0, ZONES_CAN_ID, frame, 8);
+        const uint8_t first = ZonesFilter_Tick(&z, 1001);
+        memcpy(frame, low, 7);
+        frame[7] = Zones_Crc8(low, 7);
+        (void)ZonesFilter_OnFrame(&z, 2000, ZONES_CAN_ID, frame, 8);
+        if (first != 1u || ZonesFilter_Tick(&z, 2500) != 0u || ZonesFilter_Tick(&z, 3001) != 1u) {
+            printf("  FAIL: the watch was not armed again by a restarted service\n");
+            failures++;
+        }
+    }
     printf("  %u scenarios, switch %s\n", (unsigned)ZONES_SCENARIO_COUNT, HYDRA_ZONES_CAN_FILTER ? "on" : "off");
     if (failures == 0) {
         printf("zones_frame: PASS\n");

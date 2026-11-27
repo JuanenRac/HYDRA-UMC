@@ -114,6 +114,7 @@ class SpiApp:
             self._seal(spi_system.HEALTH_RESPONSE, data, len(data))
         elif action == "trip":
             self.trip_reason, self.trip_pending = data[0], True
+            self.release_pending = False  # a stop after a release that still waits wins
         elif action == "release":
             self.release_pending = True
         elif action == "scan":

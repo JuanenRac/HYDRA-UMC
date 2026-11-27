@@ -18,6 +18,8 @@ verifies and publishes (docs/RELEASE_SIGNING.md).
 The set, for the version V of the project:
   * the six components of the build, HYDRA_<RCB|KB_CM7|KB_CM4>_<APP|BOOTLOADER>_v<A.B.C>.bin and .hex, with SHA256SUMS and build-manifest.json (the files of
     the build in GitHub Actions: their digests are checked against both lists, the controller application carries the version V);
+  * firmware_manifest.json, the index of the six images that HYDRA-UMC-STUDIO and HYDRA-UMC-SUITE read from the release (written on the maintainer's
+    machine with `python generate_manifest.py --release-set DIR` before the release signatures); it is checked against the images next to it;
   * for every application image its image signature: <image>.hdr2 (the 64-byte header of format 2) and <image>.sig2 (the 64-byte Ed25519 signature),
     made on the maintainer's machine with the image key. The set is checked the way a bootloader with the release table decides it (tools/image_header2.py,
     docs/image_trust.json); <image>.sig of the older header format is accepted when it is there and never required (the bootloaders no longer read it);
@@ -39,7 +41,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
+sys.path.append(str(ROOT))
 
+import generate_manifest  # noqa: E402
 import image_header as ih  # noqa: E402
 import image_header2 as h2  # noqa: E402
 import image_trust  # noqa: E402
@@ -50,6 +54,7 @@ SCHEMA = "hydra-build/1"
 BOARDS = {"RCB": ("rcb", 0x47343031), "KB_CM7": ("kb_cm7", 0x48374337), "KB_CM4": ("kb_cm4", 0x48374334)}
 COMPONENTS = ("KB_CM4_APP", "KB_CM4_BOOTLOADER", "KB_CM7_APP", "KB_CM7_BOOTLOADER", "RCB_APP", "RCB_BOOTLOADER")
 IMAGE_NAME = re.compile(r"^HYDRA_(?P<board>RCB|KB_CM7|KB_CM4)_(?P<role>APP|BOOTLOADER)_v(?P<version>\d+\.\d+\.\d+)\.(?P<ext>bin|hex)$")
+MANIFEST_NAME = "firmware_manifest.json"
 RECORD_SIZE = 64  # the header of format 2 and the Ed25519 signature are 64 bytes each; so is a signature of the older format
 
 
@@ -180,6 +185,24 @@ def collect_records(apps, official: bool, doc: dict | None, problems: list[str],
     return files
 
 
+def check_manifest(fw_dir: Path, official: bool, problems: list[str]) -> list[Path]:
+    """firmware_manifest.json says exactly what the images of the folder are. An official release needs it; a bench set may do without."""
+    path = fw_dir / MANIFEST_NAME
+    if not path.is_file():
+        if official:
+            problems.append(f"{MANIFEST_NAME} is missing: write it with `python generate_manifest.py --release-set DIR` before the release signatures")
+        return []
+    try:
+        found = json.loads(path.read_text(encoding="utf-8"))
+        expected = generate_manifest.release_set_manifest(fw_dir)
+    except (OSError, ValueError) as error:
+        problems.append(f"{MANIFEST_NAME} cannot be checked: {error}")
+        return [path]
+    if not isinstance(found, dict) or found.get("schema_version") != expected["schema_version"] or found.get("components") != expected["components"]:
+        problems.append(f"{MANIFEST_NAME} does not describe the images of the set")
+    return [path]
+
+
 def check_bootloaders(fw_dir: Path, flavour: str, doc: dict, problems: list[str]) -> None:
     """Every bootloader of the set holds, at its fixed offset, exactly the trust table of the flavour."""
     for path in sorted(fw_dir.glob("HYDRA_*_BOOTLOADER_v*.bin")):
@@ -233,7 +256,8 @@ def build_plan(root: Path, fw_dir: Path, repo: str | None = None, allow_dev_key:
         records = collect_records(apps, not prerelease, doc or None, problems, missing)
         if not prerelease:
             problems.extend(f"{item}: an official release carries the image signature of every application image (docs/RELEASE_SIGNING.md)" for item in missing)
-        files = attach_signatures(build_files + records, not prerelease, problems)
+        manifest_files = check_manifest(fw_dir, not prerelease, problems)
+        files = attach_signatures(build_files + manifest_files + records, not prerelease, problems)
     slug = repo or repo_slug(root, name)
     tag = f"v{version}"
     return {

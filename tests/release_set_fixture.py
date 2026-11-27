@@ -17,7 +17,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
+sys.path.append(str(ROOT))
 
+import generate_manifest  # noqa: E402
 import image_header as ih  # noqa: E402
 import image_header2 as h2  # noqa: E402
 import image_trust  # noqa: E402
@@ -88,6 +90,7 @@ def make_set(folder: Path, flavour: str = "release", doc: dict | None = None, re
             (folder / f"{stem}.sig2").write_bytes(h2.sign_image2(IMAGE_SEED, header, image))
             if legacy:
                 (folder / f"{stem}.sig").write_bytes(bytes(64))
+    generate_manifest.write_manifest(folder / pra.MANIFEST_NAME, generate_manifest.release_set_manifest(folder))
     if release_signed:
         sign_everything(folder)
 

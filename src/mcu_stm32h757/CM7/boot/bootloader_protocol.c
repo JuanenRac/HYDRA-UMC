@@ -241,7 +241,6 @@ void JumpToApplication(void) {
 // verified; main slot untouched until then.
 // -----------------------------------------------------------------------
 uint32_t update_total_size = 0;
-static uint32_t update_declared_hw_id = 0;
 uint32_t update_bytes_received = 0;
 static uint32_t update_running_crc = 0xFFFFFFFFUL;
 static uint8_t  update_signature[IMAGE_SIGNATURE_SIZE];     // the Ed25519 signature of the image (eight OFS_HMAC_CHUNK frames)
@@ -408,7 +407,8 @@ void HandleEndUpdate(uint8_t *data) {
     uint8_t have_meta = Metadata_Read(&current_meta);
     input.counter_floor = Trust_MinCounter();
     if (have_meta && current_meta.counter > input.counter_floor) input.counter_floor = current_meta.counter;
-    if (have_meta && current_meta.state == META_STATE_APP_VALID) {
+    // COPY_PENDING counts as installed: that version passed the signature and the copy over the application only has to be finished.
+    if (have_meta && (current_meta.state == META_STATE_APP_VALID || current_meta.state == META_STATE_COPY_PENDING)) {
         input.have_installed = 1;
         input.installed.major = (uint16_t)current_meta.version_major;
         input.installed.minor = (uint16_t)current_meta.version_minor;
@@ -440,7 +440,7 @@ void HandleEndUpdate(uint8_t *data) {
     FirmwareMetadata_t pending = {0};
     pending.magic = METADATA_MAGIC_VALID;
     pending.state = META_STATE_COPY_PENDING;
-    pending.hardware_id = update_declared_hw_id;
+    pending.hardware_id = THIS_HARDWARE_ID;
     pending.version_major = header.base.version.major;
     pending.version_minor = header.base.version.minor;
     pending.version_patch = header.base.version.patch;

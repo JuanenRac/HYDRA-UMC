@@ -50,6 +50,24 @@ class FrameTests(unittest.TestCase):
         self.assertFalse(estop_can.seq_newer(10 + 0x8000, 10))
 
 
+class RestartedMasterTests(unittest.TestCase):
+    def restarted(self, resync: bool) -> estop_can.Node:
+        node = estop_can.Node(resync_on_new_epoch=resync)
+        frame = estop_can.encode
+        node.on_frame(0, frame(estop_can.KIND_ALIVE, estop_can.ALIVE_TRIPPED, estop_can.SOURCE_BRAIN, 7, 30_000))
+        # the master starts again: another epoch, a counter from the start
+        node.on_frame(100, frame(estop_can.KIND_ALIVE, estop_can.ALIVE_TRIPPED, estop_can.SOURCE_BRAIN, 1, 1))
+        node.on_frame(120, frame(estop_can.KIND_ALIVE, estop_can.ALIVE_TRIPPED, estop_can.SOURCE_BRAIN, 1, 2))
+        node.on_frame(130, frame(estop_can.KIND_RELEASE, 0, estop_can.SOURCE_BRAIN, 1, 3))
+        return node
+
+    def test_as_shipped_the_old_counter_keeps_the_node_latched(self):
+        self.assertEqual(self.restarted(False).state, estop_can.LATCHED)
+
+    def test_with_the_switch_the_restarted_master_can_release(self):
+        self.assertEqual(self.restarted(True).state, estop_can.READY)
+
+
 class ScenarioTests(unittest.TestCase):
     def test_the_scenarios_hold(self):
         self.assertEqual(VECTORS["alive_timeout_ms"], ESTOP["timing_ms"]["alive_timeout"])

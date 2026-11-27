@@ -7,6 +7,13 @@ Dies ist die Spezifikation des geplanten Entwurfs der Platine und ihrer Firmware
 
 > HYDRA-UMC wird mit Blick auf die funktionale Sicherheit entwickelt, ist jedoch weder nach ISO 13849-1 noch nach einer anderen Norm für funktionale Sicherheit zertifiziert, und keine seiner Stopp- oder Schutzfunktionen darf als zertifizierte Sicherheitsfunktion betrachtet werden.
 
+## 1. 🛡️ GRUNDLAGE DER FUNKTIONALEN SICHERHEIT (ENTWURFSZIEL)
+
+* **Entwurfsziel:** Performance Level d (PL d), Kategorie 3, im Sinne von ISO 13849-1, für die Sicherheitsfunktionen der Maschine (zuerst die Stoppfunktionen).
+* **Markt:** CE-Kennzeichnung, Europäische Union. Ein Termin ist nicht festgelegt.
+* **Personen-Anwesenheitssensor:** Ein Eingang für einen Sensor, der Personen erkennt (Sicherheits-Laserscanner oder Lichtvorhang), ist vorgesehen. Pin, Stecker oder Software dafür gibt es noch nicht.
+* **Nicht erledigt:** keine Risikobeurteilung, keine Festlegung und Berechnung der Sicherheitsfunktionen, keine Validierung nach ISO 13849-2 und keine Prüfung durch Dritte. Dieser Abschnitt sagt, worauf der Entwurf zielt, nicht was die Platine erreicht.
+
 ## 2. 🖥️ HOST-COMPUTING-SUBSYSTEM (HMI & HOCHNIVEAU)
 
 * 🧩 **Modul:** Raspberry Pi Compute Module 5 (CM5)
