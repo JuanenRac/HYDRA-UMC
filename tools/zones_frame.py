@@ -61,7 +61,8 @@ class ZonesFilter:
             self.trips += 1
             return True
         if kind == KIND_HEARTBEAT:
-            if self.seen and not 0 < (sequence - self.last_sequence) & 0xFFFF < 0x8000:
+            # after a loss the service may have started again with a lower counter: its next heartbeat is a new origin
+            if self.seen and not self.lost and not 0 < (sequence - self.last_sequence) & 0xFFFF < 0x8000:
                 self.ignored += 1  # a replayed or old heartbeat does not refresh the clock
                 return False
             self.seen, self.lost, self.last_sequence, self.last_heartbeat_ms = True, False, sequence, now_ms
