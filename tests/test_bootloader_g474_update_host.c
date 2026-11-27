@@ -419,6 +419,21 @@ static void test_a_refused_start_in_the_middle_of_an_update_changes_nothing(void
     free_update(&u);
 }
 
+static void test_no_page_is_written_past_the_staging_area(void)
+{
+    printf("  a page past the end of the staging area is not written and ends the update\n");
+    reset_world();
+    install(0, 1, 8);
+    ImageVersion_t v = {0, 1, 9};
+    Update u = make_update(v, 5, 4096);
+    start(&u);
+    current_page_index = APP_MAX_SIZE / FLASH_PAGE_SIZE; /* a state no accepted request can reach: the guard itself */
+    for (uint32_t at = 0; at < FLASH_PAGE_SIZE; at += 8) HandleData(u.image + (at % u.size), 8);
+    CHECK(last_verdict() == 0xFF && update_failed == 1 && update_in_progress == 0, "the update ends with an error");
+    CHECK(main_slot_untouched() && resets == 0, "nothing was installed");
+    free_update(&u);
+}
+
 static void test_an_unfinished_copy_still_counts_as_the_installed_version(void)
 {
     printf("  with the metadata in COPY_PENDING an older image is refused like with a valid application\n");
@@ -1120,6 +1135,7 @@ int main(void)
 
     test_a_refused_start_in_the_middle_of_an_update_changes_nothing();
     test_an_unfinished_copy_still_counts_as_the_installed_version();
+    test_no_page_is_written_past_the_staging_area();
     test_the_reference_image_installs_over_the_installed_version();
     test_the_session_nonce_is_asked_for_and_changes();
     test_a_replayed_old_image_cannot_claim_a_higher_version();
