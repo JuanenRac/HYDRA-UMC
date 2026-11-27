@@ -60,7 +60,7 @@ extern IWDG_HandleTypeDef  hiwdg;
 // embedded in the output filename (HYDRA_RCB_APP_v0.0.0.bin).
 #define FIRMWARE_VERSION_MAJOR 0
 #define FIRMWARE_VERSION_MINOR 3
-#define FIRMWARE_VERSION_PATCH 1
+#define FIRMWARE_VERSION_PATCH 2
 #define FIRMWARE_VERSION_BUILD 0
 
 // BOOTLOADER_VERSION_* describes THIS bootloader binary itself. Versioning
@@ -70,8 +70,8 @@ extern IWDG_HandleTypeDef  hiwdg;
 // increments and PATCH resets to 0. Also embedded in the output filename
 // by tools/build_firmware.py (HYDRA_RCB_BOOTLOADER_v0.0.0.bin).
 #define BOOTLOADER_VERSION_MAJOR 0
-#define BOOTLOADER_VERSION_MINOR 1
-#define BOOTLOADER_VERSION_PATCH 9
+#define BOOTLOADER_VERSION_MINOR 2
+#define BOOTLOADER_VERSION_PATCH 0
 
 // Image authentication: the bootloader holds no secret and no key of its own. An update is installed only when its Ed25519 signature verifies under a
 // PUBLIC key of the trust table (bootloader_trust.h); with an empty table nothing installs. What the metadata keeps to notice a damaged flash is a plain
