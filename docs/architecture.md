@@ -367,13 +367,13 @@ stay visible before this project reaches real hardware.
   coordinated host+firmware change" reasoning as the anti-rollback bypass
   above applies to fixing this properly.
 
-- **The public key a bootloader carries is chosen by the build.** A real
-  build passes `HYDRA_FW_UPDATE_PUBKEY_HEX` (64 hexadecimal digits: the
-  Ed25519 public key made by `python tools/image_header.py pubkey`; the
-  private seed stays with the owner, never on a board and never on a shared
-  machine) to `tools/build_firmware.py`, which hands it to the three bootloaders at
-  compile time. A bench build carries a **development public key
-  whose seed is published in this repository**: anybody can sign an image
+- **The public keys a bootloader trusts are chosen by the build.** What
+  decides is `HYDRA_UMC_RELEASE`: with `1` the three bootloaders carry the
+  table of `docs/image_trust.json` (headers made with `python
+  tools/image_trust.py headers`; the private seed stays with the owner,
+  never on a board and never on a shared machine). The build does not read
+  `HYDRA_FW_UPDATE_PUBKEY_HEX`. A bench build carries a **development public
+  key whose seed is published in this repository**: anybody can sign an image
   such a board accepts, so it authenticates nothing; the script says so and
   compiles the release table instead when `HYDRA_UMC_RELEASE=1`, which is
   closed (it trusts nobody and installs nothing) until the public half of the
