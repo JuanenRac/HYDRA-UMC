@@ -226,6 +226,7 @@ static inline uint8_t SpiApp_OnReceive(SpiApp_t *app, const uint8_t rx_wire[SPI_
     case SPI_SYS_ACT_TRIP:
         app->trip_reason = reply[0];
         app->trip_pending = 1u;
+        app->release_pending = 0u; /* a stop asked for after a release that still waits wins: the STACK A task takes the stop first and would start that release after it */
         break;
     case SPI_SYS_ACT_REQUEST_RELEASE:
         app->release_pending = 1u;

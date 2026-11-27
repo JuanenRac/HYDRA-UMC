@@ -76,7 +76,7 @@ class FakeReadyLine:
 class RealTransportTests(unittest.TestCase):
     def test_a_sealed_answer_is_read_and_every_request_is_sealed_with_a_new_sequence(self):
         spi = FakeSpi(_status_frame_bytes())
-        link = RealSpiOtaTransport(spi, FakeReadyLine(True))
+        link = RealSpiOtaTransport(spi, FakeReadyLine(True), last_sequence=0)
         answer = link.transceive(poll_frame(2, 0, OFS_STATUS))
         link.transceive(poll_frame(2, 0, OFS_STATUS))
         self.assertEqual((answer.frame_type, answer.dlc, answer.payload[0]), (OFS_STATUS, 1, 1))
@@ -84,6 +84,18 @@ class RealTransportTests(unittest.TestCase):
         self.assertTrue(link.wait_data_ready(0.1))
         link.close()
         self.assertTrue(spi.closed)
+
+    def test_a_bridge_that_restarts_does_not_start_its_sequence_at_the_same_place(self):
+        first = set()
+        for _ in range(64):
+            spi = FakeSpi(_status_frame_bytes())
+            RealSpiOtaTransport(spi, FakeReadyLine(True)).transceive(poll_frame(2, 0, OFS_STATUS))
+            first.add(spi.sent[0][13])
+        self.assertGreater(len(first), 8)
+        spi = FakeSpi(_status_frame_bytes())
+        link = RealSpiOtaTransport(spi, FakeReadyLine(True), last_sequence=255)
+        link.transceive(poll_frame(2, 0, OFS_STATUS))
+        self.assertEqual(spi.sent[0][13], 0)
 
     def test_an_unsealed_request_goes_out_as_built_when_sealing_is_off(self):
         spi = FakeSpi(_status_frame_bytes(sealed=False))

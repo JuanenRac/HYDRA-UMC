@@ -33,6 +33,9 @@
 #endif
 
 static uint8_t FlushPageBuffer(void) {
+    if (current_page_index * FLASH_PAGE_SIZE >= APP_MAX_SIZE) {   // never past the end of the staging area, whatever the session says
+        return 0;
+    }
     uint32_t page_addr = BACKUP_APP_ADDR + (current_page_index * FLASH_PAGE_SIZE);
     for (uint32_t i = page_buffer_fill; i < FLASH_PAGE_SIZE; i++) {
         page_buffer[i] = 0xFF;
@@ -49,21 +52,23 @@ static uint8_t FlushPageBuffer(void) {
 
 // Returns 1 when the update was accepted (size and hardware ID valid, backup
 // slot erased, ready to receive), 0 when the request was refused - a refused
-// request must not pull the board out of its normal start-up.
+// request must not pull the board out of its normal start-up, and leaves an
+// update that is already running exactly as it was.
 uint8_t HandleStartUpdate(uint8_t *data) {
-    update_total_size = ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16)
-                       | ((uint32_t)data[2] << 8) | data[3];
-    update_declared_hw_id = ((uint32_t)data[4] << 24) | ((uint32_t)data[5] << 16)
-                           | ((uint32_t)data[6] << 8) | data[7];
+    const uint32_t requested_size = ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16)
+                                    | ((uint32_t)data[2] << 8) | data[3];
+    const uint32_t requested_hw_id = ((uint32_t)data[4] << 24) | ((uint32_t)data[5] << 16)
+                                     | ((uint32_t)data[6] << 8) | data[7];
 
-    if (update_total_size == 0 || update_total_size > APP_MAX_SIZE) {
+    if (requested_size == 0 || requested_size > APP_MAX_SIZE) {
         CAN_SendStatus(STATUS_ERROR);
         return 0;
     }
-    if (update_declared_hw_id != THIS_HARDWARE_ID) {
+    if (requested_hw_id != THIS_HARDWARE_ID) {
         CAN_SendVerifyFailReason(VERIFY_FAIL_REASON_HARDWARE_ID);
         return 0;
     }
+    update_total_size = requested_size;
 
     uint32_t pages_needed = (update_total_size + FLASH_PAGE_SIZE - 1) / FLASH_PAGE_SIZE;
     CAN_SendStatus(STATUS_ERASING);
