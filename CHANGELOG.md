@@ -4,6 +4,7 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **The SPI documentation says how an update of the CM4 starts once its application runs:** there is no remote way back to the bootloader, so an update starts in its listening window, the first 600 ms after a reset. Documentation only.
 - **The token files of the SPI bridge service may carry a byte order mark:** a collector or zones token saved as "UTF-8 with BOM" could not be sent in a header; the mark is dropped now. Test added.
 
 ## [0.3.2] - Safer updates and stop handling in the bootloaders and the brain
