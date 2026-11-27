@@ -22,6 +22,12 @@ Two more frame types of the tier `SELF` are not commands of this file: `0x28` (F
 
 A frame that is not exactly one of the above (wrong length, wrong magic, unknown selector) does nothing and is not answered.
 
+## Updating while the application runs
+
+Once the application of the CM4 runs there is no remote way back to its bootloader: the SPI service answers commands of the tier `SELF` only and
+has no `ENTER_BOOTLOADER`, so a flasher that sends one is ignored. An update of this core starts in the listening window of its bootloader,
+the first 600 ms after a reset.
+
 ## Switches
 
 Both are off in a build as it ships, and the CM4 answers none of these frames:
