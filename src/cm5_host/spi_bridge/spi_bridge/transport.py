@@ -26,6 +26,7 @@ gpiod, ...).
 
 from __future__ import annotations
 
+import secrets
 from typing import Protocol
 
 from .protocol import SPI_FRAME_SIZE, SpiOtaFrame
@@ -102,11 +103,13 @@ class RealSpiOtaTransport:
     STM32H745 clocked back.
     """
 
-    def __init__(self, spi_device: _SpiDevice, data_ready_line: _ReadyLine, *, seal_requests: bool = True):
+    def __init__(self, spi_device: _SpiDevice, data_ready_line: _ReadyLine, *, seal_requests: bool = True, last_sequence: int | None = None):
         self._spi = spi_device
         self._data_ready_line = data_ready_line
         self._seal_requests = seal_requests
-        self._sequence = 0
+        # The firmware drops a frame whose sequence equals the last one it took. A bridge that restarts therefore starts at a random place instead of at zero again,
+        # so its first request is not taken for a repeat of the last one of the process before (`last_sequence` fixes the place for a test).
+        self._sequence = secrets.randbelow(256) if last_sequence is None else last_sequence & 0xFF
 
     def transceive(self, frame: SpiOtaFrame) -> SpiOtaFrame:
         raw_request = frame.to_bytes()

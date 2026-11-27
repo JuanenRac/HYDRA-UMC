@@ -282,6 +282,21 @@ static void run_with_switches_on(void)
         rig.now = 50u;
         rig_pump(&rig, &app);
         TEST_ASSERT(rig.brain.release_state == ESTOP_RELEASE_NONE, "a stop from the link cancels the release in progress");
+        /* a release and then a stop that both wait for the STACK A task: the last order is to stop */
+        make_wire(wire, 0u, SPI_SYS_RELEASE_REQUEST, release, 4u, 1, 6u);
+        (void)SpiApp_OnReceive(&app, wire);
+        make_wire(wire, 0u, SPI_SYS_STOP_REQUEST, stop, 5u, 1, 7u);
+        (void)SpiApp_OnReceive(&app, wire);
+        TEST_ASSERT(app.trip_pending == 1u && app.release_pending == 0u, "the stop drops the release that was waiting");
+        rig.now = 60u;
+        rig_pump(&rig, &app);
+        TEST_ASSERT(rig.brain.tripped == 1u && rig.brain.release_state == ESTOP_RELEASE_NONE, "and no release starts after it");
+        /* a stop and then a release: the release is the last order and stays */
+        make_wire(wire, 0u, SPI_SYS_STOP_REQUEST, stop, 5u, 1, 8u);
+        (void)SpiApp_OnReceive(&app, wire);
+        make_wire(wire, 0u, SPI_SYS_RELEASE_REQUEST, release, 4u, 1, 9u);
+        (void)SpiApp_OnReceive(&app, wire);
+        TEST_ASSERT(app.trip_pending == 1u && app.release_pending == 1u, "a release after a stop waits behind it");
     }
 
     /* the probe: the request starts a scan, the answer is staged only when the scan is done */

@@ -81,7 +81,7 @@ class SealedFrameTests(unittest.TestCase):
 
     def test_the_transport_seals_every_request_with_a_new_sequence(self):
         spi = _RecordingSpi(SpiOtaFrame(1, 3, 0x05, 1, b"\x01").to_bytes())
-        transport = RealSpiOtaTransport(spi, _Line())
+        transport = RealSpiOtaTransport(spi, _Line(), last_sequence=0)
         frame = SpiOtaFrame(1, 3, 0x08, 0, b"")
         transport.transceive(frame)
         transport.transceive(frame)
@@ -91,7 +91,7 @@ class SealedFrameTests(unittest.TestCase):
 
     def test_the_sequence_wraps_after_255(self):
         spi = _RecordingSpi(SpiOtaFrame(1, 3, 0x05, 1, b"\x01").to_bytes())
-        transport = RealSpiOtaTransport(spi, _Line())
+        transport = RealSpiOtaTransport(spi, _Line(), last_sequence=0)
         for _ in range(257):
             transport.transceive(SpiOtaFrame(1, 3, 0x08, 0, b""))
         self.assertEqual(spi.sent[255][SEAL_OFFSET_SEQUENCE], 0)

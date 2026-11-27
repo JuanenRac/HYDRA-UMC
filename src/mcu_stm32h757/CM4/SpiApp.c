@@ -98,6 +98,8 @@ static int SpiApp_FramTransfer(void *context, uint8_t address7, const uint8_t *t
 static void SpiApp_FramYield(void *context)
 {
     (void)context;
+    uint8_t reason = 0u;
+    if (SpiApp_TakeTrip(&g_spi_app, &reason)) KinematicBrainCan_EstopTrip(reason); /* a stop does not wait for the end of a long erase */
     KinematicBrainCan_EstopPoll();
 }
 
