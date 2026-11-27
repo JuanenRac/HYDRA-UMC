@@ -2,6 +2,10 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
+## [Unreleased]
+
+- **The token files of the SPI bridge service may carry a byte order mark:** a collector or zones token saved as "UTF-8 with BOM" could not be sent in a header; the mark is dropped now. Test added.
+
 ## [0.3.2] - Safer updates and stop handling in the bootloaders and the brain
 
 - **The versions of the images that change are raised for this release:** the controller application goes from 0.3.1 to 0.3.2, the three bootloaders from 0.1.9 to 0.2.0 and the CM4 application of the Kinematic Brain from 0.1.8 to 0.1.9 (`bump_firmware_versions.py`); the CM7 application keeps 0.1.8.

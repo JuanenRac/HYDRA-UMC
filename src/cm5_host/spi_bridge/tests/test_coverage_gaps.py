@@ -353,6 +353,11 @@ class KeyAndTokenTests(unittest.TestCase):
         args.zones_state_url = None
         self.assertIsNone(entry.build_zones_heartbeat(args, link, lock, {}))
 
+    def test_a_token_file_may_carry_a_byte_order_mark_but_no_other_encoding(self):
+        self.assertEqual(entry.read_token(self.file("bom", bytes((0xEF, 0xBB, 0xBF)) + b"abc" + bytes((13, 10))), {}), "abc")
+        with self.assertRaises(ValueError):
+            entry.read_token(self.file("wide", "abc".encode("utf-16")), {})
+
     def test_the_collector_token_comes_from_a_file_the_environment_or_nowhere(self):
         self.assertEqual(entry.read_token(self.file("t", b" abc \n"), {}), "abc")
         self.assertEqual(entry.read_token(None, {entry.COLLECTOR_TOKEN_ENV: " xyz "}), "xyz")
