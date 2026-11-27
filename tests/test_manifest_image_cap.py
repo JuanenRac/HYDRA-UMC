@@ -22,11 +22,11 @@ def _image(folder: Path, name: str, size: int) -> Path:
 
 class ImageCapTests(unittest.TestCase):
     def test_the_room_follows_the_switch_of_the_build(self):
-        self.assertEqual(manifest.kb_app_region_bytes({}), 384 * KB)
+        self.assertEqual(manifest.kb_app_region_bytes({}), 256 * KB)
         self.assertEqual(manifest.kb_app_region_bytes({"HYDRA_META_AB": "0"}), 384 * KB)
         self.assertEqual(manifest.kb_app_region_bytes({"HYDRA_META_AB": "1"}), 256 * KB)
-        for other in ("true", "yes", "2", ""):
-            self.assertEqual(manifest.kb_app_region_bytes({"HYDRA_META_AB": other}), 384 * KB, other)
+        for environ in ({}, {"HYDRA_META_AB": ""}, {"HYDRA_META_AB": "yes"}):
+            self.assertEqual(manifest.kb_app_region_bytes(environ), 256 * KB, environ)
 
     def test_an_image_longer_than_its_region_is_refused(self):
         with tempfile.TemporaryDirectory() as folder:

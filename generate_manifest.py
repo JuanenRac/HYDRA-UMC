@@ -159,9 +159,9 @@ APP_SLOT_BYTES_META_AB = 256 * 1024
 
 
 def kb_app_region_bytes(environ=None):
-    """The room of a Kinematic Brain application (CM7 or CM4): 256 KB with HYDRA_META_AB=1 in the environment of the build, 384 KB otherwise."""
+    """The room of a Kinematic Brain application (CM7 or CM4): 256 KB as the images ship (HYDRA_META_AB), 384 KB only with HYDRA_META_AB=0 in the environment of the build."""
     environ = os.environ if environ is None else environ
-    return APP_SLOT_BYTES_META_AB if environ.get("HYDRA_META_AB") == "1" else APP_SLOT_BYTES
+    return APP_SLOT_BYTES if environ.get("HYDRA_META_AB") == "0" else APP_SLOT_BYTES_META_AB
 
 
 def check_image_fits(bin_path, flash_region_max_bytes):

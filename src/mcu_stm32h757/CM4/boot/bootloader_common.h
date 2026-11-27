@@ -45,10 +45,14 @@ extern IWDG_HandleTypeDef  hiwdg;
 #define METADATA_ADDR        0x08120000UL // sector 1, own dedicated sector
 #define MAIN_APP_ADDR        0x08140000UL // sectors 2-4
 #define BACKUP_APP_ADDR      0x081A0000UL // sectors 5-7
-// HYDRA_META_AB (off as it ships) keeps the metadata in two sectors that take turns (meta_ab.h): sector 1 as always and a second one, METADATA_B_ADDR, which is
+// HYDRA_META_AB (on as it ships; 0 in the long slot variant, or with -DHYDRA_META_AB=0) keeps the metadata in two sectors that take turns (meta_ab.h): sector 1 as always and a second one, METADATA_B_ADDR, which is
 // the last sector of the application backup slot, so the longest application is then 256 KB.
 #ifndef HYDRA_META_AB
-#define HYDRA_META_AB 0
+#if defined(HYDRA_APP_SLOT_768K) && HYDRA_APP_SLOT_768K
+#define HYDRA_META_AB 0    // the long slot uses the sector of the second metadata log
+#else
+#define HYDRA_META_AB 1
+#endif
 #endif
 #if HYDRA_META_AB
 #define METADATA_B_ADDR      0x081E0000UL // sector 7, the second metadata sector
