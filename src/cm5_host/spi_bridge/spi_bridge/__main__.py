@@ -46,7 +46,7 @@ def read_hmac_key(path: str) -> bytes:
 
 def read_token(path: str | None, environ: dict[str, str]) -> str | None:
     if path:
-        token = Path(path).read_text(encoding="utf-8").strip()
+        token = Path(path).read_text(encoding="utf-8-sig").strip()
     else:
         token = environ.get(COLLECTOR_TOKEN_ENV, "").strip()
     return token or None
@@ -78,7 +78,7 @@ def build_zones_heartbeat(args: argparse.Namespace, transport, bus_lock: threadi
     if not args.zones_state_url:
         return None
     if args.zones_token_file:
-        token = Path(args.zones_token_file).read_text(encoding="utf-8").strip() or None
+        token = Path(args.zones_token_file).read_text(encoding="utf-8-sig").strip() or None
     else:
         token = environ.get(ZONES_TOKEN_ENV, "").strip() or None
     url = args.zones_state_url
