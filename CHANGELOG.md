@@ -2,7 +2,9 @@
 
 All notable changes to the hardware and core firmware will be documented in this file.
 
-## [Unreleased]
+## [0.3.2] - Safer updates and stop handling in the bootloaders and the brain
+
+- **The versions of the images that change are raised for this release:** the controller application goes from 0.3.1 to 0.3.2, the three bootloaders from 0.1.9 to 0.2.0 and the CM4 application of the Kinematic Brain from 0.1.8 to 0.1.9 (`bump_firmware_versions.py`); the CM7 application keeps 0.1.8.
 
 - **A safety-zones service that restarts arms the watch of the brain again (behind `HYDRA_ZONES_CAN_FILTER`, off as shipped):** after a loss, its next heartbeat is a new origin; before, a lower counter was ignored for up to 32768 heartbeats, and during that time a second silence tripped nothing.
 - **A stop node can take the counter of a master that started again (`ESTOP_RESYNC_ON_NEW_EPOCH`, off by default):** without it the node stays latched until the new counter catches up, which is the safe side and stays as shipped. Host tests; nothing ran on a board.
