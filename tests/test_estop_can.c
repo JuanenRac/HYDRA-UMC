@@ -283,8 +283,26 @@ static void test_brain_time_wraps(void)
 }
 #endif
 
+/* A master that starts again counts from the start: only with the switch does the node take the new counter. */
+static void test_a_restarted_master(void)
+{
+    EstopNode_t n;
+    uint8_t f[8];
+    EstopNode_Reset(&n);
+    Estop_Encode(f, ESTOP_KIND_ALIVE, ESTOP_ALIVE_TRIPPED, ESTOP_SOURCE_BRAIN, 7, 30000);
+    EstopNode_OnFrame(&n, 0, f, 8);
+    Estop_Encode(f, ESTOP_KIND_ALIVE, ESTOP_ALIVE_TRIPPED, ESTOP_SOURCE_BRAIN, 1, 1);
+    EstopNode_OnFrame(&n, 100, f, 8);
+    Estop_Encode(f, ESTOP_KIND_ALIVE, ESTOP_ALIVE_TRIPPED, ESTOP_SOURCE_BRAIN, 1, 2);
+    EstopNode_OnFrame(&n, 120, f, 8);
+    Estop_Encode(f, ESTOP_KIND_RELEASE, 0, ESTOP_SOURCE_BRAIN, 1, 3);
+    EstopNode_OnFrame(&n, 130, f, 8);
+    CHECK(n.latched == (ESTOP_RESYNC_ON_NEW_EPOCH ? 0u : 1u), "restarted master");
+}
+
 int main(void)
 {
+    test_a_restarted_master();
     test_frames();
     test_sequence_order();
     test_scenarios();

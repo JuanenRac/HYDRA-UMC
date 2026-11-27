@@ -20,6 +20,13 @@
 #include <stdint.h>
 #include <string.h>
 
+/* A brain that restarts alone counts its sequence from the start again, and a node that remembers the old one ignores its heartbeats, so the
+ * stop cannot be released until the counter catches up (it fails to the safe side). With this on, a TRIP or an ALIVE that says tripped with
+ * another epoch forgets the remembered sequence; both latch the node, and a RELEASE still needs a new live heartbeat. Off by default. */
+#ifndef ESTOP_RESYNC_ON_NEW_EPOCH
+#define ESTOP_RESYNC_ON_NEW_EPOCH 0
+#endif
+
 #define ESTOP_CAN_ID 0x001u
 
 #define ESTOP_KIND_TRIP    0x01u
@@ -149,6 +156,12 @@ static inline void EstopNode_OnFrame(EstopNode_t *n, uint32_t now_ms, const uint
         EstopNode_Latch_(n);
         return;
     }
+#if ESTOP_RESYNC_ON_NEW_EPOCH
+    if ((f.kind == ESTOP_KIND_TRIP || (f.kind == ESTOP_KIND_ALIVE && f.detail == ESTOP_ALIVE_TRIPPED)) && n->have_epoch && f.epoch != n->epoch) {
+        n->have_seq = 0u;
+        n->have_alive = 0u;
+    }
+#endif
     if (f.kind == ESTOP_KIND_TRIP) {
         EstopNode_Latch_(n);
         n->have_epoch = 1u;

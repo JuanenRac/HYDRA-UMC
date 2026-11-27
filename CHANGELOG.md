@@ -4,6 +4,9 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **A safety-zones service that restarts arms the watch of the brain again (behind `HYDRA_ZONES_CAN_FILTER`, off as shipped):** after a loss, its next heartbeat is a new origin; before, a lower counter was ignored for up to 32768 heartbeats, and during that time a second silence tripped nothing.
+- **A stop node can take the counter of a master that started again (`ESTOP_RESYNC_ON_NEW_EPOCH`, off by default):** without it the node stays latched until the new counter catches up, which is the safe side and stays as shipped. Host tests; nothing ran on a board.
+
 - **A refused `START_UPDATE` no longer changes an update that is running (the three bootloaders):** the size and the hardware id of the request were stored before they were checked, so one wrong frame in the middle of a session left the board with metadata of another hardware id and no application it would start. The request is checked first, the metadata always names this board, and a page past the end of the staging area is never written.
 - **The anti-rollback rule also applies while a copy is pending:** with the metadata in `COPY_PENDING` an older signed image installed without a downgrade token; that state now counts as the installed version.
 - **A stop sent after a release over SPI wins:** with both still waiting, the CM4 took the stop first and then started the release. The stop drops the waiting release, and a stop is also taken between the chunks of an F-RAM erase (behind the SPI switches, off as shipped). The SPI bridge starts its frame sequence at a random place, so the first request after a restart is not dropped as a repeat. Host tests; nothing ran on a board.
