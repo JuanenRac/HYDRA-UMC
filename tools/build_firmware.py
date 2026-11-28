@@ -712,7 +712,7 @@ HAL_MODULES_G4 = (
 HAL_MODULES_H7 = (
     "stm32h7xx_hal stm32h7xx_hal_cortex stm32h7xx_hal_gpio stm32h7xx_hal_rcc stm32h7xx_hal_rcc_ex stm32h7xx_hal_pwr stm32h7xx_hal_pwr_ex "
     "stm32h7xx_hal_flash stm32h7xx_hal_flash_ex stm32h7xx_hal_exti stm32h7xx_hal_mdma stm32h7xx_hal_fdcan stm32h7xx_hal_iwdg stm32h7xx_hal_spi "
-    "stm32h7xx_hal_hsem"
+    "stm32h7xx_hal_hsem stm32h7xx_hal_i2c stm32h7xx_hal_i2c_ex"
 ).split()
 OPTIMIZE = ["-O2", "-Wall", "-ffunction-sections", "-fdata-sections"]
 LINK_NOISE = ("not implemented", "note: the message", "in function `_")
