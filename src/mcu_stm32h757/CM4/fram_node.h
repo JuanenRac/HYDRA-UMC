@@ -11,6 +11,10 @@
  * driver (no I2C timing fixed) it answers NO_CHIP. Nothing here has run on a board. docs/FRAM_ERASE.md is the contract; tests/test_fram_node.c and
  * tests/test_fram_i2c.c replay it against this file with a simulated chip.
  *
+ * The self-test overwrites the last FRAM_SELFTEST_BYTES of the chip and puts them back from a copy kept in RAM, so a reset in the middle loses them. With
+ * HYDRA_FRAM_SELFTEST_JOURNAL=1 (off as it ships) the copy is first written to the chip itself, just under the scratch area, and closed by a mark and a CRC;
+ * FramNode_Recover (at start-up) and the next test put a pending copy back. The switch reserves the last FRAM_JOURNAL_RESERVED (136) bytes of the chip.
+ *
  * Request  (host to board, DLC 8): 0xFA, operation, board (always FRAM_BRAIN_ID: the brain has the one chip), 'E' 'R' 'A' 'S' (erase) or 'T' 'E' 'S' 'T' (self-test), complement of the XOR of the first seven bytes.
  * Response (board to host, DLC 8): 0xFB, operation, status, detail, four bytes big endian (bytes written for an erase, address that failed for a test).
  * ============================================================================= */
@@ -22,6 +26,10 @@
 
 #ifndef HYDRA_FRAM_ERASE
 #define HYDRA_FRAM_ERASE 0 /* the switch: off by default, the board answers DISABLED */
+#endif
+
+#ifndef HYDRA_FRAM_SELFTEST_JOURNAL
+#define HYDRA_FRAM_SELFTEST_JOURNAL 0
 #endif
 
 #define FRAM_REQUEST_MAGIC  0xFAu
@@ -138,6 +146,71 @@ static inline uint8_t FramNode_Erase(const FramDriver_t *d, uint32_t *written)
     return FRAM_STATUS_OK;
 }
 
+#if HYDRA_FRAM_SELFTEST_JOURNAL
+#define FRAM_JOURNAL_MARK_BYTES 8u
+#define FRAM_JOURNAL_MAGIC 0x48464A31u /* "HFJ1" */
+#define FRAM_JOURNAL_RESERVED (FRAM_SELFTEST_BYTES * 2u + FRAM_JOURNAL_MARK_BYTES)
+
+static inline uint32_t Fram_Crc32(const uint8_t *data, uint32_t length)
+{
+    uint32_t crc = 0xFFFFFFFFu;
+    for (uint32_t i = 0; i < length; i++) {
+        crc ^= data[i];
+        for (uint8_t bit = 0; bit < 8u; bit++) crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
+    }
+    return ~crc;
+}
+
+static inline void Fram_PutBig(uint8_t *out, uint32_t value)
+{
+    out[0] = (uint8_t)(value >> 24);
+    out[1] = (uint8_t)(value >> 16);
+    out[2] = (uint8_t)(value >> 8);
+    out[3] = (uint8_t)value;
+}
+
+static inline uint32_t Fram_GetBig(const uint8_t *in)
+{
+    return ((uint32_t)in[0] << 24) | ((uint32_t)in[1] << 16) | ((uint32_t)in[2] << 8) | (uint32_t)in[3];
+}
+
+/* Puts a pending copy of the scratch area back and closes the journal. FRAM_STATUS_OK also when nothing was pending; a copy whose CRC does not match was never
+ * closed (the scratch area had not been touched yet) and is ignored. On a chip error the journal is left as it is, for the next time. */
+static inline uint8_t FramDriver_RecoverScratch(const FramDriver_t *d)
+{
+    uint8_t copy[FRAM_SELFTEST_BYTES];
+    uint8_t mark[FRAM_JOURNAL_MARK_BYTES];
+    const uint8_t closed[FRAM_JOURNAL_MARK_BYTES] = {0, 0, 0, 0, 0, 0, 0, 0};
+    if (d->size < FRAM_JOURNAL_RESERVED) return FRAM_STATUS_CHIP_ERROR;
+    const uint32_t base = d->size - FRAM_SELFTEST_BYTES;
+    const uint32_t journal = base - FRAM_SELFTEST_BYTES - FRAM_JOURNAL_MARK_BYTES;
+    if (d->read(d->context, journal + FRAM_SELFTEST_BYTES, mark, FRAM_JOURNAL_MARK_BYTES) != 0) return FRAM_STATUS_CHIP_ERROR;
+    if (Fram_GetBig(mark) != FRAM_JOURNAL_MAGIC) return FRAM_STATUS_OK;
+    if (d->read(d->context, journal, copy, FRAM_SELFTEST_BYTES) != 0) return FRAM_STATUS_CHIP_ERROR;
+    if (Fram_GetBig(&mark[4]) != Fram_Crc32(copy, FRAM_SELFTEST_BYTES)) return FRAM_STATUS_OK;
+    if (d->write(d->context, base, copy, FRAM_SELFTEST_BYTES) != 0) return FRAM_STATUS_CHIP_ERROR;
+    return d->write(d->context, journal + FRAM_SELFTEST_BYTES, closed, FRAM_JOURNAL_MARK_BYTES) != 0 ? FRAM_STATUS_CHIP_ERROR : FRAM_STATUS_OK;
+}
+
+/* Writes the copy of the scratch area and closes it: only a closed copy is ever put back. */
+static inline uint8_t FramDriver_KeepScratch(const FramDriver_t *d, const uint8_t *saved)
+{
+    uint8_t mark[FRAM_JOURNAL_MARK_BYTES];
+    const uint32_t journal = d->size - FRAM_SELFTEST_BYTES * 2u - FRAM_JOURNAL_MARK_BYTES;
+    Fram_PutBig(mark, FRAM_JOURNAL_MAGIC);
+    Fram_PutBig(&mark[4], Fram_Crc32(saved, FRAM_SELFTEST_BYTES));
+    if (d->write(d->context, journal, saved, FRAM_SELFTEST_BYTES) != 0) return FRAM_STATUS_CHIP_ERROR;
+    return d->write(d->context, journal + FRAM_SELFTEST_BYTES, mark, FRAM_JOURNAL_MARK_BYTES) != 0 ? FRAM_STATUS_CHIP_ERROR : FRAM_STATUS_OK;
+}
+
+/* At start-up: does nothing while the switch of the erase is off or there is no chip. */
+static inline uint8_t FramNode_Recover(const FramNode_t *n)
+{
+    if (!n->enabled || n->driver == NULL || n->driver->read == NULL || n->driver->write == NULL) return FRAM_STATUS_DISABLED;
+    return FramDriver_RecoverScratch(n->driver);
+}
+#endif /* HYDRA_FRAM_SELFTEST_JOURNAL */
+
 /* The self-test keeps what was in the scratch area: it reads it, writes 0x55 and 0xAA over it and checks each readback, then puts the original back. */
 static inline uint8_t FramNode_SelfTest(const FramDriver_t *d, uint32_t *failed_at)
 {
@@ -149,7 +222,13 @@ static inline uint8_t FramNode_SelfTest(const FramDriver_t *d, uint32_t *failed_
     *failed_at = 0;
     if (d->size < FRAM_SELFTEST_BYTES) return FRAM_STATUS_CHIP_ERROR;
     base = d->size - FRAM_SELFTEST_BYTES;
+#if HYDRA_FRAM_SELFTEST_JOURNAL
+    if (FramDriver_RecoverScratch(d) != FRAM_STATUS_OK) return FRAM_STATUS_CHIP_ERROR; /* a pending copy is never overwritten */
+#endif
     if (d->read(d->context, base, saved, FRAM_SELFTEST_BYTES) != 0) return FRAM_STATUS_CHIP_ERROR;
+#if HYDRA_FRAM_SELFTEST_JOURNAL
+    if (FramDriver_KeepScratch(d, saved) != FRAM_STATUS_OK) return FRAM_STATUS_CHIP_ERROR;
+#endif
     for (uint32_t round = 0; round < 2u && status == FRAM_STATUS_OK; round++) {
         uint8_t value = round == 0u ? 0x55u : 0xAAu;
         for (uint32_t i = 0; i < FRAM_SELFTEST_BYTES; i++) pattern[i] = value;
@@ -165,7 +244,15 @@ static inline uint8_t FramNode_SelfTest(const FramDriver_t *d, uint32_t *failed_
             }
         }
     }
+#if HYDRA_FRAM_SELFTEST_JOURNAL
+    if (d->write(d->context, base, saved, FRAM_SELFTEST_BYTES) != 0) return status == FRAM_STATUS_OK ? FRAM_STATUS_CHIP_ERROR : status; /* the journal stays */
+    {
+        const uint8_t closed[FRAM_JOURNAL_MARK_BYTES] = {0, 0, 0, 0, 0, 0, 0, 0};
+        if (d->write(d->context, base - FRAM_JOURNAL_MARK_BYTES, closed, FRAM_JOURNAL_MARK_BYTES) != 0 && status == FRAM_STATUS_OK) status = FRAM_STATUS_CHIP_ERROR;
+    }
+#else
     if (d->write(d->context, base, saved, FRAM_SELFTEST_BYTES) != 0 && status == FRAM_STATUS_OK) status = FRAM_STATUS_CHIP_ERROR;
+#endif
     return status;
 }
 
