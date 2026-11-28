@@ -158,7 +158,7 @@ A especificação detalhada do desenho (onze subsistemas, do computador anfitri�
 | Uma placa que fica presa | O carregador da G474 arma o cão de guarda independente (IWDG) como primeiríssima ação de `main()`, antes de `HAL_Init()`, pelo que um bloqueio no arranque reinicia o chip | `src/mcu_stm32g474/boot/bootloader_main.c` |
 | O serviço HTTP local da ponte SPI alcançado por outra pessoa | Escuta em 127.0.0.1 por predefinição, aceita um corpo de firmware de 4 MiB no máximo e não guarda nenhuma chave de assinatura: a assinatura chega no pedido, feita na máquina que tem a semente privada; não tem TLS nem início de sessão próprio, pelo que quem lhe reencaminha pedidos deve decidir quem pode gravar | `src/cm5_host/spi_bridge/spi_bridge/http_service.py` |
 
-**O que hoje nunca faz:** dar uma paragem de emergência, limites por software, bloqueios, o despejo para a FRAM na perda de alimentação nem qualquer comando de movimento; não se afirma Secure Boot nem proteção de leitura da flash. Leia a caixa de segurança no topo antes de confiar em algo daqui.
+**O que hoje nunca faz:** dar uma paragem de emergência, limites por software, bloqueios, o despejo para a FRAM na perda de alimentação nem qualquer comando de movimento; não se afirma Secure Boot nem proteção de leitura da flash. Existe uma trama de paragem por software no barramento da pilha, escrita e testada no anfitrião (`docs/ESTOP_CAN.md`); nunca correu numa placa e não substitui uma paragem de emergência por hardware. Leia a caixa de segurança no topo antes de confiar em algo daqui.
 
 ## 🔌 Interfaces
 

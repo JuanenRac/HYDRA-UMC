@@ -158,7 +158,7 @@ The detailed specification of the design (eleven subsystems, from the host compu
 | A board that hangs | The G474 bootloader arms the independent watchdog (IWDG) as the very first action of `main()`, before `HAL_Init()`, so a hang during start-up resets the chip | `src/mcu_stm32g474/boot/bootloader_main.c` |
 | The local HTTP service of the SPI bridge reached by someone else | It listens on 127.0.0.1 by default, accepts a firmware body of at most 4 MiB, and holds no signing key: the signature comes in the request, made on the machine that holds the private seed; it has no TLS and no sign-in of its own, so whatever relays to it must decide who may flash | `src/cm5_host/spi_bridge/spi_bridge/http_service.py` |
 
-**What it never does today:** provide an emergency stop, software limits, interlocks, the power-loss dump to FRAM or any motion command; Secure Boot and read-out protection of the flash are not claimed. Read the safety box at the top before relying on anything here.
+**What it never does today:** provide an emergency stop, software limits, interlocks, the power-loss dump to FRAM or any motion command; Secure Boot and read-out protection of the flash are not claimed. A software stop frame on the stack bus is written and tested on the host (`docs/ESTOP_CAN.md`); it has never run on a board and does not replace a hardware emergency stop. Read the safety box at the top before relying on anything here.
 
 ## 🔌 Interfaces
 
