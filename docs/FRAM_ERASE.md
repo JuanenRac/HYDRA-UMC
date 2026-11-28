@@ -42,6 +42,8 @@ Response (8 bytes): `0xFB`, operation, status, the board byte, four bytes big en
 
 An F-RAM has nothing to erase: the erase writes zeros over the 8192 bytes and reads them all back. The self-test works on the last 64 bytes of the chip only and puts them back, also when it fails.
 
+The copy it puts back is kept in RAM, so a reset in the middle of a test loses those 64 bytes. With `HYDRA_FRAM_SELFTEST_JOURNAL=1` (off as it ships) the copy is first written to the chip, just under the scratch area, and closed by a mark and a CRC-32; at start-up, and before the next test, a closed copy is put back. A chip error leaves the copy where it is. The switch reserves the last 136 bytes of the chip.
+
 ## The driver (`fram_i2c.h`)
 
 An access is the device address `0x50`, two address bytes (high first) and then the data; a read repeats the start and reads. An F-RAM has no page and no write delay, so a write may be of any length and the address wraps at the end of the chip; the driver cuts every access into chunks of 30 bytes only because of the buffer of the bus layer, refuses an access that would pass the end of the chip instead of wrapping, tries every chunk three times (a NACK, a timeout, or a block that does not read back as written) and runs a hook between chunks. The hook sends the stop frames that are due, so an erase (a few seconds at 100 kHz) never starves the ALIVE frames of the emergency stop. The HAL glue is in `SpiApp.c`: `HAL_I2C_Mem_Read` and `HAL_I2C_Mem_Write` with 16-bit memory addresses on `I2C4`, `PD12` and `PD13` in open drain, no internal pull.
