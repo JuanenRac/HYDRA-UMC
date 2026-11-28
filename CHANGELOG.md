@@ -4,6 +4,8 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **README facts checked against the code:** the stack no longer names a DSP library that no source uses, and the test paragraph no longer gives a breakdown and a number of C programs that had grown old.
+
 - **The CM4 application links with the F-RAM driver on:** the I2C driver of the vendor library is part of the H7 library objects, so a build with `HYDRA_FRAM_ERASE=1` and `HYDRA_FRAM_I2C_TIMING` no longer ends in undefined `HAL_I2C` references. The images of the default build do not change.
 - **Three options of the firmware, all off as it ships (the images do not change):** `HYDRA_BOOT_NONCE_HW_RNG=1` mixes the hardware random generator of the chip into the nonce of an update session (a generator that does not answer leaves the nonce as before); `HYDRA_SPI_TASK_WATCHDOG=1` refreshes the watchdog of the CM4 application only while the SPI task moves too; `HYDRA_FRAM_SELFTEST_JOURNAL=1` keeps a closed copy of the F-RAM scratch area on the chip during the self-test, so a reset in the middle loses nothing. Host tests with made-up registers, hung tasks and a power cut at every byte; nothing was run on a board.
 - **The metadata of the Kinematic Brain bootloaders is kept in two sectors by default:** a power cut at the change of sector keeps the rollback counter. The longest CM7 and CM4 application is now 256 KB; the long slot variant keeps the single sector. `-DHYDRA_META_AB=0` builds as before. Changes the CM4 and CM7 bootloader images; the cut of power on a board is still to be tested.

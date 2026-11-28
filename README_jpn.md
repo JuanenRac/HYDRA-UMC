@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 | バージョン | `0.3.2` |
 | 成熟度 | 足場段階 |
 | テスト | 1525 (`python -m unittest discover -s tests -p 'test_*.py'`) |
-| 技術 | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
+| 技術 | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / FDCAN in classic mode with no FD frames / SWD/JTAG |
 | 対象 | マイコン基板（ファームウェア）。ビルドは PC で行います |
 | 実機での確認 | 実機で日常的に使用：この README の正直さの確認に、どこで使っているかが書かれています |
 
@@ -200,7 +200,7 @@ python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the f
 
 ## 🧪 テスト
 
-`python -m unittest discover -s tests -p 'test_*.py'` で自動テスト 1525 件を実行します。 CM5 の SPI ブリッジのテスト 187 件と、ファームウェアのソース、署名付きイメージヘッダー、CAN 識別子のテスト 522 件です（SPI ブリッジ側は `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` と `-s src/cm5_host/spi_bridge/tests` で実行します）。ブートローダーとリレーの C ロジックは、`tools/build_firmware.py` のステップ 1b で通常のホスト C コンパイラーでビルドする 50 本のプログラムがさらに検査します。どれも基板を必要としません。
+`python -m unittest discover -s tests -p 'test_*.py'` で自動テスト 1525 件を実行します。 この件数は、ファームウェアのソース、署名付きイメージヘッダー、CAN 識別子のテストと、CM5 の SPI ブリッジのテストを合わせたものです（SPI ブリッジ側は別に `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` と `-s src/cm5_host/spi_bridge/tests` で実行します）。ブートローダーとリレーの C ロジックは、`tools/build_firmware.py` のステップ 1b で通常のホスト C コンパイラーでビルドする別のプログラム群がさらに検査します。どれも基板を必要としません。
 
 CI は `HYDRA_UMC_CI=1 python tools/ci_validate.py` を実行し、マニフェスト、文書、8 つの README、図を検査します。
 

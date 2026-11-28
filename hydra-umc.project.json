@@ -9,8 +9,7 @@
     "STM32H757 (dual-core)",
     "STM32G474",
     "FreeRTOS (AMP)",
-    "CMSIS-DSP",
-    "FDCAN (classic CAN mode)",
+    "FDCAN in classic mode with no FD frames",
     "SWD/JTAG",
     "Python (CM5 host: spi_bridge)"
   ],
