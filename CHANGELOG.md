@@ -4,6 +4,7 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **The README names the software stop frame** (eight languages): written and tested on the host, never run on a board, and no replacement for a hardware emergency stop.
 - **README facts checked against the code:** the stack no longer names a DSP library that no source uses, and the test paragraph no longer gives a breakdown and a number of C programs that had grown old.
 
 - **The CM4 application links with the F-RAM driver on:** the I2C driver of the vendor library is part of the H7 library objects, so a build with `HYDRA_FRAM_ERASE=1` and `HYDRA_FRAM_I2C_TIMING` no longer ends in undefined `HAL_I2C` references. The images of the default build do not change.

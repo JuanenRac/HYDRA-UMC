@@ -158,7 +158,7 @@ La especificación detallada del diseño (once subsistemas, del ordenador anfitr
 | Una placa que se cuelga | El cargador de la G474 arma el perro guardián independiente (IWDG) como primerísima acción de `main()`, antes de `HAL_Init()`, así que un cuelgue durante el arranque reinicia el chip | `src/mcu_stm32g474/boot/bootloader_main.c` |
 | El servicio HTTP local del puente SPI alcanzado por otra persona | Escucha en 127.0.0.1 por defecto, acepta un cuerpo de firmware de 4 MiB como máximo y no guarda ninguna clave de firma: la firma llega en la petición, hecha en la máquina que tiene la semilla privada; no tiene TLS ni inicio de sesión propio, así que quien le reenvíe debe decidir quién puede flashear | `src/cm5_host/spi_bridge/spi_bridge/http_service.py` |
 
-**Lo que hoy nunca hace:** dar una parada de emergencia, límites por software, enclavamientos, el volcado a FRAM al perder la alimentación ni ninguna orden de movimiento; no se afirma Secure Boot ni protección de lectura de la flash. Lee el recuadro de seguridad de arriba antes de fiarte de algo de aquí.
+**Lo que hoy nunca hace:** dar una parada de emergencia, límites por software, enclavamientos, el volcado a FRAM al perder la alimentación ni ninguna orden de movimiento; no se afirma Secure Boot ni protección de lectura de la flash. Hay una trama de parada por software en el bus de la pila, escrita y probada en el host (`docs/ESTOP_CAN.md`); nunca se ha ejecutado en una placa y no sustituye a una parada de emergencia por hardware. Lee el recuadro de seguridad de arriba antes de fiarte de algo de aquí.
 
 ## 🔌 Interfaces
 

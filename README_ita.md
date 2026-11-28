@@ -158,7 +158,7 @@ La specifica dettagliata del progetto (undici sottosistemi, dal computer host al
 | Una scheda che si blocca | Il bootloader della G474 arma il watchdog indipendente (IWDG) come primissima azione di `main()`, prima di `HAL_Init()`, così un blocco all'avvio reimposta il chip | `src/mcu_stm32g474/boot/bootloader_main.c` |
 | Il servizio HTTP locale del bridge SPI raggiunto da qualcun altro | Ascolta su 127.0.0.1 per impostazione predefinita, accetta un corpo di firmware di al massimo 4 MiB e non conserva alcuna chiave di firma: la firma arriva nella richiesta, fatta sulla macchina che ha il seme privato; non ha TLS né un accesso proprio, quindi chi gli inoltra le richieste deve decidere chi può flashare | `src/cm5_host/spi_bridge/spi_bridge/http_service.py` |
 
-**Cosa non fa mai oggi:** fornire un arresto di emergenza, limiti software, interblocchi, il salvataggio su FRAM alla perdita di alimentazione né alcun comando di movimento; Secure Boot e protezione in lettura della flash non sono dichiarati. Leggi il riquadro di sicurezza in alto prima di fidarti di qualsiasi cosa qui.
+**Cosa non fa mai oggi:** fornire un arresto di emergenza, limiti software, interblocchi, il salvataggio su FRAM alla perdita di alimentazione né alcun comando di movimento; Secure Boot e protezione in lettura della flash non sono dichiarati. Una trama di arresto software sul bus dello stack è scritta e provata su host (`docs/ESTOP_CAN.md`); non è mai stata eseguita su una scheda e non sostituisce un arresto di emergenza hardware. Leggi il riquadro di sicurezza in alto prima di fidarti di qualsiasi cosa qui.
 
 ## 🔌 Interfacce
 

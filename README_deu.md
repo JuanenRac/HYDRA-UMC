@@ -158,7 +158,7 @@ Die ausführliche Spezifikation des Entwurfs (elf Subsysteme, vom Host-Rechner b
 | Eine Platine, die hängt | Der G474-Bootloader schärft den unabhängigen Watchdog (IWDG) als allererste Aktion von `main()`, vor `HAL_Init()`, sodass ein Hänger beim Start den Chip zurücksetzt | `src/mcu_stm32g474/boot/bootloader_main.c` |
 | Der lokale HTTP-Dienst der SPI-Brücke wird von jemand anderem erreicht | Er lauscht standardmäßig auf 127.0.0.1, nimmt einen Firmware-Body von höchstens 4 MiB an und hält keinen Signierschlüssel: Die Signatur kommt in der Anfrage, erstellt auf dem Rechner mit dem privaten Seed; er hat weder TLS noch eigene Anmeldung, wer an ihn weiterleitet, muss also entscheiden, wer flashen darf | `src/cm5_host/spi_bridge/spi_bridge/http_service.py` |
 
-**Was es heute nie tut:** einen Not-Halt, Software-Grenzen, Verriegelungen, den Sicherungsabzug in den FRAM bei Spannungsverlust oder irgendeinen Bewegungsbefehl bereitstellen; Secure Boot und Ausleseschutz des Flashs werden nicht behauptet. Lies den Sicherheitskasten oben, bevor du dich auf etwas hier verlässt.
+**Was es heute nie tut:** einen Not-Halt, Software-Grenzen, Verriegelungen, den Sicherungsabzug in den FRAM bei Spannungsverlust oder irgendeinen Bewegungsbefehl bereitstellen; Secure Boot und Ausleseschutz des Flashs werden nicht behauptet. Ein Software-Stopp-Frame auf dem Stack-Bus ist geschrieben und auf dem Host getestet (`docs/ESTOP_CAN.md`); er lief noch nie auf einer Platine und ersetzt keinen Hardware-Not-Halt. Lies den Sicherheitskasten oben, bevor du dich auf etwas hier verlässt.
 
 ## 🔌 Schnittstellen
 

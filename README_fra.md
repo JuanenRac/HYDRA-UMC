@@ -158,7 +158,7 @@ La spécification détaillée de la conception (onze sous-systèmes, de l'ordina
 | Une carte qui se bloque | Le chargeur G474 arme le chien de garde indépendant (IWDG) comme toute première action de `main()`, avant `HAL_Init()`, si bien qu'un blocage au démarrage réinitialise la puce | `src/mcu_stm32g474/boot/bootloader_main.c` |
 | Le service HTTP local du pont SPI atteint par quelqu'un d'autre | Il écoute sur 127.0.0.1 par défaut, accepte un corps de firmware de 4 Mio au plus et ne détient aucune clé de signature : la signature arrive dans la requête, faite sur la machine qui détient la graine privée ; il n'a ni TLS ni connexion propre, donc ce qui lui relaie doit décider qui peut flasher | `src/cm5_host/spi_bridge/spi_bridge/http_service.py` |
 
-**Ce qu'il ne fait jamais aujourd'hui :** fournir un arrêt d'urgence, des limites logicielles, des verrouillages, la sauvegarde vers la FRAM en cas de coupure ni aucune commande de mouvement ; Secure Boot et la protection en lecture de la flash ne sont pas revendiqués. Lisez l'encadré de sécurité en haut avant de vous fier à quoi que ce soit ici.
+**Ce qu'il ne fait jamais aujourd'hui :** fournir un arrêt d'urgence, des limites logicielles, des verrouillages, la sauvegarde vers la FRAM en cas de coupure ni aucune commande de mouvement ; Secure Boot et la protection en lecture de la flash ne sont pas revendiqués. Une trame d'arrêt logiciel sur le bus de la pile est écrite et testée sur l'hôte (`docs/ESTOP_CAN.md`) ; elle n'a jamais tourné sur une carte et ne remplace pas un arrêt d'urgence matériel. Lisez l'encadré de sécurité en haut avant de vous fier à quoi que ce soit ici.
 
 ## 🔌 Interfaces
 
