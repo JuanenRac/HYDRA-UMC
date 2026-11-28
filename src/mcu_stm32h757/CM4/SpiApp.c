@@ -137,6 +137,17 @@ static const FramDriver_t *SpiApp_FramInit(void)
 }
 #endif /* HYDRA_FRAM_ERASE && HYDRA_FRAM_I2C_TIMING */
 
+#if HYDRA_SPI_TASK_WATCHDOG
+static volatile uint32_t g_spi_passes;
+static volatile uint8_t g_spi_task_created;
+
+uint32_t SpiApp_Passes(uint8_t *required)
+{
+    *required = g_spi_task_created;
+    return g_spi_passes;
+}
+#endif
+
 static void SpiApp_Task(void *parameters)
 {
     (void)parameters;
@@ -147,6 +158,9 @@ static void SpiApp_Task(void *parameters)
         }
         HAL_GPIO_WritePin(SPI_APP_DATA_READY_PORT, SPI_APP_DATA_READY_PIN, GPIO_PIN_RESET);
         SpiApp_Service(&g_spi_app);
+#if HYDRA_SPI_TASK_WATCHDOG
+        g_spi_passes++;
+#endif
         vTaskDelay(1); /* lets the lower priorities run when the CM5 is silent (the transfer above then ends by its timeout) */
     }
 }
@@ -156,11 +170,18 @@ void SpiApp_Start(void)
     const SpiSysConfig_t config = SpiSys_ConfigFromBuild();
     SpiApp_Init(&g_spi_app, &config, (uint8_t)HYDRA_SPI_REQUIRE_CRC);
     FramNode_Init(&g_fram_node, SpiApp_FramInit());
+#if HYDRA_FRAM_SELFTEST_JOURNAL
+    (void)FramNode_Recover(&g_fram_node); /* a self-test cut by a reset: the scratch area comes back before anything else touches the chip */
+#endif
     if (!SpiApp_HalInit()) {
         g_spi_app.link_ok = 0u;
         return;
     }
+#if HYDRA_SPI_TASK_WATCHDOG
+    g_spi_task_created = (uint8_t)(xTaskCreate(SpiApp_Task, "spi", configMINIMAL_STACK_SIZE * 2, NULL, tskIDLE_PRIORITY + 2, NULL) == pdPASS);
+#else
     xTaskCreate(SpiApp_Task, "spi", configMINIMAL_STACK_SIZE * 2, NULL, tskIDLE_PRIORITY + 2, NULL);
+#endif
 }
 
 /* The slots that answer the probe: the same AXIS_STATUS query as the round robin of the STACK A task, which tells an answering board (1) from a

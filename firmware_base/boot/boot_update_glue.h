@@ -17,9 +17,31 @@
 // A value that is different in every session, announced to the host in clear (OFS_DOWNGRADE_NONCE) and bound into the downgrade token, so that
 // a token recorded in one session is useless in another. It is a freshness value, not a secret: it only has to differ from every nonce an
 // attacker has seen a token for. This default mixes the state of this boot (tick, SysTick), the unique id of the chip and the number of
-// sessions of this boot; a build whose chip has a hardware random generator should define Boot_SessionEntropy itself with it.
+// sessions of this boot; with HYDRA_BOOT_NONCE_HW_RNG=1 the words of the hardware random generator of the chip are XORed over them
+// (boot_rng.h). The switch is off as it ships, so the bytes of the bootloaders do not change.
 #ifndef UID_BASE
 #define UID_BASE 0UL
+#endif
+#ifndef HYDRA_BOOT_NONCE_HW_RNG
+#define HYDRA_BOOT_NONCE_HW_RNG 0
+#endif
+#if HYDRA_BOOT_NONCE_HW_RNG
+#include "boot_rng.h"
+// The generator of both chips runs from HSI48 (the reset choice of its kernel clock). A clock that does not come up only means that
+// BootRng_Mix times out and the nonce is the one of the switch off.
+static void Boot_MixHardwareRandom(uint32_t words[4]) {
+#if defined(RCC_CRRCR_HSI48ON) // STM32G474
+    RCC->CRRCR |= RCC_CRRCR_HSI48ON;
+    for (uint32_t i = 0; i < BOOTRNG_SPINS && (RCC->CRRCR & RCC_CRRCR_HSI48RDY) == 0U; i++) { }
+#else // STM32H745
+    RCC->CR |= RCC_CR_HSI48ON;
+    for (uint32_t i = 0; i < BOOTRNG_SPINS && (RCC->CR & RCC_CR_HSI48RDY) == 0U; i++) { }
+#endif
+    RCC->AHB2ENR |= RCC_AHB2ENR_RNGEN;
+    (void)RCC->AHB2ENR; // the enable has taken effect before the first access
+    const BootRng_t rng = { &RNG->CR, &RNG->SR, &RNG->DR };
+    (void)BootRng_Mix(&rng, words, 4U, BOOTRNG_SPINS);
+}
 #endif
 __attribute__((weak)) void Boot_SessionEntropy(uint8_t out[16]) {
     uint32_t words[4];
@@ -31,6 +53,9 @@ __attribute__((weak)) void Boot_SessionEntropy(uint8_t out[16]) {
 #else
     words[2] = 0;
     words[3] = 0;
+#endif
+#if HYDRA_BOOT_NONCE_HW_RNG
+    Boot_MixHardwareRandom(words);
 #endif
     memcpy(out, words, 16);
 }

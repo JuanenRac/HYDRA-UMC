@@ -155,10 +155,20 @@ static volatile uint32_t stacka_task_alive;
 static void vBlinkTask(void *pvParameters)
 {
   (void)pvParameters;
+#if HYDRA_SPI_TASK_WATCHDOG && HYDRA_SPI_APP
+  AppAlive_t alive = { 0u, 0u };
+#else
   uint32_t stacka_seen = 0;
+#endif
   for (;;) {
+#if HYDRA_SPI_TASK_WATCHDOG && HYDRA_SPI_APP
+    uint8_t spi_required = 0u;
+    const uint32_t spi_passes = SpiApp_Passes(&spi_required);
+    if (AppAlive_Look(&alive, stacka_task_alive, spi_passes, spi_required)) { /* both tasks ran since the last refresh (app_alive.h) */
+#else
     if (stacka_task_alive != stacka_seen) { /* the STACK A task ran since the last look: only then is the watchdog refreshed */
       stacka_seen = stacka_task_alive;
+#endif
       HAL_IWDG_Refresh(&hiwdg); /* see this file's own header WATCHDOG NOTE - the bootloader's ~4s IWDG2 survives the jump into here unrefreshed otherwise */
     }
     HAL_GPIO_TogglePin(GPIOG, GPIO_PIN_10);

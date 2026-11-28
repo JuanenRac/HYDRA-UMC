@@ -14,6 +14,7 @@
 #define HYDRA_UMC_SPI_APP_DRIVER_H
 
 #include "spi_app.h"
+#include "app_alive.h" /* HYDRA_SPI_TASK_WATCHDOG, off as it ships */
 
 #if HYDRA_SPI_APP
 #ifndef HYDRA_SPI_RELEASE_EXPECTED_MASK
@@ -25,6 +26,10 @@
 void SpiApp_Start(void);
 SpiApp_t *SpiApp_Instance(void);
 void SpiApp_Pump(void);
+#if HYDRA_SPI_TASK_WATCHDOG
+/* The passes of the SPI task so far; *required is 1 once the task was created (a link whose set-up failed has no task to watch). */
+uint32_t SpiApp_Passes(uint8_t *required);
+#endif
 #endif
 
 #endif /* HYDRA_UMC_SPI_APP_DRIVER_H */

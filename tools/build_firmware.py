@@ -488,7 +488,18 @@ def host_cases(root: str) -> list[Case]:
                 [f"-DHYDRA_FRAM_ERASE={n}", f"-DFRAM_TEST_SWITCH={n}"],
             )
         )
+    cases.append(
+        _t(
+            "fram_node host logic tests passed (self-test journal)",
+            "host_tests_fram_node_journal",
+            "test_fram_node",
+            [CM4],
+            ["-DHYDRA_FRAM_ERASE=1", "-DFRAM_TEST_SWITCH=1", "-DHYDRA_FRAM_SELFTEST_JOURNAL=1"],
+        )
+    )
     cases.append(_t("fram_i2c host logic tests passed", "host_tests_fram_i2c", "test_fram_i2c", [CM4]))
+    cases.append(_t("boot_rng host logic tests passed", "host_tests_boot_rng", "test_boot_rng", [G474_BOOT]))
+    cases.append(_t("app_alive host logic tests passed", "host_tests_app_alive", "test_app_alive", [CM4]))
     cases.append(_t("slot_scan_master host logic tests passed", "host_tests_slot_scan_master", "test_slot_scan_master", ["tests", G474_BOOT, CM4]))
     cases.append(_t("slot_scan_sweep host logic tests passed", "host_tests_slot_scan_sweep", "test_slot_scan_sweep", ["tests", CM4]))
     cases.append(_t("estop_input host logic tests passed", "host_tests_estop_input", "test_estop_input", [G474]))
