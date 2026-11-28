@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 | Versione | `0.3.2` |
 | Maturità | Impalcatura |
 | Test | 1525 (`python -m unittest discover -s tests -p 'test_*.py'`) |
-| Tecnologia | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
+| Tecnologia | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / FDCAN in classic mode with no FD frames / SWD/JTAG |
 | Destinazione | Una scheda con microcontrollore (il firmware); compilato su un PC |
 | Su hardware reale | In uso quotidiano su hardware reale: la verifica di onestà di questo README indica dove |
 
@@ -219,7 +219,7 @@ target `g474`/`h745`/default, 0 errori) - non un elenco teorico:
 
 ## 🧪 Test
 
-1525 test automatici si eseguono con `python -m unittest discover -s tests -p 'test_*.py'`. Sono 187 test del bridge SPI della CM5 più 522 dei sorgenti del firmware, dell'intestazione immagine firmata e degli identificatori CAN (quelli del bridge SPI si eseguono con `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` e `-s src/cm5_host/spi_bridge/tests`). La logica C dei bootloader e del relay è verificata da altri 50 programmi compilati con un normale compilatore C host, nel passo 1b di `tools/build_firmware.py`. Nessuno richiede una scheda.
+1525 test automatici si eseguono con `python -m unittest discover -s tests -p 'test_*.py'`. Quel numero somma i test dei sorgenti del firmware, dell'intestazione immagine firmata e degli identificatori CAN e quelli del bridge SPI della CM5 (quelli del bridge SPI si eseguono a parte, con `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` e `-s src/cm5_host/spi_bridge/tests`). La logica C dei bootloader e del relay è verificata da altri programmi compilati con un normale compilatore C host, nel passo 1b di `tools/build_firmware.py`. Nessuno richiede una scheda.
 
 La CI esegue `HYDRA_UMC_CI=1 python tools/ci_validate.py`, che controlla il manifesto, i documenti, gli otto README e le immagini.
 

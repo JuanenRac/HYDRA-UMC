@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 | Version | `0.3.2` |
 | Maturité | Ébauche |
 | Tests | 1525 (`python -m unittest discover -s tests -p 'test_*.py'`) |
-| Technologie | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
+| Technologie | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / FDCAN in classic mode with no FD frames / SWD/JTAG |
 | Cible | Une carte à microcontrôleur (le firmware) ; compilé sur un PC |
 | Sur matériel réel | En usage quotidien sur du matériel réel : la vérification d'honnêteté de ce README indique où |
 
@@ -221,7 +221,7 @@ cibles `g474`/`h745`/par défaut, 0 erreur) - pas une liste théorique :
 
 ## 🧪 Tests
 
-1525 tests automatiques s'exécutent avec `python -m unittest discover -s tests -p 'test_*.py'`. Es s'agit de 187 tests du pont SPI de la CM5 plus 522 des sources du firmware, de l'en-tête d'image signé et des identifiants CAN (ceux du pont SPI se lancent avec `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` et `-s src/cm5_host/spi_bridge/tests`). La logique C des chargeurs d'amorçage et du relais est vérifiée par 50 autres programmes compilés avec un compilateur C ordinaire de l'hôte, à l'étape 1b de `tools/build_firmware.py`. Aucun n'a besoin d'une carte.
+1525 tests automatiques s'exécutent avec `python -m unittest discover -s tests -p 'test_*.py'`. Ce nombre réunit les tests des sources du firmware, de l'en-tête d'image signé et des identifiants CAN et ceux du pont SPI de la CM5 (ceux du pont SPI se lancent à part, avec `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` et `-s src/cm5_host/spi_bridge/tests`). La logique C des chargeurs d'amorçage et du relais est vérifiée par d'autres programmes compilés avec un compilateur C ordinaire de l'hôte, à l'étape 1b de `tools/build_firmware.py`. Aucun n'a besoin d'une carte.
 
 La CI exécute `HYDRA_UMC_CI=1 python tools/ci_validate.py`, qui vérifie le manifeste, les documents, les huit README et les images.
 

@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 | Version | `0.3.2` |
 | Maturity | Scaffolding |
 | Tests | 1525 (`python -m unittest discover -s tests -p 'test_*.py'`) |
-| Stack | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
+| Stack | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / FDCAN in classic mode with no FD frames / SWD/JTAG |
 | Target | A microcontroller board (the firmware); built on a PC |
 | On real hardware | In daily use on real hardware: the honesty check of this README says where |
 
@@ -218,7 +218,7 @@ default targets, 0 errors) - not a theoretical list:
 
 ## 🧪 Testing
 
-1525 automated tests run with `python -m unittest discover -s tests -p 'test_*.py'`. They are 187 tests of the CM5 SPI bridge plus 522 of the firmware sources, the signed image header and the CAN identifiers (the SPI bridge ones run with `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` and `-s src/cm5_host/spi_bridge/tests`). The C logic of the bootloaders and of the relay is checked by 50 more programs compiled with a plain host C compiler, in step 1b of `tools/build_firmware.py`. None of them needs a board.
+1525 automated tests run with `python -m unittest discover -s tests -p 'test_*.py'`. That number counts the host tests, with simulated hardware, of the firmware sources, the signed image header and the CAN identifiers together with those of the CM5 SPI bridge (the SPI bridge ones run apart, with `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` and `-s src/cm5_host/spi_bridge/tests`). The C logic of the bootloaders and of the relay is checked by further programs compiled with a plain host C compiler, in step 1b of `tools/build_firmware.py`. None of them needs a board.
 
 The CI runs `HYDRA_UMC_CI=1 python tools/ci_validate.py`, which checks the manifest, the documents, the eight READMEs and the pictures.
 

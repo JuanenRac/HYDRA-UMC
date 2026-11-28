@@ -4,6 +4,8 @@ All notable changes to the hardware and core firmware will be documented in this
 
 ## [Unreleased]
 
+- **README facts checked against the code:** the stack no longer names a DSP library that no source uses, and the test paragraph no longer gives a breakdown and a number of C programs that had grown old.
+
 - **The metadata of the Kinematic Brain bootloaders is kept in two sectors by default:** a power cut at the change of sector keeps the rollback counter. The longest CM7 and CM4 application is now 256 KB; the long slot variant keeps the single sector. `-DHYDRA_META_AB=0` builds as before. Changes the CM4 and CM7 bootloader images; the cut of power on a board is still to be tested.
 - **The SPI documentation says how an update of the CM4 starts once its application runs:** there is no remote way back to the bootloader, so an update starts in its listening window, the first 600 ms after a reset. Documentation only.
 - **The token files of the SPI bridge service may carry a byte order mark:** a collector or zones token saved as "UTF-8 with BOM" could not be sent in a header; the mark is dropped now. Test added.

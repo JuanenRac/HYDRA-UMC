@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 | 版本 | `0.3.2` |
 | 成熟度 | 雏形 |
 | 测试 | 1525 (`python -m unittest discover -s tests -p 'test_*.py'`) |
-| 技术栈 | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / CMSIS-DSP / FDCAN (classic CAN mode) |
+| 技术栈 | STM32H757 (dual-core) / STM32G474 / FreeRTOS (AMP) / FDCAN in classic mode with no FD frames / SWD/JTAG |
 | 目标 | 微控制器板（固件）；在电脑上构建 |
 | 真实硬件 | 在真实硬件上日常使用：本 README 中的诚实性检查说明了在哪里 |
 
@@ -200,7 +200,7 @@ python -m unittest discover -s tests -p 'test_*.py'  # the Python tests of the f
 
 ## 🧪 测试
 
-运行 `python -m unittest discover -s tests -p 'test_*.py'` 会执行 1525 个自动测试。 其中 187 个是 CM5 SPI 桥的测试，522 个是固件源码、签名镜像头和 CAN 标识符的测试（SPI 桥的测试用 `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` 和 `-s src/cm5_host/spi_bridge/tests` 运行）。引导程序和中继的 C 逻辑还由另外 50 个程序检查，它们在 `tools/build_firmware.py` 的 1b 步骤中用普通的主机 C 编译器编译。它们都不需要电路板。
+运行 `python -m unittest discover -s tests -p 'test_*.py'` 会执行 1525 个自动测试。 该数字包括固件源码、签名镜像头和 CAN 标识符的测试以及 CM5 SPI 桥的测试（SPI 桥的测试单独用 `PYTHONPATH=src/cm5_host/spi_bridge:src/cm5_host/spi_bridge/tests` 和 `-s src/cm5_host/spi_bridge/tests` 运行）。引导程序和中继的 C 逻辑还由另外一些程序检查，它们在 `tools/build_firmware.py` 的 1b 步骤中用普通的主机 C 编译器编译。它们都不需要电路板。
 
 CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档、八个 README 和图片。
 
